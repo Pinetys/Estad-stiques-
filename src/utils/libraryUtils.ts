@@ -1,5 +1,5 @@
 import { Game, PlayerAccumulatedStats, SeasonAggregatedStats } from '../types';
-import { calculatePlayerStats, calculateTeamStats } from './statsCalculator';
+import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed } from './statsCalculator';
 import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from '../lib/firebase';
 
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
@@ -226,9 +226,12 @@ export function calculateSeasonStats(games: Game[]): SeasonAggregatedStats {
         efficiencyTotal: 0,
         efficiencyAvg: 0,
         plusMinusTotal: 0,
+        minutesPlayedTotalSeconds: 0,
+        minutesAvg: '00:00',
       };
 
       existing.gamesPlayed += 1;
+      existing.minutesPlayedTotalSeconds = (existing.minutesPlayedTotalSeconds || 0) + (p.minutesPlayedSeconds || 0);
       existing.pointsTotal += pBox.points;
       existing.twoPointsMade += pBox.twoPointsMade;
       existing.twoPointsAttempted += pBox.twoPointsAttempted;
@@ -279,6 +282,7 @@ export function calculateSeasonStats(games: Game[]): SeasonAggregatedStats {
       stealsAvg: Number((p.steals / gp).toFixed(1)),
       turnoversAvg: Number((p.turnovers / gp).toFixed(1)),
       efficiencyAvg: Number((p.efficiencyTotal / gp).toFixed(1)),
+      minutesAvg: formatMinutesPlayed(Math.round((p.minutesPlayedTotalSeconds || 0) / gp)),
     };
   });
 

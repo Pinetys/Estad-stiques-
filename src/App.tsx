@@ -97,7 +97,15 @@ export default function App() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.players)) {
+          parsed.players = parsed.players.map((p: Player) => ({
+            ...p,
+            minutesPlayedSeconds: p.minutesPlayedSeconds || 0,
+            quarterSeconds: p.quarterSeconds || {},
+          }));
+        }
+        return parsed;
       }
     } catch {
       // Fallback
@@ -113,6 +121,55 @@ export default function App() {
   const [activeTeamId, setActiveTeamIdState] = useState<string>(() => getActiveTeamId());
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showCloudBackupModal, setShowCloudBackupModal] = useState(false);
+
+  // Central Game Clock & Automatic Player Minutes on Court Tracking Engine
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (game.isClockRunning && game.status === 'live') {
+      interval = setInterval(() => {
+        setGame(prev => {
+          if (!prev.isClockRunning) return prev;
+
+          const isQuarterEnding = prev.currentSecondsRemaining <= 1;
+          if (isQuarterEnding) {
+            playSound('buzzer', prev.settings.soundEnabled);
+            triggerHaptic('warning', prev.settings.vibrationEnabled);
+          }
+
+          const nextSeconds = isQuarterEnding ? 0 : prev.currentSecondsRemaining - 1;
+          const nextClockRunning = isQuarterEnding ? false : true;
+          const currentQ = prev.currentQuarter;
+
+          // Automatically increment minutes played for all players currently on court
+          const updatedPlayers = prev.players.map(player => {
+            if (player.onCourt) {
+              const currentTotal = player.minutesPlayedSeconds || 0;
+              const currentQSeconds = (player.quarterSeconds && player.quarterSeconds[currentQ]) || 0;
+              return {
+                ...player,
+                minutesPlayedSeconds: currentTotal + 1,
+                quarterSeconds: {
+                  ...(player.quarterSeconds || {}),
+                  [currentQ]: currentQSeconds + 1,
+                },
+              };
+            }
+            return player;
+          });
+
+          return {
+            ...prev,
+            currentSecondsRemaining: nextSeconds,
+            isClockRunning: nextClockRunning,
+            players: updatedPlayers,
+          };
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [game.isClockRunning, game.status]);
 
   // Sync teams and matches from Firebase Cloud Firestore on initial mount
   useEffect(() => {
@@ -165,6 +222,7 @@ export default function App() {
       players: targetTeam.roster.map(p => ({
         ...p,
         minutesPlayedSeconds: 0,
+        quarterSeconds: {},
       })),
     }));
   };
@@ -762,7 +820,7 @@ export default function App() {
       awayQuarterFouls: 0,
       status: 'live',
       settings: newConfig.settings,
-      players: game.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false })),
+      players: game.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} })),
       events: [],
       quarterScores: [
         { quarter: 1, quarterLabel: 'Q1', home: 0, away: 0 },

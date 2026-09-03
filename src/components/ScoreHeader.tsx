@@ -44,35 +44,6 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
   const [editingLogoTeam, setEditingLogoTeam] = useState<'home' | 'away' | null>(null);
 
-  // Live Timer Interval
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (game.isClockRunning && game.status === 'live') {
-      interval = setInterval(() => {
-        onUpdateGame(prev => {
-          if (!prev.isClockRunning) return prev;
-          if (prev.currentSecondsRemaining <= 1) {
-            // Quarter finished!
-            playSound('buzzer', prev.settings.soundEnabled);
-            triggerHaptic('warning', prev.settings.vibrationEnabled);
-            return {
-              ...prev,
-              currentSecondsRemaining: 0,
-              isClockRunning: false,
-            };
-          }
-          return {
-            ...prev,
-            currentSecondsRemaining: prev.currentSecondsRemaining - 1,
-          };
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [game.isClockRunning, game.status, onUpdateGame]);
-
   const toggleClock = () => {
     triggerHaptic('light', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);

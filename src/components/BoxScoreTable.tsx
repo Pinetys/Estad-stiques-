@@ -189,6 +189,14 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                 <th className="py-2 px-2.5 sticky left-0 bg-[#1A1D23] z-10"># Jugador</th>
                 <th className="py-2 px-1.5 text-center">POS</th>
                 <th
+                  onClick={() => handleSort('secondsPlayed')}
+                  className="py-2 px-1.5 text-center cursor-pointer hover:text-emerald-400 font-bold text-emerald-400"
+                >
+                  <div className="flex items-center justify-center gap-0.5">
+                    MIN {sortField === 'secondsPlayed' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                  </div>
+                </th>
+                <th
                   onClick={() => handleSort('points')}
                   className="py-2 px-2 text-center cursor-pointer hover:text-orange-400 font-bold text-orange-400"
                 >
@@ -309,6 +317,11 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                       {POSITION_LABELS[ps.player.position]?.short || ps.player.position}
                     </td>
 
+                    {/* Minutes Played */}
+                    <td className="py-1.5 px-1.5 text-center font-bold text-emerald-400 font-mono text-[11px]">
+                      {ps.minutesPlayedFormatted}
+                    </td>
+
                     {/* Points */}
                     <td className="py-1.5 px-2 text-center font-extrabold text-sm text-orange-400 bg-orange-950/10">
                       {ps.points}
@@ -391,6 +404,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                   TOTAL EQUIPO
                 </td>
                 <td className="py-2 px-1.5 text-center text-gray-500 font-sans">-</td>
+                <td className="py-2 px-1.5 text-center text-gray-500 font-mono text-[11px]">-</td>
                 <td className="py-2 px-2 text-center font-extrabold text-sm text-orange-400">
                   {teamStats.points}
                 </td>
@@ -472,6 +486,10 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
 
             {/* Detailed list */}
             <div className="space-y-1 text-xs text-gray-300 bg-[#1A1D23] p-2.5 rounded border border-gray-800 font-mono">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Minutos en Pista:</span>
+                <span className="font-bold text-emerald-400">{selectedPlayerModal.minutesPlayedFormatted}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Tiros de 2:</span>
                 <span>{selectedPlayerModal.twoPointsMade}/{selectedPlayerModal.twoPointsAttempted} ({selectedPlayerModal.twoPointsPercentage}%)</span>

@@ -262,16 +262,16 @@ export const DEFAULT_SETTINGS: GameSettings = {
 };
 
 export const DEFAULT_ROSTER: Player[] = [
-  { id: 'p-7', number: 7, name: 'Marcos R.', position: 'B', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-  { id: 'p-11', number: 11, name: 'Javier S.', position: 'E', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-  { id: 'p-23', number: 23, name: 'Alejandro G.', position: 'A', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-  { id: 'p-15', number: 15, name: 'Pablo M.', position: 'AP', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-  { id: 'p-33', number: 33, name: 'David T.', position: 'P', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-  { id: 'p-4', number: 4, name: 'Lucas V.', position: 'B', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
-  { id: 'p-9', number: 9, name: 'Carlos N.', position: 'E', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
-  { id: 'p-13', number: 13, name: 'Hugo B.', position: 'A', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
-  { id: 'p-30', number: 30, name: 'Adrián L.', position: 'AP', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
-  { id: 'p-77', number: 77, name: 'Daniel K.', position: 'P', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
+  { id: 'p-7', number: 7, name: 'Marcos R.', position: 'B', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-11', number: 11, name: 'Javier S.', position: 'E', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-23', number: 23, name: 'Alejandro G.', position: 'A', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-15', number: 15, name: 'Pablo M.', position: 'AP', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-33', number: 33, name: 'David T.', position: 'P', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-4', number: 4, name: 'Lucas V.', position: 'B', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-9', number: 9, name: 'Carlos N.', position: 'E', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-13', number: 13, name: 'Hugo B.', position: 'A', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-30', number: 30, name: 'Adrián L.', position: 'AP', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
+  { id: 'p-77', number: 77, name: 'Daniel K.', position: 'P', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} },
 ];
 
 export const OPPONENT_TEAMS = [

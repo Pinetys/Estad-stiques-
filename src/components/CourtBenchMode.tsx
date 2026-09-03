@@ -387,8 +387,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                     <span className="text-neutral-300 truncate max-w-[60px]">
                       {p.name.split(' ')[0]}
                     </span>
-                    <span className="text-[10px] text-neutral-500">
-                      ({stats.points}p/{stats.foulsPersonal}F)
+                    <span className="text-[10px] text-neutral-500 font-mono">
+                      ({stats.minutesPlayedFormatted} • {stats.points}p/{stats.foulsPersonal}F)
                     </span>
                   </span>
                 );
@@ -637,7 +637,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                       </div>
 
                       {/* Stats */}
-                      <div className="text-[10px] font-mono text-neutral-400 mt-1 pt-1 border-t border-neutral-800 flex justify-between w-full">
+                      <div className="text-[9px] font-mono text-neutral-400 mt-1 pt-1 border-t border-neutral-800 flex justify-between w-full">
+                        <span className="text-emerald-400 font-bold">{stats.minutesPlayedFormatted}</span>
                         <span>{stats.points}p</span>
                         <span className={isFouledOut ? 'text-red-400 font-bold' : isFoulDanger ? 'text-amber-400 font-bold' : ''}>
                           {stats.foulsPersonal}F

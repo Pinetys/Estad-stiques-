@@ -83,7 +83,7 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                     {player.name.split(' ')[0]}
                   </span>
                   <span className="text-[9px] font-mono text-gray-400 mt-0.5">
-                    {stats.foulsPersonal}F | {stats.points}p
+                    ⏱ {stats.minutesPlayedFormatted} | {stats.foulsPersonal}F
                   </span>
                 </button>
               );
@@ -133,7 +133,7 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                       {player.name.split(' ')[0]}
                     </span>
                     <span className="text-[9px] font-mono text-gray-400 mt-0.5">
-                      {isFouledOut ? 'EXPULSADO' : `${stats.foulsPersonal}F | ${stats.points}p`}
+                      {isFouledOut ? 'EXPULSADO' : `⏱ ${stats.minutesPlayedFormatted} | ${stats.foulsPersonal}F`}
                     </span>
                   </button>
                 );

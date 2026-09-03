@@ -9,6 +9,8 @@ export interface Player {
   onCourt: boolean;
   foulsCount: number;
   isFouledOut: boolean;
+  minutesPlayedSeconds?: number; // Total seconds played on court
+  quarterSeconds?: Record<number, number>; // Seconds on court broken down by quarter (1, 2, 3, 4...)
   photoUrl?: string;
   notes?: string;
 }
@@ -98,8 +100,20 @@ export interface GameSettings {
   courtMode: boolean; // Modo Pista: reduce intensidad de color y desactiva animaciones para ahorrar batería
 }
 
+export interface TeamProfile {
+  id: string;
+  name: string;
+  category?: string;
+  season?: string;
+  primaryColor?: string;
+  logo?: string;
+  roster: Player[];
+  createdAt?: string;
+}
+
 export interface Game {
   id: string;
+  teamId?: string;
   title: string;
   date: string;
   location?: string;
@@ -162,6 +176,8 @@ export interface PlayerAccumulatedStats {
   efficiencyTotal: number;
   efficiencyAvg: number;
   plusMinusTotal: number;
+  minutesPlayedTotalSeconds?: number;
+  minutesAvg?: string;
 }
 
 export interface SeasonAggregatedStats {
@@ -208,6 +224,8 @@ export interface SeasonAggregatedStats {
 
 export interface PlayerBoxScore {
   player: Player;
+  secondsPlayed: number;
+  minutesPlayedFormatted: string;
   points: number;
   // Tiros de 2
   twoPointsMade: number;

@@ -211,6 +211,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
           nombre: p.playerName,
           posicion: p.position,
           partidosJugados: p.gamesPlayed,
+          minutosMediosPorPartido: p.minutesAvg,
           puntosTotales: p.pointsTotal,
           puntosPorPartido: p.pointsAvg,
           aciertoT2: `${p.twoPointsPercentage}% (${p.twoPointsMade}/${p.twoPointsAttempted})`,
@@ -689,6 +690,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                         <th className="p-2.5">Jugador</th>
                         <th className="p-2.5 text-center">Pos</th>
                         <th className="p-2.5 text-center">PJ</th>
+                        <th className="p-2.5 text-center text-emerald-400 font-bold">Min/P</th>
                         <th className="p-2.5 text-center text-orange-400 font-bold">Pts Tot</th>
                         <th className="p-2.5 text-center font-bold">Pts/P</th>
                         <th className="p-2.5 text-center">T2%</th>
@@ -711,6 +713,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                           </td>
                           <td className="p-2.5 text-center text-gray-400">{p.position}</td>
                           <td className="p-2.5 text-center text-gray-300">{p.gamesPlayed}</td>
+                          <td className="p-2.5 text-center text-emerald-400 font-bold">{p.minutesAvg}&apos;</td>
                           <td className="p-2.5 text-center text-orange-400 font-black">{p.pointsTotal}</td>
                           <td className="p-2.5 text-center font-bold text-gray-100">{p.pointsAvg}</td>
                           <td className="p-2.5 text-center text-gray-300">

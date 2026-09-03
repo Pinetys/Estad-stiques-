@@ -6,6 +6,26 @@ export function formatGameTime(seconds: number): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+/**
+ * Formats seconds into MM:SS format for minutes played on court
+ */
+export function formatMinutesPlayed(seconds: number = 0): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Formats seconds into short M' or M'SS" for compact pills/badges
+ */
+export function formatMinutesPlayedShort(seconds: number = 0): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins === 0 && secs === 0) return "0'";
+  if (secs === 0) return `${mins}'`;
+  return `${mins}'${secs.toString().padStart(2, '0')}"`;
+}
+
 export function formatQuarterName(quarter: number): string {
   if (quarter <= 4) {
     return `${quarter}º Cuarto (Q${quarter})`;
@@ -144,8 +164,16 @@ export function calculatePlayerStats(
     }
   }
 
+  // Calculate minutes / seconds played (accounting for quarter filter if selected)
+  const secondsPlayed = quarterFilter
+    ? (player.quarterSeconds?.[quarterFilter] || 0)
+    : (player.minutesPlayedSeconds || 0);
+  const minutesPlayedFormatted = formatMinutesPlayed(secondsPlayed);
+
   return {
     player,
+    secondsPlayed,
+    minutesPlayedFormatted,
     points,
     twoPointsMade,
     twoPointsAttempted,
@@ -258,17 +286,17 @@ export function generateShareText(game: Game, playerStats: PlayerBoxScore[], tea
   text += `⭐ *DESTACADOS DEL EQUIPO (${game.homeTeamName}):*\n`;
   text += `🔥 *Máximos Anotadores:*\n`;
   topScorers.forEach((p, idx) => {
-    text += ` ${idx + 1}. #${p.player.number} ${p.player.name}: *${p.points} pts* (${p.twoPointsMade}/${p.twoPointsAttempted} T2, ${p.threePointsMade}/${p.threePointsAttempted} T3, ${p.freeThrowsMade}/${p.freeThrowsAttempted} TL)\n`;
+    text += ` ${idx + 1}. #${p.player.number} ${p.player.name} (${p.minutesPlayedFormatted} min): *${p.points} pts* (${p.twoPointsMade}/${p.twoPointsAttempted} T2, ${p.threePointsMade}/${p.threePointsAttempted} T3, ${p.freeThrowsMade}/${p.freeThrowsAttempted} TL)\n`;
   });
 
   text += `\n🛡️ *Rebotes:*\n`;
   topRebounders.forEach((p, idx) => {
-    text += ` ${idx + 1}. #${p.player.number} ${p.player.name}: *${p.totalRebounds} reb* (${p.offensiveRebounds} Of / ${p.defensiveRebounds} Def)\n`;
+    text += ` ${idx + 1}. #${p.player.number} ${p.player.name} (${p.minutesPlayedFormatted} min): *${p.totalRebounds} reb* (${p.offensiveRebounds} Of / ${p.defensiveRebounds} Def)\n`;
   });
 
   text += `\n💎 *Mejor Valoración (PIR):*\n`;
   topEfficiency.forEach((p, idx) => {
-    text += ` ${idx + 1}. #${p.player.number} ${p.player.name}: *${p.efficiency} VAL* (${p.points}p, ${p.totalRebounds}r, ${p.assists}a, ${p.steals}rob, ${p.foulsPersonal}f)\n`;
+    text += ` ${idx + 1}. #${p.player.number} ${p.player.name} (${p.minutesPlayedFormatted} min): *${p.efficiency} VAL* (${p.points}p, ${p.totalRebounds}r, ${p.assists}a, ${p.steals}rob, ${p.foulsPersonal}f)\n`;
   });
 
   text += `\n📋 *ESTADÍSTICAS COLECTIVAS:*\n`;
@@ -290,6 +318,7 @@ export function exportGameToCSV(game: Game, playerStats: PlayerBoxScore[]): stri
     'Dorsal',
     'Nombre',
     'Posicion',
+    'Minutos',
     'Puntos',
     'T2_Metidos',
     'T2_Intentados',
@@ -319,6 +348,7 @@ export function exportGameToCSV(game: Game, playerStats: PlayerBoxScore[]): stri
     ps.player.number,
     `"${ps.player.name}"`,
     ps.player.position,
+    `"${ps.minutesPlayedFormatted}"`,
     ps.points,
     ps.twoPointsMade,
     ps.twoPointsAttempted,

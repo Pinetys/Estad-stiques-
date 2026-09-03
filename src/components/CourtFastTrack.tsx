@@ -20,6 +20,7 @@ import {
   History,
   ChevronDown,
   ChevronUp,
+  Clock,
 } from 'lucide-react';
 
 interface CourtFastTrackProps {
@@ -270,9 +271,22 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
                   </span>
                 </div>
 
-                {/* Player Name */}
-                <div className="mt-1 font-bold text-xs sm:text-sm text-gray-200 truncate">
-                  {player.name.split(' ')[0]}
+                {/* Player Name and Minutes */}
+                <div className="mt-1 flex items-center justify-between gap-1">
+                  <span className="font-bold text-xs sm:text-sm text-gray-200 truncate">
+                    {player.name.split(' ')[0]}
+                  </span>
+                  <span
+                    className={`text-[10px] font-mono font-bold flex items-center gap-0.5 shrink-0 ${
+                      isSelected
+                        ? isCourtMode ? 'text-amber-300' : 'text-emerald-400'
+                        : 'text-gray-400'
+                    }`}
+                    title={`Tiempo en pista: ${stats.minutesPlayedFormatted}`}
+                  >
+                    <Clock className="w-2.5 h-2.5 opacity-70" />
+                    {stats.minutesPlayedFormatted}
+                  </span>
                 </div>
 
                 {/* Live Stats Badges: PTS & FOULS */}
@@ -334,8 +348,14 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               );
             }
             return (
-              <div className="text-xs text-gray-400 font-mono">
-                VAL: <strong className="text-emerald-400 font-bold">{pStats.efficiency}</strong> | REB: {pStats.totalRebounds} | AST: {pStats.assists}
+              <div className="text-xs text-gray-400 font-mono flex items-center gap-1.5">
+                <span>MIN: <strong className="text-emerald-400 font-bold">{pStats.minutesPlayedFormatted}</strong></span>
+                <span>|</span>
+                <span>VAL: <strong className="text-emerald-400 font-bold">{pStats.efficiency}</strong></span>
+                <span>|</span>
+                <span>REB: {pStats.totalRebounds}</span>
+                <span>|</span>
+                <span>AST: {pStats.assists}</span>
               </div>
             );
           })()}
