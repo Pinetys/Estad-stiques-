@@ -12,6 +12,7 @@ import { playSound, triggerHaptic } from './utils/soundHaptics';
 // Components
 import { ScoreHeader } from './components/ScoreHeader';
 import { CourtFastTrack } from './components/CourtFastTrack';
+import { InformativeMobileView } from './components/InformativeMobileView';
 import { BoxScoreTable } from './components/BoxScoreTable';
 import { ChartsAndStats } from './components/ChartsAndStats';
 import { PlayByPlay } from './components/PlayByPlay';
@@ -53,6 +54,7 @@ import {
   BookOpen,
   Shield,
   Cloud,
+  MoreVertical,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -192,6 +194,7 @@ export default function App() {
   const [showNewGameModal, setShowNewGameModal] = useState(false);
   const [showAICoachModal, setShowAICoachModal] = useState(false);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
+  const [showMobileHeaderMenu, setShowMobileHeaderMenu] = useState(false);
 
   // Save to localStorage & Library
   useEffect(() => {
@@ -852,7 +855,7 @@ export default function App() {
   const isCourtMode = Boolean(game.settings.courtMode);
 
   return (
-    <div className={`min-h-screen ${isCourtMode ? 'bg-black text-neutral-200' : 'bg-[#0F1115] text-gray-100'} flex flex-col selection:bg-orange-500 selection:text-white`}>
+    <div className={`min-h-screen ${isCourtMode ? 'bg-black text-neutral-200' : 'bg-[#0F1115] text-gray-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
       {/* 1. If Court Mode is Active: Show Ultra-Clean Bench Tactile Console */}
       {isCourtMode ? (
         <CourtBenchMode
@@ -871,16 +874,17 @@ export default function App() {
         />
       ) : (
         <>
-          {/* High Density Top Header */}
-          <header className="h-14 sm:h-16 bg-[#1A1D23] border-b border-gray-800 flex items-center justify-between px-3 sm:px-6 shrink-0 sticky top-0 z-40">
-            <div className="flex items-center gap-2.5 sm:gap-6">
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-widest text-orange-500 font-bold leading-none">
-                  Anotador Oficial
-                </span>
-                <h1 className="text-base sm:text-lg font-black tracking-tight text-white uppercase mt-0.5">
+          {/* High Density Top Header - Strictly Responsive without Horizontal Overflow */}
+          <header className="h-13 sm:h-16 bg-[#1A1D23] border-b border-gray-800 flex items-center justify-between px-2 sm:px-4 shrink-0 sticky top-0 z-40 w-full max-w-full">
+            {/* Left: Brand & Team selector */}
+            <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
+              <div className="flex flex-col min-w-0 shrink-0">
+                <h1 className="text-xs sm:text-base font-black tracking-tight text-white uppercase truncate leading-none">
                   BasketStats <span className="text-orange-500 font-mono">PRO</span>
                 </h1>
+                <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-orange-400 font-bold leading-none mt-0.5 hidden xs:inline">
+                  Informativo
+                </span>
               </div>
 
               {/* Active Team Switcher Badge */}
@@ -890,142 +894,241 @@ export default function App() {
                   playSound('click', game.settings.soundEnabled);
                   setShowTeamModal(true);
                 }}
-                className="flex items-center gap-1.5 sm:gap-2 bg-[#12141a] hover:bg-neutral-800 px-2.5 py-1.5 rounded-lg border border-orange-500/40 text-xs font-mono transition shadow-sm"
+                className="flex items-center gap-1 bg-[#12141a] hover:bg-neutral-800 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded border border-orange-500/40 text-[11px] sm:text-xs font-mono transition shadow-sm min-w-0"
                 title="Cambiar o gestionar equipos y categorías"
               >
-                <Shield className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                <span className="text-white font-extrabold max-w-[90px] sm:max-w-[150px] truncate">
+                <Shield className="w-3 h-3 text-orange-400 shrink-0" />
+                <span className="text-white font-extrabold max-w-[65px] xs:max-w-[90px] sm:max-w-[140px] truncate">
                   {game.homeTeamName}
                 </span>
-                <span className="text-[9px] bg-orange-600/30 text-orange-300 px-1 py-0.5 rounded font-bold">
-                  Cambiar ▼
+                <span className="text-[8px] bg-orange-600/30 text-orange-300 px-1 py-0.2 rounded font-bold shrink-0">
+                  ▼
                 </span>
               </button>
-
-              <div className="hidden md:flex items-center gap-2 text-xs font-bold text-gray-400 bg-black/40 px-2.5 py-1 rounded border border-gray-800 font-mono">
-                <span className="text-gray-200">{game.homeTeamName}</span>
-                <span className="text-orange-500">VS</span>
-                <span className="text-gray-200">{game.awayTeamName}</span>
-              </div>
             </div>
 
-            {/* Quick Header Actions */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Modo Pista Quick Toggle */}
+            {/* Right: Quick Actions */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Modo Pista Button (Priority action, visible always on all screens) */}
               <button
                 id="toggle-court-mode-btn"
                 onClick={toggleCourtMode}
-                className="p-1.5 sm:px-3 sm:py-1.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 shadow-sm"
-                title="Activar Modo Pista (Botones Grandes y Ahorro de Batería)"
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-xs font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 shadow-md shrink-0"
+                title="Entrar a Modo Pista para apuntar estadísticas"
               >
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span className="text-[11px] font-black">Modo Pista</span>
+                <Zap className="w-3.5 h-3.5 fill-black shrink-0" />
+                <span className="text-[11px] font-black">Pista</span>
               </button>
 
-              {/* Match Library / History Button */}
-              <button
-                id="open-library-btn"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  setShowLibraryModal(true);
-                }}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-indigo-950/70 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition active:scale-95"
-                title="Biblioteca de partidos y estadísticas acumuladas"
-              >
-                <Library className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="hidden sm:inline text-[10px]">Biblioteca</span>
-              </button>
-
-              {/* Cloud Sync & Backup Button */}
+              {/* Cloud Sync Quick Button (Direct 1-tap backup on all screens) */}
               <button
                 id="open-cloud-btn"
                 onClick={() => {
                   playSound('click', game.settings.soundEnabled);
                   setShowCloudBackupModal(true);
                 }}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-cyan-950/70 hover:bg-cyan-900 text-cyan-200 border border-cyan-700/60 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition active:scale-95 shadow-sm"
+                className="p-1.5 rounded-lg bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 flex items-center justify-center transition active:scale-95 shrink-0"
                 title="Copia en Nube Firebase y Respaldo"
               >
                 <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline text-[10px]">Nube</span>
               </button>
 
-              {/* AI Coach Scout Quick Button */}
-              <button
-                id="open-ai-coach-btn"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  setShowAICoachModal(true);
-                }}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-500/50 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 shadow-sm"
-                title="Generar informe táctico con IA"
-              >
-                <Brain className="w-3.5 h-3.5 text-orange-400" />
-                <span className="hidden sm:inline text-[10px]">Scout IA</span>
-              </button>
+              {/* Mobile Overflow Menu (for screens < md) */}
+              <div className="relative md:hidden">
+                <button
+                  id="mobile-header-menu-btn"
+                  onClick={() => setShowMobileHeaderMenu(!showMobileHeaderMenu)}
+                  className="p-1.5 rounded-lg bg-[#14161B] hover:bg-gray-800 text-gray-200 border border-gray-700 flex items-center justify-center transition active:scale-95 shrink-0"
+                  title="Más herramientas y opciones"
+                >
+                  <MoreVertical className="w-3.5 h-3.5 text-gray-300" />
+                </button>
 
-              {/* Sound Toggle */}
-              <button
-                onClick={() => {
-                  setGame(prev => ({
-                    ...prev,
-                    settings: {
-                      ...prev.settings,
-                      soundEnabled: !prev.settings.soundEnabled,
-                    },
-                  }));
-                }}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition"
-                title={game.settings.soundEnabled ? 'Sonido activado' : 'Sonido silenciado'}
-              >
-                {game.settings.soundEnabled ? (
-                  <Volume2 className="w-3.5 h-3.5 text-orange-500" />
-                ) : (
-                  <VolumeX className="w-3.5 h-3.5 text-gray-500" />
+                {/* Mobile Dropdown Menu Popup */}
+                {showMobileHeaderMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 bg-black/50"
+                      onClick={() => setShowMobileHeaderMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-[#14161B] border border-gray-700 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95">
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowLibraryModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                      >
+                        <Library className="w-4 h-4 text-indigo-400 shrink-0" />
+                        <span>Biblioteca de Partidos</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowRosterModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                      >
+                        <Users className="w-4 h-4 text-orange-400 shrink-0" />
+                        <span>Gestionar Plantilla</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowShareModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                      >
+                        <Share2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>Compartir Acta Oficial</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowAICoachModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                      >
+                        <Brain className="w-4 h-4 text-orange-400 shrink-0" />
+                        <span>Scout Táctico con IA</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setGame(prev => ({
+                            ...prev,
+                            settings: {
+                              ...prev.settings,
+                              soundEnabled: !prev.settings.soundEnabled,
+                            },
+                          }));
+                        }}
+                        className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {game.settings.soundEnabled ? (
+                            <Volume2 className="w-4 h-4 text-orange-400 shrink-0" />
+                          ) : (
+                            <VolumeX className="w-4 h-4 text-gray-500 shrink-0" />
+                          )}
+                          <span>Audio y Silbato</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-gray-400 font-bold">
+                          {game.settings.soundEnabled ? 'ON' : 'OFF'}
+                        </span>
+                      </button>
+
+                      <div className="h-px bg-gray-800 my-1" />
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowNewGameModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 text-xs font-bold text-left transition border border-orange-500/30"
+                      >
+                        <PlusCircle className="w-4 h-4 shrink-0" />
+                        <span>Nuevo Partido</span>
+                      </button>
+                    </div>
+                  </>
                 )}
-                <span className="hidden sm:inline text-[10px]">
-                  {game.settings.soundEnabled ? 'Audio ON' : 'Mute'}
-                </span>
-              </button>
+              </div>
 
-              {/* Roster Button */}
-              <button
-                onClick={() => setShowRosterModal(true)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
-                title="Gestionar Plantilla"
-              >
-                <Users className="w-3.5 h-3.5 text-orange-500" />
-                <span className="hidden sm:inline text-[10px]">Plantilla</span>
-              </button>
+              {/* Desktop Full Menu (Visible on md and up) */}
+              <div className="hidden md:flex items-center gap-1.5">
+                {/* Match Library / History Button */}
+                <button
+                  id="open-library-btn"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setShowLibraryModal(true);
+                  }}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-indigo-950/70 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition active:scale-95"
+                  title="Biblioteca de partidos y estadísticas acumuladas"
+                >
+                  <Library className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[10px]">Biblioteca</span>
+                </button>
 
-              {/* Share / Export */}
-              <button
-                onClick={() => setShowShareModal(true)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-emerald-950/70 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
-                title="Compartir acta por WhatsApp"
-              >
-                <Share2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline text-[10px]">Acta</span>
-              </button>
+                {/* AI Coach Scout Quick Button */}
+                <button
+                  id="open-ai-coach-btn"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setShowAICoachModal(true);
+                  }}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-500/50 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                  title="Generar informe táctico con IA"
+                >
+                  <Brain className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-[10px]">Scout IA</span>
+                </button>
 
-              {/* New Game */}
-              <button
-                onClick={() => setShowNewGameModal(true)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-600/40 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
-                title="Nuevo Partido"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline text-[10px]">Nuevo</span>
-              </button>
+                {/* Sound Toggle */}
+                <button
+                  onClick={() => {
+                    setGame(prev => ({
+                      ...prev,
+                      settings: {
+                        ...prev.settings,
+                        soundEnabled: !prev.settings.soundEnabled,
+                      },
+                    }));
+                  }}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition"
+                  title={game.settings.soundEnabled ? 'Sonido activado' : 'Sonido silenciado'}
+                >
+                  {game.settings.soundEnabled ? (
+                    <Volume2 className="w-3.5 h-3.5 text-orange-500" />
+                  ) : (
+                    <VolumeX className="w-3.5 h-3.5 text-gray-500" />
+                  )}
+                  <span className="text-[10px]">
+                    {game.settings.soundEnabled ? 'Audio ON' : 'Mute'}
+                  </span>
+                </button>
+
+                {/* Roster Button */}
+                <button
+                  onClick={() => setShowRosterModal(true)}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
+                  title="Gestionar Plantilla"
+                >
+                  <Users className="w-3.5 h-3.5 text-orange-500" />
+                  <span className="text-[10px]">Plantilla</span>
+                </button>
+
+                {/* Share / Export */}
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-emerald-950/70 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
+                  title="Compartir acta por WhatsApp"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[10px]">Acta</span>
+                </button>
+
+                {/* New Game */}
+                <button
+                  onClick={() => setShowNewGameModal(true)}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-600/40 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
+                  title="Nuevo Partido"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">Nuevo</span>
+                </button>
+              </div>
             </div>
           </header>
 
-          {/* Main Scoreboard Header (Always visible in Live Mode, equipped with Quarter Selector and Direct Adjusters) */}
+          {/* Main Scoreboard Header (Purely informative in Standard Mode with quarter progression) */}
           <ScoreHeader
             game={game}
             onUpdateGame={handleUpdateGame}
-            onAdjustScore={handleAdjustScore}
-            onLogOpponentAction={handleLogOpponentAction}
             onNextQuarter={handleNextQuarter}
             onSelectQuarter={handleSelectQuarter}
             selectedPlayerId={selectedPlayerId}
@@ -1035,17 +1138,10 @@ export default function App() {
           {/* Active Tab View Content */}
           <main className="grow bg-[#0F1115]">
             {activeTab === 'live' && (
-              <CourtFastTrack
+              <InformativeMobileView
                 game={game}
-                onLogPlayerAction={handleLogPlayerAction}
-                onAttachAssist={handleAttachAssistToLastEvent}
-                onUndoLastAction={handleUndoLastAction}
-                onDeleteEvent={handleDeleteEvent}
-                onOpenSubstitutionModal={() => setShowSubModal(true)}
-                selectedPlayerId={selectedPlayerId}
-                onSelectPlayer={setSelectedPlayerId}
-                recentEvent={recentEvent}
                 onToggleCourtMode={toggleCourtMode}
+                onOpenSubstitutionModal={() => setShowSubModal(true)}
               />
             )}
 
@@ -1157,7 +1253,7 @@ export default function App() {
                 }`}
               >
                 <Flame className="w-4 h-4" />
-                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Pista</span>
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Resumen</span>
               </button>
 
               {/* Stats Tab */}

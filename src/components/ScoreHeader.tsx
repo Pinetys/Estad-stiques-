@@ -23,7 +23,7 @@ interface ScoreHeaderProps {
   game: Game;
   onUpdateGame: (updater: (prev: Game) => Game) => void;
   onAdjustScore?: (team: 'home' | 'away', delta: number, playerId?: string) => void;
-  onLogOpponentAction: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL') => void;
+  onLogOpponentAction?: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL') => void;
   onNextQuarter: () => void;
   onSelectQuarter?: (quarter: number) => void;
   selectedPlayerId?: string | null;
@@ -112,12 +112,12 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   const isCourtMode = Boolean(game.settings.courtMode);
 
   return (
-    <div className={`${isCourtMode ? 'bg-black border-neutral-800' : 'bg-[#1A1D23] border-gray-800'} border-b shadow-xl relative z-30`}>
+    <div className={`${isCourtMode ? 'bg-black border-neutral-800' : 'bg-[#1A1D23] border-gray-800'} border-b shadow-xl relative z-30 w-full max-w-full overflow-hidden`}>
       {/* Top Bar: Quarter Selector, Clock, Status */}
-      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-2">
-        <div className="flex items-center justify-between gap-2">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-2 w-full max-w-full">
+        <div className="flex items-center justify-between gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
           {/* Quarter Controls (Prev, Selector Dropdown, Next) */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {/* Prev Quarter Button */}
             <button
               id="prev-quarter-btn"
@@ -126,7 +126,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               className={`p-1 rounded ${isCourtMode ? 'bg-[#111317] border-neutral-800 text-gray-400' : 'bg-[#14161B] hover:bg-gray-800 text-gray-300 border-gray-700'} disabled:opacity-30 disabled:pointer-events-none border font-bold transition`}
               title="Cuarto anterior"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             {/* Quarter Selector Pill with Dropdown */}
@@ -138,10 +138,10 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                   isCourtMode
                     ? 'bg-neutral-900 border-neutral-700 text-amber-300'
                     : 'bg-orange-600/20 hover:bg-orange-600/30 border-orange-600/50 text-orange-400'
-                } border px-2.5 py-1 rounded text-xs font-black uppercase tracking-wider flex items-center gap-1.5 font-mono shadow-sm transition active:scale-95`}
+                } border px-2 sm:px-2.5 py-1 rounded text-xs font-black uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 font-mono shadow-sm transition active:scale-95`}
                 title="Elegir cuarto específico"
               >
-                <span className={`w-2 h-2 rounded-full ${isCourtMode ? 'bg-amber-400' : 'bg-orange-500 animate-live-dot'}`}></span>
+                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isCourtMode ? 'bg-amber-400' : 'bg-orange-500 animate-live-dot'}`}></span>
                 <span>{formatQuarterShort(game.currentQuarter)}</span>
                 <ChevronDown className="w-3 h-3 opacity-80" />
               </button>
@@ -196,20 +196,20 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             <button
               id="next-quarter-btn"
               onClick={onNextQuarter}
-              className="text-xs bg-[#14161B] hover:bg-gray-800 active:bg-black text-gray-300 px-2 py-1 rounded flex items-center gap-0.5 border border-gray-700 font-bold uppercase transition"
+              className="text-xs bg-[#14161B] hover:bg-gray-800 active:bg-black text-gray-300 px-1.5 sm:px-2 py-1 rounded flex items-center gap-0.5 border border-gray-700 font-bold uppercase transition"
               title="Avanzar al siguiente cuarto"
             >
               <span>{game.currentQuarter < 4 ? `Q${game.currentQuarter + 1}` : 'PR'}</span>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" />
             </button>
           </div>
 
           {/* Clock controls */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <button
               id="toggle-clock-btn"
               onClick={toggleClock}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded font-mono font-black text-sm sm:text-base border transition active:scale-95 ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded font-mono font-black text-xs sm:text-base border transition active:scale-95 ${
                 game.isClockRunning
                   ? isCourtMode
                     ? 'bg-neutral-900 border-neutral-700 text-emerald-300'
@@ -220,9 +220,9 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               }`}
             >
               {game.isClockRunning ? (
-                <Pause className={`w-3.5 h-3.5 text-emerald-400 fill-emerald-400 ${isCourtMode ? '' : 'animate-pulse'}`} />
+                <Pause className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 fill-emerald-400 ${isCourtMode ? '' : 'animate-pulse'}`} />
               ) : (
-                <Play className={`w-3.5 h-3.5 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-orange-400 fill-orange-400'}`} />
+                <Play className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-orange-400 fill-orange-400'}`} />
               )}
               <span className="tracking-widest">{formatGameTime(game.currentSecondsRemaining)}</span>
             </button>
@@ -238,15 +238,15 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
           </div>
 
           {/* Bonus Fouls Alert */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {homeInBonus && (
-              <span className={`text-[10px] uppercase font-black bg-rose-950/80 text-rose-300 border border-rose-600 px-1.5 py-0.5 rounded flex items-center gap-0.5 ${isCourtMode ? '' : 'animate-pulse'}`}>
+              <span className={`text-[9px] sm:text-[10px] uppercase font-black bg-rose-950/80 text-rose-300 border border-rose-600 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 ${isCourtMode ? '' : 'animate-pulse'}`}>
                 <AlertTriangle className="w-2.5 h-2.5 text-rose-400" />
                 Bonus Loc
               </span>
             )}
             {awayInBonus && (
-              <span className={`text-[10px] uppercase font-black bg-red-950/80 text-red-300 border border-red-600 px-1.5 py-0.5 rounded flex items-center gap-0.5 ${isCourtMode ? '' : 'animate-pulse'}`}>
+              <span className={`text-[9px] sm:text-[10px] uppercase font-black bg-red-950/80 text-red-300 border border-red-600 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 ${isCourtMode ? '' : 'animate-pulse'}`}>
                 <AlertTriangle className="w-2.5 h-2.5 text-red-400" />
                 Bonus Riv
               </span>
@@ -334,11 +334,11 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               {/* Home Team Quarter Fouls */}
               <div className="text-right">
                 <div className="text-[9px] text-gray-400 uppercase font-mono font-bold">Faltas Q</div>
-                <div className="flex items-center justify-end gap-1 mt-0.5">
+                <div className="flex items-center justify-end gap-0.5 sm:gap-1 mt-0.5">
                   {[1, 2, 3, 4, 5].map(dot => (
                     <span
                       key={dot}
-                      className={`w-2 h-2 rounded-full ${
+                      className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
                         dot <= game.homeQuarterFouls
                           ? dot >= 5
                             ? `bg-rose-500 ring-2 ring-rose-500/50 ${isCourtMode ? '' : 'animate-pulse'}`
@@ -347,55 +347,12 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                       }`}
                     />
                   ))}
-                  <span className="text-xs font-mono font-bold text-gray-300 ml-1">
+                  <span className="text-[11px] sm:text-xs font-mono font-bold text-gray-300 ml-0.5 sm:ml-1">
                     ({game.homeQuarterFouls})
                   </span>
                 </div>
               </div>
             </div>
-
-            {/* Quick Home Score Adjusters (Direct points addition/deduction synced with selected player) */}
-            {onAdjustScore && (
-              <div className="mt-1.5 pt-1 border-t border-gray-800/80">
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-mono text-gray-400 uppercase font-bold">
-                      {activePlayer ? `#${activePlayer.number}` : 'Local'}:
-                    </span>
-                    <button
-                      onClick={() => onAdjustScore('home', 1, activePlayer?.id)}
-                      className="px-1.5 py-0.5 bg-orange-950/40 hover:bg-orange-600 text-orange-300 hover:text-white rounded text-[11px] font-mono font-bold border border-orange-800/50 active:scale-95 transition"
-                      title={activePlayer ? `Sumar +1 a #${activePlayer.number}` : 'Sumar +1'}
-                    >
-                      +1
-                    </button>
-                    <button
-                      onClick={() => onAdjustScore('home', 2, activePlayer?.id)}
-                      className="px-1.5 py-0.5 bg-orange-950/40 hover:bg-orange-600 text-orange-300 hover:text-white rounded text-[11px] font-mono font-bold border border-orange-800/50 active:scale-95 transition"
-                      title={activePlayer ? `Sumar +2 a #${activePlayer.number}` : 'Sumar +2'}
-                    >
-                      +2
-                    </button>
-                    <button
-                      onClick={() => onAdjustScore('home', 3, activePlayer?.id)}
-                      className="px-1.5 py-0.5 bg-orange-950/40 hover:bg-orange-600 text-orange-300 hover:text-white rounded text-[11px] font-mono font-bold border border-orange-800/50 active:scale-95 transition"
-                      title={activePlayer ? `Sumar +3 a #${activePlayer.number}` : 'Sumar +3'}
-                    >
-                      +3
-                    </button>
-                  </div>
-
-                  {/* Deduction button -1 */}
-                  <button
-                    onClick={() => onAdjustScore('home', -1, activePlayer?.id)}
-                    className="px-1.5 py-0.5 bg-rose-950/40 hover:bg-rose-800 text-rose-300 hover:text-white rounded text-[11px] font-mono font-bold border border-rose-900/60 active:scale-95 transition"
-                    title={activePlayer ? `Descontar -1 a #${activePlayer.number}` : 'Restar -1 pt'}
-                  >
-                    -1 pt
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Away Team Card */}
@@ -437,11 +394,11 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               {/* Away Team Quarter Fouls */}
               <div className="text-right">
                 <div className="text-[9px] text-gray-400 uppercase font-mono font-bold">Faltas Q</div>
-                <div className="flex items-center justify-end gap-1 mt-0.5">
+                <div className="flex items-center justify-end gap-0.5 sm:gap-1 mt-0.5">
                   {[1, 2, 3, 4, 5].map(dot => (
                     <span
                       key={dot}
-                      className={`w-2 h-2 rounded-full ${
+                      className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
                         dot <= game.awayQuarterFouls
                           ? dot >= 5
                             ? `bg-rose-500 ring-2 ring-rose-500/50 ${isCourtMode ? '' : 'animate-pulse'}`
@@ -450,52 +407,38 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                       }`}
                     />
                   ))}
-                  <span className="text-xs font-mono font-bold text-gray-300 ml-1">
+                  <span className="text-[11px] sm:text-xs font-mono font-bold text-gray-300 ml-0.5 sm:ml-1">
                     ({game.awayQuarterFouls})
                   </span>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Quick Away Score Adjusters */}
-            {onAdjustScore && (
-              <div className="mt-1.5 pt-1 border-t border-gray-800/80">
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-mono text-gray-400 uppercase font-bold">Riv:</span>
-                    <button
-                      onClick={() => onAdjustScore('away', 1)}
-                      className="px-1.5 py-0.5 bg-blue-950/40 hover:bg-blue-600 text-blue-300 hover:text-white rounded text-[11px] font-mono font-bold border border-blue-800/50 active:scale-95 transition"
-                      title="Sumar 1 punto a rival"
-                    >
-                      +1
-                    </button>
-                    <button
-                      onClick={() => onAdjustScore('away', 2)}
-                      className="px-1.5 py-0.5 bg-blue-950/40 hover:bg-blue-600 text-blue-300 hover:text-white rounded text-[11px] font-mono font-bold border border-blue-800/50 active:scale-95 transition"
-                      title="Sumar 2 puntos a rival"
-                    >
-                      +2
-                    </button>
-                    <button
-                      onClick={() => onAdjustScore('away', 3)}
-                      className="px-1.5 py-0.5 bg-blue-950/40 hover:bg-blue-600 text-blue-300 hover:text-white rounded text-[11px] font-mono font-bold border border-blue-800/50 active:scale-95 transition"
-                      title="Sumar 3 puntos a rival"
-                    >
-                      +3
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => onAdjustScore('away', -1)}
-                    className="px-1.5 py-0.5 bg-rose-950/40 hover:bg-rose-800 text-rose-300 hover:text-white rounded text-[11px] font-mono font-bold border border-rose-900/60 active:scale-95 transition"
-                    title="Restar 1 punto a rival"
-                  >
-                    -1 pt
-                  </button>
-                </div>
+        {/* Mini Quarter Scores Progression Strip */}
+        <div className="mt-1.5 flex items-center justify-between gap-1 bg-black/40 px-2 sm:px-2.5 py-1 rounded border border-gray-800 font-mono text-[10px] sm:text-xs overflow-x-auto w-full max-w-full min-w-0">
+          <span className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase shrink-0">Cuartos:</span>
+          <div className="flex items-center gap-1.5 sm:gap-3 grow justify-around min-w-0">
+            {game.quarterScores.map(qs => (
+              <div
+                key={qs.quarter}
+                className={`flex items-center gap-0.5 sm:gap-1 shrink-0 ${
+                  game.currentQuarter === qs.quarter ? 'text-orange-400 font-bold' : 'text-gray-400'
+                }`}
+              >
+                <span className="text-[9px] sm:text-[10px] text-gray-500">{qs.quarterLabel}:</span>
+                <span className="text-gray-200">{qs.home}</span>
+                <span className="text-gray-600">-</span>
+                <span className="text-gray-200">{qs.away}</span>
               </div>
-            )}
+            ))}
+            <div className="flex items-center gap-0.5 sm:gap-1 font-extrabold text-white border-l border-gray-700 pl-1.5 sm:pl-2 shrink-0">
+              <span className="text-[9px] sm:text-[10px] text-gray-400">TOT:</span>
+              <span className="text-orange-400">{game.homeScore}</span>
+              <span className="text-gray-500">-</span>
+              <span className="text-blue-400">{game.awayScore}</span>
+            </div>
           </div>
         </div>
 
@@ -514,45 +457,6 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             onClose={() => setEditingLogoTeam(null)}
           />
         )}
-
-        {/* Rival Quick Score Strip (Direct 1-tap buttons to keep game accurate with 1 hand) */}
-        <div className="mt-2 flex items-center justify-between gap-1.5 bg-black/40 p-1.5 rounded border border-gray-800">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 shrink-0 ml-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            Anotar Rival:
-          </span>
-
-          <div className="flex items-center gap-1 grow justify-end">
-            <button
-              id="opp-1p-btn"
-              onClick={() => onLogOpponentAction('OPP_1P')}
-              className="bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-800/60 text-xs font-bold font-mono px-2 py-1 rounded transition active:scale-95 shadow-sm"
-            >
-              +1 TL
-            </button>
-            <button
-              id="opp-2p-btn"
-              onClick={() => onLogOpponentAction('OPP_2P')}
-              className="bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-800/60 text-xs font-bold font-mono px-2 py-1 rounded transition active:scale-95 shadow-sm"
-            >
-              +2 Pts
-            </button>
-            <button
-              id="opp-3p-btn"
-              onClick={() => onLogOpponentAction('OPP_3P')}
-              className="bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-800/60 text-xs font-bold font-mono px-2 py-1 rounded transition active:scale-95 shadow-sm"
-            >
-              +3 Triple
-            </button>
-            <button
-              id="opp-foul-btn"
-              onClick={() => onLogOpponentAction('OPP_FOUL')}
-              className="bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800/60 text-xs font-bold font-mono px-2 py-1 rounded transition active:scale-95 shadow-sm flex items-center gap-0.5"
-            >
-              <span>Falta</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

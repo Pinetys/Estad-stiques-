@@ -196,7 +196,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const pendingActionDef = pendingAction ? ACTION_DEFINITIONS[pendingAction] : null;
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col justify-between select-none pb-24">
+    <div className="min-h-screen bg-black text-white flex flex-col justify-between select-none pb-24 w-full max-w-full overflow-x-hidden">
       {/* 1. TOP ULTRA COMPACT SCOREBOARD & CLOCK BAR */}
       <div className="bg-[#0a0a0c] border-b border-neutral-800 p-2 sm:p-3 sticky top-0 z-30 shadow-2xl">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
@@ -377,7 +377,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </span>
             <div className="flex items-center gap-1.5">
               {playersOnCourt.map(p => {
-                const stats = calculatePlayerStats(p, game.events);
+                const stats = calculatePlayerStats(p, game.events, game.settings.foulOutLimit);
                 return (
                   <span
                     key={p.id}
@@ -610,7 +610,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
               <div className="grid grid-cols-5 gap-1.5">
                 {playersOnCourt.map(player => {
-                  const stats = calculatePlayerStats(player, game.events);
+                  const stats = calculatePlayerStats(player, game.events, game.settings.foulOutLimit);
                   const isFoulDanger = stats.foulsPersonal === 4;
                   const isFouledOut = stats.foulsPersonal >= game.settings.foulOutLimit;
 
