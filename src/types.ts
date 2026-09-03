@@ -1,0 +1,272 @@
+export type Position = 'B' | 'E' | 'A' | 'AP' | 'P'; // Base, Escolta, Alero, Ala-Pívot, Pívot
+
+export interface Player {
+  id: string;
+  name: string;
+  number: number;
+  position: Position;
+  starter: boolean;
+  onCourt: boolean;
+  foulsCount: number;
+  isFouledOut: boolean;
+  photoUrl?: string;
+  notes?: string;
+}
+
+export type StatActionType =
+  // Puntos
+  | '2PM' // Tiro de 2 anotado (+2 pts)
+  | '2PA' // Tiro de 2 fallado
+  | '3PM' // Triple anotado (+3 pts)
+  | '3PA' // Triple fallado
+  | 'FTM' // Tiro libre anotado (+1 pt)
+  | 'FTA' // Tiro libre fallado
+  // Faltas cometidas
+  | 'PF'  // Falta personal
+  | 'PFT' // Falta personal de tiro
+  | 'UF'  // Falta antideportiva
+  | 'TF'  // Falta técnica
+  | 'OF'  // Falta en ataque / ofensiva
+  // Rebotes
+  | 'DREB' // Rebote defensivo
+  | 'OREB' // Rebote ofensivo
+  // Otras acciones positivas / negativas
+  | 'AST'  // Asistencia
+  | 'STL'  // Robo / Recuperación
+  | 'TO'   // Pérdida de balón
+  | 'BLK'  // Tapón a favor
+  | 'BLKR' // Tapón recibido
+  | 'FD'   // Falta recibida / provocada
+  // Acciones rápidas del Rival
+  | 'OPP_1P'
+  | 'OPP_2P'
+  | 'OPP_3P'
+  | 'OPP_FOUL'
+  | 'OPP_TO';
+
+export interface ActionDefinition {
+  type: StatActionType;
+  label: string;
+  shortLabel: string;
+  points: number;
+  category: 'points' | 'fouls' | 'rebounds' | 'playmaking' | 'defense' | 'opponent';
+  color: string;
+  textColor: string;
+  isPositive?: boolean;
+  iconName?: string;
+}
+
+export interface PlayEvent {
+  id: string;
+  gameId: string;
+  timestamp: number; // Date.now()
+  quarter: number;
+  gameSeconds: number; // Segundos restantes del cuarto
+  gameTimeFormatted: string; // ej: "07:45"
+  playerId?: string;
+  playerNumber?: number;
+  playerName?: string;
+  actionType: StatActionType;
+  actionLabel: string;
+  pointsAdded: number;
+  isOpponentAction: boolean;
+  assistedByPlayerId?: string;
+  assistedByPlayerName?: string;
+  assistedByPlayerNumber?: number;
+  scoreSnapshot: {
+    home: number;
+    away: number;
+  };
+  note?: string;
+}
+
+export interface QuarterScore {
+  quarter: number;
+  quarterLabel: string;
+  home: number;
+  away: number;
+}
+
+export interface GameSettings {
+  quarterDurationMinutes: number; // 10, 8, 12, etc.
+  totalQuarters: number; // 4 default
+  foulOutLimit: number; // 5 default (o 6 para NBA)
+  bonusFoulsLimit: number; // 5 faltas por cuarto = bonus (o 4)
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+  assistPromptEnabled: boolean; // Preguntar si hubo asistencia tras canasta
+  courtMode: boolean; // Modo Pista: reduce intensidad de color y desactiva animaciones para ahorrar batería
+}
+
+export interface Game {
+  id: string;
+  title: string;
+  date: string;
+  location?: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  homeTeamLogo?: string; // Data URL / base64 / preset emblem ID
+  awayTeamLogo?: string;
+  homeTeamColor: string; // HEX o Tailwind color class
+  awayTeamColor: string;
+  homeScore: number;
+  awayScore: number;
+  currentQuarter: number; // 1, 2, 3, 4, 5 (PR1)...
+  currentSecondsRemaining: number;
+  isClockRunning: boolean;
+  homeTimeouts: number;
+  awayTimeouts: number;
+  homeQuarterFouls: number;
+  awayQuarterFouls: number;
+  status: 'setup' | 'live' | 'finished';
+  settings: GameSettings;
+  players: Player[];
+  events: PlayEvent[];
+  quarterScores: QuarterScore[];
+}
+
+export interface PlayerAccumulatedStats {
+  playerId: string;
+  playerNumber: number;
+  playerName: string;
+  position: Position;
+  gamesPlayed: number;
+  pointsTotal: number;
+  pointsAvg: number;
+  twoPointsMade: number;
+  twoPointsAttempted: number;
+  twoPointsPercentage: number;
+  threePointsMade: number;
+  threePointsAttempted: number;
+  threePointsPercentage: number;
+  freeThrowsMade: number;
+  freeThrowsAttempted: number;
+  freeThrowsPercentage: number;
+  fieldGoalsMade: number;
+  fieldGoalsAttempted: number;
+  fieldGoalsPercentage: number;
+  offensiveRebounds: number;
+  defensiveRebounds: number;
+  totalRebounds: number;
+  reboundsAvg: number;
+  assists: number;
+  assistsAvg: number;
+  steals: number;
+  stealsAvg: number;
+  turnovers: number;
+  turnoversAvg: number;
+  blocks: number;
+  blocksReceived: number;
+  foulsPersonal: number;
+  foulsDrawn: number;
+  efficiencyTotal: number;
+  efficiencyAvg: number;
+  plusMinusTotal: number;
+}
+
+export interface SeasonAggregatedStats {
+  totalGames: number;
+  wins: number;
+  losses: number;
+  winRate: number; // %
+  streak: string; // e.g. "3V" or "1D"
+  pointsScoredTotal: number;
+  pointsScoredAvg: number;
+  pointsConcededTotal: number;
+  pointsConcededAvg: number;
+  pointDiffTotal: number;
+  pointDiffAvg: number;
+  twoPointsMade: number;
+  twoPointsAttempted: number;
+  twoPointsPercentage: number;
+  threePointsMade: number;
+  threePointsAttempted: number;
+  threePointsPercentage: number;
+  freeThrowsMade: number;
+  freeThrowsAttempted: number;
+  freeThrowsPercentage: number;
+  fieldGoalsMade: number;
+  fieldGoalsAttempted: number;
+  fieldGoalsPercentage: number;
+  offensiveRebounds: number;
+  defensiveRebounds: number;
+  totalRebounds: number;
+  reboundsAvg: number;
+  assists: number;
+  assistsAvg: number;
+  steals: number;
+  stealsAvg: number;
+  turnovers: number;
+  turnoversAvg: number;
+  astToRatio: number;
+  blocks: number;
+  foulsPersonal: number;
+  foulsDrawn: number;
+  efficiencyAvg: number;
+  playersAccumulated: PlayerAccumulatedStats[];
+}
+
+export interface PlayerBoxScore {
+  player: Player;
+  points: number;
+  // Tiros de 2
+  twoPointsMade: number;
+  twoPointsAttempted: number;
+  twoPointsPercentage: number;
+  // Tiros de 3
+  threePointsMade: number;
+  threePointsAttempted: number;
+  threePointsPercentage: number;
+  // Tiros Libres
+  freeThrowsMade: number;
+  freeThrowsAttempted: number;
+  freeThrowsPercentage: number;
+  // Totales de Campo (FG)
+  fieldGoalsMade: number;
+  fieldGoalsAttempted: number;
+  fieldGoalsPercentage: number;
+  // Rebotes
+  offensiveRebounds: number;
+  defensiveRebounds: number;
+  totalRebounds: number;
+  // Otras métricas
+  assists: number;
+  steals: number;
+  turnovers: number;
+  blocks: number;
+  blocksReceived: number;
+  foulsPersonal: number;
+  foulsDrawn: number; // Faltas recibidas
+  // Valoración oficial FIBA / PIR
+  efficiency: number;
+  // Más / Menos aproximado en eventos
+  plusMinus: number;
+}
+
+export interface TeamBoxScore {
+  teamName: string;
+  points: number;
+  twoPointsMade: number;
+  twoPointsAttempted: number;
+  twoPointsPercentage: number;
+  threePointsMade: number;
+  threePointsAttempted: number;
+  threePointsPercentage: number;
+  freeThrowsMade: number;
+  freeThrowsAttempted: number;
+  freeThrowsPercentage: number;
+  fieldGoalsMade: number;
+  fieldGoalsAttempted: number;
+  fieldGoalsPercentage: number;
+  offensiveRebounds: number;
+  defensiveRebounds: number;
+  totalRebounds: number;
+  assists: number;
+  steals: number;
+  turnovers: number;
+  blocks: number;
+  blocksReceived: number;
+  foulsPersonal: number;
+  foulsDrawn: number;
+  efficiency: number;
+}

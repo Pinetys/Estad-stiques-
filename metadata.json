@@ -1,0 +1,9 @@
+{
+  "name": "BasketStats Live - Anotador de Baloncesto",
+  "description": "Aplicación móvil para registrar estadísticas individuales, faltas, tiros, rotaciones, biblioteca de partidos y planes tácticos con IA.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
