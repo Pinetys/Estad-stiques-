@@ -22,7 +22,7 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
   const [newPos, setNewPos] = useState<Position>('B');
 
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
-  const [editNumber, setEditNumber] = useState<number>(0);
+  const [editNumberStr, setEditNumberStr] = useState<string>('');
   const [editName, setEditName] = useState<string>('');
   const [editPos, setEditPos] = useState<Position>('B');
 
@@ -80,20 +80,22 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
 
   const handleStartEdit = (p: Player) => {
     setEditingPlayerId(p.id);
-    setEditNumber(p.number);
+    setEditNumberStr(String(p.number));
     setEditName(p.name);
     setEditPos(p.position);
   };
 
   const handleSaveEdit = () => {
     if (!editingPlayerId || !editName.trim()) return;
+    const finalNum = parseInt(editNumberStr, 10);
+    const validNumber = isNaN(finalNum) ? 0 : Math.max(0, Math.min(99, finalNum));
     onUpdatePlayers(
       players.map(p => {
         if (p.id === editingPlayerId) {
           return {
             ...p,
             name: editName.trim(),
-            number: editNumber,
+            number: validNumber,
             position: editPos,
           };
         }
@@ -101,6 +103,12 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
       })
     );
     setEditingPlayerId(null);
+    playSound('click', soundEnabled);
+  };
+
+  const handleSortByNumber = () => {
+    const sorted = [...players].sort((a, b) => a.number - b.number);
+    onUpdatePlayers(sorted);
     playSound('click', soundEnabled);
   };
 
@@ -123,39 +131,61 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
           </button>
         </div>
 
-        {/* Info */}
+        {/* Info & Sorting Bar */}
         <div className="bg-[#14161B] p-2 rounded border border-gray-800 flex items-center justify-between text-xs font-mono">
           <span className="text-gray-300">
-            Quinteto titular activo: <strong className="text-orange-400">{startersCount}/5 en pista</strong>
+            Titulares: <strong className="text-orange-400">{startersCount}/5 en pista</strong>
           </span>
-          <span className="text-[10px] text-gray-400">Toca la estrella para titular</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSortByNumber}
+              className="text-[10px] text-gray-400 hover:text-orange-400 bg-gray-800/80 hover:bg-gray-800 px-2 py-0.5 rounded border border-gray-700 transition"
+              title="Ordenar plantilla por número de dorsal ascendente"
+            >
+              🔢 Ordenar por #
+            </button>
+            <span className="text-[10px] text-gray-500 hidden sm:inline">Toca ⭐ para titular</span>
+          </div>
         </div>
 
         {/* Players List */}
-        <div className="space-y-1 max-h-60 overflow-y-auto">
+        <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
           {players.map(player => {
             if (editingPlayerId === player.id) {
               return (
-                <div
+                <form
                   key={player.id}
-                  className="p-1.5 bg-[#14161B] border border-orange-500/60 rounded flex items-center gap-1.5"
+                  onSubmit={e => {
+                    e.preventDefault();
+                    handleSaveEdit();
+                  }}
+                  className="p-1.5 bg-[#14161B] border border-orange-500 rounded-lg flex items-center gap-1.5 shadow-md"
                 >
-                  <input
-                    type="number"
-                    value={editNumber}
-                    onChange={e => setEditNumber(parseInt(e.target.value, 10) || 0)}
-                    className="w-12 bg-[#0F1115] border border-gray-700 rounded p-1 text-center font-bold text-orange-400 text-xs font-scoreboard"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={editNumberStr}
+                      onChange={e => setEditNumberStr(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                      className="w-14 bg-[#0F1115] border border-amber-500/70 focus:border-amber-400 rounded p-1.5 text-center font-black text-amber-400 text-sm font-scoreboard focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      placeholder="#"
+                      title="Dorsal (0-99)"
+                      autoFocus
+                    />
+                  </div>
                   <input
                     type="text"
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    className="grow bg-[#0F1115] border border-gray-700 rounded p-1 text-xs text-gray-100 font-semibold"
+                    placeholder="Nombre del jugador"
+                    className="grow bg-[#0F1115] border border-gray-700 focus:border-orange-500 rounded p-1.5 text-xs text-gray-100 font-semibold focus:outline-none"
                   />
                   <select
                     value={editPos}
                     onChange={e => setEditPos(e.target.value as Position)}
-                    className="bg-[#0F1115] border border-gray-700 rounded p-1 text-xs text-gray-200 font-mono"
+                    className="bg-[#0F1115] border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-mono focus:outline-none"
                   >
                     {(Object.keys(POSITION_LABELS) as Position[]).map(pos => (
                       <option key={pos} value={pos}>
@@ -164,62 +194,72 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
                     ))}
                   </select>
                   <button
-                    onClick={handleSaveEdit}
-                    className="p-1 bg-emerald-600 hover:bg-emerald-500 rounded text-white"
+                    type="submit"
+                    className="p-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-white shadow transition shrink-0"
+                    title="Guardar jugador"
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-4 h-4" />
                   </button>
-                </div>
+                </form>
               );
             }
 
             return (
               <div
                 key={player.id}
-                className={`p-1.5 rounded border flex items-center justify-between gap-1.5 transition ${
+                className={`p-1.5 rounded-lg border flex items-center justify-between gap-1.5 transition ${
                   player.onCourt
                     ? 'bg-[#14161B] border-orange-500/40 text-gray-100'
-                    : 'bg-[#14161B]/60 border-gray-800 text-gray-400'
+                    : 'bg-[#14161B]/60 border-gray-800 text-gray-400 hover:border-gray-700'
                 }`}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 grow min-w-0">
                   <button
                     onClick={() => handleToggleStarter(player.id)}
-                    className={`p-1 rounded transition ${
+                    className={`p-1 rounded transition shrink-0 ${
                       player.onCourt
                         ? 'text-orange-400 bg-orange-950/80 border border-orange-500/50'
                         : 'text-gray-600 hover:text-gray-400 bg-[#0F1115]'
                     }`}
                     title={player.onCourt ? 'En quinteto titular' : 'Marcar como titular'}
                   >
-                    <Star className={`w-3 h-3 ${player.onCourt ? 'fill-orange-400' : ''}`} />
+                    <Star className={`w-3.5 h-3.5 ${player.onCourt ? 'fill-orange-400' : ''}`} />
                   </button>
 
-                  <span className="font-scoreboard text-base font-black text-orange-400 w-7">
-                    #{player.number}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(player)}
+                    className="flex items-center gap-2 text-left grow min-w-0 group hover:opacity-90 transition"
+                    title="Toca para editar número o nombre"
+                  >
+                    <span className="font-scoreboard text-base font-black text-amber-400 w-8 shrink-0 bg-black/40 px-1 py-0.5 rounded text-center border border-gray-800/80 group-hover:border-amber-500/50">
+                      #{player.number}
+                    </span>
 
-                  <span className="font-semibold text-xs text-gray-100 truncate max-w-[140px]">
-                    {player.name}
-                  </span>
+                    <span className="font-semibold text-xs text-gray-100 truncate group-hover:text-orange-300">
+                      {player.name}
+                    </span>
 
-                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-black/60 text-gray-400 border border-gray-800">
-                    {POSITION_LABELS[player.position]?.full}
-                  </span>
+                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/60 text-gray-400 border border-gray-800 shrink-0">
+                      {POSITION_LABELS[player.position]?.full}
+                    </span>
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => handleStartEdit(player)}
-                    className="p-1 text-gray-400 hover:text-gray-200"
+                    className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded transition"
+                    title="Editar dorsal y nombre"
                   >
-                    <Edit2 className="w-3 h-3" />
+                    <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleDeletePlayer(player.id)}
-                    className="p-1 text-gray-500 hover:text-rose-400"
+                    className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-950/30 rounded transition"
+                    title="Eliminar de la plantilla"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>

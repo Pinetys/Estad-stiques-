@@ -17,17 +17,20 @@ import {
   ChevronRight,
   Eye,
   CheckCircle2,
+  Edit2,
 } from 'lucide-react';
 
 interface InformativeMobileViewProps {
   game: Game;
   onToggleCourtMode: () => void;
   onOpenSubstitutionModal?: () => void;
+  onOpenRosterModal?: () => void;
 }
 
 export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
   game,
   onToggleCourtMode,
+  onOpenRosterModal,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'oncourt' | 'all' | 'team' | 'leaders'>('oncourt');
   const [selectedPlayerDetail, setSelectedPlayerDetail] = useState<Player | null>(null);
@@ -338,13 +341,22 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
       {/* 4. VIEW 2: FULL ROSTER HIGH-DENSITY MOBILE TABLE */}
       {activeSubTab === 'all' && (
         <div className="bg-[#14161B] border border-gray-800 rounded-xl overflow-hidden shadow">
-          <div className="p-2.5 border-b border-gray-800 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-300">
-              Estadísticas de la Plantilla Completa
-            </span>
-            <span className="text-[10px] font-mono text-gray-500">
-              {game.players.length} Jugadores
-            </span>
+          <div className="p-2.5 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                Plantilla ({game.players.length} Jugadores)
+              </span>
+            </div>
+            {onOpenRosterModal && (
+              <button
+                onClick={onOpenRosterModal}
+                className="px-2.5 py-1 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 hover:text-orange-300 text-xs font-mono font-bold rounded-lg border border-orange-500/40 flex items-center gap-1.5 transition"
+                title="Editar dorsales y jugadores"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>Editar Dorsales</span>
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto">

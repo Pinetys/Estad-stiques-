@@ -208,33 +208,51 @@ export default function App() {
   }, [game]);
 
   // Handle Team Switch
-  const handleSelectTeam = (teamId: string) => {
-    const targetTeam = teams.find(t => t.id === teamId);
+  const handleSelectTeam = (teamId: string, explicitTeam?: TeamProfile) => {
+    const targetTeam = explicitTeam || teams.find(t => t.id === teamId);
     if (!targetTeam) return;
 
     setActiveTeamId(teamId);
     setActiveTeamIdState(teamId);
 
     // Update active game with selected team's roster & branding
-    setGame(prev => ({
-      ...prev,
-      teamId: targetTeam.id,
-      homeTeamName: targetTeam.name,
-      homeTeamLogo: targetTeam.logo,
-      homeTeamColor: targetTeam.primaryColor || prev.homeTeamColor,
-      players: targetTeam.roster.map(p => ({
-        ...p,
-        minutesPlayedSeconds: 0,
-        quarterSeconds: {},
-      })),
-    }));
+    // Preserve in-game accumulated fouls and minutes for players who remain
+    setGame(prev => {
+      const existingPlayerStatsMap = new Map(prev.players.map(p => [p.id, p]));
+      const updatedPlayers = targetTeam.roster.map(p => {
+        const existing = existingPlayerStatsMap.get(p.id);
+        if (existing) {
+          return {
+            ...p,
+            foulsCount: existing.foulsCount,
+            isFouledOut: existing.isFouledOut,
+            minutesPlayedSeconds: existing.minutesPlayedSeconds || 0,
+            quarterSeconds: existing.quarterSeconds || {},
+          };
+        }
+        return {
+          ...p,
+          minutesPlayedSeconds: 0,
+          quarterSeconds: {},
+        };
+      });
+
+      return {
+        ...prev,
+        teamId: targetTeam.id,
+        homeTeamName: targetTeam.name,
+        homeTeamLogo: targetTeam.logo,
+        homeTeamColor: targetTeam.primaryColor || prev.homeTeamColor,
+        players: updatedPlayers,
+      };
+    });
   };
 
   // Handle Save / Update Team
   const handleSaveTeam = (updatedTeam: TeamProfile) => {
     const newTeams = upsertTeamProfile(updatedTeam);
     setTeams(newTeams);
-    handleSelectTeam(updatedTeam.id);
+    handleSelectTeam(updatedTeam.id, updatedTeam);
   };
 
   // Handle Delete Team
@@ -1142,6 +1160,7 @@ export default function App() {
                 game={game}
                 onToggleCourtMode={toggleCourtMode}
                 onOpenSubstitutionModal={() => setShowSubModal(true)}
+                onOpenRosterModal={() => setShowRosterModal(true)}
               />
             )}
 
@@ -1352,7 +1371,28 @@ export default function App() {
       {showRosterModal && (
         <TeamRosterModal
           players={game.players}
-          onUpdatePlayers={newPlayers => setGame(prev => ({ ...prev, players: newPlayers }))}
+          onUpdatePlayers={newPlayers => {
+            setGame(prev => ({ ...prev, players: newPlayers }));
+            // Also sync changes to active team profile in local storage and cloud
+            const currentTeam = teams.find(t => t.id === activeTeamId) || teams[0];
+            if (currentTeam) {
+              const updatedTeamProfile: TeamProfile = {
+                ...currentTeam,
+                roster: newPlayers.map(p => ({
+                  id: p.id,
+                  name: p.name,
+                  number: p.number,
+                  position: p.position,
+                  starter: p.starter,
+                  onCourt: p.onCourt,
+                  foulsCount: p.foulsCount,
+                  isFouledOut: p.isFouledOut,
+                })),
+              };
+              const newTeams = upsertTeamProfile(updatedTeamProfile);
+              setTeams(newTeams);
+            }
+          }}
           onClose={() => setShowRosterModal(false)}
           soundEnabled={game.settings.soundEnabled}
         />
