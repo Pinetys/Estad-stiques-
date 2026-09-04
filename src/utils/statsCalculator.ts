@@ -118,6 +118,7 @@ export function calculatePlayerStats(
       case 'UF':
       case 'TF':
       case 'OF':
+      case 'BF':
         foulsPersonal++;
         break;
       case 'FD':
@@ -125,6 +126,16 @@ export function calculatePlayerStats(
         break;
     }
   }
+
+  // Foul breakdown by FIBA type
+  const foulsByType = {
+    P: filteredEvents.filter(e => e.actionType === 'PF').length,
+    PFT: filteredEvents.filter(e => e.actionType === 'PFT').length,
+    U: filteredEvents.filter(e => e.actionType === 'UF').length,
+    T: filteredEvents.filter(e => e.actionType === 'TF').length,
+    B: filteredEvents.filter(e => e.actionType === 'BF').length,
+    OF: filteredEvents.filter(e => e.actionType === 'OF').length,
+  };
 
   const points = (twoPointsMade * 2) + (threePointsMade * 3) + (freeThrowsMade * 1);
   const fieldGoalsMade = twoPointsMade + threePointsMade;
@@ -155,14 +166,36 @@ export function calculatePlayerStats(
   const negativeContrib = fgMissed + ftMissed + turnovers + blocksReceived + foulsPersonal;
   const efficiency = positiveContrib - negativeContrib;
 
-  // Plus/Minus estimation
+  // True Basketball Plus/Minus (+/-)
   let plusMinus = 0;
   const gameEvents = quarterFilter ? events.filter(e => e.quarter === quarterFilter) : events;
   for (const ev of gameEvents) {
-    if (ev.playerId === player.id) {
-      if (ev.pointsAdded > 0 && !ev.isOpponentAction) plusMinus += ev.pointsAdded;
+    if (ev.playersOnCourtIds && ev.playersOnCourtIds.length > 0) {
+      if (ev.playersOnCourtIds.includes(player.id)) {
+        if (ev.isOpponentAction) {
+          plusMinus -= (ev.pointsAdded || 0);
+        } else {
+          plusMinus += (ev.pointsAdded || 0);
+        }
+      }
+    } else {
+      // Legacy fallback when playersOnCourtIds was not stored
+      if (ev.playerId === player.id && !ev.isOpponentAction && ev.pointsAdded > 0) {
+        plusMinus += ev.pointsAdded;
+      }
     }
   }
+
+  // True Shooting Percentage: TS% = PTS / (2 * (FGA + 0.44 * FTA)) * 100
+  const tsDenominator = 2 * (fieldGoalsAttempted + 0.44 * freeThrowsAttempted);
+  const trueShootingPercentage = tsDenominator > 0
+    ? Math.round((points / tsDenominator) * 1000) / 10
+    : 0;
+
+  // Effective Field Goal Percentage: eFG% = (FGM + 0.5 * 3PM) / FGA * 100
+  const effectiveFieldGoalPercentage = fieldGoalsAttempted > 0
+    ? Math.round(((fieldGoalsMade + 0.5 * threePointsMade) / fieldGoalsAttempted) * 1000) / 10
+    : 0;
 
   // Calculate minutes / seconds played (accounting for quarter filter if selected)
   const secondsPlayed = quarterFilter
@@ -199,6 +232,9 @@ export function calculatePlayerStats(
     foulsDrawn,
     efficiency,
     plusMinus,
+    trueShootingPercentage,
+    effectiveFieldGoalPercentage,
+    foulsByType,
   };
 }
 
@@ -257,6 +293,32 @@ export function calculateTeamStats(
     }
   );
 
+  // Advanced team metrics (FIBA / Oliver formula)
+  // Possessions = FGA + 0.44 * FTA - OREB + TO
+  const possessions = Math.max(
+    1,
+    Math.round(
+      total.fieldGoalsAttempted + 0.44 * total.freeThrowsAttempted - total.offensiveRebounds + total.turnovers
+    )
+  );
+  const pace = possessions; // Possessions tracked
+  const offensiveRating = Math.round((total.points / possessions) * 1000) / 10;
+
+  const oppEvents = quarterFilter ? events.filter(e => e.quarter === quarterFilter) : events;
+  const opponentPoints = oppEvents
+    .filter(e => e.isOpponentAction)
+    .reduce((sum, e) => sum + (e.pointsAdded || 0), 0);
+  const defensiveRating = Math.round((opponentPoints / possessions) * 1000) / 10;
+
+  const tsAttempts = 2 * (total.fieldGoalsAttempted + 0.44 * total.freeThrowsAttempted);
+  const trueShootingPercentage = tsAttempts > 0
+    ? Math.round((total.points / tsAttempts) * 1000) / 10
+    : 0;
+
+  const effectiveFieldGoalPercentage = total.fieldGoalsAttempted > 0
+    ? Math.round(((total.fieldGoalsMade + 0.5 * total.threePointsMade) / total.fieldGoalsAttempted) * 1000) / 10
+    : 0;
+
   return {
     teamName,
     ...total,
@@ -264,6 +326,12 @@ export function calculateTeamStats(
     threePointsPercentage: total.threePointsAttempted > 0 ? Math.round((total.threePointsMade / total.threePointsAttempted) * 100) : 0,
     freeThrowsPercentage: total.freeThrowsAttempted > 0 ? Math.round((total.freeThrowsMade / total.freeThrowsAttempted) * 100) : 0,
     fieldGoalsPercentage: total.fieldGoalsAttempted > 0 ? Math.round((total.fieldGoalsMade / total.fieldGoalsAttempted) * 100) : 0,
+    possessions,
+    pace,
+    offensiveRating,
+    defensiveRating,
+    trueShootingPercentage,
+    effectiveFieldGoalPercentage,
   };
 }
 

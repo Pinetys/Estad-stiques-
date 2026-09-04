@@ -17,17 +17,22 @@ import {
   ChevronDown,
   User,
   Camera,
+  Crosshair,
+  FileText,
+  Timer,
 } from 'lucide-react';
 
 interface ScoreHeaderProps {
   game: Game;
   onUpdateGame: (updater: (prev: Game) => Game) => void;
   onAdjustScore?: (team: 'home' | 'away', delta: number, playerId?: string) => void;
-  onLogOpponentAction?: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL') => void;
+  onLogOpponentAction?: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL', opponentPlayerNumber?: number) => void;
   onNextQuarter: () => void;
   onSelectQuarter?: (quarter: number) => void;
   selectedPlayerId?: string | null;
   onSelectPlayer?: (playerId: string) => void;
+  onOpenShotChart?: () => void;
+  onOpenOfficialSheet?: () => void;
 }
 
 export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
@@ -39,10 +44,44 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onSelectQuarter,
   selectedPlayerId,
   onSelectPlayer,
+  onOpenShotChart,
+  onOpenOfficialSheet,
 }) => {
   const [showClockAdjust, setShowClockAdjust] = useState(false);
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
   const [editingLogoTeam, setEditingLogoTeam] = useState<'home' | 'away' | null>(null);
+
+  // Opponent player number scouting modal
+  const [scoutingOppAction, setScoutingOppAction] = useState<'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL' | null>(null);
+  const [opponentNumberInput, setOpponentNumberInput] = useState<string>('');
+
+  const shotClockSecs = game.shotClockSeconds !== undefined ? game.shotClockSeconds : 24;
+
+  const handleResetShotClock = (secs: 24 | 14) => {
+    triggerHaptic('medium', game.settings.vibrationEnabled);
+    playSound('click', game.settings.soundEnabled);
+    onUpdateGame(prev => ({
+      ...prev,
+      shotClockSeconds: secs,
+      isShotClockRunning: true,
+    }));
+  };
+
+  const handleToggleShotClock = () => {
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    onUpdateGame(prev => ({
+      ...prev,
+      isShotClockRunning: !(prev.isShotClockRunning ?? true),
+    }));
+  };
+
+  const handleConfirmOpponentScout = (numberVal?: number) => {
+    if (scoutingOppAction && onLogOpponentAction) {
+      onLogOpponentAction(scoutingOppAction, numberVal);
+    }
+    setScoutingOppAction(null);
+    setOpponentNumberInput('');
+  };
 
   const toggleClock = () => {
     triggerHaptic('light', game.settings.vibrationEnabled);
@@ -204,8 +243,9 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             </button>
           </div>
 
-          {/* Clock controls */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {/* Clock & Shot Clock controls */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-wrap">
+            {/* Game Clock */}
             <button
               id="toggle-clock-btn"
               onClick={toggleClock}
@@ -227,52 +267,130 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               <span className="tracking-widest">{formatGameTime(game.currentSecondsRemaining)}</span>
             </button>
 
+            {/* Shot Clock (24s / 14s) Widget */}
+            <div className="flex items-center gap-0.5 bg-[#0C0E12] border border-gray-800 rounded p-0.5 font-mono">
+              <button
+                type="button"
+                onClick={() => handleResetShotClock(24)}
+                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                title="Reiniciar a 24s"
+              >
+                24s
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResetShotClock(14)}
+                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                title="Reiniciar a 14s (Rebote Ofensivo / Falta pista delantera)"
+              >
+                14s
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleShotClock}
+                className={`px-1.5 py-0.5 rounded text-[11px] font-black border transition ${
+                  shotClockSecs <= 5
+                    ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
+                    : game.isShotClockRunning ?? true
+                    ? 'bg-black text-amber-400 border-amber-500/40'
+                    : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                }`}
+                title="Pausar / Reanudar 24s"
+              >
+                {shotClockSecs}s
+              </button>
+            </div>
+
             <button
               id="clock-adjust-toggle"
               onClick={() => setShowClockAdjust(!showClockAdjust)}
               className="p-1 rounded bg-[#14161B] hover:bg-gray-800 text-gray-400 hover:text-gray-200 text-xs border border-gray-700 font-mono font-bold"
-              title="Ajustar tiempo"
+              title="Ajustar tiempo exacto"
             >
               ±
             </button>
           </div>
 
-          {/* Bonus Fouls Alert */}
+          {/* Quick Tools & Bonus Alert Badges */}
           <div className="flex items-center gap-1 shrink-0">
+            {onOpenShotChart && (
+              <button
+                type="button"
+                onClick={onOpenShotChart}
+                className="px-2 py-1 bg-orange-950/80 hover:bg-orange-900 text-orange-300 border border-orange-500/60 rounded text-[10px] font-bold font-mono flex items-center gap-1 transition shadow-sm"
+                title="Carta de tiro interactiva con estadísticas por zona"
+              >
+                <Crosshair className="w-3 h-3 text-orange-400" />
+                <span className="hidden sm:inline">Carta Tiro</span>
+              </button>
+            )}
+
+            {onOpenOfficialSheet && (
+              <button
+                type="button"
+                onClick={onOpenOfficialSheet}
+                className="px-2 py-1 bg-blue-950/80 hover:bg-blue-900 text-blue-300 border border-blue-500/60 rounded text-[10px] font-bold font-mono flex items-center gap-1 transition shadow-sm"
+                title="Generar e imprimir Acta Oficial de Partido FIBA / PDF"
+              >
+                <FileText className="w-3 h-3 text-blue-400" />
+                <span className="hidden sm:inline">Acta PDF</span>
+              </button>
+            )}
+
             {homeInBonus && (
-              <span className={`text-[9px] sm:text-[10px] uppercase font-black bg-rose-950/80 text-rose-300 border border-rose-600 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 ${isCourtMode ? '' : 'animate-pulse'}`}>
+              <span className="text-[9px] sm:text-[10px] uppercase font-black bg-rose-950/90 text-rose-300 border border-rose-500 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 animate-pulse" title="¡Bonus de equipo local alcanzado! Todas las faltas dan 2 tiros libres al rival">
                 <AlertTriangle className="w-2.5 h-2.5 text-rose-400" />
-                Bonus Loc
+                <span>Bonus Loc (5F)</span>
               </span>
             )}
             {awayInBonus && (
-              <span className={`text-[9px] sm:text-[10px] uppercase font-black bg-red-950/80 text-red-300 border border-red-600 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 ${isCourtMode ? '' : 'animate-pulse'}`}>
+              <span className="text-[9px] sm:text-[10px] uppercase font-black bg-red-950/90 text-red-300 border border-red-500 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 animate-pulse" title="¡Bonus de equipo visitante alcanzado! Cada falta posterior otorga tiros libres a tu equipo">
                 <AlertTriangle className="w-2.5 h-2.5 text-red-400" />
-                Bonus Riv
+                <span>Bonus Riv (5F)</span>
               </span>
             )}
           </div>
         </div>
 
-        {/* Quick Clock Adjust Drawer */}
+        {/* Quick Clock Adjust Drawer with Micro-adjustments (+-1s, +-5s, +-10s, +-1m) */}
         {showClockAdjust && (
-          <div className="mt-2 pt-2 border-t border-gray-800 flex items-center justify-center gap-2 flex-wrap bg-black/60 p-2 rounded border border-gray-800">
-            <span className="text-xs text-gray-400 mr-1 font-mono uppercase text-[10px]">Ajuste reloj:</span>
+          <div className="mt-2 pt-2 border-t border-gray-800 flex items-center justify-center gap-1.5 flex-wrap bg-black/70 p-2 rounded-xl border border-gray-800">
+            <span className="text-xs text-gray-400 mr-1 font-mono uppercase text-[10px]">Ajuste fino:</span>
             <button
               onClick={() => adjustSeconds(-60)}
               className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-200 border border-gray-700 font-mono"
             >
-              -1 min
+              -1m
             </button>
             <button
               onClick={() => adjustSeconds(-10)}
-              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-200 border border-gray-700 font-mono"
+              className="px-1.5 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-200 border border-gray-700 font-mono"
             >
               -10s
             </button>
             <button
+              onClick={() => adjustSeconds(-1)}
+              className="px-1.5 py-1 bg-amber-950/70 hover:bg-amber-900 rounded text-xs text-amber-300 border border-amber-700 font-mono font-bold"
+              title="Restar 1 segundo"
+            >
+              -1s
+            </button>
+            <button
+              onClick={() => adjustSeconds(1)}
+              className="px-1.5 py-1 bg-amber-950/70 hover:bg-amber-900 rounded text-xs text-amber-300 border border-amber-700 font-mono font-bold"
+              title="Añadir 1 segundo"
+            >
+              +1s
+            </button>
+            <button
+              onClick={() => adjustSeconds(5)}
+              className="px-1.5 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-200 border border-gray-700 font-mono"
+            >
+              +5s
+            </button>
+            <button
               onClick={() => adjustSeconds(10)}
-              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-200 border border-gray-700 font-mono"
+              className="px-1.5 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-200 border border-gray-700 font-mono"
             >
               +10s
             </button>
@@ -280,7 +398,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               onClick={() => adjustSeconds(60)}
               className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-200 border border-gray-700 font-mono"
             >
-              +1 min
+              +1m
             </button>
             <button
               onClick={resetQuarterClock}
@@ -456,6 +574,93 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             }}
             onClose={() => setEditingLogoTeam(null)}
           />
+        )}
+
+        {/* Opponent Player Number Scouting Modal */}
+        {scoutingOppAction && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-[#14161B] border border-blue-500/40 rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold">
+                    #
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-100">
+                      Scouting Rival {scoutingOppAction === 'OPP_1P' ? '+1 TL' : scoutingOppAction === 'OPP_2P' ? '+2 Canasta' : scoutingOppAction === 'OPP_3P' ? '+3 Triple' : 'Falta Cometida'}
+                    </h3>
+                    <p className="text-[11px] text-gray-400">Asignar dorsal al jugador rival (opcional)</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScoutingOppAction(null)}
+                  className="text-gray-400 hover:text-gray-200 text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Quick Number Selector Chips */}
+              <div>
+                <label className="text-[11px] uppercase font-bold text-gray-400 block mb-1.5">
+                  Dorsales más frecuentes
+                </label>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {[0, 3, 4, 7, 9, 10, 11, 13, 15, 23, 30, 77].map(num => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => handleConfirmOpponentScout(num)}
+                      className="py-2 bg-gray-800/80 hover:bg-blue-600/30 hover:border-blue-500 border border-gray-700 rounded-lg text-xs font-mono font-bold text-gray-200 transition active:scale-95"
+                    >
+                      #{num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Number Input */}
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  placeholder="Otro dorsal (ej. 24)"
+                  value={opponentNumberInput}
+                  onChange={e => setOpponentNumberInput(e.target.value)}
+                  className="grow bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-blue-500 outline-none"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = parseInt(opponentNumberInput, 10);
+                      handleConfirmOpponentScout(isNaN(val) ? undefined : val);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = parseInt(opponentNumberInput, 10);
+                    handleConfirmOpponentScout(isNaN(val) ? undefined : val);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition"
+                >
+                  Guardar
+                </button>
+              </div>
+
+              {/* Without dorsal option */}
+              <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => handleConfirmOpponentScout(undefined)}
+                  className="w-full py-2 bg-gray-800/60 hover:bg-gray-800 text-gray-400 hover:text-gray-200 rounded-lg text-xs font-medium text-center transition"
+                >
+                  Continuar sin dorsal (Equipo general)
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

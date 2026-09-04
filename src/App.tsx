@@ -25,6 +25,8 @@ import { MatchLibraryModal } from './components/MatchLibraryModal';
 import { CourtBenchMode } from './components/CourtBenchMode';
 import { TeamSelectorModal } from './components/TeamSelectorModal';
 import { CloudSyncBackupModal } from './components/CloudSyncBackupModal';
+import { ShotChartModal } from './components/ShotChartModal';
+import { OfficialMatchSheetModal } from './components/OfficialMatchSheetModal';
 import { saveGameToLibrary, syncMatchesFromCloud } from './utils/libraryUtils';
 import {
   getRegisteredTeams,
@@ -195,6 +197,8 @@ export default function App() {
   const [showAICoachModal, setShowAICoachModal] = useState(false);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [showMobileHeaderMenu, setShowMobileHeaderMenu] = useState(false);
+  const [showShotChart, setShowShotChart] = useState(false);
+  const [showOfficialSheet, setShowOfficialSheet] = useState(false);
 
   // Save to localStorage & Library
   useEffect(() => {
@@ -314,6 +318,7 @@ export default function App() {
         assistedByPlayerName: assistant?.name,
         assistedByPlayerNumber: assistant?.number,
         isOpponentAction: false,
+        playersOnCourtIds: prev.players.filter(p => p.onCourt).map(p => p.id),
         scoreSnapshot: {
           home: newHomeScore,
           away: prev.awayScore,
@@ -522,7 +527,8 @@ export default function App() {
 
   // Log Opponent Action (Quick Score or Foul)
   const handleLogOpponentAction = (
-    actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL'
+    actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL',
+    opponentPlayerNumber?: number
   ) => {
     playSound('click', game.settings.soundEnabled);
     triggerHaptic('light', game.settings.vibrationEnabled);
@@ -531,23 +537,26 @@ export default function App() {
     let isFoul = false;
     let label = 'Acción Rival';
 
+    const dorsalSuffix = opponentPlayerNumber !== undefined ? ` (#${opponentPlayerNumber})` : '';
+
     if (actionType === 'OPP_1P') {
       pointsToAdd = 1;
-      label = '+1 TL Rival';
+      label = `+1 TL Rival${dorsalSuffix}`;
     } else if (actionType === 'OPP_2P') {
       pointsToAdd = 2;
-      label = '+2 Canasta Rival';
+      label = `+2 Canasta Rival${dorsalSuffix}`;
     } else if (actionType === 'OPP_3P') {
       pointsToAdd = 3;
-      label = '+3 Triple Rival';
+      label = `+3 Triple Rival${dorsalSuffix}`;
     } else if (actionType === 'OPP_FOUL') {
       isFoul = true;
-      label = 'Falta Rival';
+      label = `Falta Rival${dorsalSuffix}`;
     }
 
     setGame(prev => {
       const newAwayScore = prev.awayScore + pointsToAdd;
       const newAwayQuarterFouls = isFoul ? prev.awayQuarterFouls + 1 : prev.awayQuarterFouls;
+      const onCourtIds = prev.players.filter(p => p.onCourt).map(p => p.id);
 
       const newEvent: PlayEvent = {
         id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -560,6 +569,8 @@ export default function App() {
         actionLabel: label,
         pointsAdded: pointsToAdd,
         isOpponentAction: true,
+        opponentPlayerNumber,
+        playersOnCourtIds: onCourtIds,
         scoreSnapshot: {
           home: prev.homeScore,
           away: newAwayScore,
@@ -580,6 +591,69 @@ export default function App() {
         ...prev,
         awayScore: newAwayScore,
         awayQuarterFouls: newAwayQuarterFouls,
+        events: [newEvent, ...prev.events],
+        quarterScores: updatedQuarterScores,
+      };
+    });
+  };
+
+  // Log Shot with Exact Court Coordinates (Shot Chart Visual Logging)
+  const handleLogShotWithLocation = (
+    playerId: string,
+    actionType: StatActionType,
+    location: {
+      x: number;
+      y: number;
+      zone: 'paint' | 'mid' | 'corner3_left' | 'corner3_right' | 'top3';
+      made: boolean;
+      points: number;
+    }
+  ) => {
+    const actionDef = ACTION_DEFINITIONS[actionType];
+    const pointsToAdd = location.made ? location.points : 0;
+
+    setGame(prev => {
+      const player = prev.players.find(p => p.id === playerId);
+      if (!player) return prev;
+
+      const newHomeScore = prev.homeScore + pointsToAdd;
+      const onCourtIds = prev.players.filter(p => p.onCourt).map(p => p.id);
+
+      const newEvent: PlayEvent = {
+        id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        gameId: prev.id,
+        timestamp: Date.now(),
+        quarter: prev.currentQuarter,
+        gameSeconds: prev.currentSecondsRemaining,
+        gameTimeFormatted: formatGameTime(prev.currentSecondsRemaining),
+        playerId: player.id,
+        playerName: player.name,
+        playerNumber: player.number,
+        actionType,
+        actionLabel: actionDef?.label || actionType,
+        pointsAdded: pointsToAdd,
+        isOpponentAction: false,
+        playersOnCourtIds: onCourtIds,
+        shotLocation: location,
+        scoreSnapshot: {
+          home: newHomeScore,
+          away: prev.awayScore,
+        },
+      };
+
+      const updatedQuarterScores = prev.quarterScores.map(qs => {
+        if (qs.quarter === prev.currentQuarter) {
+          return {
+            ...qs,
+            home: qs.home + pointsToAdd,
+          };
+        }
+        return qs;
+      });
+
+      return {
+        ...prev,
+        homeScore: newHomeScore,
         events: [newEvent, ...prev.events],
         quarterScores: updatedQuarterScores,
       };
@@ -889,6 +963,8 @@ export default function App() {
           recentEvent={recentEvent}
           onToggleCourtMode={toggleCourtMode}
           onLogOpponentAction={handleLogOpponentAction}
+          onOpenShotChart={() => setShowShotChart(true)}
+          onOpenOfficialSheet={() => setShowOfficialSheet(true)}
         />
       ) : (
         <>
@@ -1147,10 +1223,14 @@ export default function App() {
           <ScoreHeader
             game={game}
             onUpdateGame={handleUpdateGame}
+            onAdjustScore={handleAdjustScore}
+            onLogOpponentAction={handleLogOpponentAction}
             onNextQuarter={handleNextQuarter}
             onSelectQuarter={handleSelectQuarter}
             selectedPlayerId={selectedPlayerId}
             onSelectPlayer={setSelectedPlayerId}
+            onOpenShotChart={() => setShowShotChart(true)}
+            onOpenOfficialSheet={() => setShowOfficialSheet(true)}
           />
 
           {/* Active Tab View Content */}
@@ -1445,6 +1525,24 @@ export default function App() {
             setTeams(getRegisteredTeams());
             setShowCloudBackupModal(false);
           }}
+        />
+      )}
+
+      {/* Interactive Shot Chart Modal (FIBA Shot Map) */}
+      {showShotChart && (
+        <ShotChartModal
+          game={game}
+          selectedPlayerId={selectedPlayerId}
+          onClose={() => setShowShotChart(false)}
+          onLogShotWithLocation={handleLogShotWithLocation}
+        />
+      )}
+
+      {/* Official Match Sheet Modal (Acta Digital Oficial FIBA) */}
+      {showOfficialSheet && (
+        <OfficialMatchSheetModal
+          game={game}
+          onClose={() => setShowOfficialSheet(false)}
         />
       )}
     </div>

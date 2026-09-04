@@ -122,6 +122,16 @@ export const ACTION_DEFINITIONS: Record<string, ActionDefinition> = {
     textColor: 'text-orange-300',
     isPositive: false,
   },
+  'BF': {
+    type: 'BF',
+    label: 'Falta Banquillo / Descalificante',
+    shortLabel: 'Banquillo / D (B)',
+    points: 0,
+    category: 'fouls',
+    color: 'bg-red-950 hover:bg-red-900 active:bg-black border-red-600',
+    textColor: 'text-red-300',
+    isPositive: false,
+  },
 
   // Rebotes
   'DREB': {

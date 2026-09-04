@@ -15,6 +15,9 @@ import {
   X,
   Users,
   AlertTriangle,
+  Crosshair,
+  FileText,
+  Timer,
 } from 'lucide-react';
 
 interface CourtBenchModeProps {
@@ -33,7 +36,9 @@ interface CourtBenchModeProps {
   onSelectPlayer: (playerId: string) => void;
   recentEvent: PlayEvent | null;
   onToggleCourtMode: () => void;
-  onLogOpponentAction: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL') => void;
+  onLogOpponentAction: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL', opponentPlayerNumber?: number) => void;
+  onOpenShotChart?: () => void;
+  onOpenOfficialSheet?: () => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -49,10 +54,44 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   recentEvent,
   onToggleCourtMode,
   onLogOpponentAction,
+  onOpenShotChart,
+  onOpenOfficialSheet,
 }) => {
   // Action-first workflow state
   const [pendingAction, setPendingAction] = useState<StatActionType | null>(null);
   const [showBenchInModal, setShowBenchInModal] = useState(false);
+
+  // Opponent scouting dorsal prompt state
+  const [scoutingOppAction, setScoutingOppAction] = useState<'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL' | null>(null);
+  const [opponentNumberInput, setOpponentNumberInput] = useState<string>('');
+
+  const shotClockSecs = game.shotClockSeconds !== undefined ? game.shotClockSeconds : 24;
+
+  const handleResetShotClock = (secs: 24 | 14) => {
+    triggerHaptic('medium', game.settings.vibrationEnabled);
+    playSound('click', game.settings.soundEnabled);
+    onUpdateGame(prev => ({
+      ...prev,
+      shotClockSeconds: secs,
+      isShotClockRunning: true,
+    }));
+  };
+
+  const handleToggleShotClock = () => {
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    onUpdateGame(prev => ({
+      ...prev,
+      isShotClockRunning: !(prev.isShotClockRunning ?? true),
+    }));
+  };
+
+  const handleConfirmOpponentScout = (dorsal?: number) => {
+    if (scoutingOppAction) {
+      onLogOpponentAction(scoutingOppAction, dorsal);
+    }
+    setScoutingOppAction(null);
+    setOpponentNumberInput('');
+  };
 
   // Assist question state (after scoring a basket)
   const [assistPromptForEvent, setAssistPromptForEvent] = useState<{
@@ -233,8 +272,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </div>
           </div>
 
-          {/* Center: BIG CLOCK & PLAY/PAUSE */}
-          <div className="flex items-center gap-1.5">
+          {/* Center: BIG CLOCK, SHOT CLOCK (24s/14s), PLAY/PAUSE */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
             <button
               onClick={toggleClock}
               className={`px-3 py-1.5 rounded-lg border font-mono font-black text-lg sm:text-2xl flex items-center gap-2 transition active:scale-95 shadow-md ${
@@ -251,6 +290,40 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <span>{formatGameTime(game.currentSecondsRemaining)}</span>
             </button>
 
+            {/* Shot Clock (24s / 14s) Widget */}
+            <div className="flex items-center gap-0.5 bg-[#14161b] border border-neutral-800 rounded-lg p-0.5 font-mono">
+              <button
+                type="button"
+                onClick={() => handleResetShotClock(24)}
+                className="px-1.5 py-1 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                title="Reiniciar a 24s"
+              >
+                24s
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResetShotClock(14)}
+                className="px-1.5 py-1 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                title="Reiniciar a 14s (Rebote ofensivo / Falta pista delantera)"
+              >
+                14s
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleShotClock}
+                className={`px-2 py-1 rounded text-xs font-black border transition ${
+                  shotClockSecs <= 5
+                    ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
+                    : game.isShotClockRunning ?? true
+                    ? 'bg-black text-amber-400 border-amber-500/40'
+                    : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                }`}
+                title="Pausar / Reanudar 24s"
+              >
+                {shotClockSecs}s
+              </button>
+            </div>
+
             {/* Quick +-10s adjustments */}
             <div className="flex flex-col gap-0.5">
               <button
@@ -265,6 +338,32 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               >
                 -10s
               </button>
+            </div>
+
+            {/* Shortcut buttons: Carta Tiro & Acta PDF */}
+            <div className="flex items-center gap-1">
+              {onOpenShotChart && (
+                <button
+                  type="button"
+                  onClick={onOpenShotChart}
+                  className="p-1.5 sm:px-2 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/50 rounded text-[10px] font-bold font-mono flex items-center gap-1 transition shadow-sm"
+                  title="Abrir Carta de Tiro"
+                >
+                  <Crosshair className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="hidden md:inline">Tiro</span>
+                </button>
+              )}
+              {onOpenOfficialSheet && (
+                <button
+                  type="button"
+                  onClick={onOpenOfficialSheet}
+                  className="p-1.5 sm:px-2 bg-blue-950/60 hover:bg-blue-900 text-blue-300 border border-blue-600/50 rounded text-[10px] font-bold font-mono flex items-center gap-1 transition shadow-sm"
+                  title="Abrir Acta Oficial FIBA"
+                >
+                  <FileText className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="hidden md:inline">Acta PDF</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -294,7 +393,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </div>
         </div>
 
-        {/* Rival Quick Score Strip (Direct 1-touch for opponent points in bench mode) */}
+        {/* Rival Quick Score Strip (Direct 1-touch or scouting for opponent points in bench mode) */}
         <div className="max-w-4xl mx-auto mt-2 pt-1.5 border-t border-neutral-800/80 flex items-center justify-between gap-1 text-xs">
           <div className="flex items-center gap-1 text-[10px] font-mono text-sky-400 font-bold shrink-0">
             <span>Rival ({game.awayTeamName.split(' ')[0]}):</span>
@@ -302,26 +401,34 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
           <div className="flex items-center gap-1 grow justify-end">
             <button
-              onClick={() => onLogOpponentAction('OPP_1P')}
+              type="button"
+              onClick={() => setScoutingOppAction('OPP_1P')}
               className="px-2.5 py-1 bg-sky-950/60 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded font-mono font-bold text-xs active:scale-95"
+              title="Anotar +1 Tiro Libre rival con opción de dorsal"
             >
               +1 TL
             </button>
             <button
-              onClick={() => onLogOpponentAction('OPP_2P')}
+              type="button"
+              onClick={() => setScoutingOppAction('OPP_2P')}
               className="px-2.5 py-1 bg-sky-950/60 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded font-mono font-bold text-xs active:scale-95"
+              title="Anotar +2 Canasta rival con opción de dorsal"
             >
               +2 Canasta
             </button>
             <button
-              onClick={() => onLogOpponentAction('OPP_3P')}
+              type="button"
+              onClick={() => setScoutingOppAction('OPP_3P')}
               className="px-2.5 py-1 bg-sky-950/60 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded font-mono font-bold text-xs active:scale-95"
+              title="Anotar +3 Triple rival con opción de dorsal"
             >
               +3 Triple
             </button>
             <button
-              onClick={() => onLogOpponentAction('OPP_FOUL')}
+              type="button"
+              onClick={() => setScoutingOppAction('OPP_FOUL')}
               className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-200 border border-rose-800/70 rounded font-mono font-bold text-xs active:scale-95"
+              title="Falta cometida por el rival con opción de dorsal"
             >
               +Falta Riv
             </button>
@@ -532,42 +639,76 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </button>
         </div>
 
-        {/* SECTION C: FOULS (CLEAR BIG BUTTONS) */}
-        <div className="grid grid-cols-4 gap-1.5 pt-1">
+        {/* SECTION C: FIBA FOULS BREAKDOWN (OFFICIAL FIBA CLASSIFICATIONS) */}
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 pt-1">
           {/* FALTA PERSONAL (P) */}
           <button
             onClick={() => handleInitiateAction('PF')}
-            className="bg-rose-950 hover:bg-rose-900 text-rose-100 border border-rose-700 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-rose-950 hover:bg-rose-900 text-rose-100 border border-rose-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            title="Falta Personal simple (P)"
           >
-            <div className="text-xs sm:text-sm font-black font-mono leading-tight">FALTA (P)</div>
+            <div className="text-xs font-black font-mono leading-tight">FALTA (P)</div>
             <div className="text-[9px] uppercase text-rose-300">Personal</div>
           </button>
 
           {/* FALTA TIRO (PFT) */}
           <button
             onClick={() => handleInitiateAction('PFT')}
-            className="bg-rose-950 hover:bg-rose-900 text-rose-100 border border-rose-700 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-rose-950 hover:bg-rose-900 text-rose-100 border border-rose-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            title="Falta con tiros concedidos (P1/2/3)"
           >
-            <div className="text-xs sm:text-sm font-black font-mono leading-tight">FALTA TIRO</div>
+            <div className="text-xs font-black font-mono leading-tight">TIRO (PFT)</div>
             <div className="text-[9px] uppercase text-rose-300">Con tiros</div>
           </button>
 
-          {/* FALTA RECIBIDA */}
+          {/* FALTA EN ATAQUE (OF) */}
           <button
-            onClick={() => handleInitiateAction('FD')}
-            className="bg-lime-950/90 hover:bg-lime-900 text-lime-200 border border-lime-700/80 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            onClick={() => handleInitiateAction('OF')}
+            className="bg-orange-950 hover:bg-orange-900 text-orange-200 border border-orange-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            title="Falta en Ataque sin tiros (O)"
           >
-            <div className="text-xs sm:text-sm font-black font-mono leading-tight">FALTA REC.</div>
-            <div className="text-[9px] uppercase text-lime-300">Provocada</div>
+            <div className="text-xs font-black font-mono leading-tight">ATAQUE (O)</div>
+            <div className="text-[9px] uppercase text-orange-300">En Ataque</div>
           </button>
 
-          {/* ANTIDEPORTIVA (U) */}
+          {/* FALTA TÉCNICA (TF) */}
+          <button
+            onClick={() => handleInitiateAction('TF')}
+            className="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            title="Falta Técnica a jugador (T)"
+          >
+            <div className="text-xs font-black font-mono leading-tight">TÉCNICA (T)</div>
+            <div className="text-[9px] uppercase text-purple-300">Conducta</div>
+          </button>
+
+          {/* ANTIDEPORTIVA (UF) */}
           <button
             onClick={() => handleInitiateAction('UF')}
-            className="bg-red-950 hover:bg-red-900 text-red-200 border border-red-700 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-red-950 hover:bg-red-900 text-red-200 border border-red-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            title="Falta Antideportiva (U)"
           >
-            <div className="text-xs sm:text-sm font-black font-mono leading-tight">ANTIDEP. (U)</div>
+            <div className="text-xs font-black font-mono leading-tight">ANTIDEP (U)</div>
             <div className="text-[9px] uppercase text-red-400">Flagrante</div>
+          </button>
+
+          {/* BANQUILLO / DESCALIFICANTE (BF) */}
+          <button
+            onClick={() => handleInitiateAction('BF')}
+            className="bg-red-950/90 hover:bg-black text-rose-200 border border-red-600 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            title="Falta Banquillo / Entrenador / Descalificante (B/D)"
+          >
+            <div className="text-xs font-black font-mono leading-tight">BANQ / D (B)</div>
+            <div className="text-[9px] uppercase text-red-300">Banquillo</div>
+          </button>
+
+          {/* FALTA RECIBIDA (FD) */}
+          <button
+            onClick={() => handleInitiateAction('FD')}
+            className="bg-lime-950/90 hover:bg-lime-900 text-lime-200 border border-lime-700/80 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            title="Falta Personal Recibida o Provocada (+1 Valoración)"
+          >
+            <div className="text-xs font-black font-mono leading-tight">F. RECIB (FD)</div>
+            <div className="text-[9px] uppercase text-lime-300">Provocada</div>
           </button>
         </div>
       </div>
@@ -777,6 +918,93 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* Opponent Player Scouting Modal */}
+        {scoutingOppAction && (
+          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-[#14161B] border border-sky-500/50 rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-sky-600/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold font-mono">
+                    #
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      Scouting Rival: {scoutingOppAction === 'OPP_1P' ? '+1 TL' : scoutingOppAction === 'OPP_2P' ? '+2 Canasta' : scoutingOppAction === 'OPP_3P' ? '+3 Triple' : 'Falta'}
+                    </h3>
+                    <p className="text-[11px] text-neutral-400">Asigna dorsal rival para análisis de scouting</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScoutingOppAction(null)}
+                  className="text-neutral-400 hover:text-white text-base"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Quick Numbers Chips */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1.5 font-mono">
+                  Dorsales comunes
+                </label>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {[0, 3, 4, 7, 9, 10, 11, 13, 15, 23, 30, 77].map(num => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => handleConfirmOpponentScout(num)}
+                      className="py-2 bg-neutral-900 hover:bg-sky-600/30 hover:border-sky-500 border border-neutral-700 rounded-lg text-xs font-mono font-black text-neutral-200 transition active:scale-95"
+                    >
+                      #{num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Number Input */}
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  placeholder="Otro dorsal..."
+                  value={opponentNumberInput}
+                  onChange={e => setOpponentNumberInput(e.target.value)}
+                  className="grow bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-sky-500 outline-none"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = parseInt(opponentNumberInput, 10);
+                      handleConfirmOpponentScout(isNaN(val) ? undefined : val);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = parseInt(opponentNumberInput, 10);
+                    handleConfirmOpponentScout(isNaN(val) ? undefined : val);
+                  }}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold font-mono transition"
+                >
+                  Guardar
+                </button>
+              </div>
+
+              {/* General without dorsal */}
+              <div className="pt-2 border-t border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => handleConfirmOpponentScout(undefined)}
+                  className="w-full py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 rounded-lg text-xs font-medium text-center transition"
+                >
+                  Continuar sin dorsal (Equipo general)
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

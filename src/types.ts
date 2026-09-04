@@ -29,6 +29,7 @@ export type StatActionType =
   | 'UF'  // Falta antideportiva
   | 'TF'  // Falta técnica
   | 'OF'  // Falta en ataque / ofensiva
+  | 'BF'  // Falta banquillo / descalificante
   // Rebotes
   | 'DREB' // Rebote defensivo
   | 'OREB' // Rebote ofensivo
@@ -75,6 +76,16 @@ export interface PlayEvent {
   assistedByPlayerId?: string;
   assistedByPlayerName?: string;
   assistedByPlayerNumber?: number;
+  playersOnCourtIds?: string[]; // IDs de jugadores en pista (para cálculo real de Más/Menos +/-)
+  shotLocation?: {
+    x: number; // 0..100 porcentaje relativo del ancho de la media cancha
+    y: number; // 0..100 porcentaje relativo del largo de la media cancha
+    zone?: 'paint' | 'mid' | 'corner3_left' | 'corner3_right' | 'top3';
+    made: boolean;
+    points: number; // 2 o 3
+  };
+  opponentPlayerNumber?: number; // Dorsal del rival (para scouting individual de anotadores oponentes)
+  foulType?: 'P' | 'PFT' | 'U' | 'T' | 'B' | 'OF'; // Tipo específico de falta oficial FIBA
   scoreSnapshot: {
     home: number;
     away: number;
@@ -132,6 +143,8 @@ export interface Game {
   awayTimeouts: number;
   homeQuarterFouls: number;
   awayQuarterFouls: number;
+  shotClockSeconds?: number; // 24 o 14 segundos
+  isShotClockRunning?: boolean;
   status: 'setup' | 'live' | 'finished';
   settings: GameSettings;
   players: Player[];
@@ -257,8 +270,19 @@ export interface PlayerBoxScore {
   foulsDrawn: number; // Faltas recibidas
   // Valoración oficial FIBA / PIR
   efficiency: number;
-  // Más / Menos aproximado en eventos
+  // Más / Menos real (+/-)
   plusMinus: number;
+  // Métricas avanzadas de precisión
+  trueShootingPercentage: number; // TS% = PTS / (2 * (FGA + 0.44 * FTA))
+  effectiveFieldGoalPercentage: number; // eFG% = (FGM + 0.5 * 3PM) / FGA
+  foulsByType?: {
+    P: number;
+    PFT: number;
+    U: number;
+    T: number;
+    B: number;
+    OF: number;
+  };
 }
 
 export interface TeamBoxScore {
@@ -287,4 +311,11 @@ export interface TeamBoxScore {
   foulsPersonal: number;
   foulsDrawn: number;
   efficiency: number;
+  // Métricas de Ritmo y Eficiencia Avanzada FIBA
+  possessions: number;
+  pace: number;
+  offensiveRating: number;
+  defensiveRating: number;
+  trueShootingPercentage: number;
+  effectiveFieldGoalPercentage: number;
 }
