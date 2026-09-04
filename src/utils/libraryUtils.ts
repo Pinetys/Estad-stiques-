@@ -3,6 +3,7 @@ import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed } from '.
 import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from '../lib/firebase';
 
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
+export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
 
 export function getSavedGamesFromStorage(): Game[] {
   try {
@@ -22,6 +23,7 @@ export function getSavedGamesFromStorage(): Game[] {
 export function saveGamesToStorage(games: Game[]): void {
   try {
     localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(games));
+    localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
     games.forEach(g => syncMatchToCloud(g));
   } catch (e) {
     console.error('Error saving games library to storage:', e);
@@ -50,9 +52,26 @@ export const saveGameToLibrary = saveOrUpdateGameInLibrary;
 export function deleteGameFromLibrary(gameId: string): Game[] {
   const library = getSavedGamesFromStorage();
   const updated = library.filter(g => g.id !== gameId);
-  saveGamesToStorage(updated);
+  try {
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
+  } catch (e) {
+    console.error('Error saving games library to storage:', e);
+  }
   deleteMatchFromCloud(gameId);
   return updated;
+}
+
+export function clearAllGamesFromLibrary(): Game[] {
+  const library = getSavedGamesFromStorage();
+  try {
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify([]));
+    localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
+  } catch (e) {
+    console.error('Error clearing library:', e);
+  }
+  library.forEach(g => deleteMatchFromCloud(g.id));
+  return [];
 }
 
 export async function syncMatchesFromCloud(): Promise<Game[]> {

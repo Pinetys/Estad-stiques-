@@ -3,6 +3,8 @@ import { Game, SeasonAggregatedStats } from '../types';
 import {
   calculateSeasonStats,
   deleteGameFromLibrary,
+  clearAllGamesFromLibrary,
+  LIBRARY_INITIALIZED_KEY,
   exportSeasonToCSV,
   generateSampleSeasonLibrary,
   getSavedGamesFromStorage,
@@ -39,22 +41,29 @@ import {
   X,
   PlusCircle,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface MatchLibraryModalProps {
   currentGame: Game;
   onLoadGame: (game: Game) => void;
   onClose: () => void;
+  onDeleteGame?: (deletedGameId: string) => void;
 }
 
 export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   currentGame,
   onLoadGame,
   onClose,
+  onDeleteGame,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'matches' | 'seasonStats' | 'aiPlan'>('matches');
   const [library, setLibrary] = useState<Game[]>([]);
   const [seasonStats, setSeasonStats] = useState<SeasonAggregatedStats | null>(null);
+
+  // Deletion modal states (replaces window.confirm for reliable mobile & iframe execution)
+  const [gameToDelete, setGameToDelete] = useState<Game | null>(null);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState<boolean>(false);
 
   // AI Season Plan State
   const [aiPlan, setAiPlan] = useState<string | null>(null);
@@ -68,17 +77,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   // Load library from storage on mount
   useEffect(() => {
     let saved = getSavedGamesFromStorage();
-    if (saved.length === 0) {
-      // Auto-populate with current game + 2 realistic sample matches for seamless experience
+    const isInit = localStorage.getItem(LIBRARY_INITIALIZED_KEY);
+    if (saved.length === 0 && !isInit) {
+      // Auto-populate with current game + 2 realistic sample matches ONLY on first ever boot
       saved = generateSampleSeasonLibrary(currentGame);
       saveGamesToStorage(saved);
-    } else {
-      // Ensure current game is also synced
-      const exists = saved.some(g => g.id === currentGame.id);
-      if (!exists) {
-        saved = [currentGame, ...saved];
-        saveGamesToStorage(saved);
-      }
     }
     setLibrary(saved);
     setSeasonStats(calculateSeasonStats(saved));
@@ -96,13 +99,22 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
     triggerHaptic('medium', currentGame.settings.vibrationEnabled);
   };
 
-  const handleDeleteMatch = (gameId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm('¿Seguro que deseas eliminar este partido de la biblioteca?')) {
-      const updated = deleteGameFromLibrary(gameId);
-      refreshLibrary(updated);
-      playSound('click', currentGame.settings.soundEnabled);
-    }
+  const handleConfirmDeleteSingle = (gameId: string) => {
+    const updated = deleteGameFromLibrary(gameId);
+    refreshLibrary(updated);
+    onDeleteGame?.(gameId);
+    setGameToDelete(null);
+    playSound('click', currentGame.settings.soundEnabled);
+    triggerHaptic('medium', currentGame.settings.vibrationEnabled);
+  };
+
+  const handleConfirmClearAll = () => {
+    const updated = clearAllGamesFromLibrary();
+    refreshLibrary(updated);
+    onDeleteGame?.(currentGame.id);
+    setShowClearAllConfirm(false);
+    playSound('buzzer', currentGame.settings.soundEnabled);
+    triggerHaptic('warning', currentGame.settings.vibrationEnabled);
   };
 
   const handleExportCSV = () => {
@@ -394,7 +406,20 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 font-mono text-xs">
+                <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
+                  {/* Vaciar Biblioteca */}
+                  {library.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowClearAllConfirm(true)}
+                      className="p-1.5 px-2.5 bg-rose-950/40 hover:bg-rose-900/70 text-rose-300 hover:text-white border border-rose-800/60 rounded flex items-center gap-1 font-semibold transition"
+                      title="Eliminar todos los partidos acumulados"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Vaciar Biblioteca</span>
+                    </button>
+                  )}
+
                   {/* Backup JSON */}
                   <button
                     onClick={handleExportJSON}
@@ -422,6 +447,43 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Empty state when no games */}
+              {library.length === 0 && (
+                <div className="bg-[#14161B] border border-gray-800 rounded-xl p-8 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-neutral-900/90 border border-gray-800 flex items-center justify-center mx-auto text-gray-500">
+                    <Library className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="text-base font-bold text-gray-200">No hay partidos en la biblioteca</h3>
+                    <p className="text-xs text-gray-400 max-w-md mx-auto">
+                      La biblioteca está vacía. Puedes guardar el partido que estés jugando actualmente o generar partidos de ejemplo para visualizar las estadísticas de temporada.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleSaveCurrentMatch}
+                      className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-bold font-mono flex items-center gap-2 shadow-lg transition"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Guardar Partido Actual</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const samples = generateSampleSeasonLibrary(currentGame);
+                        saveGamesToStorage(samples);
+                        refreshLibrary(samples);
+                      }}
+                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 border border-gray-700 rounded-lg text-xs font-bold font-mono flex items-center gap-2 transition"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>Cargar Partidos de Ejemplo</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Match Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -453,8 +515,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       }`}
                     >
                       {/* Top Match Info */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-mono text-gray-400 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">
                             {game.date}
                           </span>
@@ -465,7 +527,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <span
                             className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full ${
                               isWin
@@ -476,12 +538,18 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                             {isWin ? 'VICTORIA' : 'DERROTA'}
                           </span>
 
+                          {/* Delete button: ALWAYS VISIBLE and touch-friendly */}
                           <button
-                            onClick={e => handleDeleteMatch(game.id, e)}
-                            className="p-1 rounded text-gray-500 hover:text-rose-400 hover:bg-rose-950/50 transition opacity-0 group-hover:opacity-100"
-                            title="Eliminar partido"
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setGameToDelete(game);
+                            }}
+                            className="p-1 px-2 rounded-md text-rose-400 hover:text-white bg-rose-950/40 hover:bg-rose-900/80 border border-rose-800/60 transition flex items-center gap-1 text-[11px] font-mono font-bold shrink-0"
+                            title="Eliminar este partido de la biblioteca"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3 h-3" />
+                            <span>Borrar</span>
                           </button>
                         </div>
                       </div>
@@ -540,11 +608,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
                       {/* Top Scorer & Load Button */}
                       <div className="flex items-center justify-between text-[11px] font-mono pt-1">
-                        <span className="text-gray-400 truncate">
+                        <span className="text-gray-400 truncate max-w-[65%]">
                           ⭐ #{topScorer.number} {topScorer.name}: <strong className="text-orange-400">{topScorer.points} pts</strong>
                         </span>
                         <span className="text-orange-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition">
-                          <span>Ver</span>
+                          <span>Cargar</span>
                           <Play className="w-3 h-3 fill-orange-400" />
                         </span>
                       </div>
@@ -888,6 +956,112 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Confirmation Dialog: Delete Single Match */}
+      {gameToDelete && (
+        <div
+          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setGameToDelete(null)}
+        >
+          <div
+            className="bg-[#181B22] border border-rose-500/50 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-rose-950/80 border border-rose-500/50 text-rose-400 rounded-xl shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  ¿Eliminar este partido?
+                </h3>
+                <p className="text-[11px] text-gray-400 font-mono">
+                  Se borrará del historial local y de la nube.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#0D0F13] border border-gray-800 p-3 rounded-xl font-mono text-xs space-y-1">
+              <div className="text-orange-400 font-bold truncate">
+                {gameToDelete.homeTeamName} vs {gameToDelete.awayTeamName}
+              </div>
+              <div className="text-gray-300 font-bold text-sm">
+                Marcador: {gameToDelete.homeScore} - {gameToDelete.awayScore}
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Fecha: {gameToDelete.date} • {gameToDelete.events.length} acciones registradas
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setGameToDelete(null)}
+                className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 rounded-lg text-xs font-bold font-mono transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmDeleteSingle(gameToDelete.id)}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold font-mono shadow-md flex items-center gap-1.5 transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sí, Eliminar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog: Clear All Matches */}
+      {showClearAllConfirm && (
+        <div
+          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowClearAllConfirm(false)}
+        >
+          <div
+            className="bg-[#181B22] border border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-rose-950/80 border border-rose-500/60 text-rose-400 rounded-xl shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  ¿Vaciar toda la biblioteca?
+                </h3>
+                <p className="text-[11px] text-gray-400 font-mono">
+                  Se borrarán los {library.length} partidos acumulados.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-300 bg-[#0D0F13] border border-gray-800 p-3 rounded-xl">
+              Esta acción eliminará todos los partidos acumulados de la temporada tanto de este dispositivo como de la copia en la nube.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowClearAllConfirm(false)}
+                className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 rounded-lg text-xs font-bold font-mono transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearAll}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold font-mono shadow-md flex items-center gap-1.5 transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sí, Vaciar Todo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

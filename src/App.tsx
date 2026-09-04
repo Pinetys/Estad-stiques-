@@ -1415,6 +1415,12 @@ export default function App() {
             setShowLibraryModal(false);
             setActiveTab('live');
           }}
+          onDeleteGame={deletedId => {
+            if (deletedId === game.id) {
+              const freshGame = createInitialGame();
+              setGame(freshGame);
+            }
+          }}
         />
       )}
 
