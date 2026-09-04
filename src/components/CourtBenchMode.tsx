@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Game, PlayEvent, Player, StatActionType } from '../types';
+import { Game, PlayEvent, Player, StatActionType, PendingShot } from '../types';
 import { ACTION_DEFINITIONS } from '../data/defaultData';
 import { calculatePlayerStats, formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -39,6 +39,7 @@ interface CourtBenchModeProps {
   onLogOpponentAction: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL', opponentPlayerNumber?: number) => void;
   onOpenShotChart?: () => void;
   onOpenOfficialSheet?: () => void;
+  onOpenShotChartForBasket?: (shot: PendingShot) => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -56,6 +57,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onLogOpponentAction,
   onOpenShotChart,
   onOpenOfficialSheet,
+  onOpenShotChartForBasket,
 }) => {
   // Action-first workflow state
   const [pendingAction, setPendingAction] = useState<StatActionType | null>(null);
@@ -192,12 +194,28 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     // Update active player tracker
     onSelectPlayer(player.id);
 
-    // Log the action
-    onLogPlayerAction(player.id, actionType);
-
     // Close player selection modal
     setPendingAction(null);
     setShowBenchInModal(false);
+
+    // If it's a basket (or field goal if 'all' is enabled) and auto-open is active:
+    const isBasket = actionType === '2PM' || actionType === '3PM';
+    const isFieldGoal = isBasket || (game.settings.shotChartAutoOpen === 'all' && (actionType === '2PA' || actionType === '3PA'));
+
+    if (isFieldGoal && game.settings.shotChartAutoOpen !== 'off' && onOpenShotChartForBasket) {
+      onOpenShotChartForBasket({
+        playerId: player.id,
+        playerName: player.name,
+        playerNumber: player.number,
+        actionType: actionType as '2PM' | '3PM' | '2PA' | '3PA',
+        points: actionDef.points,
+        isMade: isBasket,
+      });
+      return;
+    }
+
+    // Otherwise standard immediate logging:
+    onLogPlayerAction(player.id, actionType);
 
     // If it was a basket and assist prompt is enabled, prompt for assist
     if (

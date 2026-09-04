@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Game, GameSettings, PlayEvent, Player, StatActionType, TeamProfile } from './types';
+import { Game, GameSettings, PlayEvent, Player, StatActionType, TeamProfile, PendingShot } from './types';
 import {
   DEFAULT_ROSTER,
   DEFAULT_SETTINGS,
@@ -198,6 +198,7 @@ export default function App() {
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [showMobileHeaderMenu, setShowMobileHeaderMenu] = useState(false);
   const [showShotChart, setShowShotChart] = useState(false);
+  const [pendingShotPlacement, setPendingShotPlacement] = useState<PendingShot | null>(null);
   const [showOfficialSheet, setShowOfficialSheet] = useState(false);
 
   // Save to localStorage & Library
@@ -597,6 +598,21 @@ export default function App() {
     });
   };
 
+  // Open interactive shot chart for basket scoring
+  const handleOpenShotChartForBasket = (shot: PendingShot) => {
+    setPendingShotPlacement(shot);
+    setShowShotChart(true);
+  };
+
+  // Skip placing on court and log basket immediately
+  const handleSkipShotLocation = () => {
+    if (pendingShotPlacement) {
+      handleLogPlayerAction(pendingShotPlacement.playerId, pendingShotPlacement.actionType);
+      setPendingShotPlacement(null);
+      setShowShotChart(false);
+    }
+  };
+
   // Log Shot with Exact Court Coordinates (Shot Chart Visual Logging)
   const handleLogShotWithLocation = (
     playerId: string,
@@ -607,7 +623,8 @@ export default function App() {
       zone: 'paint' | 'mid' | 'corner3_left' | 'corner3_right' | 'top3';
       made: boolean;
       points: number;
-    }
+    },
+    assistedByPlayerId?: string
   ) => {
     const actionDef = ACTION_DEFINITIONS[actionType];
     const pointsToAdd = location.made ? location.points : 0;
@@ -618,6 +635,10 @@ export default function App() {
 
       const newHomeScore = prev.homeScore + pointsToAdd;
       const onCourtIds = prev.players.filter(p => p.onCourt).map(p => p.id);
+
+      const assistant = assistedByPlayerId
+        ? prev.players.find(p => p.id === assistedByPlayerId)
+        : undefined;
 
       const newEvent: PlayEvent = {
         id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -632,6 +653,9 @@ export default function App() {
         actionType,
         actionLabel: actionDef?.label || actionType,
         pointsAdded: pointsToAdd,
+        assistedByPlayerId: assistant?.id,
+        assistedByPlayerName: assistant?.name,
+        assistedByPlayerNumber: assistant?.number,
         isOpponentAction: false,
         playersOnCourtIds: onCourtIds,
         shotLocation: location,
@@ -658,6 +682,9 @@ export default function App() {
         quarterScores: updatedQuarterScores,
       };
     });
+
+    setPendingShotPlacement(null);
+    setShowShotChart(false);
   };
 
   // Undo Last Action (Fully reverses score, player fouls, and quarter score)
@@ -963,8 +990,12 @@ export default function App() {
           recentEvent={recentEvent}
           onToggleCourtMode={toggleCourtMode}
           onLogOpponentAction={handleLogOpponentAction}
-          onOpenShotChart={() => setShowShotChart(true)}
+          onOpenShotChart={() => {
+            setPendingShotPlacement(null);
+            setShowShotChart(true);
+          }}
           onOpenOfficialSheet={() => setShowOfficialSheet(true)}
+          onOpenShotChartForBasket={handleOpenShotChartForBasket}
         />
       ) : (
         <>
@@ -1533,8 +1564,13 @@ export default function App() {
         <ShotChartModal
           game={game}
           selectedPlayerId={selectedPlayerId}
-          onClose={() => setShowShotChart(false)}
+          onClose={() => {
+            setPendingShotPlacement(null);
+            setShowShotChart(false);
+          }}
           onLogShotWithLocation={handleLogShotWithLocation}
+          pendingShot={pendingShotPlacement}
+          onSkipLocation={handleSkipShotLocation}
         />
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Game, PlayEvent, Player, StatActionType } from '../types';
+import { Game, PlayEvent, Player, StatActionType, PendingShot } from '../types';
 import { ACTION_DEFINITIONS, POSITION_LABELS } from '../data/defaultData';
 import { calculatePlayerStats, formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -38,6 +38,7 @@ interface CourtFastTrackProps {
   onSelectPlayer: (playerId: string) => void;
   recentEvent: PlayEvent | null;
   onToggleCourtMode?: () => void;
+  onOpenShotChartForBasket?: (shot: PendingShot) => void;
 }
 
 export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
@@ -51,6 +52,7 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
   onSelectPlayer,
   recentEvent,
   onToggleCourtMode,
+  onOpenShotChartForBasket,
 }) => {
   const [assistPromptForEvent, setAssistPromptForEvent] = useState<{
     scorerId: string;
@@ -109,6 +111,22 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
     setTimeout(() => {
       setLastActionFeedback(null);
     }, 2500);
+
+    // If it's a basket (or field goal if 'all' is enabled) and auto-open is active:
+    const isBasket = actionType === '2PM' || actionType === '3PM';
+    const isFieldGoal = isBasket || (game.settings.shotChartAutoOpen === 'all' && (actionType === '2PA' || actionType === '3PA'));
+
+    if (isFieldGoal && game.settings.shotChartAutoOpen !== 'off' && onOpenShotChartForBasket) {
+      onOpenShotChartForBasket({
+        playerId: activePlayer.id,
+        playerName: activePlayer.name,
+        playerNumber: activePlayer.number,
+        actionType: actionType as '2PM' | '3PM' | '2PA' | '3PA',
+        points: actionDef.points,
+        isMade: isBasket,
+      });
+      return;
+    }
 
     // ALWAYS log the action immediately so the scoreboard and stats count the points right away!
     onLogPlayerAction(activePlayer.id, actionType);

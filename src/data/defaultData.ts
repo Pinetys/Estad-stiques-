@@ -269,6 +269,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   vibrationEnabled: true,
   assistPromptEnabled: true,
   courtMode: false,
+  shotChartAutoOpen: 'baskets',
 };
 
 export const DEFAULT_ROSTER: Player[] = [

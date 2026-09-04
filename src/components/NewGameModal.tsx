@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Game, GameSettings } from '../types';
 import { OPPONENT_TEAMS } from '../data/defaultData';
 import { TeamLogoDisplay, TeamLogoPickerModal } from './TeamLogoPicker';
-import { PlusCircle, Settings, Volume2, VolumeX, Smartphone, Sparkles, Check, ZapOff, Camera, Image } from 'lucide-react';
+import { PlusCircle, Settings, Volume2, VolumeX, Smartphone, Sparkles, Check, ZapOff, Camera, Image, Crosshair } from 'lucide-react';
 import { playSound } from '../utils/soundHaptics';
 
 interface NewGameModalProps {
@@ -35,6 +35,9 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const [assistPromptEnabled, setAssistPromptEnabled] = useState(
     currentGame.settings.assistPromptEnabled
   );
+  const [shotChartAutoOpen, setShotChartAutoOpen] = useState<'baskets' | 'all' | 'off'>(
+    currentGame.settings.shotChartAutoOpen || 'baskets'
+  );
   const [courtMode, setCourtMode] = useState(currentGame.settings.courtMode || false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -53,6 +56,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         soundEnabled,
         vibrationEnabled,
         assistPromptEnabled,
+        shotChartAutoOpen,
         courtMode,
       },
     });
@@ -284,6 +288,52 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   className="rounded bg-[#14161B] border-gray-700 text-orange-500 focus:ring-orange-500 w-3.5 h-3.5"
                 />
               </label>
+
+              {/* Auto-Open Shot Chart Setting */}
+              <div className="bg-[#14161B] p-2 rounded border border-gray-800 space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-gray-200">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Crosshair className="w-3.5 h-3.5 text-orange-400" />
+                    Abrir Carta de Tiro al Anotar
+                  </span>
+                  <span className="text-[10px] text-orange-400 font-mono font-bold">1 Paso</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1 text-[11px] font-mono">
+                  <button
+                    type="button"
+                    onClick={() => setShotChartAutoOpen('baskets')}
+                    className={`py-1 px-1.5 rounded text-center transition font-bold ${
+                      shotChartAutoOpen === 'baskets'
+                        ? 'bg-orange-600 text-white shadow'
+                        : 'bg-[#1D2027] text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    Canastas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShotChartAutoOpen('all')}
+                    className={`py-1 px-1.5 rounded text-center transition font-bold ${
+                      shotChartAutoOpen === 'all'
+                        ? 'bg-orange-600 text-white shadow'
+                        : 'bg-[#1D2027] text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShotChartAutoOpen('off')}
+                    className={`py-1 px-1.5 rounded text-center transition font-bold ${
+                      shotChartAutoOpen === 'off'
+                        ? 'bg-orange-600 text-white shadow'
+                        : 'bg-[#1D2027] text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    Desactivado
+                  </button>
+                </div>
+              </div>
 
               <label className="flex items-center justify-between text-xs text-emerald-300 font-semibold bg-emerald-950/40 p-2 rounded border border-emerald-800/60 cursor-pointer">
                 <div className="flex flex-col">

@@ -109,6 +109,16 @@ export interface GameSettings {
   vibrationEnabled: boolean;
   assistPromptEnabled: boolean; // Preguntar si hubo asistencia tras canasta
   courtMode: boolean; // Modo Pista: reduce intensidad de color y desactiva animaciones para ahorrar batería
+  shotChartAutoOpen?: 'baskets' | 'all' | 'off'; // Abrir carta de tiro al anotar canasta (default: 'baskets')
+}
+
+export interface PendingShot {
+  playerId: string;
+  playerName: string;
+  playerNumber: number;
+  actionType: '2PM' | '3PM' | '2PA' | '3PA';
+  points: number;
+  isMade: boolean;
 }
 
 export interface TeamProfile {
