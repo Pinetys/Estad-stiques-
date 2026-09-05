@@ -35,6 +35,7 @@ interface NewGameModalProps {
   onStartNewGame: (newGameConfig: {
     homeTeamName: string;
     awayTeamName: string;
+    category?: string;
     homeTeamLogo?: string;
     awayTeamLogo?: string;
     homeTeamColor?: string;
@@ -203,7 +204,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         logo: homeLogo || '🏀',
         roster: DEFAULT_ROSTER.map(p => ({
           ...p,
-          id: `p-${Date.now()}-${p.number}`,
+          id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-${p.number}`,
           foulsCount: 0,
           isFouledOut: false,
           minutesPlayedSeconds: 0,
@@ -225,9 +226,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       saveRecordedOpponent(awayTeam.trim(), awayLogo);
     }
 
+    const gameCategoryToUse = currentSelectedTeam?.category?.trim() || newHomeCategory.trim() || 'Senior Masculino';
+
     onStartNewGame({
       homeTeamName: homeTeam.trim(),
       awayTeamName: awayTeam.trim(),
+      category: gameCategoryToUse,
       homeTeamLogo: homeLogo,
       awayTeamLogo: awayLogo,
       homeTeamColor: homeColor,

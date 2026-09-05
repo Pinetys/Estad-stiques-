@@ -212,14 +212,14 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {playersOnCourt.map(player => {
+            {playersOnCourt.map((player, idx) => {
               const stats = calculatePlayerStats(player, game.events);
               const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
               const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
 
               return (
                 <div
-                  key={player.id}
+                  key={`${player.id}-${idx}`}
                   onClick={() => setSelectedPlayerDetail(player)}
                   className="bg-[#14161B] hover:bg-[#1A1D23] border border-gray-800 hover:border-gray-700 rounded-xl p-2.5 transition shadow cursor-pointer flex flex-col justify-between"
                 >
@@ -310,11 +310,11 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                 Banquillo ({benchPlayers.length})
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
-                {benchPlayers.map(p => {
+                {benchPlayers.map((p, idx) => {
                   const bStats = calculatePlayerStats(p, game.events);
                   return (
                     <div
-                      key={p.id}
+                      key={`${p.id}-${idx}`}
                       onClick={() => setSelectedPlayerDetail(p)}
                       className="bg-[#121419] hover:bg-[#1A1D23] border border-gray-800 rounded-lg p-2 text-left transition cursor-pointer"
                     >
@@ -374,9 +374,9 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/60">
-                {allStats.map(({ player, stats }) => (
+                {allStats.map(({ player, stats }, idx) => (
                   <tr
-                    key={player.id}
+                    key={`${player.id}-${idx}`}
                     onClick={() => setSelectedPlayerDetail(player)}
                     className="hover:bg-gray-800/40 cursor-pointer transition"
                   >

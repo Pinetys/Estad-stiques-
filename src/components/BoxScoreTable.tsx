@@ -285,13 +285,13 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/80 font-mono">
-              {sortedPlayers.map(ps => {
+              {sortedPlayers.map((ps, idx) => {
                 const isFouledOut = ps.foulsPersonal >= game.settings.foulOutLimit;
                 const isFoulDanger = ps.foulsPersonal === 4;
 
                 return (
                   <tr
-                    key={ps.player.id}
+                    key={`${ps.player.id}-${idx}`}
                     onClick={() => setSelectedPlayerModal(ps)}
                     className="hover:bg-gray-800/60 transition cursor-pointer"
                   >

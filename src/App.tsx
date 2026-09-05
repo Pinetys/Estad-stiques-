@@ -28,6 +28,7 @@ import { CloudSyncBackupModal } from './components/CloudSyncBackupModal';
 import { ShotChartModal } from './components/ShotChartModal';
 import { OfficialMatchSheetModal } from './components/OfficialMatchSheetModal';
 import { GeneralAccumulatedStatsView } from './components/GeneralAccumulatedStatsView';
+import { TeamsHubView } from './components/TeamsHubView';
 import { saveGameToLibrary, syncMatchesFromCloud, getSavedGamesFromStorage } from './utils/libraryUtils';
 import {
   getRegisteredTeams,
@@ -59,23 +60,32 @@ import {
   Cloud,
   MoreVertical,
   Activity,
+  ArrowLeft,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
 
 function createInitialGame(): Game {
+  const registeredTeams = getRegisteredTeams();
+  const activeId = getActiveTeamId();
+  const initialTeam = registeredTeams.find(t => t.id === activeId) || registeredTeams[0];
+  const initialRoster = initialTeam && initialTeam.roster.length > 0 ? initialTeam.roster : DEFAULT_ROSTER;
+
   return {
     id: `game-${Date.now()}`,
+    teamId: initialTeam ? initialTeam.id : undefined,
+    category: initialTeam?.category?.trim() || 'Senior Masculino',
     title: 'Partido en Directo',
     date: new Date().toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
     }),
-    homeTeamName: 'CB LOCAL',
-    awayTeamName: 'RIVAL BASKET',
-    homeTeamColor: '#f97316',
+    homeTeamName: initialTeam ? initialTeam.name : 'CB Triunfo',
+    awayTeamName: 'CB Rival',
+    homeTeamColor: initialTeam?.primaryColor || '#f97316',
     awayTeamColor: '#3b82f6',
+    homeTeamLogo: initialTeam?.logo || '🏀',
     homeScore: 0,
     awayScore: 0,
     currentQuarter: 1,
@@ -87,7 +97,7 @@ function createInitialGame(): Game {
     awayQuarterFouls: 0,
     status: 'live',
     settings: DEFAULT_SETTINGS,
-    players: DEFAULT_ROSTER,
+    players: initialRoster,
     events: [],
     quarterScores: [
       { quarter: 1, quarterLabel: 'Q1', home: 0, away: 0 },
@@ -105,11 +115,19 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && Array.isArray(parsed.players)) {
-          parsed.players = parsed.players.map((p: Player) => ({
-            ...p,
-            minutesPlayedSeconds: p.minutesPlayedSeconds || 0,
-            quarterSeconds: p.quarterSeconds || {},
-          }));
+          const seenIds = new Set<string>();
+          parsed.players = parsed.players
+            .filter((p: Player, idx: number) => {
+              const k = p.id || `p-${p.number}-${idx}`;
+              if (seenIds.has(k)) return false;
+              seenIds.add(k);
+              return true;
+            })
+            .map((p: Player) => ({
+              ...p,
+              minutesPlayedSeconds: p.minutesPlayedSeconds || 0,
+              quarterSeconds: p.quarterSeconds || {},
+            }));
         }
         return parsed;
       }
@@ -119,7 +137,7 @@ export default function App() {
     return createInitialGame();
   });
 
-  const [activeTab, setActiveTab] = useState<'live' | 'stats' | 'charts' | 'playbyplay' | 'scout'>('live');
+  const [activeTab, setActiveTab] = useState<'teams' | 'live' | 'stats' | 'charts' | 'playbyplay' | 'scout'>('teams');
   const [statsSubMode, setStatsSubMode] = useState<'match' | 'accumulated'>('match');
   const [libraryGames, setLibraryGames] = useState<Game[]>(() => getSavedGamesFromStorage());
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -915,6 +933,7 @@ export default function App() {
   const handleStartNewGame = (newConfig: {
     homeTeamName: string;
     awayTeamName: string;
+    category?: string;
     homeTeamLogo?: string;
     awayTeamLogo?: string;
     homeTeamColor?: string;
@@ -928,6 +947,8 @@ export default function App() {
 
     // Prepare fresh roster from selected recorded team or existing players
     let initialPlayers: Player[];
+    const foundTeam = newConfig.homeTeamId ? teams.find(t => t.id === newConfig.homeTeamId) : null;
+
     if (newConfig.selectedRoster && newConfig.selectedRoster.length > 0) {
       initialPlayers = newConfig.selectedRoster.map(p => ({
         ...p,
@@ -936,19 +957,14 @@ export default function App() {
         minutesPlayedSeconds: 0,
         quarterSeconds: {},
       }));
-    } else if (newConfig.homeTeamId) {
-      const foundTeam = teams.find(t => t.id === newConfig.homeTeamId);
-      if (foundTeam && foundTeam.roster.length > 0) {
-        initialPlayers = foundTeam.roster.map(p => ({
-          ...p,
-          foulsCount: 0,
-          isFouledOut: false,
-          minutesPlayedSeconds: 0,
-          quarterSeconds: {},
-        }));
-      } else {
-        initialPlayers = game.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} }));
-      }
+    } else if (foundTeam && foundTeam.roster.length > 0) {
+      initialPlayers = foundTeam.roster.map(p => ({
+        ...p,
+        foulsCount: 0,
+        isFouledOut: false,
+        minutesPlayedSeconds: 0,
+        quarterSeconds: {},
+      }));
     } else {
       initialPlayers = game.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} }));
     }
@@ -958,9 +974,12 @@ export default function App() {
       setActiveTeamIdState(newConfig.homeTeamId);
     }
 
+    const resolvedCategory = newConfig.category?.trim() || foundTeam?.category?.trim() || game.category?.trim() || 'Senior Masculino';
+
     const freshGame: Game = {
       id: `game-${Date.now()}`,
-      teamId: newConfig.homeTeamId || game.teamId,
+      teamId: newConfig.homeTeamId || (foundTeam ? foundTeam.id : game.teamId),
+      category: resolvedCategory,
       title: 'Partido en Directo',
       date: new Date().toLocaleDateString('es-ES', {
         day: '2-digit',
@@ -1043,35 +1062,61 @@ export default function App() {
         <>
           {/* High Density Top Header - Strictly Responsive without Horizontal Overflow */}
           <header className="h-13 sm:h-16 bg-[#1A1D23] border-b border-gray-800 flex items-center justify-between px-2 sm:px-4 shrink-0 sticky top-0 z-40 w-full max-w-full">
-            {/* Left: Brand & Team selector */}
+            {/* Left: Brand & Navigation */}
             <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
-              <div className="flex flex-col min-w-0 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  setActiveTab('teams');
+                }}
+                className="flex flex-col min-w-0 shrink-0 text-left hover:opacity-90 transition cursor-pointer"
+                title="Ir al Menú Principal de Equipos"
+              >
                 <h1 className="text-xs sm:text-base font-black tracking-tight text-white uppercase truncate leading-none">
                   BasketStats <span className="text-orange-500 font-mono">PRO</span>
                 </h1>
                 <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-orange-400 font-bold leading-none mt-0.5 hidden xs:inline">
-                  Informativo
-                </span>
-              </div>
-
-              {/* Active Team Switcher Badge */}
-              <button
-                id="open-teams-modal-btn"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  setShowTeamModal(true);
-                }}
-                className="flex items-center gap-1 bg-[#12141a] hover:bg-neutral-800 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded border border-orange-500/40 text-[11px] sm:text-xs font-mono transition shadow-sm min-w-0"
-                title="Cambiar o gestionar equipos y categorías"
-              >
-                <Shield className="w-3 h-3 text-orange-400 shrink-0" />
-                <span className="text-white font-extrabold max-w-[65px] xs:max-w-[90px] sm:max-w-[140px] truncate">
-                  {game.homeTeamName}
-                </span>
-                <span className="text-[8px] bg-orange-600/30 text-orange-300 px-1 py-0.2 rounded font-bold shrink-0">
-                  ▼
+                  {activeTab === 'teams' ? 'Menú Equipos' : 'En Partido'}
                 </span>
               </button>
+
+              {activeTab !== 'teams' ? (
+                /* Return to Teams Hub Quick Button */
+                <button
+                  id="header-back-to-teams-btn"
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setActiveTab('teams');
+                  }}
+                  className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-orange-600/20 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-500/40 text-[11px] sm:text-xs font-bold transition shadow-sm shrink-0"
+                  title="Volver al Menú Principal de Equipos"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden xs:inline">Menú Equipos</span>
+                  <span className="xs:hidden">Equipos</span>
+                </button>
+              ) : (
+                /* Active Team Switcher Badge */
+                <button
+                  id="open-teams-modal-btn"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setShowTeamModal(true);
+                  }}
+                  className="flex items-center gap-1 bg-[#12141a] hover:bg-neutral-800 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded border border-orange-500/40 text-[11px] sm:text-xs font-mono transition shadow-sm min-w-0"
+                  title="Cambiar o gestionar equipos y categorías"
+                >
+                  <Shield className="w-3 h-3 text-orange-400 shrink-0" />
+                  <span className="text-white font-extrabold max-w-[65px] xs:max-w-[90px] sm:max-w-[140px] truncate">
+                    {teams.find(t => t.id === activeTeamId)?.name || game.homeTeamName}
+                  </span>
+                  <span className="text-[8px] bg-orange-600/30 text-orange-300 px-1 py-0.2 rounded font-bold shrink-0">
+                    ▼
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* Right: Quick Actions */}
@@ -1325,22 +1370,142 @@ export default function App() {
             </div>
           </header>
 
-          {/* Main Scoreboard Header (Purely informative in Standard Mode with quarter progression) */}
-          <ScoreHeader
-            game={game}
-            onUpdateGame={handleUpdateGame}
-            onAdjustScore={handleAdjustScore}
-            onLogOpponentAction={handleLogOpponentAction}
-            onNextQuarter={handleNextQuarter}
-            onSelectQuarter={handleSelectQuarter}
-            selectedPlayerId={selectedPlayerId}
-            onSelectPlayer={setSelectedPlayerId}
-            onOpenShotChart={() => setShowShotChart(true)}
-            onOpenOfficialSheet={() => setShowOfficialSheet(true)}
-          />
+          {/* Main Scoreboard Header (Purely informative in Standard Mode with quarter progression) - only when in match */}
+          {activeTab !== 'teams' && (
+            <ScoreHeader
+              game={game}
+              onUpdateGame={handleUpdateGame}
+              onAdjustScore={handleAdjustScore}
+              onLogOpponentAction={handleLogOpponentAction}
+              onNextQuarter={handleNextQuarter}
+              onSelectQuarter={handleSelectQuarter}
+              selectedPlayerId={selectedPlayerId}
+              onSelectPlayer={setSelectedPlayerId}
+              onOpenShotChart={() => setShowShotChart(true)}
+              onOpenOfficialSheet={() => setShowOfficialSheet(true)}
+            />
+          )}
+
+          {/* Match In-Screen Sub-Navigation when inside a game */}
+          {activeTab !== 'teams' && activeTab !== 'scout' && (
+            <div className="bg-[#14161B] border-b border-gray-800 px-2 sm:px-4 py-1.5 shrink-0 sticky top-13 sm:top-16 z-30">
+              <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setActiveTab('teams');
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-neutral-900 hover:bg-neutral-800 text-orange-300 hover:text-white border border-orange-500/40 text-xs font-bold transition shrink-0"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Menú Equipos</span>
+                  <span className="sm:hidden">Equipos</span>
+                </button>
+
+                <div className="flex items-center gap-1 font-mono text-xs font-bold">
+                  <button
+                    onClick={() => setActiveTab('live')}
+                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
+                      activeTab === 'live'
+                        ? 'bg-orange-600 text-white shadow'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <Flame className="w-3 h-3" />
+                    <span>Resumen</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('stats');
+                      setStatsSubMode('match');
+                    }}
+                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
+                      activeTab === 'stats' && statsSubMode === 'match'
+                        ? 'bg-orange-600 text-white shadow'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <BarChart3 className="w-3 h-3" />
+                    <span>Box Score</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('charts')}
+                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
+                      activeTab === 'charts'
+                        ? 'bg-orange-600 text-white shadow'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <PieChart className="w-3 h-3" />
+                    <span>Tiros</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('playbyplay')}
+                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
+                      activeTab === 'playbyplay'
+                        ? 'bg-orange-600 text-white shadow'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <ListOrdered className="w-3 h-3" />
+                    <span>Jugadas</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowOfficialSheet(true)}
+                    className="px-2.5 py-1 rounded bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 transition flex items-center gap-1 uppercase"
+                    title="Ver acta oficial del partido"
+                  >
+                    <Share2 className="w-3 h-3 text-emerald-400" />
+                    <span>Acta</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Active Tab View Content */}
           <main className="grow bg-[#0F1115]">
+            {/* Teams Hub: Primary Entry Point of the App */}
+            {activeTab === 'teams' && (
+              <TeamsHubView
+                teams={teams}
+                activeTeamId={activeTeamId}
+                currentGame={game}
+                onSelectTeam={id => handleSelectTeam(id)}
+                onSaveTeam={handleSaveTeam}
+                onDeleteTeam={handleDeleteTeam}
+                onCreateMatchForTeam={team => {
+                  handleSelectTeam(team.id, team);
+                  setShowNewGameModal(true);
+                }}
+                onResumeGame={() => setActiveTab('live')}
+                onOpenCourtMode={toggleCourtMode}
+                onOpenRosterModal={team => {
+                  handleSelectTeam(team.id, team);
+                  setShowRosterModal(true);
+                }}
+                onOpenStatsForCategory={(cat, teamId) => {
+                  setActiveTab('stats');
+                  setStatsSubMode('accumulated');
+                  setLibraryGames(getSavedGamesFromStorage());
+                }}
+                onOpenLibrary={() => setShowLibraryModal(true)}
+                onOpenCloudBackup={() => setShowCloudBackupModal(true)}
+                onOpenTeamEditor={team => {
+                  if (team) {
+                    handleSelectTeam(team.id, team);
+                  }
+                  setShowTeamModal(true);
+                }}
+                soundEnabled={game.settings.soundEnabled}
+              />
+            )}
+
             {activeTab === 'live' && (
               <InformativeMobileView
                 game={game}
@@ -1497,24 +1662,48 @@ export default function App() {
             )}
           </main>
 
-          {/* High Density Mobile Bottom Navigation Bar (5 Tabs) */}
+          {/* High Density Mobile Bottom Navigation Bar (5 Primary Tabs) */}
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#1A1D23] border-t border-gray-800 backdrop-blur-md pb-safe">
             <div className="max-w-xl mx-auto grid grid-cols-5 px-1 py-1 gap-1">
-              {/* Live Tab */}
+              {/* Teams Hub Tab (Primary Entry Point) */}
+              <button
+                id="tab-teams-btn"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  setActiveTab('teams');
+                }}
+                className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
+                  activeTab === 'teams'
+                    ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                }`}
+                title="Menú Principal de Equipos y Categorías"
+              >
+                <Shield className="w-4 h-4" />
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Equipos</span>
+              </button>
+
+              {/* Match / Live Tab */}
               <button
                 id="tab-live-btn"
                 onClick={() => {
                   playSound('click', game.settings.soundEnabled);
                   setActiveTab('live');
                 }}
-                className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
-                  activeTab === 'live'
+                className={`flex flex-col items-center justify-center py-1.5 rounded transition relative ${
+                  activeTab === 'live' || activeTab === 'charts' || activeTab === 'playbyplay'
                     ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
                 }`}
+                title="Mesa de Control del Partido en Directo"
               >
-                <Flame className="w-4 h-4" />
-                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Resumen</span>
+                <div className="relative">
+                  <Flame className="w-4 h-4" />
+                  {(game.homeScore > 0 || game.awayScore > 0 || game.events.length > 0) && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse ring-2 ring-black" />
+                  )}
+                </div>
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Partido</span>
               </button>
 
               {/* Stats Tab */}
@@ -1530,45 +1719,24 @@ export default function App() {
                     ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
                 }`}
+                title="Estadísticas de Equipos y Jugadores"
               >
                 <BarChart3 className="w-4 h-4" />
                 <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Stats</span>
               </button>
 
-              {/* Charts Tab */}
+              {/* Match Library / History Tab */}
               <button
-                id="tab-charts-btn"
+                id="tab-library-btn"
                 onClick={() => {
                   playSound('click', game.settings.soundEnabled);
-                  setActiveTab('charts');
+                  setShowLibraryModal(true);
                 }}
-                className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
-                  activeTab === 'charts'
-                    ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                }`}
+                className="flex flex-col items-center justify-center py-1.5 rounded text-indigo-400/90 hover:text-indigo-300 hover:bg-indigo-950/40 transition"
+                title="Biblioteca de Partidos Guardados"
               >
-                <PieChart className="w-4 h-4" />
-                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Gráficos</span>
-              </button>
-
-              {/* Play by Play Tab */}
-              <button
-                id="tab-playbyplay-btn"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  setActiveTab('playbyplay');
-                }}
-                className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
-                  activeTab === 'playbyplay'
-                    ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                }`}
-              >
-                <ListOrdered className="w-4 h-4" />
-                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">
-                  Jugadas ({game.events.length})
-                </span>
+                <Library className="w-4 h-4" />
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Partidos</span>
               </button>
 
               {/* AI Coach Scout Tab */}
@@ -1583,6 +1751,7 @@ export default function App() {
                     ? 'bg-orange-600/20 text-orange-400 border border-orange-500/40 font-bold'
                     : 'text-orange-400/80 hover:text-orange-300 hover:bg-orange-950/30'
                 }`}
+                title="Informe Táctico con Inteligencia Artificial"
               >
                 <Brain className="w-4 h-4 text-orange-400" />
                 <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">

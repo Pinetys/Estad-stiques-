@@ -89,15 +89,25 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
   // Available categories extracted dynamically from games + registered teams
   const availableCategories = useMemo(() => {
-    const set = new Set<string>();
+    const map = new Map<string, string>();
+    recordedTeams.forEach(t => {
+      if (t.category && t.category.trim()) {
+        const cat = t.category.trim();
+        if (!map.has(cat.toLowerCase())) {
+          map.set(cat.toLowerCase(), cat);
+        }
+      }
+    });
     games.forEach(g => {
       const cat = getGameCategory(g);
-      if (cat) set.add(cat);
+      if (cat && cat.trim() && !map.has(cat.toLowerCase().trim())) {
+        map.set(cat.toLowerCase().trim(), cat.trim());
+      }
     });
-    recordedTeams.forEach(t => {
-      if (t.category) set.add(t.category);
-    });
-    return Array.from(set).sort();
+    if (map.size === 0) {
+      map.set('senior masculino', 'Senior Masculino');
+    }
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
   }, [games, recordedTeams]);
 
   // Filtered games based on Category & Team
@@ -105,10 +115,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
     return games.filter(g => {
       if (selectedCategory !== 'ALL') {
         const cat = getGameCategory(g);
-        if (cat.toLowerCase() !== selectedCategory.toLowerCase()) return false;
+        if (cat.toLowerCase().trim() !== selectedCategory.toLowerCase().trim()) return false;
       }
       if (selectedTeamFilter !== 'ALL') {
-        if (g.homeTeamName.toLowerCase() !== selectedTeamFilter.toLowerCase() && g.teamId !== selectedTeamFilter) {
+        if (g.homeTeamName.toLowerCase().trim() !== selectedTeamFilter.toLowerCase().trim() && g.teamId !== selectedTeamFilter) {
           return false;
         }
       }
@@ -276,7 +286,8 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
             </button>
 
             {availableCategories.map(cat => {
-              const countInCat = games.filter(g => getGameCategory(g).toLowerCase() === cat.toLowerCase()).length;
+              const countInCat = games.filter(g => getGameCategory(g).toLowerCase().trim() === cat.toLowerCase().trim()).length;
+              const isSelected = selectedCategory.toLowerCase().trim() === cat.toLowerCase().trim();
               return (
                 <button
                   key={cat}
@@ -286,7 +297,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                     setSelectedCategory(cat);
                   }}
                   className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
-                    selectedCategory === cat
+                    isSelected
                       ? 'bg-orange-600 text-white shadow-md ring-1 ring-orange-400'
                       : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
                   }`}
@@ -862,7 +873,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
             <tbody className="divide-y divide-gray-800">
               {sortedPlayers.map((p, idx) => (
                 <tr
-                  key={p.playerId}
+                  key={`${p.playerId}-${p.playerNumber}-${idx}`}
                   onClick={() => {
                     playSound('click', soundEnabled);
                     setActivePlayerDetail(p);

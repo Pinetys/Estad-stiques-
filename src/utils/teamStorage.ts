@@ -1,6 +1,6 @@
 import { Player, TeamProfile, Game } from '../types';
 import { DEFAULT_ROSTER, OPPONENT_TEAMS } from '../data/defaultData';
-import { getSavedGamesFromStorage } from './libraryUtils';
+import { getSavedGamesFromStorage, saveGamesToStorage } from './libraryUtils';
 import {
   syncTeamToCloud,
   deleteTeamFromCloud,
@@ -152,6 +152,29 @@ export function upsertTeamProfile(team: TeamProfile): TeamProfile[] {
 
   saveRegisteredTeams(updated);
   syncTeamToCloud(team);
+
+  // Retroactively synchronize category to matches in library for this team
+  if (team.category && team.category.trim()) {
+    try {
+      const allMatches = getSavedGamesFromStorage();
+      let changed = false;
+      const updatedMatches = allMatches.map(m => {
+        if (m.teamId === team.id || m.homeTeamName?.toLowerCase().trim() === team.name.toLowerCase().trim()) {
+          if (!m.category || m.category !== team.category) {
+            changed = true;
+            return { ...m, category: team.category, teamId: team.id };
+          }
+        }
+        return m;
+      });
+      if (changed) {
+        saveGamesToStorage(updatedMatches);
+      }
+    } catch (e) {
+      console.warn('Error syncing matches category for team:', e);
+    }
+  }
+
   return updated;
 }
 

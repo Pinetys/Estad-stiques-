@@ -78,14 +78,15 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
     setFormSeason('2025/2026');
     setFormColor('#f97316');
     setFormLogo('🏀');
+    const uid = Math.random().toString(36).substring(2, 7);
     const initialRoster: Player[] = [
-      { id: `p-${Date.now()}-1`, name: 'Base Titular', number: 4, position: 'B', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-      { id: `p-${Date.now()}-2`, name: 'Escolta', number: 7, position: 'E', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-      { id: `p-${Date.now()}-3`, name: 'Alero', number: 10, position: 'A', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-      { id: `p-${Date.now()}-4`, name: 'Ala-Pívot', number: 13, position: 'AP', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-      { id: `p-${Date.now()}-5`, name: 'Pívot Titular', number: 15, position: 'P', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
-      { id: `p-${Date.now()}-6`, name: 'Sexto Hombre', number: 21, position: 'E', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
-      { id: `p-${Date.now()}-7`, name: 'Pívot Suplente', number: 33, position: 'P', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
+      { id: `p-${Date.now()}-${uid}-1`, name: 'Base Titular', number: 4, position: 'B', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
+      { id: `p-${Date.now()}-${uid}-2`, name: 'Escolta', number: 7, position: 'E', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
+      { id: `p-${Date.now()}-${uid}-3`, name: 'Alero', number: 10, position: 'A', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
+      { id: `p-${Date.now()}-${uid}-4`, name: 'Ala-Pívot', number: 13, position: 'AP', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
+      { id: `p-${Date.now()}-${uid}-5`, name: 'Pívot Titular', number: 15, position: 'P', starter: true, onCourt: true, foulsCount: 0, isFouledOut: false },
+      { id: `p-${Date.now()}-${uid}-6`, name: 'Sexto Hombre', number: 21, position: 'E', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
+      { id: `p-${Date.now()}-${uid}-7`, name: 'Pívot Suplente', number: 33, position: 'P', starter: false, onCourt: false, foulsCount: 0, isFouledOut: false },
     ];
     setFormRoster(initialRoster);
 
@@ -412,7 +413,7 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
                   <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
                     {formRoster.map((player, idx) => (
                       <div
-                        key={player.id}
+                        key={`${player.id}-${idx}`}
                         className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-xs transition ${
                           player.starter || player.onCourt
                             ? 'bg-[#0d0e12] border-orange-500/50'

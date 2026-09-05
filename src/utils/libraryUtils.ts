@@ -33,6 +33,10 @@ export function saveGamesToStorage(games: Game[]): void {
 export const saveAllGamesToStorage = saveGamesToStorage;
 
 export function saveOrUpdateGameInLibrary(game: Game): Game[] {
+  // Ensure category is explicitly populated
+  if (!game.category || !game.category.trim()) {
+    game.category = getGameCategory(game);
+  }
   const library = getSavedGamesFromStorage();
   const index = library.findIndex(g => g.id === game.id);
   let updated: Game[];
@@ -98,33 +102,60 @@ export async function syncMatchesFromCloud(): Promise<Game[]> {
 export function getGameCategory(game: Game): string {
   if (game.category && game.category.trim()) return game.category.trim();
   try {
-    const raw = localStorage.getItem('basketstats_teams_v1');
+    const raw = localStorage.getItem('basketstats_registered_teams_v2') || localStorage.getItem('basketstats_teams_v1');
     if (raw) {
       const teams = JSON.parse(raw);
       if (Array.isArray(teams)) {
         if (game.teamId) {
           const t = teams.find(team => team.id === game.teamId);
-          if (t?.category) return t.category.trim();
+          if (t?.category && t.category.trim()) return t.category.trim();
         }
-        const tByName = teams.find(team => team.name?.toLowerCase() === game.homeTeamName?.toLowerCase());
-        if (tByName?.category) return tByName.category.trim();
+        if (game.homeTeamName) {
+          const tByName = teams.find(team => team.name?.toLowerCase().trim() === game.homeTeamName?.toLowerCase().trim());
+          if (tByName?.category && tByName.category.trim()) return tByName.category.trim();
+        }
       }
     }
   } catch {}
-  return 'Senior';
+  return 'Senior Masculino';
 }
 
 /**
- * Extract all unique categories present in a list of games
+ * Extract all unique categories present in a list of games and registered teams
  */
 export function getAllCategoriesFromGames(games: Game[]): string[] {
-  const set = new Set<string>();
+  const map = new Map<string, string>(); // lowercase -> display string
+
+  // Read teams from storage as well
+  try {
+    const raw = localStorage.getItem('basketstats_registered_teams_v2') || localStorage.getItem('basketstats_teams_v1');
+    if (raw) {
+      const teams = JSON.parse(raw);
+      if (Array.isArray(teams)) {
+        teams.forEach(t => {
+          if (t.category && t.category.trim()) {
+            const cat = t.category.trim();
+            if (!map.has(cat.toLowerCase())) {
+              map.set(cat.toLowerCase(), cat);
+            }
+          }
+        });
+      }
+    }
+  } catch {}
+
   games.forEach(g => {
     const cat = getGameCategory(g);
-    if (cat) set.add(cat);
+    if (cat && cat.trim() && !map.has(cat.toLowerCase().trim())) {
+      map.set(cat.toLowerCase().trim(), cat.trim());
+    }
   });
-  if (set.size === 0) set.add('Senior');
-  return Array.from(set).sort();
+
+  if (map.size === 0) {
+    map.set('senior masculino', 'Senior Masculino');
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -136,7 +167,7 @@ export function calculateSeasonStats(
   filterCategory?: string
 ): SeasonAggregatedStats {
   const games = filterCategory && filterCategory !== 'ALL'
-    ? allGames.filter(g => getGameCategory(g).toLowerCase() === filterCategory.toLowerCase())
+    ? allGames.filter(g => getGameCategory(g).toLowerCase().trim() === filterCategory.toLowerCase().trim())
     : allGames;
 
   if (!games || games.length === 0) {
@@ -249,10 +280,10 @@ export function calculateSeasonStats(
     // Per-player aggregation
     game.players.forEach(p => {
       const pBox = calculatePlayerStats(p, game.events);
-      const key = `${p.number}_${p.name.toLowerCase().trim()}`;
+      const key = p.id ? p.id : `num_${p.number}_${p.name.toLowerCase().trim()}`;
       
       const existing = playerStatsMap.get(key) || {
-        playerId: p.id,
+        playerId: p.id || key,
         playerNumber: p.number,
         playerName: p.name,
         position: p.position,
@@ -291,6 +322,13 @@ export function calculateSeasonStats(
         minutesPlayedTotalSeconds: 0,
         minutesAvg: '00:00',
       };
+
+      if (p.name && existing.playerName !== p.name && !p.name.startsWith('Jugador #')) {
+        existing.playerName = p.name;
+      }
+      if (p.position) {
+        existing.position = p.position;
+      }
 
       existing.gamesPlayed += 1;
       existing.minutesPlayedTotalSeconds = (existing.minutesPlayedTotalSeconds || 0) + (p.minutesPlayedSeconds || 0);
@@ -387,6 +425,15 @@ export function calculateSeasonStats(
 
   // Sort players by total points, then efficiency
   playersAccumulated.sort((a, b) => b.pointsTotal - a.pointsTotal || b.efficiencyAvg - a.efficiencyAvg);
+
+  // Deduplicate and ensure each player in the accumulated list has a strictly unique playerId
+  const seenPlayerIds = new Set<string>();
+  playersAccumulated.forEach((p, idx) => {
+    if (!p.playerId || seenPlayerIds.has(p.playerId)) {
+      p.playerId = `${p.playerId || 'p'}-${p.playerNumber}-${idx}`;
+    }
+    seenPlayerIds.add(p.playerId);
+  });
 
   const fgMadeTotal = twoPointsMade + threePointsMade;
   const fgAttTotal = twoPointsAttempted + threePointsAttempted;
