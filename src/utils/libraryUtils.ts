@@ -5,13 +5,43 @@ import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
 export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
 
+export const DEMO_GAME_IDS = new Set(['game-sample-01', 'game-sample-02']);
+
+export function isDemoGame(game: Partial<Game>): boolean {
+  if (!game) return true;
+  if (game.id && DEMO_GAME_IDS.has(game.id)) return true;
+  if (game.id && game.id.startsWith('game-sample-')) return true;
+  const title = (game.title || '').toLowerCase();
+  const away = (game.awayTeamName || '').toLowerCase();
+  if (title.includes('jornada 1 - liga regular') || away === 'cb leones') return true;
+  if (title.includes('jornada 2 - torneo de copa') || away === 'basket titanes') return true;
+  // Also filter out empty unplayed ghost matches (0 points, 0 events) that were saved without user play
+  if (
+    (!game.events || game.events.length === 0) &&
+    game.homeScore === 0 &&
+    game.awayScore === 0 &&
+    game.status !== 'finished'
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function getSavedGamesFromStorage(): Game[] {
   try {
     const raw = localStorage.getItem(LIBRARY_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed;
+      const cleanGames = parsed.filter(g => !isDemoGame(g));
+      if (cleanGames.length !== parsed.length) {
+        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(cleanGames));
+        // Purge mock games from cloud too
+        parsed.filter(g => isDemoGame(g)).forEach(dg => {
+          if (dg.id) deleteMatchFromCloud(dg.id);
+        });
+      }
+      return cleanGames;
     }
     return [];
   } catch (e) {
@@ -22,9 +52,10 @@ export function getSavedGamesFromStorage(): Game[] {
 
 export function saveGamesToStorage(games: Game[]): void {
   try {
-    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(games));
+    const cleanGames = games.filter(g => !isDemoGame(g));
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(cleanGames));
     localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
-    games.forEach(g => syncMatchToCloud(g));
+    cleanGames.forEach(g => syncMatchToCloud(g));
   } catch (e) {
     console.error('Error saving games library to storage:', e);
   }
@@ -33,6 +64,10 @@ export function saveGamesToStorage(games: Game[]): void {
 export const saveAllGamesToStorage = saveGamesToStorage;
 
 export function saveOrUpdateGameInLibrary(game: Game): Game[] {
+  // Do not save demo or empty unplayed placeholder games
+  if (isDemoGame(game)) {
+    return getSavedGamesFromStorage();
+  }
   // Ensure category is explicitly populated
   if (!game.category || !game.category.trim()) {
     game.category = getGameCategory(game);
@@ -81,12 +116,20 @@ export function clearAllGamesFromLibrary(): Game[] {
 export async function syncMatchesFromCloud(): Promise<Game[]> {
   try {
     const cloudMatches = await fetchAllMatchesFromCloud();
-    if (cloudMatches.length > 0) {
+    const cleanCloudMatches = cloudMatches.filter(m => {
+      if (isDemoGame(m)) {
+        deleteMatchFromCloud(m.id);
+        return false;
+      }
+      return true;
+    });
+
+    if (cleanCloudMatches.length > 0) {
       const localMatches = getSavedGamesFromStorage();
       const mergedMap = new Map<string, Game>();
       localMatches.forEach(m => mergedMap.set(m.id, m));
-      cloudMatches.forEach(m => mergedMap.set(m.id, m));
-      const merged = Array.from(mergedMap.values());
+      cleanCloudMatches.forEach(m => mergedMap.set(m.id, m));
+      const merged = Array.from(mergedMap.values()).filter(m => !isDemoGame(m));
       localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(merged));
       return merged;
     }

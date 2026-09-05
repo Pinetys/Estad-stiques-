@@ -75,15 +75,9 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
   const fileImportRef = useRef<HTMLInputElement | null>(null);
 
-  // Load library from storage on mount
+  // Load library from storage on mount (only real matches created by the user)
   useEffect(() => {
-    let saved = getSavedGamesFromStorage();
-    const isInit = localStorage.getItem(LIBRARY_INITIALIZED_KEY);
-    if (saved.length === 0 && !isInit) {
-      // Auto-populate with current game + 2 realistic sample matches ONLY on first ever boot
-      saved = generateSampleSeasonLibrary(currentGame);
-      saveGamesToStorage(saved);
-    }
+    const saved = getSavedGamesFromStorage();
     setLibrary(saved);
     setSeasonStats(calculateSeasonStats(saved));
   }, []);
