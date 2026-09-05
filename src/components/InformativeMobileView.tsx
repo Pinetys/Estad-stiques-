@@ -41,7 +41,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
   // Compute all player stats
   const allStats = game.players.map(p => ({
     player: p,
-    stats: calculatePlayerStats(p, game.events, game.settings.foulOutLimit),
+    stats: calculatePlayerStats(p, game.events),
   }));
 
   // Sort leaders
@@ -213,7 +213,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {playersOnCourt.map(player => {
-              const stats = calculatePlayerStats(player, game.events, game.settings.foulOutLimit);
+              const stats = calculatePlayerStats(player, game.events);
               const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
               const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
 
@@ -311,7 +311,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
                 {benchPlayers.map(p => {
-                  const bStats = calculatePlayerStats(p, game.events, game.settings.foulOutLimit);
+                  const bStats = calculatePlayerStats(p, game.events);
                   return (
                     <div
                       key={p.id}
@@ -636,7 +636,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
             </div>
 
             {(() => {
-              const pStats = calculatePlayerStats(selectedPlayerDetail, game.events, game.settings.foulOutLimit);
+              const pStats = calculatePlayerStats(selectedPlayerDetail, game.events);
               return (
                 <div className="space-y-2 text-xs font-mono">
                   <div className="bg-black/40 p-2.5 rounded-xl border border-gray-800 space-y-1.5">

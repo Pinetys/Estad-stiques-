@@ -252,68 +252,128 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   const pendingActionDef = pendingAction ? ACTION_DEFINITIONS[pendingAction] : null;
 
-  return (
-    <div className="min-h-screen bg-black text-white flex flex-col justify-between select-none pb-24 w-full max-w-full overflow-x-hidden">
-      {/* 1. TOP ULTRA COMPACT SCOREBOARD & CLOCK BAR */}
-      <div className="bg-[#0a0a0c] border-b border-neutral-800 p-2 sm:p-3 sticky top-0 z-30 shadow-2xl">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
-          {/* Quarter & Exit Court Mode */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={onToggleCourtMode}
-              className="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/50 rounded text-xs font-mono font-bold flex items-center gap-1 active:scale-95 transition"
-              title="Salir de Modo Pista y volver a la vista completa"
-            >
-              <ZapOff className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden xs:inline">PISTA</span>
-            </button>
+  const bonusLimit = game.settings.bonusFoulsLimit || 5;
+  const homeIsBonus = (game.homeQuarterFouls || 0) >= bonusLimit;
+  const awayIsBonus = (game.awayQuarterFouls || 0) >= bonusLimit;
 
-            {/* Quarter Navigator */}
-            <div className="flex items-center bg-[#14161b] rounded border border-neutral-800 p-0.5 font-mono text-xs font-bold">
-              <button
-                onClick={() => handleChangeQuarter(-1)}
-                disabled={game.currentQuarter <= 1}
-                className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-30"
+  return (
+    <div className="h-[100dvh] max-h-[100dvh] w-full bg-black text-white flex flex-col justify-between overflow-hidden select-none">
+      {/* 1. TOP BAR: MODES & QUARTER */}
+      <div className="bg-[#0c0d10] border-b border-neutral-800 px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
+        <div className="flex items-center gap-1.5">
+          {/* Exit Court Mode button */}
+          <button
+            onClick={onToggleCourtMode}
+            className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 rounded font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px]"
+            title="Salir de Modo Pista y volver a la vista completa"
+          >
+            <ZapOff className="w-3 h-3 text-amber-400" />
+            <span>SALIR</span>
+          </button>
+
+          {/* Quarter Navigator */}
+          <div className="flex items-center bg-[#14161d] rounded border border-neutral-800 p-0.5 font-mono text-[11px] font-bold">
+            <button
+              onClick={() => handleChangeQuarter(-1)}
+              disabled={game.currentQuarter <= 1}
+              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20"
+              title="Cuarto anterior"
+            >
+              ‹
+            </button>
+            <span className="px-1.5 text-amber-400 font-black">
+              {formatQuarterShort(game.currentQuarter)}
+            </span>
+            <button
+              onClick={() => handleChangeQuarter(1)}
+              disabled={game.currentQuarter >= 6}
+              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20"
+              title="Siguiente cuarto"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Tools: Carta de Tiro & Acta PDF */}
+        <div className="flex items-center gap-1">
+          {onOpenShotChart && (
+            <button
+              type="button"
+              onClick={onOpenShotChart}
+              className="p-1 px-2 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/40 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+              title="Abrir Carta de Tiro"
+            >
+              <Crosshair className="w-3 h-3 text-orange-400" />
+              <span>Tiro</span>
+            </button>
+          )}
+          {onOpenOfficialSheet && (
+            <button
+              type="button"
+              onClick={onOpenOfficialSheet}
+              className="p-1 px-2 bg-blue-950/60 hover:bg-blue-900 text-blue-300 border border-blue-600/40 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+              title="Abrir Acta Oficial FIBA"
+            >
+              <FileText className="w-3 h-3 text-blue-400" />
+              <span>Acta</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. MAIN PROMINENT DIGITAL SCOREBOARD (GRANDE Y VISIBLE) */}
+      <div className="bg-gradient-to-b from-[#12141a] to-[#0a0a0d] border-b border-neutral-800 px-2 sm:px-4 py-1.5 shrink-0 shadow-lg">
+        <div className="max-w-md mx-auto grid grid-cols-12 items-center gap-1.5">
+          {/* LOCAL (HOME) */}
+          <div className="col-span-4 flex flex-col items-center justify-center text-center">
+            <div className="text-[10px] sm:text-xs font-black text-orange-400 uppercase tracking-wider truncate w-full px-1">
+              {game.homeTeamName || 'LOCAL'}
+            </div>
+            <div className="font-scoreboard font-black text-3xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
+              {game.homeScore}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] font-mono">
+              <span className="text-neutral-400 text-[9px]">F:</span>
+              <span
+                className={`font-black px-1 rounded text-[10px] ${
+                  homeIsBonus
+                    ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse'
+                    : 'text-neutral-300 bg-neutral-900 border border-neutral-800'
+                }`}
               >
-                ‹
-              </button>
-              <span className="px-1 text-amber-400">
-                {formatQuarterShort(game.currentQuarter)}
+                {game.homeQuarterFouls || 0}
+                {homeIsBonus && <span className="ml-0.5 text-[8px] text-red-400 font-bold">BONUS</span>}
               </span>
-              <button
-                onClick={() => handleChangeQuarter(1)}
-                disabled={game.currentQuarter >= 6}
-                className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-30"
-              >
-                ›
-              </button>
             </div>
           </div>
 
-          {/* Center: BIG CLOCK, SHOT CLOCK (24s/14s), PLAY/PAUSE */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+          {/* CENTER: GAME CLOCK & 24s SHOT CLOCK */}
+          <div className="col-span-4 flex flex-col items-center justify-center px-1">
+            {/* Big Clock Play/Pause Button */}
             <button
               onClick={toggleClock}
-              className={`px-3 py-1.5 rounded-lg border font-mono font-black text-lg sm:text-2xl flex items-center gap-2 transition active:scale-95 shadow-md ${
+              className={`w-full py-1 px-1.5 rounded-xl border flex items-center justify-center gap-1.5 font-mono font-black text-base sm:text-lg transition active:scale-95 shadow-md ${
                 game.isClockRunning
-                  ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
-                  : 'bg-neutral-900 border-neutral-700 text-neutral-200'
+                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.35)]'
+                  : 'bg-neutral-900/95 border-neutral-700 text-neutral-200'
               }`}
+              title="Iniciar / Pausar tiempo de partido"
             >
               {game.isClockRunning ? (
-                <Pause className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 fill-emerald-400" />
+                <Pause className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400 shrink-0" />
               ) : (
-                <Play className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 fill-amber-400" />
+                <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
               )}
               <span>{formatGameTime(game.currentSecondsRemaining)}</span>
             </button>
 
-            {/* Shot Clock (24s / 14s) Widget */}
-            <div className="flex items-center gap-0.5 bg-[#14161b] border border-neutral-800 rounded-lg p-0.5 font-mono">
+            {/* 24s / 14s Shot Clock Controls */}
+            <div className="flex items-center gap-1 mt-1">
               <button
                 type="button"
                 onClick={() => handleResetShotClock(24)}
-                className="px-1.5 py-1 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                className="px-1.5 py-0.5 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95"
                 title="Reiniciar a 24s"
               >
                 24s
@@ -321,7 +381,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <button
                 type="button"
                 onClick={() => handleResetShotClock(14)}
-                className="px-1.5 py-1 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                className="px-1.5 py-0.5 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95"
                 title="Reiniciar a 14s (Rebote ofensivo / Falta pista delantera)"
               >
                 14s
@@ -329,193 +389,201 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <button
                 type="button"
                 onClick={handleToggleShotClock}
-                className={`px-2 py-1 rounded text-xs font-black border transition ${
+                className={`px-1.5 py-0.5 rounded text-[10px] font-black font-mono border transition active:scale-95 ${
                   shotClockSecs <= 5
                     ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
-                    : game.isShotClockRunning ?? true
-                    ? 'bg-black text-amber-400 border-amber-500/40'
-                    : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                    : (game.isShotClockRunning ?? true)
+                    ? 'bg-black text-amber-400 border-amber-500/50'
+                    : 'bg-neutral-900 text-neutral-400 border-neutral-700'
                 }`}
                 title="Pausar / Reanudar 24s"
               >
                 {shotClockSecs}s
               </button>
-            </div>
 
-            {/* Quick +-10s adjustments */}
-            <div className="flex flex-col gap-0.5">
+              {/* Quick +-10s micro-adjust */}
               <button
                 onClick={() => adjustSeconds(10)}
-                className="px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[9px] font-mono font-bold"
+                className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold"
+                title="+10s"
               >
-                +10s
+                +10
               </button>
               <button
                 onClick={() => adjustSeconds(-10)}
-                className="px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[9px] font-mono font-bold"
+                className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold"
+                title="-10s"
               >
-                -10s
+                -10
               </button>
-            </div>
-
-            {/* Shortcut buttons: Carta Tiro & Acta PDF */}
-            <div className="flex items-center gap-1">
-              {onOpenShotChart && (
-                <button
-                  type="button"
-                  onClick={onOpenShotChart}
-                  className="p-1.5 sm:px-2 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/50 rounded text-[10px] font-bold font-mono flex items-center gap-1 transition shadow-sm"
-                  title="Abrir Carta de Tiro"
-                >
-                  <Crosshair className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="hidden md:inline">Tiro</span>
-                </button>
-              )}
-              {onOpenOfficialSheet && (
-                <button
-                  type="button"
-                  onClick={onOpenOfficialSheet}
-                  className="p-1.5 sm:px-2 bg-blue-950/60 hover:bg-blue-900 text-blue-300 border border-blue-600/50 rounded text-[10px] font-bold font-mono flex items-center gap-1 transition shadow-sm"
-                  title="Abrir Acta Oficial FIBA"
-                >
-                  <FileText className="w-3.5 h-3.5 text-blue-400" />
-                  <span className="hidden md:inline">Acta PDF</span>
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Right: TEAMS SCORE SUMMARY */}
-          <div className="flex items-center gap-2 bg-[#121418] px-2.5 py-1 rounded-lg border border-neutral-800">
-            {/* Home Score */}
-            <div className="text-right">
-              <div className="text-[10px] font-bold text-orange-400 truncate max-w-[60px] sm:max-w-[90px]">
-                {game.homeTeamName}
-              </div>
-              <div className="font-scoreboard font-black text-lg sm:text-xl text-white leading-none">
-                {game.homeScore}
-              </div>
+          {/* VISITANTE (AWAY) */}
+          <div className="col-span-4 flex flex-col items-center justify-center text-center">
+            <div className="text-[10px] sm:text-xs font-black text-sky-400 uppercase tracking-wider truncate w-full px-1">
+              {game.awayTeamName || 'RIVAL'}
             </div>
-
-            <span className="text-xs text-neutral-600 font-bold">:</span>
-
-            {/* Away Score */}
-            <div className="text-left">
-              <div className="text-[10px] font-bold text-sky-400 truncate max-w-[60px] sm:max-w-[90px]">
-                {game.awayTeamName}
-              </div>
-              <div className="font-scoreboard font-black text-lg sm:text-xl text-white leading-none">
-                {game.awayScore}
-              </div>
+            <div className="font-scoreboard font-black text-3xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(56,189,248,0.35)]">
+              {game.awayScore}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] font-mono">
+              <span className="text-neutral-400 text-[9px]">F:</span>
+              <span
+                className={`font-black px-1 rounded text-[10px] ${
+                  awayIsBonus
+                    ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse'
+                    : 'text-neutral-300 bg-neutral-900 border border-neutral-800'
+                }`}
+              >
+                {game.awayQuarterFouls || 0}
+                {awayIsBonus && <span className="ml-0.5 text-[8px] text-red-400 font-bold">BONUS</span>}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Rival Quick Score Strip (Direct 1-touch or scouting for opponent points in bench mode) */}
-        <div className="max-w-4xl mx-auto mt-2 pt-1.5 border-t border-neutral-800/80 flex items-center justify-between gap-1 text-xs">
-          <div className="flex items-center gap-1 text-[10px] font-mono text-sky-400 font-bold shrink-0">
-            <span>Rival ({game.awayTeamName.split(' ')[0]}):</span>
-          </div>
-
+        {/* Rival Quick Score Bar (1-touch immediate point/foul logging) */}
+        <div className="max-w-md mx-auto mt-1 pt-1 border-t border-neutral-800/70 flex items-center justify-between gap-1 text-[11px] font-mono">
+          <span className="text-sky-400 font-bold text-[10px] shrink-0">
+            Rival:
+          </span>
           <div className="flex items-center gap-1 grow justify-end">
             <button
               type="button"
-              onClick={() => setScoutingOppAction('OPP_1P')}
-              className="px-2.5 py-1 bg-sky-950/60 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded font-mono font-bold text-xs active:scale-95"
-              title="Anotar +1 Tiro Libre rival con opción de dorsal"
+              onClick={() => onLogOpponentAction('OPP_1P')}
+              className="px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              title="Sumar +1 TL Rival al instante"
             >
               +1 TL
             </button>
             <button
               type="button"
-              onClick={() => setScoutingOppAction('OPP_2P')}
-              className="px-2.5 py-1 bg-sky-950/60 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded font-mono font-bold text-xs active:scale-95"
-              title="Anotar +2 Canasta rival con opción de dorsal"
+              onClick={() => onLogOpponentAction('OPP_2P')}
+              className="px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              title="Sumar +2 Canasta Rival al instante"
             >
               +2 Canasta
             </button>
             <button
               type="button"
-              onClick={() => setScoutingOppAction('OPP_3P')}
-              className="px-2.5 py-1 bg-sky-950/60 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded font-mono font-bold text-xs active:scale-95"
-              title="Anotar +3 Triple rival con opción de dorsal"
+              onClick={() => onLogOpponentAction('OPP_3P')}
+              className="px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              title="Sumar +3 Triple Rival al instante"
             >
               +3 Triple
             </button>
             <button
               type="button"
-              onClick={() => setScoutingOppAction('OPP_FOUL')}
-              className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-200 border border-rose-800/70 rounded font-mono font-bold text-xs active:scale-95"
-              title="Falta cometida por el rival con opción de dorsal"
+              onClick={() => onLogOpponentAction('OPP_FOUL')}
+              className="px-2 py-0.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              title="Sumar Falta Rival al instante"
             >
-              +Falta Riv
+              +Falta
+            </button>
+            <button
+              type="button"
+              onClick={() => setScoutingOppAction('OPP_2P')}
+              className="px-1.5 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded text-[9px] font-bold"
+              title="Anotar rival indicando dorsal"
+            >
+              #
             </button>
           </div>
         </div>
       </div>
 
-      {/* 2. TOAST FEEDBACK */}
+      {/* 3. TOAST FEEDBACK */}
       {lastActionToast && (
-        <div className="bg-orange-600 text-white font-mono font-bold text-xs px-3 py-1.5 text-center sticky top-[90px] z-20 shadow-lg flex items-center justify-center gap-1.5 animate-in fade-in">
-          <Flame className="w-4 h-4 fill-white" />
+        <div className="bg-orange-600 text-white font-mono font-bold text-[11px] px-2 py-1 text-center sticky top-0 z-30 shadow-md flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
+          <Flame className="w-3.5 h-3.5 fill-white" />
           <span>{lastActionToast}</span>
         </div>
       )}
 
-      {/* 3. ASSIST QUESTION BANNER (When Basket Scored) */}
+      {/* 4. ASSIST QUESTION BANNER (When Basket Scored) */}
       {assistPromptForEvent && (
-        <div className="bg-[#161920] border-y border-sky-500/50 p-2 text-center animate-in fade-in sticky top-[110px] z-20 shadow-xl">
-          <div className="flex items-center justify-between max-w-4xl mx-auto mb-1.5">
-            <span className="text-xs text-sky-400 font-bold uppercase tracking-wide">
+        <div className="bg-[#141820] border-y border-sky-500/50 px-2 py-1.5 text-center animate-in fade-in sticky top-0 z-30 shadow-xl shrink-0">
+          <div className="flex items-center justify-between max-w-md mx-auto mb-1">
+            <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">
               ¿Quién dio la Asistencia?
             </span>
             <button
               onClick={() => handleAssistSelection(undefined)}
-              className="text-[10px] bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded font-mono hover:text-white"
+              className="text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded font-mono hover:text-white"
             >
               Sin asistencia ✕
             </button>
           </div>
-          <div className="max-w-4xl mx-auto grid grid-cols-4 gap-1.5">
+          <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
             {playersOnCourt
               .filter(p => p.id !== assistPromptForEvent.scorerId)
               .map(p => (
                 <button
                   key={p.id}
                   onClick={() => handleAssistSelection(p.id)}
-                  className="bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-700/60 rounded-lg p-2.5 text-center active:scale-95 font-mono shadow"
+                  className="bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-700/60 rounded-lg p-1.5 text-center active:scale-95 font-mono shadow"
                 >
-                  <div className="text-xl font-black text-sky-300">#{p.number}</div>
-                  <div className="text-xs font-bold truncate">{p.name.split(' ')[0]}</div>
+                  <div className="text-base font-black text-sky-300">#{p.number}</div>
+                  <div className="text-[9px] font-bold truncate">{p.name.split(' ')[0]}</div>
                 </button>
               ))}
           </div>
         </div>
       )}
 
-      {/* 4. BENCH / QUINTETO QUICK BAR & SUBSTITUTIONS */}
-      <div className="max-w-4xl mx-auto w-full px-2 pt-2">
-        <div className="flex items-center justify-between bg-[#111317] border border-neutral-800 rounded-lg px-3 py-1.5 text-xs">
-          <div className="flex items-center gap-2 overflow-x-auto py-0.5">
-            <span className="text-[10px] font-mono font-bold uppercase text-neutral-400 shrink-0">
-              En pista:
-            </span>
-            <div className="flex items-center gap-1.5">
-              {playersOnCourt.map(p => {
-                const stats = calculatePlayerStats(p, game.events, game.settings.foulOutLimit);
+      {/* 5. QUINTETO EN PISTA (COMPACTO Y 100% SINCRONIZADO AL INSTANTE) */}
+      <div className="max-w-md mx-auto w-full px-2 pt-1 shrink-0">
+        <div className="flex items-center justify-between bg-[#111317] border border-neutral-800 rounded-xl px-2 py-1 text-xs">
+          <div className="flex items-center gap-1 grow overflow-x-hidden">
+            <div className="grid grid-cols-5 gap-1 grow">
+              {playersOnCourt.map(player => {
+                // Instantly synchronized stats from events
+                const stats = calculatePlayerStats(player, game.events);
+                const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
+                const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
+
                 return (
-                  <span
-                    key={p.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-900 border border-neutral-700 rounded text-[11px] font-mono"
+                  <button
+                    key={player.id}
+                    onClick={() => {
+                      playSound('click', game.settings.soundEnabled);
+                      triggerHaptic('light', game.settings.vibrationEnabled);
+                      onSelectPlayer(player.id);
+                    }}
+                    className={`flex flex-col items-center justify-center p-1 rounded-lg border font-mono transition active:scale-95 text-center ${
+                      selectedPlayerId === player.id
+                        ? 'bg-amber-500/20 border-amber-500 text-white shadow-sm ring-1 ring-amber-400/60'
+                        : isFouledOut
+                        ? 'bg-red-950/40 border-red-800 text-red-300'
+                        : isFoulDanger
+                        ? 'bg-amber-950/40 border-amber-700 text-amber-200'
+                        : 'bg-[#181a24] border-neutral-800 text-neutral-200 hover:border-neutral-700'
+                    }`}
                   >
-                    <strong className="text-amber-400 font-bold">#{p.number}</strong>
-                    <span className="text-neutral-300 truncate max-w-[60px]">
-                      {p.name.split(' ')[0]}
-                    </span>
-                    <span className="text-[10px] text-neutral-500 font-mono">
-                      ({stats.minutesPlayedFormatted} • {stats.points}p/{stats.foulsPersonal}F)
-                    </span>
-                  </span>
+                    <div className="flex items-center justify-center">
+                      <span className="font-scoreboard font-black text-sm text-amber-400 leading-none">
+                        #{player.number}
+                      </span>
+                    </div>
+                    <div className="text-[10px] font-bold text-neutral-300 truncate w-full mt-0.5">
+                      {player.name.split(' ')[0]}
+                    </div>
+                    <div className="text-[9px] font-mono flex items-center justify-center gap-1 mt-0.5 font-bold leading-none">
+                      <span className="text-orange-400">{stats.points}p</span>
+                      <span
+                        className={
+                          isFouledOut
+                            ? 'text-red-400 font-black'
+                            : isFoulDanger
+                            ? 'text-amber-400 font-black'
+                            : 'text-neutral-400'
+                        }
+                      >
+                        {stats.foulsPersonal}F
+                      </span>
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -527,353 +595,240 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               triggerHaptic('light', game.settings.vibrationEnabled);
               onOpenSubstitutionModal();
             }}
-            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs uppercase rounded flex items-center gap-1 shadow-md active:scale-95 transition shrink-0 ml-2"
+            className="ml-1.5 px-2 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] uppercase rounded-lg flex flex-col items-center justify-center gap-0.5 shadow active:scale-95 transition shrink-0"
+            title="Sustituciones de jugadores"
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
-            <span>Cambios</span>
+            <span className="leading-tight font-extrabold text-[9px]">CAMBIOS</span>
           </button>
         </div>
       </div>
 
-      {/* 5. MAIN ACTION BUTTONS CONSOLE (MARCA PRIMERO LA ACCIÓN) */}
-      <div className="max-w-4xl mx-auto w-full px-2 py-2 space-y-2 grow flex flex-col justify-center">
+      {/* 6. MAIN MEASUREMENT / ACTION BUTTONS CONSOLE (CENTRADO, VISUAL Y SENCILLO) */}
+      <div className="max-w-md mx-auto w-full px-2 flex-1 flex flex-col justify-center gap-1.5 my-auto">
         <div className="text-center">
-          <span className="text-[11px] font-mono uppercase font-bold text-neutral-400 tracking-wider">
-            1. Pulsa la acción que ha sucedido:
+          <span className="text-[10px] font-mono uppercase font-bold text-neutral-400 tracking-wider">
+            Toca la acción:
           </span>
         </div>
 
-        {/* SECTION A: SCORING & SHOTS (LARGEST HIGH-FREQUENCY BUTTONS) */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* SECTION A: SCORING / SHOTS (CANASTAS Y FALLOS) */}
+        <div className="grid grid-cols-2 gap-1.5 w-full">
           {/* +2 CANASTA METIDA */}
           <button
             onClick={() => handleInitiateAction('2PM')}
-            className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black rounded-xl py-3.5 px-3 flex flex-col items-center justify-center text-center shadow-lg active:scale-95 transition min-h-[64px] border border-emerald-400"
+            className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black rounded-xl py-2 px-2.5 flex items-center justify-between border border-emerald-400 shadow-md active:scale-95 transition min-h-[42px]"
           >
-            <span className="text-2xl sm:text-3xl font-black font-mono leading-none">+2 CANASTA</span>
-            <span className="text-[10px] uppercase font-bold text-emerald-100 mt-1">Tiro 2 Metido</span>
+            <div className="flex flex-col text-left">
+              <span className="text-base sm:text-lg font-black font-mono leading-none">+2 CANASTA</span>
+              <span className="text-[9px] uppercase font-bold text-emerald-100 mt-0.5">Tiro 2 Metido</span>
+            </div>
+            <span className="text-xl font-mono font-black opacity-80 leading-none">+2</span>
           </button>
 
           {/* TIRO 2 FALLADO */}
           <button
             onClick={() => handleInitiateAction('2PA')}
-            className="bg-[#181a20] hover:bg-neutral-800 text-neutral-200 font-bold rounded-xl py-3.5 px-3 flex flex-col items-center justify-center text-center border border-neutral-700 active:scale-95 transition min-h-[64px]"
+            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-2 px-2.5 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[42px]"
           >
-            <span className="text-lg sm:text-xl font-black font-mono leading-none">FALLO 2P</span>
-            <span className="text-[10px] uppercase text-neutral-400 mt-1">Tiro 2 Errado</span>
+            <div className="flex flex-col text-left">
+              <span className="text-sm sm:text-base font-black font-mono leading-none">FALLO 2P</span>
+              <span className="text-[9px] uppercase text-neutral-400 mt-0.5">Errado</span>
+            </div>
+            <span className="text-xs font-mono text-neutral-500 font-bold">2PA</span>
           </button>
 
           {/* +3 TRIPLE METIDO */}
           <button
             onClick={() => handleInitiateAction('3PM')}
-            className="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-black rounded-xl py-3.5 px-3 flex flex-col items-center justify-center text-center shadow-lg active:scale-95 transition min-h-[64px] border border-amber-400"
+            className="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-black rounded-xl py-2 px-2.5 flex items-center justify-between border border-amber-400 shadow-md active:scale-95 transition min-h-[42px]"
           >
-            <span className="text-2xl sm:text-3xl font-black font-mono leading-none">+3 TRIPLE</span>
-            <span className="text-[10px] uppercase font-bold text-amber-100 mt-1">Triple Metido</span>
+            <div className="flex flex-col text-left">
+              <span className="text-base sm:text-lg font-black font-mono leading-none">+3 TRIPLE</span>
+              <span className="text-[9px] uppercase font-bold text-amber-100 mt-0.5">Triple Metido</span>
+            </div>
+            <span className="text-xl font-mono font-black opacity-80 leading-none">+3</span>
           </button>
 
           {/* TRIPLE FALLADO */}
           <button
             onClick={() => handleInitiateAction('3PA')}
-            className="bg-[#181a20] hover:bg-neutral-800 text-neutral-200 font-bold rounded-xl py-3.5 px-3 flex flex-col items-center justify-center text-center border border-neutral-700 active:scale-95 transition min-h-[64px]"
+            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-2 px-2.5 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[42px]"
           >
-            <span className="text-lg sm:text-xl font-black font-mono leading-none">FALLO 3P</span>
-            <span className="text-[10px] uppercase text-neutral-400 mt-1">Triple Errado</span>
+            <div className="flex flex-col text-left">
+              <span className="text-sm sm:text-base font-black font-mono leading-none">FALLO 3P</span>
+              <span className="text-[9px] uppercase text-neutral-400 mt-0.5">Errado</span>
+            </div>
+            <span className="text-xs font-mono text-neutral-500 font-bold">3PA</span>
           </button>
 
           {/* +1 TIRO LIBRE */}
           <button
             onClick={() => handleInitiateAction('FTM')}
-            className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white font-black rounded-xl py-3 px-3 flex flex-col items-center justify-center text-center shadow-lg active:scale-95 transition min-h-[54px] border border-teal-400"
+            className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white font-black rounded-xl py-2 px-2.5 flex items-center justify-between border border-teal-400 shadow-md active:scale-95 transition min-h-[42px]"
           >
-            <span className="text-xl font-black font-mono leading-none">+1 TIRO LIBRE</span>
-            <span className="text-[10px] uppercase font-bold text-teal-100 mt-0.5">TL Anotado</span>
+            <div className="flex flex-col text-left">
+              <span className="text-base sm:text-lg font-black font-mono leading-none">+1 T. LIBRE</span>
+              <span className="text-[9px] uppercase font-bold text-teal-100 mt-0.5">TL Anotado</span>
+            </div>
+            <span className="text-xl font-mono font-black opacity-80 leading-none">+1</span>
           </button>
 
           {/* TIRO LIBRE FALLADO */}
           <button
             onClick={() => handleInitiateAction('FTA')}
-            className="bg-[#181a20] hover:bg-neutral-800 text-neutral-200 font-bold rounded-xl py-3 px-3 flex flex-col items-center justify-center text-center border border-neutral-700 active:scale-95 transition min-h-[54px]"
+            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-2 px-2.5 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[42px]"
           >
-            <span className="text-lg font-black font-mono leading-none">FALLO TL</span>
-            <span className="text-[10px] uppercase text-neutral-400 mt-0.5">Tiro Libre Errado</span>
+            <div className="flex flex-col text-left">
+              <span className="text-sm sm:text-base font-black font-mono leading-none">FALLO TL</span>
+              <span className="text-[9px] uppercase text-neutral-400 mt-0.5">Errado</span>
+            </div>
+            <span className="text-xs font-mono text-neutral-500 font-bold">1PA</span>
           </button>
         </div>
 
-        {/* SECTION B: REBOUNDS, ASSISTS & GAME ACTIONS */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-1">
+        {/* SECTION B: REBOUNDS & GAMEPLAY (REBOTES, ASISTENCIAS, ROBOS, PÉRDIDAS, TAPONES) */}
+        <div className="grid grid-cols-6 gap-1 w-full pt-0.5">
           {/* REBOTE DEFENSIVO */}
           <button
             onClick={() => handleInitiateAction('DREB')}
-            className="bg-blue-950/90 hover:bg-blue-900 text-blue-200 border border-blue-700/80 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-700/70 font-black rounded-lg py-2 px-0.5 text-center active:scale-95 transition"
+            title="Rebote Defensivo"
           >
-            <div className="text-sm font-black font-mono leading-tight">REB DEF</div>
-            <div className="text-[9px] uppercase text-blue-400">Defensa</div>
+            <div className="text-xs font-black font-mono leading-none">REB D</div>
+            <div className="text-[8px] uppercase text-blue-400 mt-0.5">Defensa</div>
           </button>
 
           {/* REBOTE OFENSIVO */}
           <button
             onClick={() => handleInitiateAction('OREB')}
-            className="bg-indigo-950/90 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/80 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/70 font-black rounded-lg py-2 px-0.5 text-center active:scale-95 transition"
+            title="Rebote Ofensivo"
           >
-            <div className="text-sm font-black font-mono leading-tight">REB OF</div>
-            <div className="text-[9px] uppercase text-indigo-400">Ataque</div>
+            <div className="text-xs font-black font-mono leading-none">REB O</div>
+            <div className="text-[8px] uppercase text-indigo-400 mt-0.5">Ataque</div>
           </button>
 
           {/* ASISTENCIA */}
           <button
             onClick={() => handleInitiateAction('AST')}
-            className="bg-sky-950/90 hover:bg-sky-900 text-sky-200 border border-sky-700/80 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-700/70 font-black rounded-lg py-2 px-0.5 text-center active:scale-95 transition"
+            title="Asistencia"
           >
-            <div className="text-sm font-black font-mono leading-tight">ASIST</div>
-            <div className="text-[9px] uppercase text-sky-400">Pase Canasta</div>
+            <div className="text-xs font-black font-mono leading-none">ASIST</div>
+            <div className="text-[8px] uppercase text-sky-400 mt-0.5">Pase</div>
           </button>
 
           {/* ROBO */}
           <button
             onClick={() => handleInitiateAction('STL')}
-            className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/80 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/70 font-black rounded-lg py-2 px-0.5 text-center active:scale-95 transition"
+            title="Robo de balón"
           >
-            <div className="text-sm font-black font-mono leading-tight">ROBO</div>
-            <div className="text-[9px] uppercase text-emerald-400">Balón</div>
+            <div className="text-xs font-black font-mono leading-none">ROBO</div>
+            <div className="text-[8px] uppercase text-emerald-400 mt-0.5">Balón</div>
           </button>
 
           {/* PÉRDIDA */}
           <button
             onClick={() => handleInitiateAction('TO')}
-            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-600 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-600 font-black rounded-lg py-2 px-0.5 text-center active:scale-95 transition"
+            title="Pérdida de balón"
           >
-            <div className="text-sm font-black font-mono leading-tight">PÉRDIDA</div>
-            <div className="text-[9px] uppercase text-zinc-400">Error</div>
+            <div className="text-xs font-black font-mono leading-none">PÉRDIDA</div>
+            <div className="text-[8px] uppercase text-zinc-400 mt-0.5">Error</div>
           </button>
 
           {/* TAPÓN */}
           <button
             onClick={() => handleInitiateAction('BLK')}
-            className="bg-purple-950/90 hover:bg-purple-900 text-purple-200 border border-purple-700/80 font-black rounded-lg py-3 px-1 text-center active:scale-95 transition min-h-[52px]"
+            className="bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-700/70 font-black rounded-lg py-2 px-0.5 text-center active:scale-95 transition"
+            title="Tapón"
           >
-            <div className="text-sm font-black font-mono leading-tight">TAPÓN</div>
-            <div className="text-[9px] uppercase text-purple-400">Gorro</div>
+            <div className="text-xs font-black font-mono leading-none">TAPÓN</div>
+            <div className="text-[8px] uppercase text-purple-400 mt-0.5">Gorro</div>
           </button>
         </div>
 
-        {/* SECTION C: FIBA FOULS BREAKDOWN (OFFICIAL FIBA CLASSIFICATIONS) */}
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 pt-1">
+        {/* SECTION C: FIBA FOULS (FALTAS CLASIFICADAS FIBA) */}
+        <div className="grid grid-cols-5 gap-1 w-full pt-0.5">
           {/* FALTA PERSONAL (P) */}
           <button
             onClick={() => handleInitiateAction('PF')}
-            className="bg-rose-950 hover:bg-rose-900 text-rose-100 border border-rose-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            className="bg-rose-950/90 hover:bg-rose-900 text-rose-100 border border-rose-700/80 font-black rounded-lg py-1.5 px-0.5 text-center active:scale-95 transition"
             title="Falta Personal simple (P)"
           >
-            <div className="text-xs font-black font-mono leading-tight">FALTA (P)</div>
-            <div className="text-[9px] uppercase text-rose-300">Personal</div>
+            <div className="text-[11px] font-black font-mono leading-none">FALTA (P)</div>
+            <div className="text-[8px] uppercase text-rose-300 mt-0.5">Personal</div>
           </button>
 
           {/* FALTA TIRO (PFT) */}
           <button
             onClick={() => handleInitiateAction('PFT')}
-            className="bg-rose-950 hover:bg-rose-900 text-rose-100 border border-rose-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            className="bg-rose-950/90 hover:bg-rose-900 text-rose-100 border border-rose-700/80 font-black rounded-lg py-1.5 px-0.5 text-center active:scale-95 transition"
             title="Falta con tiros concedidos (P1/2/3)"
           >
-            <div className="text-xs font-black font-mono leading-tight">TIRO (PFT)</div>
-            <div className="text-[9px] uppercase text-rose-300">Con tiros</div>
+            <div className="text-[11px] font-black font-mono leading-none">TIRO (PFT)</div>
+            <div className="text-[8px] uppercase text-rose-300 mt-0.5">Con Tiros</div>
           </button>
 
           {/* FALTA EN ATAQUE (OF) */}
           <button
             onClick={() => handleInitiateAction('OF')}
-            className="bg-orange-950 hover:bg-orange-900 text-orange-200 border border-orange-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            className="bg-orange-950/90 hover:bg-orange-900 text-orange-200 border border-orange-700/80 font-black rounded-lg py-1.5 px-0.5 text-center active:scale-95 transition"
             title="Falta en Ataque sin tiros (O)"
           >
-            <div className="text-xs font-black font-mono leading-tight">ATAQUE (O)</div>
-            <div className="text-[9px] uppercase text-orange-300">En Ataque</div>
+            <div className="text-[11px] font-black font-mono leading-none">ATAQUE (O)</div>
+            <div className="text-[8px] uppercase text-orange-300 mt-0.5">En Ataque</div>
           </button>
 
-          {/* FALTA TÉCNICA (TF) */}
+          {/* FALTA TÉCNICA / ANTIDEP */}
           <button
             onClick={() => handleInitiateAction('TF')}
-            className="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
-            title="Falta Técnica a jugador (T)"
+            className="bg-purple-950/90 hover:bg-purple-900 text-purple-200 border border-purple-700/80 font-black rounded-lg py-1.5 px-0.5 text-center active:scale-95 transition"
+            title="Falta Técnica o Antideportiva"
           >
-            <div className="text-xs font-black font-mono leading-tight">TÉCNICA (T)</div>
-            <div className="text-[9px] uppercase text-purple-300">Conducta</div>
-          </button>
-
-          {/* ANTIDEPORTIVA (UF) */}
-          <button
-            onClick={() => handleInitiateAction('UF')}
-            className="bg-red-950 hover:bg-red-900 text-red-200 border border-red-700 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
-            title="Falta Antideportiva (U)"
-          >
-            <div className="text-xs font-black font-mono leading-tight">ANTIDEP (U)</div>
-            <div className="text-[9px] uppercase text-red-400">Flagrante</div>
-          </button>
-
-          {/* BANQUILLO / DESCALIFICANTE (BF) */}
-          <button
-            onClick={() => handleInitiateAction('BF')}
-            className="bg-red-950/90 hover:bg-black text-rose-200 border border-red-600 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
-            title="Falta Banquillo / Entrenador / Descalificante (B/D)"
-          >
-            <div className="text-xs font-black font-mono leading-tight">BANQ / D (B)</div>
-            <div className="text-[9px] uppercase text-red-300">Banquillo</div>
+            <div className="text-[11px] font-black font-mono leading-none">TÉC / ANT</div>
+            <div className="text-[8px] uppercase text-purple-300 mt-0.5">Especial</div>
           </button>
 
           {/* FALTA RECIBIDA (FD) */}
           <button
             onClick={() => handleInitiateAction('FD')}
-            className="bg-lime-950/90 hover:bg-lime-900 text-lime-200 border border-lime-700/80 font-black rounded-lg py-2.5 px-1 text-center active:scale-95 transition min-h-[50px]"
+            className="bg-lime-950/90 hover:bg-lime-900 text-lime-200 border border-lime-700/80 font-black rounded-lg py-1.5 px-0.5 text-center active:scale-95 transition"
             title="Falta Personal Recibida o Provocada (+1 Valoración)"
           >
-            <div className="text-xs font-black font-mono leading-tight">F. RECIB (FD)</div>
-            <div className="text-[9px] uppercase text-lime-300">Provocada</div>
+            <div className="text-[11px] font-black font-mono leading-none">RECIB (FD)</div>
+            <div className="text-[8px] uppercase text-lime-300 mt-0.5">Provocada</div>
           </button>
         </div>
       </div>
 
-      {/* 6. MODAL / OVERLAY: ESCOGER JUGADOR TRAS MARCAR LA ACCIÓN */}
-      {pendingAction && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in">
-          <div className="bg-[#12141a] border border-amber-500/60 rounded-2xl p-4 max-w-lg w-full mx-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
-            {/* Modal Header with Action badge */}
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-              <div className="flex items-center gap-2">
-                <div className="px-3 py-1 bg-amber-500 text-black font-mono font-black text-sm uppercase rounded shadow">
-                  {pendingActionDef?.shortLabel}
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-white uppercase tracking-wide">
-                    ¿Quién ha hecho {pendingActionDef?.shortLabel}?
-                  </h3>
-                  <p className="text-[11px] text-neutral-400">
-                    {pendingActionDef?.label}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setPendingAction(null)}
-                className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full font-mono text-xs"
-                title="Cancelar"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Quinteto en Pista (5 Big Buttons) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] font-mono text-amber-400 font-bold uppercase">
-                <span>Jugadores en pista:</span>
-                <span className="text-neutral-500 text-[10px]">Toca un jugador</span>
-              </div>
-
-              <div className="grid grid-cols-5 gap-1.5">
-                {playersOnCourt.map(player => {
-                  const stats = calculatePlayerStats(player, game.events, game.settings.foulOutLimit);
-                  const isFoulDanger = stats.foulsPersonal === 4;
-                  const isFouledOut = stats.foulsPersonal >= game.settings.foulOutLimit;
-
-                  return (
-                    <button
-                      key={player.id}
-                      onClick={() => handleConfirmPlayerForAction(player)}
-                      className={`rounded-xl p-2.5 text-center transition flex flex-col justify-between border active:scale-95 min-h-[82px] shadow-lg ${
-                        isFouledOut
-                          ? 'bg-red-950/50 border-red-800 text-red-400'
-                          : isFoulDanger
-                          ? 'bg-amber-950/50 border-amber-600 text-amber-200'
-                          : 'bg-[#181a24] hover:bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-amber-400'
-                      }`}
-                    >
-                      {/* Dorsal */}
-                      <div className="font-scoreboard text-3xl font-black text-amber-300 leading-none">
-                        #{player.number}
-                      </div>
-
-                      {/* Name */}
-                      <div className="text-xs font-bold text-neutral-200 truncate w-full mt-1">
-                        {player.name.split(' ')[0]}
-                      </div>
-
-                      {/* Stats */}
-                      <div className="text-[9px] font-mono text-neutral-400 mt-1 pt-1 border-t border-neutral-800 flex justify-between w-full">
-                        <span className="text-emerald-400 font-bold">{stats.minutesPlayedFormatted}</span>
-                        <span>{stats.points}p</span>
-                        <span className={isFouledOut ? 'text-red-400 font-bold' : isFoulDanger ? 'text-amber-400 font-bold' : ''}>
-                          {stats.foulsPersonal}F
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Toggle Bench Players */}
-            <div className="pt-2 border-t border-neutral-800">
-              <button
-                onClick={() => setShowBenchInModal(!showBenchInModal)}
-                className="w-full py-1.5 px-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs font-mono font-bold rounded flex items-center justify-between"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-neutral-400" />
-                  <span>Jugadores del banquillo ({benchPlayers.length})</span>
-                </div>
-                <span>{showBenchInModal ? '▲ Ocultar' : '▼ Mostrar'}</span>
-              </button>
-
-              {showBenchInModal && (
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 mt-2 max-h-36 overflow-y-auto p-1">
-                  {benchPlayers.map(player => (
-                    <button
-                      key={player.id}
-                      onClick={() => handleConfirmPlayerForAction(player)}
-                      className="bg-[#181a24] hover:bg-neutral-800 p-2 rounded-lg border border-neutral-700 text-center active:scale-95 font-mono"
-                    >
-                      <div className="text-base font-bold text-neutral-300">#{player.number}</div>
-                      <div className="text-[10px] truncate text-neutral-400">{player.name.split(' ')[0]}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Cancel Button */}
-            <button
-              onClick={() => setPendingAction(null)}
-              className="w-full py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-mono font-bold text-xs uppercase rounded-lg transition"
-            >
-              Cancelar Acción ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 7. BOTTOM STICKY BAR: BIG UNDO & RECENT ACTION HISTORY */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c0d10] border-t border-neutral-800 p-2">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
+      {/* 7. BOTTOM BAR: RECENT PLAY & BIG UNDO BUTTON */}
+      <div className="bg-[#0c0d11] border-t border-neutral-800 px-2 sm:px-4 py-1.5 z-40 shrink-0">
+        <div className="max-w-md mx-auto flex items-center justify-between gap-2">
           {/* Recent Action Tag & Drawer Toggle */}
           <div className="flex items-center gap-1.5 grow overflow-hidden">
             <button
               onClick={() => setShowHistoryDrawer(!showHistoryDrawer)}
-              className="p-1.5 bg-[#16181e] text-neutral-300 border border-neutral-700 rounded text-xs font-mono flex items-center gap-1 shrink-0"
+              className="p-1.5 bg-[#161820] text-neutral-300 border border-neutral-700/80 rounded-lg text-xs font-mono flex items-center gap-1 shrink-0 active:scale-95"
               title="Ver o borrar últimas jugadas"
             >
               <History className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[10px]">({game.events.length})</span>
+              <span className="text-[10px] font-bold">({game.events.length})</span>
             </button>
 
             {recentEvent ? (
               <div className="truncate text-xs font-mono text-neutral-300">
-                <span className="text-neutral-500">Última:</span>{' '}
-                <strong className="text-amber-300">
+                <span className="text-neutral-500 text-[10px]">Última:</span>{' '}
+                <strong className="text-amber-300 font-bold">
                   {recentEvent.isOpponentAction
-                    ? `Rival: ${recentEvent.actionLabel}`
+                    ? recentEvent.actionLabel
                     : `#${recentEvent.playerNumber} ${recentEvent.playerName?.split(' ')[0]} - ${recentEvent.actionLabel}`}
                 </strong>
               </div>
             ) : (
-              <div className="text-xs text-neutral-600 italic">Esperando jugada...</div>
+              <div className="text-xs text-neutral-500 italic">Esperando jugada...</div>
             )}
           </div>
 
@@ -885,7 +840,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               onUndoLastAction();
             }}
             disabled={!recentEvent}
-            className="px-4 py-2.5 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-extrabold text-xs sm:text-sm rounded-lg flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-30 disabled:pointer-events-none transition active:scale-95"
+            className="px-3.5 py-2 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
           >
             <Undo2 className="w-4 h-4" />
             <span>DESHACER</span>
@@ -894,14 +849,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
         {/* History Drawer Modal Overlay */}
         {showHistoryDrawer && (
-          <div className="bg-[#12141a] border-t border-neutral-800 p-2.5 mt-2 rounded-t-lg max-h-48 overflow-y-auto space-y-1.5 animate-in slide-in-from-bottom">
+          <div className="bg-[#12141a] border-t border-neutral-800 p-2 mt-1.5 rounded-t-lg max-h-40 overflow-y-auto space-y-1 animate-in slide-in-from-bottom">
             <div className="flex items-center justify-between text-[10px] uppercase font-bold text-neutral-400 pb-1 border-b border-neutral-800">
-              <span>Últimas 5 jugadas (pulsa el cubo para eliminar):</span>
+              <span>Últimas jugadas (pulsa icono para borrar):</span>
               <button
                 onClick={() => setShowHistoryDrawer(false)}
                 className="text-neutral-400 hover:text-white px-1 font-mono"
               >
-                Cerrar ✕
+                ✕
               </button>
             </div>
 
@@ -917,7 +872,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 >
                   <span className="text-neutral-300 truncate">
                     {event.isOpponentAction
-                      ? `Rival: ${event.actionLabel}`
+                      ? event.actionLabel
                       : `#${event.playerNumber} ${event.playerName?.split(' ')[0]} - ${event.actionLabel}`}
                   </span>
                   <button
@@ -938,94 +893,219 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             )}
           </div>
         )}
+      </div>
 
-        {/* Opponent Player Scouting Modal */}
-        {scoutingOppAction && (
-          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-[#14161B] border border-sky-500/50 rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-sky-600/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold font-mono">
-                    #
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">
-                      Scouting Rival: {scoutingOppAction === 'OPP_1P' ? '+1 TL' : scoutingOppAction === 'OPP_2P' ? '+2 Canasta' : scoutingOppAction === 'OPP_3P' ? '+3 Triple' : 'Falta'}
-                    </h3>
-                    <p className="text-[11px] text-neutral-400">Asigna dorsal rival para análisis de scouting</p>
-                  </div>
+      {/* 8. MODAL / OVERLAY: ESCOGER JUGADOR TRAS MARCAR LA ACCIÓN */}
+      {pendingAction && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in">
+          <div className="bg-[#12141a] border border-amber-500/60 rounded-2xl p-3.5 max-w-md w-full mx-auto shadow-2xl space-y-2.5 animate-in slide-in-from-bottom">
+            {/* Modal Header with Action badge */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-neutral-800">
+              <div className="flex items-center gap-2">
+                <div className="px-2.5 py-1 bg-amber-500 text-black font-mono font-black text-xs uppercase rounded shadow">
+                  {pendingActionDef?.shortLabel}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setScoutingOppAction(null)}
-                  className="text-neutral-400 hover:text-white text-base"
-                >
-                  ✕
-                </button>
+                <div>
+                  <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wide">
+                    ¿Quién ha hecho {pendingActionDef?.shortLabel}?
+                  </h3>
+                  <p className="text-[10px] text-neutral-400">
+                    {pendingActionDef?.label}
+                  </p>
+                </div>
               </div>
 
-              {/* Quick Numbers Chips */}
-              <div>
-                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1.5 font-mono">
-                  Dorsales comunes
-                </label>
-                <div className="grid grid-cols-6 gap-1.5">
-                  {[0, 3, 4, 7, 9, 10, 11, 13, 15, 23, 30, 77].map(num => (
+              <button
+                onClick={() => setPendingAction(null)}
+                className="p-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full font-mono text-xs"
+                title="Cancelar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quinteto en Pista (5 Big Buttons with Instant Synchronized Stats) */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-mono text-amber-400 font-bold uppercase">
+                <span>Jugadores en pista:</span>
+                <span className="text-neutral-500 text-[9px]">Toca un jugador</span>
+              </div>
+
+              <div className="grid grid-cols-5 gap-1.5">
+                {playersOnCourt.map(player => {
+                  const stats = calculatePlayerStats(player, game.events);
+                  const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
+                  const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
+
+                  return (
                     <button
-                      key={num}
-                      type="button"
-                      onClick={() => handleConfirmOpponentScout(num)}
-                      className="py-2 bg-neutral-900 hover:bg-sky-600/30 hover:border-sky-500 border border-neutral-700 rounded-lg text-xs font-mono font-black text-neutral-200 transition active:scale-95"
+                      key={player.id}
+                      onClick={() => handleConfirmPlayerForAction(player)}
+                      className={`rounded-xl p-1.5 text-center transition flex flex-col justify-between border active:scale-95 min-h-[76px] shadow-lg ${
+                        isFouledOut
+                          ? 'bg-red-950/50 border-red-800 text-red-400'
+                          : isFoulDanger
+                          ? 'bg-amber-950/50 border-amber-600 text-amber-200'
+                          : 'bg-[#181a24] hover:bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-amber-400'
+                      }`}
                     >
-                      #{num}
+                      {/* Dorsal */}
+                      <div className="font-scoreboard text-2xl sm:text-3xl font-black text-amber-300 leading-none">
+                        #{player.number}
+                      </div>
+
+                      {/* Name */}
+                      <div className="text-[11px] font-bold text-neutral-200 truncate w-full mt-0.5">
+                        {player.name.split(' ')[0]}
+                      </div>
+
+                      {/* Stats */}
+                      <div className="text-[9px] font-mono text-neutral-400 mt-1 pt-0.5 border-t border-neutral-800 flex justify-between w-full font-bold">
+                        <span className="text-orange-400">{stats.points}p</span>
+                        <span
+                          className={
+                            isFouledOut
+                              ? 'text-red-400'
+                              : isFoulDanger
+                              ? 'text-amber-400'
+                              : 'text-neutral-400'
+                          }
+                        >
+                          {stats.foulsPersonal}F
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Toggle Bench Players */}
+            <div className="pt-1.5 border-t border-neutral-800">
+              <button
+                onClick={() => setShowBenchInModal(!showBenchInModal)}
+                className="w-full py-1 px-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-[11px] font-mono font-bold rounded flex items-center justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3 h-3 text-neutral-400" />
+                  <span>Jugadores del banquillo ({benchPlayers.length})</span>
+                </div>
+                <span>{showBenchInModal ? '▲ Ocultar' : '▼ Mostrar'}</span>
+              </button>
+
+              {showBenchInModal && (
+                <div className="grid grid-cols-4 gap-1 mt-1.5 max-h-28 overflow-y-auto p-0.5">
+                  {benchPlayers.map(player => (
+                    <button
+                      key={player.id}
+                      onClick={() => handleConfirmPlayerForAction(player)}
+                      className="bg-[#181a24] hover:bg-neutral-800 p-1.5 rounded-lg border border-neutral-700 text-center active:scale-95 font-mono"
+                    >
+                      <div className="text-sm font-bold text-neutral-300">#{player.number}</div>
+                      <div className="text-[9px] truncate text-neutral-400">{player.name.split(' ')[0]}</div>
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Custom Number Input */}
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  max="99"
-                  placeholder="Otro dorsal..."
-                  value={opponentNumberInput}
-                  onChange={e => setOpponentNumberInput(e.target.value)}
-                  className="grow bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-sky-500 outline-none"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const val = parseInt(opponentNumberInput, 10);
-                      handleConfirmOpponentScout(isNaN(val) ? undefined : val);
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const val = parseInt(opponentNumberInput, 10);
-                    handleConfirmOpponentScout(isNaN(val) ? undefined : val);
-                  }}
-                  className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold font-mono transition"
-                >
-                  Guardar
-                </button>
-              </div>
+            {/* Cancel Button */}
+            <button
+              onClick={() => setPendingAction(null)}
+              className="w-full py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-mono font-bold text-[11px] uppercase rounded-lg transition"
+            >
+              Cancelar Acción ✕
+            </button>
+          </div>
+        </div>
+      )}
 
-              {/* General without dorsal */}
-              <div className="pt-2 border-t border-neutral-800">
-                <button
-                  type="button"
-                  onClick={() => handleConfirmOpponentScout(undefined)}
-                  className="w-full py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 rounded-lg text-xs font-medium text-center transition"
-                >
-                  Continuar sin dorsal (Equipo general)
-                </button>
+      {/* 9. OPPONENT PLAYER SCOUTING MODAL */}
+      {scoutingOppAction && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#14161B] border border-sky-500/50 rounded-2xl p-4 max-w-sm w-full shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-sky-600/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold font-mono text-xs">
+                  #
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-white">
+                    Scouting Rival: {scoutingOppAction === 'OPP_1P' ? '+1 TL' : scoutingOppAction === 'OPP_2P' ? '+2 Canasta' : scoutingOppAction === 'OPP_3P' ? '+3 Triple' : 'Falta'}
+                  </h3>
+                  <p className="text-[10px] text-neutral-400">Asigna dorsal rival para análisis</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScoutingOppAction(null)}
+                className="text-neutral-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Numbers Chips */}
+            <div>
+              <label className="text-[9px] uppercase font-bold text-neutral-400 block mb-1 font-mono">
+                Dorsales habituales:
+              </label>
+              <div className="grid grid-cols-6 gap-1">
+                {[0, 3, 4, 7, 9, 10, 11, 13, 15, 23, 30, 77].map(num => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => handleConfirmOpponentScout(num)}
+                    className="py-1.5 bg-neutral-900 hover:bg-sky-600/30 hover:border-sky-500 border border-neutral-700 rounded-lg text-xs font-mono font-black text-neutral-200 transition active:scale-95"
+                  >
+                    #{num}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* Custom Number Input */}
+            <div className="flex gap-1.5">
+              <input
+                type="number"
+                min="0"
+                max="99"
+                placeholder="Otro dorsal..."
+                value={opponentNumberInput}
+                onChange={e => setOpponentNumberInput(e.target.value)}
+                className="grow bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-sky-500 outline-none"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    const val = parseInt(opponentNumberInput, 10);
+                    handleConfirmOpponentScout(isNaN(val) ? undefined : val);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const val = parseInt(opponentNumberInput, 10);
+                  handleConfirmOpponentScout(isNaN(val) ? undefined : val);
+                }}
+                className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold font-mono transition"
+              >
+                Guardar
+              </button>
+            </div>
+
+            {/* General without dorsal */}
+            <div className="pt-1.5 border-t border-neutral-800">
+              <button
+                type="button"
+                onClick={() => handleConfirmOpponentScout(undefined)}
+                className="w-full py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 rounded-lg text-xs font-medium text-center transition"
+              >
+                Continuar sin dorsal (Equipo general)
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
