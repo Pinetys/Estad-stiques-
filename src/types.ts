@@ -135,6 +135,7 @@ export interface TeamProfile {
 export interface Game {
   id: string;
   teamId?: string;
+  category?: string;
   title: string;
   date: string;
   location?: string;
@@ -201,6 +202,30 @@ export interface PlayerAccumulatedStats {
   plusMinusTotal: number;
   minutesPlayedTotalSeconds?: number;
   minutesAvg?: string;
+  categories?: string[];
+  teamNames?: string[];
+  matchLog?: {
+    gameId: string;
+    date: string;
+    opponent: string;
+    points: number;
+    twoPointsMade: number;
+    twoPointsAttempted: number;
+    threePointsMade: number;
+    threePointsAttempted: number;
+    freeThrowsMade: number;
+    freeThrowsAttempted: number;
+    rebounds: number;
+    assists: number;
+    steals: number;
+    turnovers: number;
+    blocks: number;
+    fouls: number;
+    efficiency: number;
+    plusMinus: number;
+    minutes: string;
+    result: 'W' | 'L';
+  }[];
 }
 
 export interface SeasonAggregatedStats {

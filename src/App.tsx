@@ -27,7 +27,8 @@ import { TeamSelectorModal } from './components/TeamSelectorModal';
 import { CloudSyncBackupModal } from './components/CloudSyncBackupModal';
 import { ShotChartModal } from './components/ShotChartModal';
 import { OfficialMatchSheetModal } from './components/OfficialMatchSheetModal';
-import { saveGameToLibrary, syncMatchesFromCloud } from './utils/libraryUtils';
+import { GeneralAccumulatedStatsView } from './components/GeneralAccumulatedStatsView';
+import { saveGameToLibrary, syncMatchesFromCloud, getSavedGamesFromStorage } from './utils/libraryUtils';
 import {
   getRegisteredTeams,
   saveRegisteredTeams,
@@ -57,6 +58,7 @@ import {
   Shield,
   Cloud,
   MoreVertical,
+  Activity,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -118,6 +120,8 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState<'live' | 'stats' | 'charts' | 'playbyplay' | 'scout'>('live');
+  const [statsSubMode, setStatsSubMode] = useState<'match' | 'accumulated'>('match');
+  const [libraryGames, setLibraryGames] = useState<Game[]>(() => getSavedGamesFromStorage());
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   // Multi-Team Management
@@ -207,6 +211,7 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
       // Also persist to library so all matches are accumulated
       saveGameToLibrary(game);
+      setLibraryGames(getSavedGamesFromStorage());
     } catch {
       // Storage quota or private mode
     }
@@ -1117,6 +1122,19 @@ export default function App() {
                       <button
                         onClick={() => {
                           setShowMobileHeaderMenu(false);
+                          setActiveTab('stats');
+                          setStatsSubMode('accumulated');
+                          setLibraryGames(getSavedGamesFromStorage());
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                      >
+                        <BarChart3 className="w-4 h-4 text-orange-400 shrink-0" />
+                        <span>Estadísticas Acumuladas</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
                           setShowLibraryModal(true);
                         }}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
@@ -1202,6 +1220,26 @@ export default function App() {
 
               {/* Desktop Full Menu (Visible on md and up) */}
               <div className="hidden md:flex items-center gap-1.5">
+                {/* General Accumulated Stats Quick Button */}
+                <button
+                  id="open-accumulated-stats-btn"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setActiveTab('stats');
+                    setStatsSubMode('accumulated');
+                    setLibraryGames(getSavedGamesFromStorage());
+                  }}
+                  className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition active:scale-95 ${
+                    activeTab === 'stats' && statsSubMode === 'accumulated'
+                      ? 'bg-orange-600 text-white border border-orange-500 shadow-sm'
+                      : 'bg-orange-950/40 hover:bg-orange-900/60 text-orange-300 border border-orange-700/60'
+                  }`}
+                  title="Estadísticas acumuladas generales sumando todos los partidos"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-[10px]">Acumuladas</span>
+                </button>
+
                 {/* Match Library / History Button */}
                 <button
                   id="open-library-btn"
@@ -1312,7 +1350,63 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'stats' && <BoxScoreTable game={game} />}
+            {activeTab === 'stats' && (
+              <div className="space-y-3">
+                {/* Sub-navigation to toggle between Match Box Score and General Accumulated Stats */}
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 pt-2">
+                  <div className="bg-[#14161B] p-1 rounded-xl border border-gray-800 flex items-center justify-between gap-1.5 shadow-lg">
+                    <button
+                      id="subtab-match-stats-btn"
+                      type="button"
+                      onClick={() => {
+                        playSound('click', game.settings.soundEnabled);
+                        setStatsSubMode('match');
+                      }}
+                      className={`flex-1 py-1.5 sm:py-2 px-3 rounded-lg text-xs font-mono font-bold transition flex items-center justify-center gap-1.5 ${
+                        statsSubMode === 'match'
+                          ? 'bg-orange-600 text-white shadow-md'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                      }`}
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      <span>Partido Actual (Box Score)</span>
+                    </button>
+
+                    <button
+                      id="subtab-accumulated-stats-btn"
+                      type="button"
+                      onClick={() => {
+                        playSound('click', game.settings.soundEnabled);
+                        setStatsSubMode('accumulated');
+                        setLibraryGames(getSavedGamesFromStorage());
+                      }}
+                      className={`flex-1 py-1.5 sm:py-2 px-3 rounded-lg text-xs font-mono font-bold transition flex items-center justify-center gap-1.5 ${
+                        statsSubMode === 'accumulated'
+                          ? 'bg-orange-600 text-white shadow-md'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                      }`}
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      <span>Acumuladas Generales</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40 text-orange-300 font-normal">
+                        {libraryGames.length}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {statsSubMode === 'match' ? (
+                  <BoxScoreTable game={game} />
+                ) : (
+                  <GeneralAccumulatedStatsView
+                    games={libraryGames.length > 0 ? libraryGames : [game]}
+                    recordedTeams={teams}
+                    currentGame={game}
+                    soundEnabled={game.settings.soundEnabled}
+                  />
+                )}
+              </div>
+            )}
 
             {activeTab === 'charts' && <ChartsAndStats game={game} />}
 
@@ -1429,6 +1523,7 @@ export default function App() {
                 onClick={() => {
                   playSound('click', game.settings.soundEnabled);
                   setActiveTab('stats');
+                  setLibraryGames(getSavedGamesFromStorage());
                 }}
                 className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
                   activeTab === 'stats'

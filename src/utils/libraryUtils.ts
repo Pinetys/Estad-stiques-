@@ -93,9 +93,52 @@ export async function syncMatchesFromCloud(): Promise<Game[]> {
 }
 
 /**
- * Calculates aggregated season and multi-match stats for an entire set of games
+ * Helper to get or infer the category for any game
  */
-export function calculateSeasonStats(games: Game[]): SeasonAggregatedStats {
+export function getGameCategory(game: Game): string {
+  if (game.category && game.category.trim()) return game.category.trim();
+  try {
+    const raw = localStorage.getItem('basketstats_teams_v1');
+    if (raw) {
+      const teams = JSON.parse(raw);
+      if (Array.isArray(teams)) {
+        if (game.teamId) {
+          const t = teams.find(team => team.id === game.teamId);
+          if (t?.category) return t.category.trim();
+        }
+        const tByName = teams.find(team => team.name?.toLowerCase() === game.homeTeamName?.toLowerCase());
+        if (tByName?.category) return tByName.category.trim();
+      }
+    }
+  } catch {}
+  return 'Senior';
+}
+
+/**
+ * Extract all unique categories present in a list of games
+ */
+export function getAllCategoriesFromGames(games: Game[]): string[] {
+  const set = new Set<string>();
+  games.forEach(g => {
+    const cat = getGameCategory(g);
+    if (cat) set.add(cat);
+  });
+  if (set.size === 0) set.add('Senior');
+  return Array.from(set).sort();
+}
+
+/**
+ * Calculates aggregated season and multi-match stats for an entire set of games,
+ * optionally filtered by category.
+ */
+export function calculateSeasonStats(
+  allGames: Game[],
+  filterCategory?: string
+): SeasonAggregatedStats {
+  const games = filterCategory && filterCategory !== 'ALL'
+    ? allGames.filter(g => getGameCategory(g).toLowerCase() === filterCategory.toLowerCase())
+    : allGames;
+
   if (!games || games.length === 0) {
     return {
       totalGames: 0,
@@ -272,6 +315,43 @@ export function calculateSeasonStats(games: Game[]): SeasonAggregatedStats {
       existing.foulsDrawn += pBox.foulsDrawn;
       existing.efficiencyTotal += pBox.efficiency;
       existing.plusMinusTotal += pBox.plusMinus;
+
+      // Track categories and teams
+      if (!existing.categories) existing.categories = [];
+      const gameCat = getGameCategory(game);
+      if (gameCat && !existing.categories.includes(gameCat)) {
+        existing.categories.push(gameCat);
+      }
+
+      if (!existing.teamNames) existing.teamNames = [];
+      if (game.homeTeamName && !existing.teamNames.includes(game.homeTeamName)) {
+        existing.teamNames.push(game.homeTeamName);
+      }
+
+      // Track individual match log
+      if (!existing.matchLog) existing.matchLog = [];
+      existing.matchLog.push({
+        gameId: game.id,
+        date: game.date,
+        opponent: game.awayTeamName,
+        points: pBox.points,
+        twoPointsMade: pBox.twoPointsMade,
+        twoPointsAttempted: pBox.twoPointsAttempted,
+        threePointsMade: pBox.threePointsMade,
+        threePointsAttempted: pBox.threePointsAttempted,
+        freeThrowsMade: pBox.freeThrowsMade,
+        freeThrowsAttempted: pBox.freeThrowsAttempted,
+        rebounds: pBox.totalRebounds,
+        assists: pBox.assists,
+        steals: pBox.steals,
+        turnovers: pBox.turnovers,
+        blocks: pBox.blocks,
+        fouls: pBox.foulsPersonal,
+        efficiency: pBox.efficiency,
+        plusMinus: pBox.plusMinus,
+        minutes: pBox.minutesPlayedFormatted,
+        result: isWin ? 'W' : 'L',
+      });
 
       playerStatsMap.set(key, existing);
     });

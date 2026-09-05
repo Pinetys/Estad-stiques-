@@ -14,6 +14,7 @@ import {
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { GeneralAccumulatedStatsView } from './GeneralAccumulatedStatsView';
 import Markdown from 'react-markdown';
 import {
   Library,
@@ -624,186 +625,13 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
           )}
 
           {/* TAB 2: SEASON ACCUMULATED STATS */}
-          {activeSubTab === 'seasonStats' && seasonStats && (
-            <div className="space-y-6">
-              {/* Overview Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5 font-mono">
-                <div className="bg-[#14161B] border border-gray-800 p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Balance Global</span>
-                  <span className="text-lg font-black text-orange-400">
-                    {seasonStats.wins}V - {seasonStats.losses}D
-                  </span>
-                  <span className="text-[10px] text-gray-500 block">({seasonStats.winRate}% Vic.)</span>
-                </div>
-
-                <div className="bg-[#14161B] border border-gray-800 p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos Media</span>
-                  <span className="text-lg font-black text-emerald-400">{seasonStats.pointsScoredAvg}</span>
-                  <span className="text-[10px] text-gray-500 block">Fav / Partido</span>
-                </div>
-
-                <div className="bg-[#14161B] border border-gray-800 p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos Encajados</span>
-                  <span className="text-lg font-black text-rose-400">{seasonStats.pointsConcededAvg}</span>
-                  <span className="text-[10px] text-gray-500 block">Contra / Partido</span>
-                </div>
-
-                <div className="bg-[#14161B] border border-gray-800 p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Diferencial Medio</span>
-                  <span className={`text-lg font-black ${seasonStats.pointDiffAvg >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {seasonStats.pointDiffAvg >= 0 ? `+${seasonStats.pointDiffAvg}` : seasonStats.pointDiffAvg}
-                  </span>
-                  <span className="text-[10px] text-gray-500 block">Margen Victoria</span>
-                </div>
-
-                <div className="bg-[#14161B] border border-gray-800 p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Rebotes Media</span>
-                  <span className="text-lg font-black text-sky-400">{seasonStats.reboundsAvg}</span>
-                  <span className="text-[10px] text-gray-500 block">{seasonStats.offensiveRebounds} Of / {seasonStats.defensiveRebounds} Def</span>
-                </div>
-
-                <div className="bg-[#14161B] border border-gray-800 p-3 rounded-lg text-center">
-                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Ratio AST / PER</span>
-                  <span className="text-lg font-black text-amber-400">{seasonStats.astToRatio}</span>
-                  <span className="text-[10px] text-gray-500 block">{seasonStats.assistsAvg} AST / {seasonStats.turnoversAvg} PER</span>
-                </div>
-              </div>
-
-              {/* Team Shooting Accuracy Bars */}
-              <div className="bg-[#14161B] border border-gray-800 rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-800">
-                  <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wide font-mono flex items-center gap-1.5">
-                    <Target className="w-4 h-4 text-orange-400" />
-                    <span>Efectividad de Tiro Acumulada del Equipo</span>
-                  </h3>
-                  <button
-                    onClick={handleExportCSV}
-                    className="p-1.5 px-3 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded text-xs flex items-center gap-1.5 shadow"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>Descargar Volcado Completo (CSV Excel)</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono">
-                  {/* T2 */}
-                  <div className="bg-[#0F1115] p-3 rounded-lg border border-gray-800 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-400">Tiros de 2 (T2):</span>
-                      <span className="text-emerald-400 font-bold">
-                        {seasonStats.twoPointsPercentage}% ({seasonStats.twoPointsMade}/{seasonStats.twoPointsAttempted})
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, seasonStats.twoPointsPercentage)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* T3 */}
-                  <div className="bg-[#0F1115] p-3 rounded-lg border border-gray-800 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-400">Triples (T3):</span>
-                      <span className="text-amber-400 font-bold">
-                        {seasonStats.threePointsPercentage}% ({seasonStats.threePointsMade}/{seasonStats.threePointsAttempted})
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-amber-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, seasonStats.threePointsPercentage)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* TL */}
-                  <div className="bg-[#0F1115] p-3 rounded-lg border border-gray-800 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-400">Tiros Libres (TL):</span>
-                      <span className="text-teal-400 font-bold">
-                        {seasonStats.freeThrowsPercentage}% ({seasonStats.freeThrowsMade}/{seasonStats.freeThrowsAttempted})
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-teal-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, seasonStats.freeThrowsPercentage)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Per-Player Accumulated Table */}
-              <div className="bg-[#14161B] border border-gray-800 rounded-lg overflow-hidden space-y-2">
-                <div className="p-3 bg-[#101216] border-b border-gray-800 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-orange-400" />
-                    <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wide font-mono">
-                      Tabla Acumulada de Jugadores ({seasonStats.playersAccumulated.length})
-                    </h3>
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-mono">
-                    Ordenado por puntos totales & valoración
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs font-mono">
-                    <thead>
-                      <tr className="bg-[#0F1115] text-gray-400 border-b border-gray-800 text-[10px] uppercase">
-                        <th className="p-2.5">#</th>
-                        <th className="p-2.5">Jugador</th>
-                        <th className="p-2.5 text-center">Pos</th>
-                        <th className="p-2.5 text-center">PJ</th>
-                        <th className="p-2.5 text-center text-emerald-400 font-bold">Min/P</th>
-                        <th className="p-2.5 text-center text-orange-400 font-bold">Pts Tot</th>
-                        <th className="p-2.5 text-center font-bold">Pts/P</th>
-                        <th className="p-2.5 text-center">T2%</th>
-                        <th className="p-2.5 text-center">T3%</th>
-                        <th className="p-2.5 text-center">TL%</th>
-                        <th className="p-2.5 text-center">Reb/P</th>
-                        <th className="p-2.5 text-center">Ast/P</th>
-                        <th className="p-2.5 text-center">Rob/P</th>
-                        <th className="p-2.5 text-center">Per/P</th>
-                        <th className="p-2.5 text-center text-emerald-400 font-bold">Val/P</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {seasonStats.playersAccumulated.map((p, idx) => (
-                        <tr key={p.playerId} className="hover:bg-gray-800/50 transition">
-                          <td className="p-2.5 font-bold text-orange-400">{p.playerNumber}</td>
-                          <td className="p-2.5 font-bold text-gray-100 whitespace-nowrap">
-                            {p.playerName}
-                            {idx === 0 && <span className="ml-1.5 text-[9px] text-amber-400 bg-amber-950/60 px-1 py-0.2 rounded border border-amber-800">Máx Anotador</span>}
-                          </td>
-                          <td className="p-2.5 text-center text-gray-400">{p.position}</td>
-                          <td className="p-2.5 text-center text-gray-300">{p.gamesPlayed}</td>
-                          <td className="p-2.5 text-center text-emerald-400 font-bold">{p.minutesAvg}&apos;</td>
-                          <td className="p-2.5 text-center text-orange-400 font-black">{p.pointsTotal}</td>
-                          <td className="p-2.5 text-center font-bold text-gray-100">{p.pointsAvg}</td>
-                          <td className="p-2.5 text-center text-gray-300">
-                            {p.twoPointsPercentage}% <span className="text-[9px] text-gray-500">({p.twoPointsMade}/{p.twoPointsAttempted})</span>
-                          </td>
-                          <td className="p-2.5 text-center text-gray-300">
-                            {p.threePointsPercentage}% <span className="text-[9px] text-gray-500">({p.threePointsMade}/{p.threePointsAttempted})</span>
-                          </td>
-                          <td className="p-2.5 text-center text-gray-300">
-                            {p.freeThrowsPercentage}% <span className="text-[9px] text-gray-500">({p.freeThrowsMade}/{p.freeThrowsAttempted})</span>
-                          </td>
-                          <td className="p-2.5 text-center text-sky-300 font-semibold">{p.reboundsAvg}</td>
-                          <td className="p-2.5 text-center text-teal-300 font-semibold">{p.assistsAvg}</td>
-                          <td className="p-2.5 text-center text-gray-400">{p.stealsAvg}</td>
-                          <td className="p-2.5 text-center text-gray-400">{p.turnoversAvg}</td>
-                          <td className="p-2.5 text-center text-emerald-400 font-black">{p.efficiencyAvg}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          {activeSubTab === 'seasonStats' && (
+            <div className="pt-1">
+              <GeneralAccumulatedStatsView
+                games={library}
+                currentGame={currentGame}
+                soundEnabled={currentGame.settings.soundEnabled}
+              />
             </div>
           )}
 
