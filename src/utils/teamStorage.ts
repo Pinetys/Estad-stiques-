@@ -1,5 +1,5 @@
 import { Player, TeamProfile, Game } from '../types';
-import { DEFAULT_ROSTER } from '../data/defaultData';
+import { DEFAULT_ROSTER, OPPONENT_TEAMS } from '../data/defaultData';
 import { getSavedGamesFromStorage } from './libraryUtils';
 import {
   syncTeamToCloud,
@@ -187,3 +187,124 @@ export function getTeamMatches(teamIdOrName: string): Game[] {
     return false;
   });
 }
+
+export interface RecordedOpponent {
+  name: string;
+  logo?: string;
+  count: number;
+  lastPlayed?: string;
+}
+
+const SAVED_OPPONENTS_KEY = 'basketstats_saved_opponents_v1';
+
+/**
+ * Get all recorded opponent teams from past matches, custom additions, and defaults
+ */
+export function getRecordedOpponents(): RecordedOpponent[] {
+  const map = new Map<string, RecordedOpponent>();
+
+  // 1. Defaults
+  OPPONENT_TEAMS.forEach(name => {
+    const key = name.trim().toLowerCase();
+    map.set(key, { name: name.trim(), logo: '🛡️', count: 0 });
+  });
+
+  // 2. Custom saved opponents in localStorage
+  try {
+    const raw = localStorage.getItem(SAVED_OPPONENTS_KEY);
+    if (raw) {
+      const parsed: RecordedOpponent[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach(opp => {
+          if (opp.name && opp.name.trim()) {
+            const key = opp.name.trim().toLowerCase();
+            const existing = map.get(key);
+            map.set(key, {
+              name: opp.name.trim(),
+              logo: opp.logo || existing?.logo || '🛡️',
+              count: (existing?.count || 0) + (opp.count || 0),
+              lastPlayed: opp.lastPlayed || existing?.lastPlayed,
+            });
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Error reading saved opponents:', err);
+  }
+
+  // 3. Scan saved match library
+  try {
+    const games = getSavedGamesFromStorage();
+    const registeredTeams = getRegisteredTeams();
+    const registeredNames = new Set(registeredTeams.map(t => t.name.trim().toLowerCase()));
+
+    games.forEach(g => {
+      // Away team is typically the opponent
+      const awayName = g.awayTeamName?.trim();
+      if (awayName) {
+        const key = awayName.toLowerCase();
+        const existing = map.get(key);
+        map.set(key, {
+          name: awayName,
+          logo: g.awayTeamLogo || existing?.logo || '🛡️',
+          count: (existing?.count || 0) + 1,
+          lastPlayed: g.date || existing?.lastPlayed,
+        });
+      }
+
+      // If home team wasn't one of our registered clubs, it might be an opponent (e.g. played as away)
+      const homeName = g.homeTeamName?.trim();
+      if (homeName && !registeredNames.has(homeName.toLowerCase())) {
+        const key = homeName.toLowerCase();
+        const existing = map.get(key);
+        map.set(key, {
+          name: homeName,
+          logo: g.homeTeamLogo || existing?.logo || '🛡️',
+          count: (existing?.count || 0) + 1,
+          lastPlayed: g.date || existing?.lastPlayed,
+        });
+      }
+    });
+  } catch (err) {
+    console.warn('Error reading games for opponents:', err);
+  }
+
+  // Convert to array and sort: most played first, then alphabetically
+  return Array.from(map.values()).sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+  });
+}
+
+/**
+ * Save a custom opponent so it stays in recorded opponents list
+ */
+export function saveRecordedOpponent(name: string, logo?: string): RecordedOpponent[] {
+  if (!name.trim()) return getRecordedOpponents();
+  try {
+    const raw = localStorage.getItem(SAVED_OPPONENTS_KEY);
+    let list: RecordedOpponent[] = raw ? JSON.parse(raw) : [];
+    const trimmed = name.trim();
+    const existingIndex = list.findIndex(o => o.name.toLowerCase() === trimmed.toLowerCase());
+    if (existingIndex >= 0) {
+      list[existingIndex] = {
+        ...list[existingIndex],
+        name: trimmed,
+        logo: logo || list[existingIndex].logo,
+      };
+    } else {
+      list.push({
+        name: trimmed,
+        logo: logo || '🛡️',
+        count: 1,
+        lastPlayed: new Date().toLocaleDateString('es-ES'),
+      });
+    }
+    localStorage.setItem(SAVED_OPPONENTS_KEY, JSON.stringify(list));
+  } catch (err) {
+    console.warn('Error saving opponent:', err);
+  }
+  return getRecordedOpponents();
+}
+

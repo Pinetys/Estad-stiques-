@@ -912,13 +912,50 @@ export default function App() {
     awayTeamName: string;
     homeTeamLogo?: string;
     awayTeamLogo?: string;
+    homeTeamColor?: string;
+    awayTeamColor?: string;
+    homeTeamId?: string;
+    selectedRoster?: Player[];
     settings: GameSettings;
   }) => {
     // Ensure current game is saved in the library first
     saveGameToLibrary(game);
 
+    // Prepare fresh roster from selected recorded team or existing players
+    let initialPlayers: Player[];
+    if (newConfig.selectedRoster && newConfig.selectedRoster.length > 0) {
+      initialPlayers = newConfig.selectedRoster.map(p => ({
+        ...p,
+        foulsCount: 0,
+        isFouledOut: false,
+        minutesPlayedSeconds: 0,
+        quarterSeconds: {},
+      }));
+    } else if (newConfig.homeTeamId) {
+      const foundTeam = teams.find(t => t.id === newConfig.homeTeamId);
+      if (foundTeam && foundTeam.roster.length > 0) {
+        initialPlayers = foundTeam.roster.map(p => ({
+          ...p,
+          foulsCount: 0,
+          isFouledOut: false,
+          minutesPlayedSeconds: 0,
+          quarterSeconds: {},
+        }));
+      } else {
+        initialPlayers = game.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} }));
+      }
+    } else {
+      initialPlayers = game.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} }));
+    }
+
+    if (newConfig.homeTeamId) {
+      setActiveTeamId(newConfig.homeTeamId);
+      setActiveTeamIdState(newConfig.homeTeamId);
+    }
+
     const freshGame: Game = {
       id: `game-${Date.now()}`,
+      teamId: newConfig.homeTeamId || game.teamId,
       title: 'Partido en Directo',
       date: new Date().toLocaleDateString('es-ES', {
         day: '2-digit',
@@ -929,8 +966,8 @@ export default function App() {
       awayTeamName: newConfig.awayTeamName,
       homeTeamLogo: newConfig.homeTeamLogo,
       awayTeamLogo: newConfig.awayTeamLogo,
-      homeTeamColor: '#f97316',
-      awayTeamColor: '#3b82f6',
+      homeTeamColor: newConfig.homeTeamColor || '#f97316',
+      awayTeamColor: newConfig.awayTeamColor || '#3b82f6',
       homeScore: 0,
       awayScore: 0,
       currentQuarter: 1,
@@ -942,7 +979,7 @@ export default function App() {
       awayQuarterFouls: 0,
       status: 'live',
       settings: newConfig.settings,
-      players: game.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 0, quarterSeconds: {} })),
+      players: initialPlayers,
       events: [],
       quarterScores: [
         { quarter: 1, quarterLabel: 'Q1', home: 0, away: 0 },
@@ -1512,6 +1549,9 @@ export default function App() {
       {showNewGameModal && (
         <NewGameModal
           currentGame={game}
+          recordedTeams={teams}
+          activeTeamId={activeTeamId}
+          onSaveNewTeam={handleSaveTeam}
           onClose={() => setShowNewGameModal(false)}
           onStartNewGame={handleStartNewGame}
         />
