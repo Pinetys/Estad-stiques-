@@ -112,9 +112,10 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
       setLastActionFeedback(null);
     }, 2500);
 
-    // If it's a basket (or field goal if 'all' is enabled) and auto-open is active:
+    // If it's a basket OR a missed field goal (2PA/3PA) and auto-open is active:
     const isBasket = actionType === '2PM' || actionType === '3PM';
-    const isFieldGoal = isBasket || (game.settings.shotChartAutoOpen === 'all' && (actionType === '2PA' || actionType === '3PA'));
+    const isMissedFieldGoal = actionType === '2PA' || actionType === '3PA';
+    const isFieldGoal = isBasket || isMissedFieldGoal;
 
     if (isFieldGoal && game.settings.shotChartAutoOpen !== 'off' && onOpenShotChartForBasket) {
       onOpenShotChartForBasket({
@@ -390,36 +391,6 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
-            {/* 2 Puntos Metido */}
-            <button
-              id="action-2pm-btn"
-              onClick={() => handleActionClick('2PM')}
-              className={`${
-                isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-neutral-100 border-neutral-700'
-                  : 'bg-orange-600/20 hover:bg-orange-600 text-orange-300 hover:text-white border-orange-500/50'
-              } border font-bold rounded py-3 px-3 flex items-center justify-between active:scale-95 transition group min-h-[52px]`}
-            >
-              <div className="text-left">
-                <div className="text-sm sm:text-base font-black font-mono leading-none">+2 Puntos</div>
-                <div className={`text-[10px] uppercase font-bold ${isCourtMode ? 'text-neutral-400' : 'text-orange-400/80 group-hover:text-white/80'} mt-0.5`}>Tiro 2 Metido</div>
-              </div>
-              <CheckCircle2 className={`w-5 h-5 ${isCourtMode ? 'text-emerald-400' : 'text-orange-400 group-hover:text-white'}`} />
-            </button>
-
-            {/* 2 Puntos Fallado */}
-            <button
-              id="action-2pa-btn"
-              onClick={() => handleActionClick('2PA')}
-              className={`bg-[#14161B] hover:bg-gray-800 border ${isCourtMode ? 'border-neutral-800' : 'border-gray-800'} text-gray-300 font-semibold rounded py-3 px-3 flex items-center justify-between active:scale-95 transition min-h-[52px]`}
-            >
-              <div className="text-left">
-                <div className="text-sm font-bold leading-none font-mono">Tiro 2 Fallado</div>
-                <div className="text-[10px] text-gray-500 mt-0.5">Intento erróneo</div>
-              </div>
-              <XCircle className="w-4 h-4 text-gray-500" />
-            </button>
-
             {/* Triple Metido */}
             <button
               id="action-3pm-btn"
@@ -446,6 +417,36 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               <div className="text-left">
                 <div className="text-sm font-bold leading-none font-mono">Triple Fallado</div>
                 <div className="text-[10px] text-gray-500 mt-0.5">Intento triple</div>
+              </div>
+              <XCircle className="w-4 h-4 text-gray-500" />
+            </button>
+
+            {/* 2 Puntos Metido */}
+            <button
+              id="action-2pm-btn"
+              onClick={() => handleActionClick('2PM')}
+              className={`${
+                isCourtMode
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-neutral-100 border-neutral-700'
+                  : 'bg-orange-600/20 hover:bg-orange-600 text-orange-300 hover:text-white border-orange-500/50'
+              } border font-bold rounded py-3 px-3 flex items-center justify-between active:scale-95 transition group min-h-[52px]`}
+            >
+              <div className="text-left">
+                <div className="text-sm sm:text-base font-black font-mono leading-none">+2 Puntos</div>
+                <div className={`text-[10px] uppercase font-bold ${isCourtMode ? 'text-neutral-400' : 'text-orange-400/80 group-hover:text-white/80'} mt-0.5`}>Tiro 2 Metido</div>
+              </div>
+              <CheckCircle2 className={`w-5 h-5 ${isCourtMode ? 'text-emerald-400' : 'text-orange-400 group-hover:text-white'}`} />
+            </button>
+
+            {/* 2 Puntos Fallado */}
+            <button
+              id="action-2pa-btn"
+              onClick={() => handleActionClick('2PA')}
+              className={`bg-[#14161B] hover:bg-gray-800 border ${isCourtMode ? 'border-neutral-800' : 'border-gray-800'} text-gray-300 font-semibold rounded py-3 px-3 flex items-center justify-between active:scale-95 transition min-h-[52px]`}
+            >
+              <div className="text-left">
+                <div className="text-sm font-bold leading-none font-mono">Tiro 2 Fallado</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Intento erróneo</div>
               </div>
               <XCircle className="w-4 h-4 text-gray-500" />
             </button>
@@ -489,19 +490,19 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
             <span>Faltas Personales</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {/* Falta Personal */}
             <button
               id="action-pf-btn"
               onClick={() => handleActionClick('PF')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-rose-300 border-neutral-700'
-                  : 'bg-rose-950/40 hover:bg-rose-700 text-rose-300 hover:text-white border-rose-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-rose-200 border-2 border-rose-900/80'
+                  : 'bg-rose-950/50 hover:bg-rose-800 text-rose-200 hover:text-white border-2 border-rose-700/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Falta Personal (P)</div>
-              <div className="text-[9px] text-rose-400/80 group-hover:text-white/80 uppercase mt-0.5">Falta común</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Falta Personal (P)</div>
+              <div className="text-[10px] text-rose-400 group-hover:text-white/80 uppercase mt-1">Falta común</div>
             </button>
 
             {/* Falta con Tiro */}
@@ -510,12 +511,12 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('PFT')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-rose-300 border-neutral-700'
-                  : 'bg-rose-950/40 hover:bg-rose-700 text-rose-300 hover:text-white border-rose-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-rose-200 border-2 border-rose-900/80'
+                  : 'bg-rose-950/50 hover:bg-rose-800 text-rose-200 hover:text-white border-2 border-rose-700/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Falta de Tiro (P1/2)</div>
-              <div className="text-[9px] text-rose-400/80 group-hover:text-white/80 uppercase mt-0.5">En acción de tiro</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Falta de Tiro (P1/2)</div>
+              <div className="text-[10px] text-rose-400 group-hover:text-white/80 uppercase mt-1">Con Tiros</div>
             </button>
 
             {/* Falta Antideportiva */}
@@ -524,12 +525,12 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('UF')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-red-300 border-red-900/60'
-                  : 'bg-red-950/50 hover:bg-red-800 text-red-300 hover:text-white border-red-700/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-red-200 border-2 border-red-900/80'
+                  : 'bg-red-950/60 hover:bg-red-800 text-red-200 hover:text-white border-2 border-red-700/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Antideportiva (U)</div>
-              <div className="text-[9px] text-red-400/80 group-hover:text-white/80 uppercase mt-0.5">Falta flagrante</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Antideportiva (U)</div>
+              <div className="text-[10px] text-red-400 group-hover:text-white/80 uppercase mt-1">Flagrante</div>
             </button>
 
             {/* Falta Técnica o Ataque */}
@@ -538,12 +539,12 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('TF')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-purple-300 border-purple-950'
-                  : 'bg-purple-950/40 hover:bg-purple-800 text-purple-300 hover:text-white border-purple-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-purple-200 border-2 border-purple-900/80'
+                  : 'bg-purple-950/50 hover:bg-purple-800 text-purple-200 hover:text-white border-2 border-purple-700/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Técnica (T) / Ataque</div>
-              <div className="text-[9px] text-purple-400/80 group-hover:text-white/80 uppercase mt-0.5">Conducta o pantalla</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Técnica (T) / Ataque</div>
+              <div className="text-[10px] text-purple-300 group-hover:text-white/80 uppercase mt-1">Conducta / Ofensiva</div>
             </button>
           </div>
         </div>
@@ -555,19 +556,19 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
             <span>Rebotes, Asistencias y Juego</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {/* Rebote Defensivo */}
             <button
               id="action-dreb-btn"
               onClick={() => handleActionClick('DREB')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-sky-200 border-neutral-700'
-                  : 'bg-blue-950/40 hover:bg-blue-700 text-blue-300 hover:text-white border-blue-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-sky-100 border-2 border-sky-800/80'
+                  : 'bg-blue-950/60 hover:bg-blue-700 text-blue-100 hover:text-white border-2 border-blue-600/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Reb. Defensivo</div>
-              <div className="text-[9px] text-blue-400/80 group-hover:text-white/80 uppercase mt-0.5">Rebote defensa</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Reb. Defensivo</div>
+              <div className="text-[10px] text-blue-300 group-hover:text-white/80 uppercase mt-1">Defensa</div>
             </button>
 
             {/* Rebote Ofensivo */}
@@ -576,12 +577,12 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('OREB')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-indigo-200 border-neutral-700'
-                  : 'bg-indigo-950/40 hover:bg-indigo-700 text-indigo-300 hover:text-white border-indigo-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-indigo-100 border-2 border-indigo-800/80'
+                  : 'bg-indigo-950/60 hover:bg-indigo-700 text-indigo-100 hover:text-white border-2 border-indigo-600/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Reb. Ofensivo</div>
-              <div className="text-[9px] text-indigo-400/80 group-hover:text-white/80 uppercase mt-0.5">Rebote ataque</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Reb. Ofensivo</div>
+              <div className="text-[10px] text-indigo-300 group-hover:text-white/80 uppercase mt-1">Ataque</div>
             </button>
 
             {/* Asistencia */}
@@ -590,12 +591,12 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('AST')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-sky-200 border-neutral-700'
-                  : 'bg-sky-950/40 hover:bg-sky-700 text-sky-300 hover:text-white border-sky-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-sky-100 border-2 border-sky-800/80'
+                  : 'bg-sky-950/60 hover:bg-sky-700 text-sky-100 hover:text-white border-2 border-sky-600/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Asistencia (AST)</div>
-              <div className="text-[9px] text-sky-400/80 group-hover:text-white/80 uppercase mt-0.5">Pase a canasta</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Asistencia (AST)</div>
+              <div className="text-[10px] text-sky-300 group-hover:text-white/80 uppercase mt-1">Pase a canasta</div>
             </button>
 
             {/* Robo */}
@@ -604,22 +605,22 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('STL')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-cyan-200 border-neutral-700'
-                  : 'bg-cyan-950/40 hover:bg-cyan-700 text-cyan-300 hover:text-white border-cyan-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-emerald-100 border-2 border-emerald-800/80'
+                  : 'bg-emerald-950/60 hover:bg-emerald-700 text-emerald-100 hover:text-white border-2 border-emerald-600/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Robo de Balón</div>
-              <div className="text-[9px] text-cyan-400/80 group-hover:text-white/80 uppercase mt-0.5">Recuperación</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Robo de Balón</div>
+              <div className="text-[10px] text-emerald-300 group-hover:text-white/80 uppercase mt-1">Recuperación</div>
             </button>
 
             {/* Pérdida */}
             <button
               id="action-to-btn"
               onClick={() => handleActionClick('TO')}
-              className="bg-[#14161B] hover:bg-zinc-700 text-zinc-300 hover:text-white border border-gray-800 font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]"
+              className="bg-[#181a22] hover:bg-zinc-700 text-zinc-100 hover:text-white border-2 border-zinc-600 font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm"
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Pérdida (PER)</div>
-              <div className="text-[9px] text-zinc-500 group-hover:text-white/80 uppercase mt-0.5">Pase malo o pasos</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Pérdida (PER)</div>
+              <div className="text-[10px] text-zinc-300 group-hover:text-white/80 uppercase mt-1">Error o pasos</div>
             </button>
 
             {/* Tapón */}
@@ -628,12 +629,12 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('BLK')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-purple-200 border-neutral-700'
-                  : 'bg-violet-950/40 hover:bg-violet-700 text-violet-300 hover:text-white border-violet-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]` }
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-purple-100 border-2 border-purple-800/80'
+                  : 'bg-violet-950/60 hover:bg-violet-700 text-violet-100 hover:text-white border-2 border-violet-600/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Tapón (TAP)</div>
-              <div className="text-[9px] text-violet-400/80 group-hover:text-white/80 uppercase mt-0.5">Gorro a favor</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Tapón (TAP)</div>
+              <div className="text-[10px] text-purple-300 group-hover:text-white/80 uppercase mt-1">Gorro a favor</div>
             </button>
 
             {/* Falta Provocada / Recibida */}
@@ -642,22 +643,22 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               onClick={() => handleActionClick('FD')}
               className={`${
                 isCourtMode
-                  ? 'bg-[#14161b] hover:bg-neutral-800 text-lime-200 border-neutral-700'
-                  : 'bg-lime-950/40 hover:bg-lime-700 text-lime-300 hover:text-white border-lime-800/60'
-              } border font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]`}
+                  ? 'bg-[#14161b] hover:bg-neutral-800 text-lime-100 border-2 border-lime-700/80'
+                  : 'bg-lime-950/60 hover:bg-lime-700 text-lime-100 hover:text-white border-2 border-lime-600/80'
+              } font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm`}
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Falta Recibida</div>
-              <div className="text-[9px] text-lime-400/80 group-hover:text-white/80 uppercase mt-0.5">Falta provocada</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Falta Recibida</div>
+              <div className="text-[10px] text-lime-300 group-hover:text-white/80 uppercase mt-1">Provocada (+1 Val)</div>
             </button>
 
             {/* Tapón Recibido */}
             <button
               id="action-blkr-btn"
               onClick={() => handleActionClick('BLKR')}
-              className="bg-[#14161B] hover:bg-stone-700 text-stone-300 hover:text-white border border-gray-800 font-bold rounded py-2.5 px-2.5 text-left active:scale-95 transition group min-h-[46px]"
+              className="bg-[#181a22] hover:bg-stone-700 text-stone-100 hover:text-white border-2 border-stone-600 font-bold rounded-xl py-3.5 px-3 text-left active:scale-95 transition group min-h-[58px] sm:min-h-[66px] shadow-sm"
             >
-              <div className="text-xs sm:text-sm font-extrabold font-mono leading-none">Tapón Recibido</div>
-              <div className="text-[9px] text-stone-500 group-hover:text-white/80 uppercase mt-0.5">Tiro bloqueado</div>
+              <div className="text-sm sm:text-base font-black font-mono leading-none">Tapón Recibido</div>
+              <div className="text-[10px] text-stone-300 group-hover:text-white/80 uppercase mt-1">Tiro bloqueado</div>
             </button>
           </div>
         </div>

@@ -24,6 +24,56 @@ import {
   BookOpen,
 } from 'lucide-react';
 
+// High-level Tactical Scouting Engine (Instant mathematical fallback)
+function generateLocalTacticalReport(
+  game: Game,
+  homeBoxScore: ReturnType<typeof calculateTeamStats>,
+  playersStats: any[],
+  focusOption: string
+): string {
+  const sortedPlayers = [...playersStats].sort((a, b) => (b.valoracionPIR ?? b.efficiency ?? 0) - (a.valoracionPIR ?? a.efficiency ?? 0));
+  const topPlayer = sortedPlayers[0];
+  const secondPlayer = sortedPlayers[1];
+  const astToRatio = homeBoxScore.turnovers > 0 
+    ? (homeBoxScore.assists / homeBoxScore.turnovers).toFixed(2) 
+    : String(homeBoxScore.assists);
+
+  const diff = game.homeScore - game.awayScore;
+  const isWinning = diff > 0;
+  const margin = Math.abs(diff);
+
+  return `# 📋 INFORME TÉCNICO Y SCOUTING DE PARTIDO
+**Enfoque**: ${focusOption} | **Competición**: ${game.category || 'Oficial'} | **Fecha**: ${game.date}
+
+---
+
+## 1. 📊 RESUMEN EJECUTIVO & RITMO DE JUEGO
+- **Resultado Actual**: **${game.homeTeamName} ${game.homeScore} - ${game.awayScore} ${game.awayTeamName}** (${isWinning ? `+${margin} a favor` : diff === 0 ? 'Empate' : `-${margin} en contra`}).
+- **Estado**: Cuarto ${formatQuarterShort(game.currentQuarter)} (${Math.floor(game.currentSecondsRemaining / 60)}:${(game.currentSecondsRemaining % 60).toString().padStart(2, '0')}).
+- **Valoración de Equipo (PIR)**: **${homeBoxScore.efficiency}**, reflejando ${homeBoxScore.efficiency >= 50 ? 'un desempeño colectivo muy sólido' : 'una dinámica con margen de mejora en concentración y efectividad'}.
+
+## 2. 🎯 EFICIENCIA OFENSIVA & SELECCIÓN DE TIRO
+- **Tiro de 2 Puntos**: ${homeBoxScore.twoPointsMade}/${homeBoxScore.twoPointsAttempted} (${homeBoxScore.twoPointsPercentage}%). ${homeBoxScore.twoPointsPercentage >= 50 ? 'Excelente finalización cerca del aro y media distancia.' : 'Necesidad de buscar tiros de mayor porcentaje en la pintura.'}
+- **Tiro de 3 Puntos**: ${homeBoxScore.threePointsMade}/${homeBoxScore.threePointsAttempted} (${homeBoxScore.threePointsPercentage}%). ${homeBoxScore.threePointsPercentage >= 33 ? 'Buena amenaza exterior manteniendo el spacing abierto.' : 'Baja efectividad perimetral; priorizar juego interior y extra-pass.'}
+- **Tiros Libres**: ${homeBoxScore.freeThrowsMade}/${homeBoxScore.freeThrowsAttempted} (${homeBoxScore.freeThrowsPercentage}%).
+- **Circulación de Balón**: **${homeBoxScore.assists} asistencias** frente a **${homeBoxScore.turnovers} pérdidas** (Ratio AST/TO: **${astToRatio}**). ${Number(astToRatio) >= 1.2 ? 'Circulación fluida con buena toma de decisiones.' : 'Atención a las pérdidas no forzadas que alimentan el contraataque rival.'}
+
+## 3. 🛡️ RENDIMIENTO DEFENSIVO & CONTROL DEL REBOTE
+- **Rebotes Totales**: **${homeBoxScore.totalRebounds}** (${homeBoxScore.defensiveRebounds} defensivos y ${homeBoxScore.offensiveRebounds} ofensivos).
+- **Actividad Defensiva**: ${homeBoxScore.steals} recuperaciones de balón y ${homeBoxScore.blocks} tapones.
+- **Disciplina en Faltas**: ${homeBoxScore.foulsPersonal} faltas personales cometidas vs ${homeBoxScore.foulsDrawn} provocadas.
+
+## 4. ⭐ JUGADORES DESTACADOS & IMPACTO
+${topPlayer ? `- **Líder del Partido**: #${topPlayer.numero ?? topPlayer.number} **${topPlayer.nombre ?? topPlayer.name}** con **${topPlayer.puntos ?? topPlayer.points ?? 0} pts** y **${topPlayer.valoracionPIR ?? topPlayer.efficiency ?? 0} de valoración PIR**.` : ''}
+${secondPlayer ? `- **Segunda Referencia**: #${secondPlayer.numero ?? secondPlayer.number} **${secondPlayer.nombre ?? secondPlayer.name}** con **${secondPlayer.puntos ?? secondPlayer.points ?? 0} pts** y **${secondPlayer.valoracionPIR ?? secondPlayer.efficiency ?? 0} PIR**.` : ''}
+
+## 5. 🛠️ PLAN DE TRABAJO TÁCTICO PARA LOS PRÓXIMOS ENTRENAMIENTOS
+1. **Reducción de Pérdidas y Paciencia en Ataque**: Ejercicios 4c4 con límite de 3 botes para obligar a leer el juego sin balón y encontrar al jugador liberado.
+2. **Cierre de Rebote Colectivo (Box Out)**: Trabajo de bloqueo defensivo de las 5 posiciones antes de buscar el balón dividido.
+3. **Mecánica y Concentración en Tiros Libres**: Series de tiros libres bajo fatiga física al final de cada bloque de entrenamiento.
+4. **Balance Defensivo Inmediato**: Asignar 1 o 2 jugadores al balance tras cada lanzamiento para cortar transiciones rivales.`;
+}
+
 interface AICoachReportModalProps {
   game: Game;
   onClose: () => void;
@@ -168,15 +218,27 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Error al comunicarse con el servidor de análisis');
+        // Fallback to local tactical engine if server is unreachable
+        const fallbackReport = generateLocalTacticalReport(game, homeBoxScore, playersStats, focusOption);
+        setReport(fallbackReport);
+        playSound('score', game.settings.soundEnabled);
+        return;
       }
 
       const data = await response.json();
       setReport(data.report);
       playSound('score', game.settings.soundEnabled);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'No se pudo generar el informe táctico.');
+      console.warn('AI Coach server unreachable, using offline tactical analysis engine:', err);
+      try {
+        const homeBoxScore = calculateTeamStats(game.players, game.events, game.homeTeamName);
+        const playersStats = game.players.map(p => calculatePlayerStats(p, game.events));
+        const fallbackReport = generateLocalTacticalReport(game, homeBoxScore, playersStats, focusOption);
+        setReport(fallbackReport);
+        playSound('score', game.settings.soundEnabled);
+      } catch (fallbackErr) {
+        setError('No se pudo generar el informe táctico.');
+      }
     } finally {
       setIsLoading(false);
     }

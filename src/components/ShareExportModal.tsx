@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Game } from '../types';
 import { calculatePlayerStats, calculateTeamStats, exportGameToCSV, generateShareText } from '../utils/statsCalculator';
+import { downloadActaPdf, shareActaPdf } from '../utils/actaPdfGenerator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { Share2, Copy, Download, Printer, Check, MessageCircle, FileText } from 'lucide-react';
 
@@ -11,6 +12,7 @@ interface ShareExportModalProps {
 
 export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClose }) => {
   const [copied, setCopied] = useState(false);
+  const [pdfToast, setPdfToast] = useState<string | null>(null);
 
   const playerStats = game.players.map(p => calculatePlayerStats(p, game.events));
   const teamStats = calculateTeamStats(game.players, game.events, game.homeTeamName);
@@ -31,6 +33,21 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
   const handleWhatsAppShare = () => {
     const encoded = encodeURIComponent(shareText);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+  };
+
+  const handleDownloadPdf = () => {
+    downloadActaPdf(game);
+    playSound('score', game.settings.soundEnabled);
+    triggerHaptic('medium', game.settings.vibrationEnabled);
+    setPdfToast('¡Acta en PDF descargada!');
+    setTimeout(() => setPdfToast(null), 2500);
+  };
+
+  const handleSharePdf = async () => {
+    playSound('click', game.settings.soundEnabled);
+    const res = await shareActaPdf(game);
+    setPdfToast(res.method === 'download_fallback' ? 'PDF guardado' : '¡Acta compartida!');
+    setTimeout(() => setPdfToast(null), 2500);
   };
 
   const handleDownloadCSV = () => {
@@ -55,7 +72,14 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
-      <div className="bg-[#1A1D23] border border-gray-800 rounded max-w-lg w-full p-3.5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#1A1D23] border border-gray-800 rounded max-w-lg w-full p-3.5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto relative">
+        {pdfToast && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-mono font-bold text-xs px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-emerald-400">
+            <Check className="w-3.5 h-3.5" />
+            <span>{pdfToast}</span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-gray-800">
           <div className="flex items-center gap-1.5">
@@ -72,19 +96,37 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
 
         {/* Quick Share Buttons */}
         <div className="grid grid-cols-2 gap-1.5 font-mono">
+          {/* Direct PDF Download */}
+          <button
+            onClick={handleDownloadPdf}
+            className="p-2.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-bold rounded flex items-center justify-center gap-1.5 text-xs uppercase"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar PDF</span>
+          </button>
+
+          {/* Native PDF Share */}
+          <button
+            onClick={handleSharePdf}
+            className="p-2.5 bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white font-bold rounded flex items-center justify-center gap-1.5 text-xs uppercase"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>Enviar PDF Móvil</span>
+          </button>
+
           {/* WhatsApp Direct Share */}
           <button
             onClick={handleWhatsAppShare}
-            className="p-2.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-bold rounded flex items-center justify-center gap-1.5 text-xs uppercase"
+            className="p-2 bg-[#14161B] hover:bg-gray-800 active:bg-gray-900 border border-gray-700 text-green-400 font-bold rounded flex items-center justify-center gap-1.5 text-xs"
           >
-            <MessageCircle className="w-3.5 h-3.5 fill-white" />
-            <span>Enviar WhatsApp</span>
+            <MessageCircle className="w-3.5 h-3.5 fill-green-400" />
+            <span>WhatsApp Texto</span>
           </button>
 
           {/* Copy Text */}
           <button
             onClick={handleCopyClipboard}
-            className="p-2.5 bg-[#14161B] hover:bg-gray-800 active:bg-gray-900 border border-gray-700 text-gray-100 font-bold rounded flex items-center justify-center gap-1.5 text-xs uppercase"
+            className="p-2 bg-[#14161B] hover:bg-gray-800 active:bg-gray-900 border border-gray-700 text-gray-100 font-bold rounded flex items-center justify-center gap-1.5 text-xs"
           >
             {copied ? (
               <>
@@ -114,7 +156,7 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
             className="p-2 bg-[#14161B] hover:bg-gray-800 text-gray-200 border border-gray-800 font-semibold rounded flex items-center justify-center gap-1.5 text-[11px]"
           >
             <Printer className="w-3.5 h-3.5 text-sky-400" />
-            <span>Imprimir / PDF</span>
+            <span>Imprimir</span>
           </button>
         </div>
 

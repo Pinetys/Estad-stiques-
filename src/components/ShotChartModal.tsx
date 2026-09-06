@@ -244,27 +244,41 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
         {/* HEADER */}
         {isPendingMode && pendingShot ? (
           /* QUICK 1-STEP PLACEMENT HEADER */
-          <div className="bg-gradient-to-r from-orange-950/80 via-neutral-900 to-amber-950/70 border border-orange-500/50 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-md">
+          <div className={`bg-gradient-to-r ${
+            pendingShot.isMade
+              ? 'from-orange-950/80 via-neutral-900 to-amber-950/70 border-orange-500/50'
+              : 'from-rose-950/85 via-neutral-900 to-zinc-950 border-rose-600/70'
+          } border rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-md`}>
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-orange-500 text-black font-black flex items-center justify-center text-xl font-mono shadow shrink-0">
+              <div className={`w-11 h-11 rounded-xl ${
+                pendingShot.isMade ? 'bg-orange-500 text-black' : 'bg-rose-600 text-white'
+              } font-black flex items-center justify-center text-xl font-mono shadow shrink-0`}>
                 #{pendingShot.playerNumber}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-base font-black text-white">
-                    Canasta de {pendingShot.playerName}
+                    {pendingShot.isMade ? `Canasta de ${pendingShot.playerName}` : `Tiro Fallado por ${pendingShot.playerName}`}
                   </h3>
                   <span className={`text-xs font-mono font-black px-2 py-0.5 rounded-full ${
-                    pendingShot.points === 3
-                      ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                      : 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                    pendingShot.isMade
+                      ? pendingShot.points === 3
+                        ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                        : 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                      : 'bg-rose-950/80 text-rose-300 border border-rose-600'
                   }`}>
-                    +{pendingShot.points} PUNTOS ({pendingShot.actionType === '3PM' ? 'Triple' : 'Tiro de 2'})
+                    {pendingShot.isMade
+                      ? `+${pendingShot.points} PUNTOS (${pendingShot.actionType === '3PM' ? 'Triple' : 'Tiro de 2'})`
+                      : `FALLO (${pendingShot.actionType === '3PA' ? 'Triple 3P' : 'Tiro 2P'})`}
                   </span>
                 </div>
-                <p className="text-xs text-orange-200/90 font-mono mt-0.5 flex items-center gap-1.5">
-                  <Crosshair className="w-3.5 h-3.5 text-orange-400 animate-spin-slow" />
-                  <span>Toca en la pista dónde lanzó para registrarlo en 1 solo paso</span>
+                <p className={`text-xs ${pendingShot.isMade ? 'text-orange-200/90' : 'text-rose-200/90'} font-mono mt-0.5 flex items-center gap-1.5`}>
+                  <Crosshair className={`w-3.5 h-3.5 ${pendingShot.isMade ? 'text-orange-400' : 'text-rose-400'} animate-spin-slow`} />
+                  <span>
+                    {pendingShot.isMade
+                      ? 'Toca en la pista dónde lanzó para registrarlo en 1 solo paso'
+                      : 'Toca en la pista desde dónde falló el tiro para registrar la posición'}
+                  </span>
                 </p>
               </div>
             </div>
@@ -277,7 +291,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                   className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-600 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 active:scale-95 shadow"
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Anotar sin ubicar</span>
+                  <span>{pendingShot.isMade ? 'Anotar sin ubicar' : 'Registrar fallo sin ubicar'}</span>
                 </button>
               )}
               <button
@@ -436,7 +450,9 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
               <Crosshair className="w-3.5 h-3.5 text-orange-400" />
               <span>
                 {isPendingMode
-                  ? '🎯 Toca en la pista para marcar la posición de la canasta'
+                  ? pendingShot?.isMade
+                    ? '🎯 Toca en la pista para marcar la posición de la canasta'
+                    : '❌ Toca en la pista para marcar la posición del tiro fallado'
                   : 'Haz clic en la pista para situar un nuevo tiro'}
               </span>
             </div>

@@ -76,13 +76,32 @@ Por favor, genera un informe técnico profesional en Español con la siguiente e
 
 Utiliza terminología técnica de baloncesto profesional pero clara y motivadora.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents: prompt,
-      });
+      let reportText = '';
+      const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-pro-preview'];
+      let lastErr: any = null;
+
+      for (const m of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: m,
+            contents: prompt,
+          });
+          if (response.text) {
+            reportText = response.text;
+            break;
+          }
+        } catch (err) {
+          lastErr = err;
+          console.warn(`Attempt with ${m} failed, trying next model:`, err);
+        }
+      }
+
+      if (!reportText) {
+        throw lastErr || new Error('No se pudo generar respuesta con Gemini');
+      }
 
       res.json({
-        report: response.text || 'No se pudo generar el informe.',
+        report: reportText,
       });
     } catch (error: any) {
       console.error('Error generating AI coach report:', error);
@@ -133,13 +152,32 @@ Diseña una planificación de **3 a 4 sesiones de entrenamiento semanales** con 
 
 Utiliza vocabulario técnico de baloncesto (spacing, extra pass, closeout, balance defensivo, pick&roll coverage, PIR, box out) con explicaciones pedagógicas aplicables directamente en la pista.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents: prompt,
-      });
+      let planText = '';
+      const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-pro-preview'];
+      let lastErr: any = null;
+
+      for (const m of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: m,
+            contents: prompt,
+          });
+          if (response.text) {
+            planText = response.text;
+            break;
+          }
+        } catch (err) {
+          lastErr = err;
+          console.warn(`Attempt with ${m} failed, trying next model:`, err);
+        }
+      }
+
+      if (!planText) {
+        throw lastErr || new Error('No se pudo generar plan de temporada con Gemini');
+      }
 
       res.json({
-        plan: response.text || 'No se pudo generar el plan de entrenamiento.',
+        plan: planText,
       });
     } catch (error: any) {
       console.error('Error generating season training plan:', error);

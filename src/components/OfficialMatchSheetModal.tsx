@@ -1,6 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Game, PlayerBoxScore } from '../types';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
+import { downloadActaPdf, shareActaPdf } from '../utils/actaPdfGenerator';
+import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import {
   FileText,
   Printer,
@@ -10,6 +12,10 @@ import {
   Clock,
   Shield,
   CheckCircle,
+  Download,
+  Share2,
+  Check,
+  MessageCircle,
 } from 'lucide-react';
 
 interface OfficialMatchSheetModalProps {
@@ -22,6 +28,8 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
   onClose,
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const playerStatsList: PlayerBoxScore[] = game.players.map(p =>
     calculatePlayerStats(p, game.events)
@@ -53,6 +61,48 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
     window.print();
   };
 
+  const handleDownloadPdf = () => {
+    try {
+      setIsExporting(true);
+      downloadActaPdf(game);
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setToastMessage('¡Acta en PDF descargada con éxito!');
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err) {
+      console.error('Error downloading PDF:', err);
+      setToastMessage('Error al generar el PDF. Inténtalo de nuevo.');
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleSharePdf = async () => {
+    try {
+      setIsExporting(true);
+      playSound('click', game.settings.soundEnabled);
+      triggerHaptic('light', game.settings.vibrationEnabled);
+      const res = await shareActaPdf(game);
+      if (res.method === 'download_fallback') {
+        setToastMessage('PDF descargado para adjuntar en tu app favorita.');
+      } else {
+        setToastMessage('¡Acta compartida con éxito!');
+      }
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err) {
+      console.error('Error sharing PDF:', err);
+      handleDownloadPdf();
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = `🏀 *ACTA OFICIAL FIBA* - ${game.homeTeamName} vs ${game.awayTeamName}\n📅 Fecha: ${game.date} | Categoría: ${game.category || 'Oficial'}\n\n🏆 *Resultado Final*: ${game.homeTeamName} ${game.homeScore} - ${game.awayScore} ${game.awayTeamName}\n\nGenerado con BasketStats PRO`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   return (
     <div
       id="official-match-sheet-modal"
@@ -60,13 +110,21 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
       onClick={onClose}
     >
       <div
-        className="bg-[#14161B] border border-gray-700 rounded-2xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl space-y-4 my-auto animate-in zoom-in-95 max-h-[95vh] flex flex-col"
+        className="bg-[#14161B] border border-gray-700 rounded-2xl max-w-4xl w-full p-3 sm:p-5 shadow-2xl space-y-3 my-auto animate-in zoom-in-95 max-h-[96vh] flex flex-col relative"
         onClick={e => e.stopPropagation()}
       >
+        {/* Toast notification banner */}
+        {toastMessage && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-mono font-bold text-xs px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-emerald-400 animate-in fade-in slide-in-from-top-2">
+            <Check className="w-4 h-4" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
         {/* Header with actions */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-800 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-800 gap-3 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-blue-950/80 border border-blue-500/40 text-blue-400 rounded-xl">
+            <div className="p-2 bg-blue-950/80 border border-blue-500/40 text-blue-400 rounded-xl shrink-0">
               <FileText className="w-5 h-5" />
             </div>
             <div>
@@ -77,23 +135,61 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                 </span>
               </h2>
               <p className="text-xs text-gray-400 font-mono">
-                Documento oficial maquetado para impresión o exportación a PDF
+                Documento oficial maquetado en PDF de alta resolución
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Action Buttons: Mobile & Tablet Optimized */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Primary: Download PDF */}
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExporting}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-emerald-400"
+              title="Descargar archivo PDF al móvil o tablet"
+            >
+              <Download className="w-4 h-4" />
+              <span>DESCARGAR PDF</span>
+            </button>
+
+            {/* Primary: Native Share PDF */}
+            <button
+              type="button"
+              onClick={handleSharePdf}
+              disabled={isExporting}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-blue-400"
+              title="Compartir o enviar archivo PDF por WhatsApp, Telegram, etc."
+            >
+              <Share2 className="w-4 h-4" />
+              <span>ENVIAR PDF</span>
+            </button>
+
+            {/* WhatsApp Text */}
+            <button
+              type="button"
+              onClick={handleWhatsAppShare}
+              className="p-2 bg-green-700 hover:bg-green-600 text-white rounded-xl text-xs font-bold transition active:scale-95"
+              title="Enviar resumen por WhatsApp"
+            >
+              <MessageCircle className="w-4 h-4 fill-white" />
+            </button>
+
+            {/* Desktop Print */}
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold font-mono shadow-md flex items-center gap-1.5 transition"
+              className="hidden sm:flex px-2.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 rounded-xl text-xs font-mono font-bold items-center gap-1 transition"
+              title="Imprimir"
             >
-              <Printer className="w-4 h-4" />
-              <span>Imprimir / PDF</span>
+              <Printer className="w-3.5 h-3.5" />
             </button>
+
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-gray-300 transition"
+              className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-300 transition ml-1"
             >
               <X className="w-5 h-5" />
             </button>
