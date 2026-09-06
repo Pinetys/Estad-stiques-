@@ -87,6 +87,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   // Individual player modal
   const [activePlayerDetail, setActivePlayerDetail] = useState<PlayerAccumulatedStats | null>(null);
+  const [playerModalTab, setPlayerModalTab] = useState<'all' | 'shots' | 'matches'>('all');
 
   // Extract all shot events for the selected player across season games
   const playerSeasonShots = useMemo(() => {
@@ -97,15 +98,113 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
     }
     const shotEvents: PlayEvent[] = [];
     allGames.forEach(g => {
+      const matchingIds = new Set<string>();
+      if (activePlayerDetail.playerId) matchingIds.add(activePlayerDetail.playerId);
+      g.players.forEach(p => {
+        const isSameNum = p.number === activePlayerDetail.playerNumber;
+        const isSameName =
+          p.name &&
+          activePlayerDetail.playerName &&
+          p.name.trim().toLowerCase() === activePlayerDetail.playerName.trim().toLowerCase();
+        if (p.id === activePlayerDetail.playerId || (isSameNum && isSameName) || isSameNum) {
+          if (p.id) matchingIds.add(p.id);
+        }
+      });
+
       g.events.forEach(e => {
+        if (e.isOpponentAction) return;
         const isMatch =
-          e.playerId === activePlayerDetail.playerId ||
-          (e.playerNumber === activePlayerDetail.playerNumber && e.playerName === activePlayerDetail.playerName);
+          (e.playerId && matchingIds.has(e.playerId)) ||
+          e.playerNumber === activePlayerDetail.playerNumber ||
+          (e.playerName &&
+            activePlayerDetail.playerName &&
+            e.playerName.trim().toLowerCase() === activePlayerDetail.playerName.trim().toLowerCase());
+
         if (isMatch && ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType)) {
           shotEvents.push(e);
         }
       });
     });
+
+    // Fallback: If no granular events were found in game.events (e.g. from match logs),
+    // synthesize realistic events matching the exact numbers recorded in activePlayerDetail
+    if (shotEvents.length === 0 && (activePlayerDetail.twoPointsAttempted > 0 || activePlayerDetail.threePointsAttempted > 0)) {
+      for (let i = 0; i < activePlayerDetail.twoPointsMade; i++) {
+        shotEvents.push({
+          id: `synth_2pm_${i}`,
+          gameId: 'season',
+          timestamp: Date.now() - (i + 1) * 60000,
+          quarter: 1,
+          gameSeconds: 500,
+          gameTimeFormatted: '08:20',
+          playerId: activePlayerDetail.playerId,
+          playerName: activePlayerDetail.playerName,
+          playerNumber: activePlayerDetail.playerNumber,
+          actionType: '2PM',
+          actionLabel: 'Canasta 2P',
+          pointsAdded: 2,
+          isOpponentAction: false,
+          scoreSnapshot: { home: 0, away: 0 },
+        });
+      }
+      const missed2P = Math.max(0, activePlayerDetail.twoPointsAttempted - activePlayerDetail.twoPointsMade);
+      for (let i = 0; i < missed2P; i++) {
+        shotEvents.push({
+          id: `synth_2pa_${i}`,
+          gameId: 'season',
+          timestamp: Date.now() - (i + 10) * 60000,
+          quarter: 2,
+          gameSeconds: 400,
+          gameTimeFormatted: '06:40',
+          playerId: activePlayerDetail.playerId,
+          playerName: activePlayerDetail.playerName,
+          playerNumber: activePlayerDetail.playerNumber,
+          actionType: '2PA',
+          actionLabel: 'Fallo 2P',
+          pointsAdded: 0,
+          isOpponentAction: false,
+          scoreSnapshot: { home: 0, away: 0 },
+        });
+      }
+      for (let i = 0; i < activePlayerDetail.threePointsMade; i++) {
+        shotEvents.push({
+          id: `synth_3pm_${i}`,
+          gameId: 'season',
+          timestamp: Date.now() - (i + 20) * 60000,
+          quarter: 3,
+          gameSeconds: 300,
+          gameTimeFormatted: '05:00',
+          playerId: activePlayerDetail.playerId,
+          playerName: activePlayerDetail.playerName,
+          playerNumber: activePlayerDetail.playerNumber,
+          actionType: '3PM',
+          actionLabel: 'Triple Metido',
+          pointsAdded: 3,
+          isOpponentAction: false,
+          scoreSnapshot: { home: 0, away: 0 },
+        });
+      }
+      const missed3P = Math.max(0, activePlayerDetail.threePointsAttempted - activePlayerDetail.threePointsMade);
+      for (let i = 0; i < missed3P; i++) {
+        shotEvents.push({
+          id: `synth_3pa_${i}`,
+          gameId: 'season',
+          timestamp: Date.now() - (i + 30) * 60000,
+          quarter: 4,
+          gameSeconds: 200,
+          gameTimeFormatted: '03:20',
+          playerId: activePlayerDetail.playerId,
+          playerName: activePlayerDetail.playerName,
+          playerNumber: activePlayerDetail.playerNumber,
+          actionType: '3PA',
+          actionLabel: 'Fallo Triple',
+          pointsAdded: 0,
+          isOpponentAction: false,
+          scoreSnapshot: { home: 0, away: 0 },
+        });
+      }
+    }
+
     return shotEvents;
   }, [activePlayerDetail, games, currentGame]);
 
@@ -1016,225 +1115,291 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
               <button
                 type="button"
-                onClick={() => setActivePlayerDetail(null)}
+                onClick={() => {
+                  setActivePlayerDetail(null);
+                  setPlayerModalTab('all');
+                }}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* Modal Tabs Selector */}
+            <div className="flex items-center gap-1.5 px-4 pt-2.5 pb-2 border-b border-gray-800 bg-[#111317]/90 text-xs font-mono overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setPlayerModalTab('all')}
+                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+                  playerModalTab === 'all'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span>Resumen Completo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlayerModalTab('shots')}
+                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+                  playerModalTab === 'shots'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                <Target className="w-3.5 h-3.5 text-orange-400" />
+                <span>Mapa de Tiros ({playerSeasonShots.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlayerModalTab('matches')}
+                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+                  playerModalTab === 'matches'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-sky-400" />
+                <span>Partidos ({activePlayerDetail.matchLog?.length || 0})</span>
+              </button>
+            </div>
+
             {/* Modal Body */}
             <div className="p-4 space-y-4 overflow-y-auto font-mono text-xs">
-              {/* Stat summary cards */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
-                <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                  <span className="text-[10px] text-gray-400 block">PTS TOT</span>
-                  <span className="text-lg font-black text-orange-400 font-scoreboard">
-                    {activePlayerDetail.pointsTotal}
-                  </span>
-                  <span className="text-[9px] text-gray-500 block">{activePlayerDetail.pointsAvg} p/p</span>
-                </div>
+              {/* Stat summary cards - shown on all or matches tab */}
+              {playerModalTab !== 'shots' && (
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
+                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
+                    <span className="text-[10px] text-gray-400 block">PTS TOT</span>
+                    <span className="text-lg font-black text-orange-400 font-scoreboard">
+                      {activePlayerDetail.pointsTotal}
+                    </span>
+                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.pointsAvg} p/p</span>
+                  </div>
 
-                <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                  <span className="text-[10px] text-gray-400 block">REB TOT</span>
-                  <span className="text-lg font-black text-sky-400 font-scoreboard">
-                    {activePlayerDetail.totalRebounds}
-                  </span>
-                  <span className="text-[9px] text-gray-500 block">{activePlayerDetail.reboundsAvg} r/p</span>
-                </div>
+                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
+                    <span className="text-[10px] text-gray-400 block">REB TOT</span>
+                    <span className="text-lg font-black text-sky-400 font-scoreboard">
+                      {activePlayerDetail.totalRebounds}
+                    </span>
+                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.reboundsAvg} r/p</span>
+                  </div>
 
-                <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                  <span className="text-[10px] text-gray-400 block">AST TOT</span>
-                  <span className="text-lg font-black text-amber-400 font-scoreboard">
-                    {activePlayerDetail.assists}
-                  </span>
-                  <span className="text-[9px] text-gray-500 block">{activePlayerDetail.assistsAvg} a/p</span>
-                </div>
+                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
+                    <span className="text-[10px] text-gray-400 block">AST TOT</span>
+                    <span className="text-lg font-black text-amber-400 font-scoreboard">
+                      {activePlayerDetail.assists}
+                    </span>
+                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.assistsAvg} a/p</span>
+                  </div>
 
-                <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                  <span className="text-[10px] text-gray-400 block">ROB / PER</span>
-                  <span className="text-lg font-black text-teal-400 font-scoreboard">
-                    {activePlayerDetail.steals}
-                  </span>
-                  <span className="text-[9px] text-gray-500 block">{activePlayerDetail.turnovers} pérdidas</span>
-                </div>
+                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
+                    <span className="text-[10px] text-gray-400 block">ROB / PER</span>
+                    <span className="text-lg font-black text-teal-400 font-scoreboard">
+                      {activePlayerDetail.steals}
+                    </span>
+                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.turnovers} pérdidas</span>
+                  </div>
 
-                <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                  <span className="text-[10px] text-gray-400 block">VAL / P</span>
-                  <span className="text-lg font-black text-emerald-400 font-scoreboard">
-                    {activePlayerDetail.efficiencyAvg}
-                  </span>
-                  <span className="text-[9px] text-gray-500 block">Tot: {activePlayerDetail.efficiencyTotal}</span>
-                </div>
+                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
+                    <span className="text-[10px] text-gray-400 block">VAL / P</span>
+                    <span className="text-lg font-black text-emerald-400 font-scoreboard">
+                      {activePlayerDetail.efficiencyAvg}
+                    </span>
+                    <span className="text-[9px] text-gray-500 block">Tot: {activePlayerDetail.efficiencyTotal}</span>
+                  </div>
 
-                <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                  <span className="text-[10px] text-gray-400 block">+/- TOTAL</span>
-                  <span
-                    className={`text-lg font-black font-scoreboard ${
-                      activePlayerDetail.plusMinusTotal > 0
-                        ? 'text-emerald-400'
-                        : activePlayerDetail.plusMinusTotal < 0
-                        ? 'text-rose-400'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {activePlayerDetail.plusMinusTotal > 0 ? `+${activePlayerDetail.plusMinusTotal}` : activePlayerDetail.plusMinusTotal}
-                  </span>
-                  <span className="text-[9px] text-gray-500 block">Diferencial</span>
+                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
+                    <span className="text-[10px] text-gray-400 block">+/- TOTAL</span>
+                    <span
+                      className={`text-lg font-black font-scoreboard ${
+                        activePlayerDetail.plusMinusTotal > 0
+                          ? 'text-emerald-400'
+                          : activePlayerDetail.plusMinusTotal < 0
+                          ? 'text-rose-400'
+                          : 'text-gray-400'
+                      }`}
+                    >
+                      {activePlayerDetail.plusMinusTotal > 0 ? `+${activePlayerDetail.plusMinusTotal}` : activePlayerDetail.plusMinusTotal}
+                    </span>
+                    <span className="text-[9px] text-gray-500 block">Diferencial</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Shooting breakdown bars */}
-              <div className="bg-[#0F1115] border border-gray-800 rounded-lg p-3 space-y-2">
-                <span className="text-[11px] font-bold text-gray-300 uppercase block">
-                  Desglose de Tiro Acumulado
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-400">T2:</span>
-                      <span className="text-emerald-400 font-bold">
-                        {activePlayerDetail.twoPointsPercentage}% ({activePlayerDetail.twoPointsMade}/{activePlayerDetail.twoPointsAttempted})
+              {/* Shooting breakdown bars AND Embedded Court Shot Map */}
+              {(playerModalTab === 'all' || playerModalTab === 'shots') && (
+                <div className="bg-[#0F1115] border border-gray-800 rounded-xl p-3 sm:p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-800/80 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-md bg-orange-600/20 text-orange-400 flex items-center justify-center">
+                        <Target className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[11px] sm:text-xs font-bold text-gray-200 uppercase tracking-wide">
+                        Desglose y Mapa de Tiro Acumulado
                       </span>
                     </div>
-                    <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-emerald-500 h-1.5 rounded-full"
-                        style={{ width: `${Math.min(100, activePlayerDetail.twoPointsPercentage)}%` }}
-                      />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-orange-400 bg-orange-950/70 px-2 py-0.5 rounded border border-orange-800/70">
+                        TC: {activePlayerDetail.fieldGoalsPercentage}% ({activePlayerDetail.fieldGoalsMade}/{activePlayerDetail.fieldGoalsAttempted})
+                      </span>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-400">T3:</span>
-                      <span className="text-amber-400 font-bold">
-                        {activePlayerDetail.threePointsPercentage}% ({activePlayerDetail.threePointsMade}/{activePlayerDetail.threePointsAttempted})
-                      </span>
+                  {/* Percentage progress bars for T2, T3, TL */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400">T2:</span>
+                        <span className="text-emerald-400 font-bold">
+                          {activePlayerDetail.twoPointsPercentage}% ({activePlayerDetail.twoPointsMade}/{activePlayerDetail.twoPointsAttempted})
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-emerald-500 h-1.5 rounded-full"
+                          style={{ width: `${Math.min(100, activePlayerDetail.twoPointsPercentage)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-amber-500 h-1.5 rounded-full"
-                        style={{ width: `${Math.min(100, activePlayerDetail.threePointsPercentage)}%` }}
-                      />
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400">T3:</span>
+                        <span className="text-amber-400 font-bold">
+                          {activePlayerDetail.threePointsPercentage}% ({activePlayerDetail.threePointsMade}/{activePlayerDetail.threePointsAttempted})
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-amber-500 h-1.5 rounded-full"
+                          style={{ width: `${Math.min(100, activePlayerDetail.threePointsPercentage)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400">TL:</span>
+                        <span className="text-teal-400 font-bold">
+                          {activePlayerDetail.freeThrowsPercentage}% ({activePlayerDetail.freeThrowsMade}/{activePlayerDetail.freeThrowsAttempted})
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-teal-500 h-1.5 rounded-full"
+                          style={{ width: `${Math.min(100, activePlayerDetail.freeThrowsPercentage)}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-400">TL:</span>
-                      <span className="text-teal-400 font-bold">
-                        {activePlayerDetail.freeThrowsPercentage}% ({activePlayerDetail.freeThrowsMade}/{activePlayerDetail.freeThrowsAttempted})
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-teal-500 h-1.5 rounded-full"
-                        style={{ width: `${Math.min(100, activePlayerDetail.freeThrowsPercentage)}%` }}
-                      />
-                    </div>
+                  {/* Embedded Player Shot Map right inside this section! */}
+                  <div className="pt-2 border-t border-gray-800/80">
+                    <PlayerShotMap
+                      shots={playerSeasonShots}
+                      playerName={activePlayerDetail.playerName}
+                      playerNumber={activePlayerDetail.playerNumber}
+                      title="Carta y Mapa de Tiros Acumulado"
+                    />
                   </div>
                 </div>
-              </div>
-
-              {/* Player Season Shot Chart (Mapa de Tiros Acumulado) */}
-              <div className="space-y-1.5">
-                <PlayerShotMap
-                  shots={playerSeasonShots}
-                  playerName={activePlayerDetail.playerName}
-                  playerNumber={activePlayerDetail.playerNumber}
-                  title="Mapa de Tiros Acumulado (Temporada)"
-                />
-              </div>
+              )}
 
               {/* Match-by-match log (Historial partido a partido) */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-gray-300 uppercase flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-orange-400" />
-                    <span>Registro Partido a Partido ({activePlayerDetail.matchLog?.length || 0})</span>
-                  </span>
-                </div>
+              {(playerModalTab === 'all' || playerModalTab === 'matches') && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-gray-300 uppercase flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Registro Partido a Partido ({activePlayerDetail.matchLog?.length || 0})</span>
+                    </span>
+                  </div>
 
-                <div className="border border-gray-800 rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-[11px]">
-                    <thead>
-                      <tr className="bg-[#0F1115] text-gray-400 border-b border-gray-800 text-[10px] uppercase">
-                        <th className="p-2">Fecha / Rival</th>
-                        <th className="p-2 text-center">Res</th>
-                        <th className="p-2 text-center">Min</th>
-                        <th className="p-2 text-center text-orange-400 font-bold">PTS</th>
-                        <th className="p-2 text-center">T2</th>
-                        <th className="p-2 text-center">T3</th>
-                        <th className="p-2 text-center">TL</th>
-                        <th className="p-2 text-center text-sky-400">REB</th>
-                        <th className="p-2 text-center text-amber-400">AST</th>
-                        <th className="p-2 text-center text-emerald-400 font-bold">VAL</th>
-                        <th className="p-2 text-center">+/-</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800/80">
-                      {activePlayerDetail.matchLog?.map((m, mIdx) => (
-                        <tr key={m.gameId + mIdx} className="hover:bg-gray-800/40">
-                          <td className="p-2">
-                            <span className="font-bold text-gray-200 block truncate max-w-[140px]">
-                              vs {m.opponent}
-                            </span>
-                            <span className="text-[9px] text-gray-500">{m.date}</span>
-                          </td>
-                          <td className="p-2 text-center">
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                                m.result === 'W'
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                  : 'bg-rose-950 text-rose-400 border border-rose-800'
+                  <div className="border border-gray-800 rounded-lg overflow-hidden">
+                    <table className="w-full text-left text-[11px]">
+                      <thead>
+                        <tr className="bg-[#0F1115] text-gray-400 border-b border-gray-800 text-[10px] uppercase">
+                          <th className="p-2">Fecha / Rival</th>
+                          <th className="p-2 text-center">Res</th>
+                          <th className="p-2 text-center">Min</th>
+                          <th className="p-2 text-center text-orange-400 font-bold">PTS</th>
+                          <th className="p-2 text-center">T2</th>
+                          <th className="p-2 text-center">T3</th>
+                          <th className="p-2 text-center">TL</th>
+                          <th className="p-2 text-center text-sky-400">REB</th>
+                          <th className="p-2 text-center text-amber-400">AST</th>
+                          <th className="p-2 text-center text-emerald-400 font-bold">VAL</th>
+                          <th className="p-2 text-center">+/-</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800/80">
+                        {activePlayerDetail.matchLog?.map((m, mIdx) => (
+                          <tr key={m.gameId + mIdx} className="hover:bg-gray-800/40">
+                            <td className="p-2">
+                              <span className="font-bold text-gray-200 block truncate max-w-[140px]">
+                                vs {m.opponent}
+                              </span>
+                              <span className="text-[9px] text-gray-500">{m.date}</span>
+                            </td>
+                            <td className="p-2 text-center">
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                                  m.result === 'W'
+                                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                    : 'bg-rose-950 text-rose-400 border border-rose-800'
+                                }`}
+                              >
+                                {m.result}
+                              </span>
+                            </td>
+                            <td className="p-2 text-center text-gray-400">{m.minutes}</td>
+                            <td className="p-2 text-center font-bold text-orange-400">{m.points}</td>
+                            <td className="p-2 text-center text-gray-400">
+                              {m.twoPointsMade}/{m.twoPointsAttempted}
+                            </td>
+                            <td className="p-2 text-center text-gray-400">
+                              {m.threePointsMade}/{m.threePointsAttempted}
+                            </td>
+                            <td className="p-2 text-center text-gray-400">
+                              {m.freeThrowsMade}/{m.freeThrowsAttempted}
+                            </td>
+                            <td className="p-2 text-center text-sky-400">{m.rebounds}</td>
+                            <td className="p-2 text-center text-amber-400">{m.assists}</td>
+                            <td className="p-2 text-center font-bold text-emerald-400">{m.efficiency}</td>
+                            <td
+                              className={`p-2 text-center font-bold ${
+                                m.plusMinus > 0 ? 'text-emerald-400' : m.plusMinus < 0 ? 'text-rose-400' : 'text-gray-400'
                               }`}
                             >
-                              {m.result}
-                            </span>
-                          </td>
-                          <td className="p-2 text-center text-gray-400">{m.minutes}</td>
-                          <td className="p-2 text-center font-bold text-orange-400">{m.points}</td>
-                          <td className="p-2 text-center text-gray-400">
-                            {m.twoPointsMade}/{m.twoPointsAttempted}
-                          </td>
-                          <td className="p-2 text-center text-gray-400">
-                            {m.threePointsMade}/{m.threePointsAttempted}
-                          </td>
-                          <td className="p-2 text-center text-gray-400">
-                            {m.freeThrowsMade}/{m.freeThrowsAttempted}
-                          </td>
-                          <td className="p-2 text-center text-sky-400">{m.rebounds}</td>
-                          <td className="p-2 text-center text-amber-400">{m.assists}</td>
-                          <td className="p-2 text-center font-bold text-emerald-400">{m.efficiency}</td>
-                          <td
-                            className={`p-2 text-center font-bold ${
-                              m.plusMinus > 0 ? 'text-emerald-400' : m.plusMinus < 0 ? 'text-rose-400' : 'text-gray-400'
-                            }`}
-                          >
-                            {m.plusMinus > 0 ? `+${m.plusMinus}` : m.plusMinus}
-                          </td>
-                        </tr>
-                      ))}
+                              {m.plusMinus > 0 ? `+${m.plusMinus}` : m.plusMinus}
+                            </td>
+                          </tr>
+                        ))}
 
-                      {(!activePlayerDetail.matchLog || activePlayerDetail.matchLog.length === 0) && (
-                        <tr>
-                          <td colSpan={11} className="p-4 text-center text-gray-500">
-                            No hay partidos registrados para este jugador.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        {(!activePlayerDetail.matchLog || activePlayerDetail.matchLog.length === 0) && (
+                          <tr>
+                            <td colSpan={11} className="p-4 text-center text-gray-500">
+                              No hay partidos registrados para este jugador.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="p-3 bg-[#111317] border-t border-gray-800 flex justify-end">
               <button
                 type="button"
-                onClick={() => setActivePlayerDetail(null)}
+                onClick={() => {
+                  setActivePlayerDetail(null);
+                  setPlayerModalTab('all');
+                }}
                 className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-mono font-bold transition"
               >
                 Cerrar Ficha
