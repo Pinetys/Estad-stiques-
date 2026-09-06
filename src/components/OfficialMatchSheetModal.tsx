@@ -3,6 +3,7 @@ import { Game, PlayerBoxScore } from '../types';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
 import { downloadActaPdf, shareActaPdf } from '../utils/actaPdfGenerator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { PlayerShotMap } from './PlayerShotMap';
 import {
   FileText,
   Printer,
@@ -442,6 +443,37 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                   <div className="font-bold">Árbitro Principal</div>
                   <div className="text-neutral-500 text-[9px] mt-4">(Firma)</div>
                 </div>
+              </div>
+            </div>
+
+            {/* 7. OFFICIAL TEAM SHOT CHART (MAPA DE TIROS DEL EQUIPO) - PRINT & PDF */}
+            <div className="pt-6 border-t-2 border-black space-y-3 print:break-before-page">
+              <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-neutral-600 font-mono">
+                    ESTADÍSTICA GRÁFICA • CARTA Y MAPA DE TIROS
+                  </div>
+                  <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-neutral-900">
+                    MAPA DE TIROS METIDOS Y FALLADOS — {game.homeTeamName}
+                  </h2>
+                </div>
+                <div className="text-right font-mono text-[10px]">
+                  <span className="font-bold text-neutral-900">
+                    Efectividad: {teamStats.fieldGoalsPercentage}% TC ({teamStats.fieldGoalsMade}/{teamStats.fieldGoalsAttempted})
+                  </span>
+                  <div className="text-neutral-600">
+                    T2: {teamStats.twoPointsPercentage}% | T3: {teamStats.threePointsPercentage}% | TL: {teamStats.freeThrowsPercentage}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Shot Map Component with Light Theme for high-contrast crisp printing */}
+              <div className="bg-neutral-50 p-2 sm:p-3 rounded-lg border border-neutral-300">
+                <PlayerShotMap
+                  shots={game.events.filter(e => ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType))}
+                  theme="light"
+                  title={`Carta de Tiros Colectiva: ${game.homeTeamName}`}
+                />
               </div>
             </div>
 

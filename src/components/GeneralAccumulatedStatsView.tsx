@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Game, PlayerAccumulatedStats, SeasonAggregatedStats, Position } from '../types';
+import { Game, PlayerAccumulatedStats, SeasonAggregatedStats, Position, PlayEvent } from '../types';
 import {
   calculateSeasonStats,
   getAllCategoriesFromGames,
@@ -31,6 +31,7 @@ import {
   Sparkles,
   Filter,
 } from 'lucide-react';
+import { PlayerShotMap } from './PlayerShotMap';
 
 interface GeneralAccumulatedStatsViewProps {
   games: Game[];
@@ -86,6 +87,27 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   // Individual player modal
   const [activePlayerDetail, setActivePlayerDetail] = useState<PlayerAccumulatedStats | null>(null);
+
+  // Extract all shot events for the selected player across season games
+  const playerSeasonShots = useMemo(() => {
+    if (!activePlayerDetail) return [];
+    const allGames = [...games];
+    if (currentGame && !allGames.some(g => g.id === currentGame.id)) {
+      allGames.push(currentGame);
+    }
+    const shotEvents: PlayEvent[] = [];
+    allGames.forEach(g => {
+      g.events.forEach(e => {
+        const isMatch =
+          e.playerId === activePlayerDetail.playerId ||
+          (e.playerNumber === activePlayerDetail.playerNumber && e.playerName === activePlayerDetail.playerName);
+        if (isMatch && ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType)) {
+          shotEvents.push(e);
+        }
+      });
+    });
+    return shotEvents;
+  }, [activePlayerDetail, games, currentGame]);
 
   // Available categories extracted dynamically from games + registered teams
   const availableCategories = useMemo(() => {
@@ -1113,6 +1135,16 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Player Season Shot Chart (Mapa de Tiros Acumulado) */}
+              <div className="space-y-1.5">
+                <PlayerShotMap
+                  shots={playerSeasonShots}
+                  playerName={activePlayerDetail.playerName}
+                  playerNumber={activePlayerDetail.playerNumber}
+                  title="Mapa de Tiros Acumulado (Temporada)"
+                />
               </div>
 
               {/* Match-by-match log (Historial partido a partido) */}

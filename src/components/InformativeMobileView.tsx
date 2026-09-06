@@ -18,7 +18,9 @@ import {
   Eye,
   CheckCircle2,
   Edit2,
+  Target,
 } from 'lucide-react';
+import { PlayerShotMap } from './PlayerShotMap';
 
 interface InformativeMobileViewProps {
   game: Game;
@@ -34,6 +36,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'oncourt' | 'all' | 'team' | 'leaders'>('oncourt');
   const [selectedPlayerDetail, setSelectedPlayerDetail] = useState<Player | null>(null);
+  const [playerDetailTab, setPlayerDetailTab] = useState<'stats' | 'shotChart'>('stats');
 
   const playersOnCourt = game.players.filter(p => p.onCourt);
   const benchPlayers = game.players.filter(p => !p.onCourt);
@@ -635,55 +638,97 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
               </button>
             </div>
 
-            {(() => {
-              const pStats = calculatePlayerStats(selectedPlayerDetail, game.events);
-              return (
-                <div className="space-y-2 text-xs font-mono">
-                  <div className="bg-black/40 p-2.5 rounded-xl border border-gray-800 space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Tiempo en Pista:</span>
-                      <span className="font-bold text-emerald-400">{pStats.minutesPlayedFormatted}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Puntos Totales:</span>
-                      <span className="font-black text-orange-400">{pStats.points} pts</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Tiros de 2:</span>
-                      <span className="text-gray-200">{pStats.twoPointsMade}/{pStats.twoPointsAttempted} ({pStats.twoPointsPercentage}%)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Triples (T3):</span>
-                      <span className="text-gray-200">{pStats.threePointsMade}/{pStats.threePointsAttempted} ({pStats.threePointsPercentage}%)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Tiros Libres (TL):</span>
-                      <span className="text-gray-200">{pStats.freeThrowsMade}/{pStats.freeThrowsAttempted} ({pStats.freeThrowsPercentage}%)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Rebotes:</span>
-                      <span className="text-gray-200">{pStats.totalRebounds} ({pStats.offensiveRebounds} Of / {pStats.defensiveRebounds} Def)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Asistencias:</span>
-                      <span className="text-gray-200">{pStats.assists}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Robos / Pérdidas:</span>
-                      <span className="text-gray-200">{pStats.steals} / {pStats.turnovers}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Faltas Personales:</span>
-                      <span className={pStats.foulsPersonal >= (game.settings.foulOutLimit || 5) ? 'text-rose-400 font-bold' : ''}>{pStats.foulsPersonal}</span>
-                    </div>
-                    <div className="flex justify-between border-t border-gray-800 pt-1">
-                      <span className="text-gray-400 font-bold">Valoración Oficial:</span>
-                      <span className="font-black text-emerald-400">{pStats.efficiency}</span>
+            {/* Tab switch: Estadísticas vs Mapa de Tiros */}
+            <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-gray-800 text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setPlayerDetailTab('stats')}
+                className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 font-bold transition ${
+                  playerDetailTab === 'stats'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5" />
+                <span>Estadísticas</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlayerDetailTab('shotChart')}
+                className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 font-bold transition ${
+                  playerDetailTab === 'shotChart'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Target className="w-3.5 h-3.5" />
+                <span>Mapa de Tiros</span>
+                <span className="text-[10px] px-1 rounded bg-neutral-800 text-orange-200">
+                  {game.events.filter(e => e.playerId === selectedPlayerDetail.id && ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType)).length}
+                </span>
+              </button>
+            </div>
+
+            {playerDetailTab === 'stats' ? (
+              (() => {
+                const pStats = calculatePlayerStats(selectedPlayerDetail, game.events);
+                return (
+                  <div className="space-y-2 text-xs font-mono">
+                    <div className="bg-black/40 p-2.5 rounded-xl border border-gray-800 space-y-1.5 max-h-64 overflow-y-auto">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Tiempo en Pista:</span>
+                        <span className="font-bold text-emerald-400">{pStats.minutesPlayedFormatted}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Puntos Totales:</span>
+                        <span className="font-black text-orange-400">{pStats.points} pts</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Tiros de 2:</span>
+                        <span className="text-gray-200">{pStats.twoPointsMade}/{pStats.twoPointsAttempted} ({pStats.twoPointsPercentage}%)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Triples (T3):</span>
+                        <span className="text-gray-200">{pStats.threePointsMade}/{pStats.threePointsAttempted} ({pStats.threePointsPercentage}%)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Tiros Libres (TL):</span>
+                        <span className="text-gray-200">{pStats.freeThrowsMade}/{pStats.freeThrowsAttempted} ({pStats.freeThrowsPercentage}%)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Rebotes:</span>
+                        <span className="text-gray-200">{pStats.totalRebounds} ({pStats.offensiveRebounds} Of / {pStats.defensiveRebounds} Def)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Asistencias:</span>
+                        <span className="text-gray-200">{pStats.assists}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Robos / Pérdidas:</span>
+                        <span className="text-gray-200">{pStats.steals} / {pStats.turnovers}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Faltas Personales:</span>
+                        <span className={pStats.foulsPersonal >= (game.settings.foulOutLimit || 5) ? 'text-rose-400 font-bold' : ''}>{pStats.foulsPersonal}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-gray-800 pt-1">
+                        <span className="text-gray-400 font-bold">Valoración Oficial:</span>
+                        <span className="font-black text-emerald-400">{pStats.efficiency}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()
+            ) : (
+              <div className="max-h-[60vh] overflow-y-auto">
+                <PlayerShotMap
+                  shots={game.events.filter(e => e.playerId === selectedPlayerDetail.id)}
+                  playerName={selectedPlayerDetail.name}
+                  playerNumber={selectedPlayerDetail.number}
+                  title="Tiros Metidos y Fallados"
+                />
+              </div>
+            )}
 
             <button
               onClick={() => setSelectedPlayerDetail(null)}

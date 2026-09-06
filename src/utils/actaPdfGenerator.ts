@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { Game, PlayerBoxScore } from '../types';
 import { calculatePlayerStats, calculateTeamStats } from './statsCalculator';
+import { getShotCoordinates } from '../components/PlayerShotMap';
 
 /**
  * Generates an official, beautifully structured FIBA/FEB-compliant PDF match sheet (Acta Oficial)
@@ -280,9 +281,321 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
   y += 22;
   doc.setFontSize(6.5);
   doc.setTextColor(140, 140, 140);
-  doc.text(`Generado automáticamente por BasketStats PRO el ${new Date().toLocaleString('es-ES')} | ID: ${game.id}`, pageWidth / 2, y, { align: 'center' });
+  doc.text(`Generado automáticamente por BasketStats PRO el ${new Date().toLocaleString('es-ES')} | ID: ${game.id} | Pág. 1 de 2`, pageWidth / 2, y, { align: 'center' });
+
+  // =========================================================================
+  // PAGE 2: MAPA Y CARTA DE TIROS DEL EQUIPO (METIDOS Y FALLADOS)
+  // =========================================================================
+  doc.addPage('a4', 'portrait');
+  renderTeamShotChartPage(doc, game, teamStats);
 
   return doc;
+}
+
+/**
+ * Renders the official FIBA Team Shot Chart on Page 2 with vector graphics
+ */
+function renderTeamShotChartPage(doc: jsPDF, game: Game, teamStats: any) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = 14;
+
+  // 1. TOP HEADER BANNER
+  doc.setFillColor(20, 24, 33);
+  doc.rect(10, y, pageWidth - 20, 24, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('CARTA Y MAPA DE TIROS DEL EQUIPO • ANÁLISIS DE EFECTIVIDAD', pageWidth / 2, y + 8, { align: 'center' });
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(220, 220, 220);
+  const subheader = `${game.homeTeamName} vs ${game.awayTeamName}  |  Fecha: ${game.date}  |  Resultado: ${game.homeScore} - ${game.awayScore}`;
+  doc.text(subheader, pageWidth / 2, y + 15, { align: 'center' });
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(249, 115, 22);
+  doc.text('REGISTRO OFICIAL DE LANZAMIENTOS: METIDOS (VERDE) Y FALLADOS (ROJO)', pageWidth / 2, y + 20, { align: 'center' });
+
+  y += 28;
+
+  // 2. TEAM SHOOTING METRICS (4 BOXES)
+  const boxW = (pageWidth - 20 - 3 * 3) / 4;
+  const metrics = [
+    { label: 'TIROS DE CAMPO', val: `${teamStats.fieldGoalsMade}/${teamStats.fieldGoalsAttempted}`, pct: `${teamStats.fieldGoalsPercentage}%`, color: [234, 88, 12] },
+    { label: 'TIROS DE 2 (T2)', val: `${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted}`, pct: `${teamStats.twoPointsPercentage}%`, color: [37, 99, 235] },
+    { label: 'TRIPLES (T3)', val: `${teamStats.threePointsMade}/${teamStats.threePointsAttempted}`, pct: `${teamStats.threePointsPercentage}%`, color: [16, 185, 129] },
+    { label: 'TIROS LIBRES (TL)', val: `${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted}`, pct: `${teamStats.freeThrowsPercentage}%`, color: [100, 116, 139] },
+  ];
+
+  metrics.forEach((m, idx) => {
+    const bx = 10 + idx * (boxW + 3);
+    doc.setFillColor(245, 247, 250);
+    doc.setDrawColor(200, 205, 215);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(bx, y, boxW, 14, 1.5, 1.5, 'FD');
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text(m.label, bx + boxW / 2, y + 4.5, { align: 'center' });
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(m.color[0], m.color[1], m.color[2]);
+    doc.text(`${m.val}  (${m.pct})`, bx + boxW / 2, y + 10.5, { align: 'center' });
+  });
+
+  y += 18;
+
+  // 3. BASKETBALL HALF-COURT (OFFICIAL FIBA PROPORTIONS)
+  const courtW = 106; // mm
+  const courtH = (courtW * 93.3) / 100; // ~98.9 mm
+  const courtX = (pageWidth - courtW) / 2;
+  const courtY = y;
+
+  // Background and Court Border
+  doc.setFillColor(252, 252, 254);
+  doc.setDrawColor(100, 116, 139);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(courtX, courtY, courtW, courtH, 2, 2, 'FD');
+
+  // Half-court line
+  doc.setDrawColor(148, 163, 184);
+  doc.line(courtX, courtY + (89.3 / 93.3) * courtH, courtX + courtW, courtY + (89.3 / 93.3) * courtH);
+
+  // Center circle arc at half court
+  const centerRadius = (12 / 100) * courtW;
+  const halfCourtY = courtY + (89.3 / 93.3) * courtH;
+  for (let a = 180; a < 360; a += 10) {
+    const r1 = (a * Math.PI) / 180;
+    const r2 = ((a + 10) * Math.PI) / 180;
+    doc.line(
+      courtX + courtW / 2 + centerRadius * Math.cos(r1),
+      halfCourtY + centerRadius * Math.sin(r1),
+      courtX + courtW / 2 + centerRadius * Math.cos(r2),
+      halfCourtY + centerRadius * Math.sin(r2)
+    );
+  }
+
+  // Paint / Key Area
+  const paintW = (32.6 / 100) * courtW;
+  const paintH = (38.6 / 93.3) * courtH;
+  const paintX = courtX + (33.7 / 100) * courtW;
+  const paintY = courtY + (2 / 93.3) * courtH;
+  doc.setFillColor(254, 243, 199); // Light amber
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(paintX, paintY, paintW, paintH, 'FD');
+
+  // Free Throw Circle
+  const ftCx = courtX + courtW / 2;
+  const ftCy = courtY + (40.6 / 93.3) * courtH;
+  const ftRadius = (12 / 100) * courtW;
+  doc.setDrawColor(148, 163, 184);
+  doc.circle(ftCx, ftCy, ftRadius, 'S');
+
+  // 3-Point Line
+  doc.setDrawColor(234, 88, 12);
+  doc.setLineWidth(0.4);
+  const left3pX = courtX + (8 / 100) * courtW;
+  const right3pX = courtX + (92 / 100) * courtW;
+  const cornerY = courtY + (28 / 93.3) * courtH;
+  doc.line(left3pX, courtY + (2 / 93.3) * courtH, left3pX, cornerY);
+  doc.line(right3pX, courtY + (2 / 93.3) * courtH, right3pX, cornerY);
+
+  // 3-Point Arc
+  const hoopX = courtX + courtW / 2;
+  const hoopY = courtY + (11 / 93.3) * courtH;
+  const arcR = (43.5 / 100) * courtW;
+  const maxAngleDeg = 68;
+  const angleStep = 4;
+  for (let ang = -maxAngleDeg; ang < maxAngleDeg; ang += angleStep) {
+    const r1 = (ang * Math.PI) / 180;
+    const r2 = ((ang + angleStep) * Math.PI) / 180;
+    const x1 = hoopX + arcR * Math.sin(r1);
+    const y1 = hoopY + arcR * Math.cos(r1);
+    const x2 = hoopX + arcR * Math.sin(r2);
+    const y2 = hoopY + arcR * Math.cos(r2);
+    doc.line(x1, y1, x2, y2);
+  }
+
+  // Backboard and Rim
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.8);
+  doc.line(courtX + (40 / 100) * courtW, courtY + (8 / 93.3) * courtH, courtX + (60 / 100) * courtW, courtY + (8 / 93.3) * courtH);
+
+  doc.setDrawColor(234, 88, 12);
+  doc.setLineWidth(0.5);
+  doc.circle(hoopX, hoopY, (2.6 / 100) * courtW, 'S');
+
+  // Zone text markers
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(180, 190, 205);
+  doc.text('ZONA DE PINTURA', hoopX, courtY + (23 / 93.3) * courtH, { align: 'center' });
+  doc.text('MEDIA DISTANCIA', hoopX, courtY + (56 / 93.3) * courtH, { align: 'center' });
+  doc.setTextColor(249, 115, 22);
+  doc.text('ZONA DE TRIPLE (6.75m)', hoopX, courtY + (76 / 93.3) * courtH, { align: 'center' });
+
+  // 4. PLOT SHOTS ON COURT
+  const teamShots = game.events.filter(e => ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType));
+  const madeShots = teamShots.filter(e => ['2PM', '3PM'].includes(e.actionType));
+  const missedShots = teamShots.filter(e => ['2PA', '3PA'].includes(e.actionType));
+
+  teamShots.forEach((shot, sIdx) => {
+    const coords = getShotCoordinates(shot, sIdx);
+    const smX = courtX + (coords.x / 100) * courtW;
+    const smY = courtY + (coords.y / 93.3) * courtH;
+    const isMade = ['2PM', '3PM'].includes(shot.actionType);
+
+    if (isMade) {
+      // Emerald filled circle with player number or check
+      doc.setFillColor(16, 185, 129);
+      doc.setDrawColor(6, 78, 59);
+      doc.setLineWidth(0.25);
+      doc.circle(smX, smY, 2.2, 'FD');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(4);
+      doc.setFont('helvetica', 'bold');
+      const label = shot.playerNumber !== undefined ? String(shot.playerNumber) : (shot.actionType === '3PM' ? '3' : '2');
+      doc.text(label, smX, smY + 0.7, { align: 'center' });
+    } else {
+      // Red X marker
+      doc.setDrawColor(220, 38, 38);
+      doc.setLineWidth(0.65);
+      doc.line(smX - 1.5, smY - 1.5, smX + 1.5, smY + 1.5);
+      doc.line(smX - 1.5, smY + 1.5, smX + 1.5, smY - 1.5);
+    }
+  });
+
+  y += courtH + 4;
+
+  // 5. LEGEND & ZONE BREAKDOWN (2 BOXES SIDE BY SIDE)
+  const legW = (pageWidth - 20 - 4) / 2;
+  // Left: Legend
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(220, 225, 235);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(10, y, legW, 16, 1.5, 1.5, 'FD');
+
+  // Legend icons
+  doc.setFillColor(16, 185, 129);
+  doc.circle(16, y + 5, 2, 'F');
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`Tiros Convertidos (Metidos): ${madeShots.length}`, 22, y + 6);
+
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(0.65);
+  doc.line(14, y + 10.5, 18, y + 13.5);
+  doc.line(14, y + 13.5, 18, y + 10.5);
+  doc.text(`Tiros Fallados: ${missedShots.length}`, 22, y + 12.5);
+
+  // Right: Zone stats breakdown
+  const paintShots = teamShots.filter(s => {
+    const c = getShotCoordinates(s);
+    return c.y <= 38 && c.x >= 33 && c.x <= 67;
+  });
+  const paintMade = paintShots.filter(s => ['2PM', '3PM'].includes(s.actionType)).length;
+  const paintPct = paintShots.length > 0 ? Math.round((paintMade / paintShots.length) * 100) : 0;
+
+  const threeShots = teamShots.filter(s => ['3PM', '3PA'].includes(s.actionType));
+  const threeMade = threeShots.filter(s => s.actionType === '3PM').length;
+  const threePct = threeShots.length > 0 ? Math.round((threeMade / threeShots.length) * 100) : 0;
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(220, 225, 235);
+  doc.roundedRect(14 + legW, y, legW, 16, 1.5, 1.5, 'FD');
+
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 100, 100);
+  doc.text('EFECTIVIDAD POR ZONAS', 14 + legW + 4, y + 4.5);
+
+  doc.setTextColor(15, 23, 42);
+  doc.text(`En Pintura: ${paintMade}/${paintShots.length} (${paintPct}%)`, 14 + legW + 4, y + 9.5);
+  doc.text(`Zona Triple: ${threeMade}/${threeShots.length} (${threePct}%)`, 14 + legW + 4, y + 13.5);
+
+  y += 20;
+
+  // 6. PLAYER SHOOTING DETAIL TABLE
+  doc.setFillColor(240, 242, 245);
+  doc.rect(10, y, pageWidth - 20, 5, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(50, 50, 50);
+  doc.text('DESGLOSE DE TIRO INDIVIDUAL POR JUGADOR', 14, y + 3.5);
+
+  y += 6;
+  // Table columns
+  const pColDorsal = 14;
+  const pColName = 24;
+  const pColT2 = 80;
+  const pColT3 = 110;
+  const pColTC = 140;
+  const pColTL = 168;
+  const pColPts = pageWidth - 14;
+
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 100, 100);
+  doc.text('#', pColDorsal, y);
+  doc.text('JUGADOR', pColName, y);
+  doc.text('T2 (M/A %)', pColT2, y, { align: 'center' });
+  doc.text('T3 (M/A %)', pColT3, y, { align: 'center' });
+  doc.text('TC TOTAL (M/A %)', pColTC, y, { align: 'center' });
+  doc.text('TL (M/A %)', pColTL, y, { align: 'center' });
+  doc.text('PTS', pColPts, y, { align: 'right' });
+
+  y += 2;
+  doc.setDrawColor(200, 205, 215);
+  doc.setLineWidth(0.2);
+  doc.line(10, y, pageWidth - 10, y);
+  y += 3.5;
+
+  const playerStatsList = game.players.map(p => calculatePlayerStats(p, game.events));
+  playerStatsList.forEach((ps, idx) => {
+    if (y > pageHeight - 16) return; // safeguard page overflow
+    if (idx % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(10, y - 2.5, pageWidth - 20, 4, 'F');
+    }
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(234, 88, 12);
+    doc.text(String(ps.player.number), pColDorsal, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(20, 20, 20);
+    doc.text(ps.player.name.slice(0, 22), pColName, y);
+
+    // T2
+    doc.text(`${ps.twoPointsMade}/${ps.twoPointsAttempted} (${ps.twoPointsPercentage}%)`, pColT2, y, { align: 'center' });
+    // T3
+    doc.text(`${ps.threePointsMade}/${ps.threePointsAttempted} (${ps.threePointsPercentage}%)`, pColT3, y, { align: 'center' });
+    // TC
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${ps.twoPointsMade + ps.threePointsMade}/${ps.twoPointsAttempted + ps.threePointsAttempted} (${ps.fieldGoalsPercentage}%)`, pColTC, y, { align: 'center' });
+    // TL
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${ps.freeThrowsMade}/${ps.freeThrowsAttempted} (${ps.freeThrowsPercentage}%)`, pColTL, y, { align: 'center' });
+    // PTS
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(234, 88, 12);
+    doc.text(String(ps.points), pColPts, y, { align: 'right' });
+
+    y += 4;
+  });
+
+  // Footer on page 2
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(140, 140, 140);
+  doc.text(`Página 2 de 2 • BasketStats PRO Carta de Tiro Oficial • Generado: ${new Date().toLocaleString('es-ES')}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
 }
 
 /**

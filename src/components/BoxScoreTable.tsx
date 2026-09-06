@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Game, PlayerBoxScore } from '../types';
 import { calculatePlayerStats, calculateTeamStats, formatQuarterShort } from '../utils/statsCalculator';
 import { POSITION_LABELS } from '../data/defaultData';
-import { Trophy, Flame, Shield, Award, ChevronDown, ChevronUp, Star, Users } from 'lucide-react';
+import { Trophy, Flame, Shield, Award, ChevronDown, ChevronUp, Star, Users, Target, BarChart2 } from 'lucide-react';
+import { PlayerShotMap } from './PlayerShotMap';
 
 interface BoxScoreTableProps {
   game: Game;
@@ -13,6 +14,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
   const [sortField, setSortField] = useState<keyof PlayerBoxScore>('points');
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedPlayerModal, setSelectedPlayerModal] = useState<PlayerBoxScore | null>(null);
+  const [modalTab, setModalTab] = useState<'stats' | 'shotChart'>('stats');
 
   const playerStatsList: PlayerBoxScore[] = game.players.map(p =>
     calculatePlayerStats(p, game.events, quarterFilter)
@@ -468,69 +470,113 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               </button>
             </div>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
-                <div className="text-[10px] uppercase font-mono text-gray-400">Puntos</div>
-                <div className="text-xl font-black font-mono text-orange-400">{selectedPlayerModal.points}</div>
-              </div>
-              <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
-                <div className="text-[10px] uppercase font-mono text-gray-400">Rebotes</div>
-                <div className="text-xl font-black font-mono text-blue-400">{selectedPlayerModal.totalRebounds}</div>
-              </div>
-              <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
-                <div className="text-[10px] uppercase font-mono text-gray-400">Valoración</div>
-                <div className="text-xl font-black font-mono text-emerald-400">{selectedPlayerModal.efficiency}</div>
-              </div>
+            {/* Tabs: Resumen de Estadísticas vs Mapa de Tiros */}
+            <div className="flex items-center gap-1.5 p-1 bg-[#1A1D23] rounded-lg border border-gray-800 text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setModalTab('stats')}
+                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 font-bold transition ${
+                  modalTab === 'stats'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5" />
+                <span>Estadísticas</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab('shotChart')}
+                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 font-bold transition ${
+                  modalTab === 'shotChart'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Target className="w-3.5 h-3.5" />
+                <span>Mapa de Tiros</span>
+                <span className="text-[10px] px-1 rounded bg-black/40 text-orange-200">
+                  {game.events.filter(e => e.playerId === selectedPlayerModal.player.id && ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType)).length}
+                </span>
+              </button>
             </div>
 
-            {/* Detailed list */}
-            <div className="space-y-1 text-xs text-gray-300 bg-[#1A1D23] p-2.5 rounded border border-gray-800 font-mono">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Minutos en Pista:</span>
-                <span className="font-bold text-emerald-400">{selectedPlayerModal.minutesPlayedFormatted}</span>
+            {modalTab === 'stats' ? (
+              <>
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
+                    <div className="text-[10px] uppercase font-mono text-gray-400">Puntos</div>
+                    <div className="text-xl font-black font-mono text-orange-400">{selectedPlayerModal.points}</div>
+                  </div>
+                  <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
+                    <div className="text-[10px] uppercase font-mono text-gray-400">Rebotes</div>
+                    <div className="text-xl font-black font-mono text-blue-400">{selectedPlayerModal.totalRebounds}</div>
+                  </div>
+                  <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
+                    <div className="text-[10px] uppercase font-mono text-gray-400">Valoración</div>
+                    <div className="text-xl font-black font-mono text-emerald-400">{selectedPlayerModal.efficiency}</div>
+                  </div>
+                </div>
+
+                {/* Detailed list */}
+                <div className="space-y-1 text-xs text-gray-300 bg-[#1A1D23] p-2.5 rounded border border-gray-800 font-mono max-h-56 overflow-y-auto">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Minutos en Pista:</span>
+                    <span className="font-bold text-emerald-400">{selectedPlayerModal.minutesPlayedFormatted}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Tiros de 2:</span>
+                    <span>{selectedPlayerModal.twoPointsMade}/{selectedPlayerModal.twoPointsAttempted} ({selectedPlayerModal.twoPointsPercentage}%)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Triples (T3):</span>
+                    <span>{selectedPlayerModal.threePointsMade}/{selectedPlayerModal.threePointsAttempted} ({selectedPlayerModal.threePointsPercentage}%)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Tiros Libres:</span>
+                    <span>{selectedPlayerModal.freeThrowsMade}/{selectedPlayerModal.freeThrowsAttempted} ({selectedPlayerModal.freeThrowsPercentage}%)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Asistencias:</span>
+                    <span>{selectedPlayerModal.assists}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Robos / Pérdidas:</span>
+                    <span>{selectedPlayerModal.steals} / {selectedPlayerModal.turnovers}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Tapones (Favor / Contra):</span>
+                    <span>{selectedPlayerModal.blocks} / {selectedPlayerModal.blocksReceived}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Faltas Cometidas:</span>
+                    <span className={selectedPlayerModal.foulsPersonal >= 5 ? 'text-red-400 font-bold' : ''}>
+                      {selectedPlayerModal.foulsPersonal} {selectedPlayerModal.foulsPersonal >= 5 && '(EXPULSADO)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Faltas Recibidas:</span>
+                    <span>{selectedPlayerModal.foulsDrawn}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="max-h-[60vh] overflow-y-auto">
+                <PlayerShotMap
+                  shots={game.events.filter(e => e.playerId === selectedPlayerModal.player.id)}
+                  playerName={selectedPlayerModal.player.name}
+                  playerNumber={selectedPlayerModal.player.number}
+                  title="Tiros Metidos y Fallados"
+                />
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Tiros de 2:</span>
-                <span>{selectedPlayerModal.twoPointsMade}/{selectedPlayerModal.twoPointsAttempted} ({selectedPlayerModal.twoPointsPercentage}%)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Triples (T3):</span>
-                <span>{selectedPlayerModal.threePointsMade}/{selectedPlayerModal.threePointsAttempted} ({selectedPlayerModal.threePointsPercentage}%)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Tiros Libres:</span>
-                <span>{selectedPlayerModal.freeThrowsMade}/{selectedPlayerModal.freeThrowsAttempted} ({selectedPlayerModal.freeThrowsPercentage}%)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Asistencias:</span>
-                <span>{selectedPlayerModal.assists}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Robos / Pérdidas:</span>
-                <span>{selectedPlayerModal.steals} / {selectedPlayerModal.turnovers}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Tapones (Favor / Contra):</span>
-                <span>{selectedPlayerModal.blocks} / {selectedPlayerModal.blocksReceived}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Faltas Cometidas:</span>
-                <span className={selectedPlayerModal.foulsPersonal >= 5 ? 'text-red-400 font-bold' : ''}>
-                  {selectedPlayerModal.foulsPersonal} {selectedPlayerModal.foulsPersonal >= 5 && '(EXPULSADO)'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Faltas Recibidas:</span>
-                <span>{selectedPlayerModal.foulsDrawn}</span>
-              </div>
-            </div>
+            )}
 
             <button
               onClick={() => setSelectedPlayerModal(null)}
               className="w-full py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold font-mono uppercase tracking-wider rounded text-xs"
             >
-              Cerrar Detalle
+              Cerrar Ficha
             </button>
           </div>
         </div>
