@@ -29,6 +29,7 @@ import { ShotChartModal } from './components/ShotChartModal';
 import { OfficialMatchSheetModal } from './components/OfficialMatchSheetModal';
 import { GeneralAccumulatedStatsView } from './components/GeneralAccumulatedStatsView';
 import { TeamsHubView } from './components/TeamsHubView';
+import { TeamStatsReportModal } from './components/TeamStatsReportModal';
 import { saveGameToLibrary, syncMatchesFromCloud, getSavedGamesFromStorage } from './utils/libraryUtils';
 import {
   getRegisteredTeams,
@@ -222,6 +223,14 @@ export default function App() {
   const [showShotChart, setShowShotChart] = useState(false);
   const [pendingShotPlacement, setPendingShotPlacement] = useState<PendingShot | null>(null);
   const [showOfficialSheet, setShowOfficialSheet] = useState(false);
+  const [showTeamStatsReportModal, setShowTeamStatsReportModal] = useState(false);
+  const [reportTargetTeamId, setReportTargetTeamId] = useState<string | undefined>(undefined);
+
+  const handleOpenTeamStatsReport = (team: TeamProfile) => {
+    setReportTargetTeamId(team.id);
+    setLibraryGames(getSavedGamesFromStorage());
+    setShowTeamStatsReportModal(true);
+  };
 
   // Save to localStorage & Library
   useEffect(() => {
@@ -1494,6 +1503,7 @@ export default function App() {
                   setStatsSubMode('accumulated');
                   setLibraryGames(getSavedGamesFromStorage());
                 }}
+                onOpenTeamStatsReport={handleOpenTeamStatsReport}
                 onOpenLibrary={() => setShowLibraryModal(true)}
                 onOpenCloudBackup={() => setShowCloudBackupModal(true)}
                 onOpenTeamEditor={team => {
@@ -1883,6 +1893,22 @@ export default function App() {
         <OfficialMatchSheetModal
           game={game}
           onClose={() => setShowOfficialSheet(false)}
+        />
+      )}
+
+      {/* General Team Stats Report Modal with Shot Map, Match Discard Filter & Mobile / PDF Sharing */}
+      {showTeamStatsReportModal && (
+        <TeamStatsReportModal
+          isOpen={showTeamStatsReportModal}
+          onClose={() => setShowTeamStatsReportModal(false)}
+          teams={teams}
+          initialTeamId={reportTargetTeamId || activeTeamId}
+          allGames={(() => {
+            const storageGames = getSavedGamesFromStorage();
+            const isCurrentInStorage = storageGames.some(g => g.id === game.id);
+            return isCurrentInStorage ? storageGames : [game, ...storageGames];
+          })()}
+          soundEnabled={game.settings.soundEnabled}
         />
       )}
     </div>

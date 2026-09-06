@@ -23,6 +23,8 @@ import {
   Calendar,
   Layers,
   ChevronRight,
+  Target,
+  FileText,
 } from 'lucide-react';
 
 interface TeamsHubViewProps {
@@ -37,6 +39,7 @@ interface TeamsHubViewProps {
   onOpenCourtMode: () => void;
   onOpenRosterModal: (team: TeamProfile) => void;
   onOpenStatsForCategory: (category: string, teamId?: string) => void;
+  onOpenTeamStatsReport?: (team: TeamProfile) => void;
   onOpenLibrary: () => void;
   onOpenCloudBackup: () => void;
   onOpenTeamEditor: (team: TeamProfile | null) => void; // null means create new
@@ -55,6 +58,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   onOpenCourtMode,
   onOpenRosterModal,
   onOpenStatsForCategory,
+  onOpenTeamStatsReport,
   onOpenLibrary,
   onOpenCloudBackup,
   onOpenTeamEditor,
@@ -164,6 +168,24 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
             >
               <Plus className="w-4 h-4" />
               <span>Nuevo Equipo / Categoría</span>
+            </button>
+
+            <button
+              id="hub-open-stats-report-btn"
+              type="button"
+              onClick={() => {
+                playSound('click', soundEnabled);
+                const targetTeam = teams.find(t => t.id === activeTeamId) || teams[0];
+                if (targetTeam && onOpenTeamStatsReport) {
+                  onOpenTeamStatsReport(targetTeam);
+                }
+              }}
+              className="px-3 py-2 rounded-xl bg-orange-950/60 hover:bg-orange-900/80 text-orange-300 border border-orange-700/60 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shrink-0 shadow-sm"
+              title="Estadísticas generales de todo el equipo, mapa de tiro y filtro de partidos (PDF y móvil)"
+            >
+              <Target className="w-4 h-4 text-orange-400" />
+              <span className="hidden sm:inline">Estadísticas & Mapa de Tiro</span>
+              <span className="sm:hidden">Stats & Tiro</span>
             </button>
 
             <button
@@ -529,15 +551,21 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                   </button>
 
                   <button
+                    id={`team-stats-btn-${team.id}`}
                     type="button"
                     onClick={() => {
                       playSound('click', soundEnabled);
-                      onOpenStatsForCategory(team.category || 'Senior Masculino', team.id);
+                      if (onOpenTeamStatsReport) {
+                        onOpenTeamStatsReport(team);
+                      } else {
+                        onOpenStatsForCategory(team.category || 'Senior Masculino', team.id);
+                      }
                     }}
-                    className="py-1.5 px-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition"
+                    className="py-1.5 px-2 rounded-lg bg-orange-950/60 hover:bg-orange-900 text-orange-300 hover:text-white border border-orange-700/60 text-[11px] font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+                    title="Estadísticas de todo el equipo, mapa de tiro, filtro de partidos y exportar a PDF"
                   >
-                    <BarChart3 className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Estadísticas</span>
+                    <Target className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Estadísticas & Tiro</span>
                   </button>
                 </div>
               </div>
