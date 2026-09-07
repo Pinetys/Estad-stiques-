@@ -1526,61 +1526,12 @@ export default function App() {
             )}
 
             {activeTab === 'stats' && (
-              <div className="space-y-3">
-                {/* Sub-navigation to toggle between Match Box Score and General Accumulated Stats */}
-                <div className="max-w-7xl mx-auto px-2 sm:px-4 pt-2">
-                  <div className="bg-[#14161B] p-1 rounded-xl border border-gray-800 flex items-center justify-between gap-1.5 shadow-lg">
-                    <button
-                      id="subtab-match-stats-btn"
-                      type="button"
-                      onClick={() => {
-                        playSound('click', game.settings.soundEnabled);
-                        setStatsSubMode('match');
-                      }}
-                      className={`flex-1 py-1.5 sm:py-2 px-3 rounded-lg text-xs font-mono font-bold transition flex items-center justify-center gap-1.5 ${
-                        statsSubMode === 'match'
-                          ? 'bg-orange-600 text-white shadow-md'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                      }`}
-                    >
-                      <Activity className="w-3.5 h-3.5" />
-                      <span>Partido Actual (Box Score)</span>
-                    </button>
-
-                    <button
-                      id="subtab-accumulated-stats-btn"
-                      type="button"
-                      onClick={() => {
-                        playSound('click', game.settings.soundEnabled);
-                        setStatsSubMode('accumulated');
-                        setLibraryGames(getSavedGamesFromStorage());
-                      }}
-                      className={`flex-1 py-1.5 sm:py-2 px-3 rounded-lg text-xs font-mono font-bold transition flex items-center justify-center gap-1.5 ${
-                        statsSubMode === 'accumulated'
-                          ? 'bg-orange-600 text-white shadow-md'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                      }`}
-                    >
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      <span>Acumuladas Generales</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40 text-orange-300 font-normal">
-                        {libraryGames.length}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {statsSubMode === 'match' ? (
-                  <BoxScoreTable game={game} />
-                ) : (
-                  <GeneralAccumulatedStatsView
-                    games={libraryGames.length > 0 ? libraryGames : [game]}
-                    recordedTeams={teams}
-                    currentGame={game}
-                    soundEnabled={game.settings.soundEnabled}
-                  />
-                )}
-              </div>
+              <GeneralAccumulatedStatsView
+                games={libraryGames.length > 0 ? libraryGames : [game]}
+                recordedTeams={teams}
+                currentGame={game}
+                soundEnabled={game.settings.soundEnabled}
+              />
             )}
 
             {activeTab === 'charts' && <ChartsAndStats game={game} />}

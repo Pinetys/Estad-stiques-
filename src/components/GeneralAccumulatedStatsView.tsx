@@ -1,39 +1,36 @@
 import React, { useState, useMemo } from 'react';
-import { Game, PlayerAccumulatedStats, SeasonAggregatedStats, Position, PlayEvent } from '../types';
+import { Game, TeamProfile, PlayEvent, PlayerBoxScore } from '../types';
+import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
 import {
-  calculateSeasonStats,
-  getAllCategoriesFromGames,
-  getGameCategory,
-  exportSeasonToCSV,
-} from '../utils/libraryUtils';
-import { POSITION_LABELS } from '../data/defaultData';
-import { TeamProfile } from '../types';
-import { playSound } from '../utils/soundHaptics';
+  calculateTeamAggregatedStats,
+  downloadTeamStatsPdf,
+  shareTeamStatsPdf,
+  getTeamStatsWhatsAppSummary,
+  PlayerAccumulatedRow,
+} from '../utils/teamStatsPdfGenerator';
+import { generateOfficialActaPdf } from '../utils/actaPdfGenerator';
+import { PlayerShotMap } from './PlayerShotMap';
+import { TeamLogoDisplay } from './TeamLogoPicker';
+import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import {
+  BarChart3,
+  Target,
+  Users,
+  Download,
+  Share2,
+  Filter,
   Trophy,
   Flame,
   Shield,
-  Target,
-  Users,
-  Search,
-  Download,
-  Calendar,
-  Zap,
-  ArrowUpDown,
-  ChevronDown,
-  ChevronUp,
-  X,
-  FileSpreadsheet,
-  Activity,
-  BarChart3,
   Award,
-  Clock,
-  Sparkles,
-  Filter,
+  ChevronDown,
+  FileText,
+  Send,
+  Check,
+  Activity,
 } from 'lucide-react';
-import { PlayerShotMap } from './PlayerShotMap';
 
-interface GeneralAccumulatedStatsViewProps {
+export interface GeneralAccumulatedStatsViewProps {
   games: Game[];
   recordedTeams?: TeamProfile[];
   currentGame?: Game;
@@ -41,1370 +38,1063 @@ interface GeneralAccumulatedStatsViewProps {
   onSelectGame?: (game: Game) => void;
 }
 
-type SortField =
-  | 'playerNumber'
-  | 'playerName'
-  | 'gamesPlayed'
-  | 'minutesPlayedTotalSeconds'
-  | 'pointsTotal'
-  | 'pointsAvg'
-  | 'twoPointsPercentage'
-  | 'threePointsPercentage'
-  | 'threePointsMade'
-  | 'freeThrowsPercentage'
-  | 'fieldGoalsPercentage'
-  | 'totalRebounds'
-  | 'reboundsAvg'
-  | 'assists'
-  | 'assistsAvg'
-  | 'steals'
-  | 'stealsAvg'
-  | 'blocks'
-  | 'turnovers'
-  | 'turnoversAvg'
-  | 'foulsPersonal'
-  | 'foulsDrawn'
-  | 'efficiencyTotal'
-  | 'efficiencyAvg'
-  | 'plusMinusTotal';
-
 export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewProps> = ({
   games,
   recordedTeams = [],
   currentGame,
   soundEnabled = true,
-  onSelectGame,
 }) => {
-  // Category filter state
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  // Team filter state (optional)
-  const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('ALL');
-  // Search & Position filters
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedPosition, setSelectedPosition] = useState<string>('ALL');
-  // Sorting state
-  const [sortField, setSortField] = useState<SortField>('pointsTotal');
-  const [sortAsc, setSortAsc] = useState<boolean>(false);
-  // Individual player modal
-  const [activePlayerDetail, setActivePlayerDetail] = useState<PlayerAccumulatedStats | null>(null);
-  const [playerModalTab, setPlayerModalTab] = useState<'all' | 'shots' | 'matches'>('all');
+  // Main view mode: 'accumulated' (Acumuladas del Equipo) or 'match' (Partido Actual)
+  const [activeTab, setActiveTab] = useState<'accumulated' | 'match'>('accumulated');
 
-  // Extract all shot events for the selected player across season games
-  const playerSeasonShots = useMemo(() => {
-    if (!activePlayerDetail) return [];
-    const allGames = [...games];
-    if (currentGame && !allGames.some(g => g.id === currentGame.id)) {
-      allGames.push(currentGame);
+  // Selected Team ID: STRICTLY ONE TEAM AT A TIME (TEAMS ARE NEVER JOINED)
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(() => {
+    if (currentGame?.teamId) {
+      const matchTeam = recordedTeams.find(t => t.id === currentGame.teamId);
+      if (matchTeam) return matchTeam.id;
     }
-    const shotEvents: PlayEvent[] = [];
-    allGames.forEach(g => {
-      const matchingIds = new Set<string>();
-      if (activePlayerDetail.playerId) matchingIds.add(activePlayerDetail.playerId);
-      g.players.forEach(p => {
-        const isSameNum = p.number === activePlayerDetail.playerNumber;
-        const isSameName =
-          p.name &&
-          activePlayerDetail.playerName &&
-          p.name.trim().toLowerCase() === activePlayerDetail.playerName.trim().toLowerCase();
-        if (p.id === activePlayerDetail.playerId || (isSameNum && isSameName) || isSameNum) {
-          if (p.id) matchingIds.add(p.id);
-        }
-      });
+    if (recordedTeams.length > 0) return recordedTeams[0].id;
+    return 'default-team';
+  });
 
-      g.events.forEach(e => {
-        if (e.isOpponentAction) return;
-        const isMatch =
-          (e.playerId && matchingIds.has(e.playerId)) ||
-          e.playerNumber === activePlayerDetail.playerNumber ||
-          (e.playerName &&
-            activePlayerDetail.playerName &&
-            e.playerName.trim().toLowerCase() === activePlayerDetail.playerName.trim().toLowerCase());
+  // Discarded game IDs for accumulated team stats
+  const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(new Set());
 
-        if (isMatch && ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType)) {
-          shotEvents.push(e);
-        }
-      });
-    });
+  // Sharing & feedback state
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [shareFeedbackMsg, setShareFeedbackMsg] = useState<string | null>(null);
 
-    // Fallback: If no granular events were found in game.events (e.g. from match logs),
-    // synthesize realistic events matching the exact numbers recorded in activePlayerDetail
-    if (shotEvents.length === 0 && (activePlayerDetail.twoPointsAttempted > 0 || activePlayerDetail.threePointsAttempted > 0)) {
-      for (let i = 0; i < activePlayerDetail.twoPointsMade; i++) {
-        shotEvents.push({
-          id: `synth_2pm_${i}`,
-          gameId: 'season',
-          timestamp: Date.now() - (i + 1) * 60000,
-          quarter: 1,
-          gameSeconds: 500,
-          gameTimeFormatted: '08:20',
-          playerId: activePlayerDetail.playerId,
-          playerName: activePlayerDetail.playerName,
-          playerNumber: activePlayerDetail.playerNumber,
-          actionType: '2PM',
-          actionLabel: 'Canasta 2P',
-          pointsAdded: 2,
-          isOpponentAction: false,
-          scoreSnapshot: { home: 0, away: 0 },
-        });
-      }
-      const missed2P = Math.max(0, activePlayerDetail.twoPointsAttempted - activePlayerDetail.twoPointsMade);
-      for (let i = 0; i < missed2P; i++) {
-        shotEvents.push({
-          id: `synth_2pa_${i}`,
-          gameId: 'season',
-          timestamp: Date.now() - (i + 10) * 60000,
-          quarter: 2,
-          gameSeconds: 400,
-          gameTimeFormatted: '06:40',
-          playerId: activePlayerDetail.playerId,
-          playerName: activePlayerDetail.playerName,
-          playerNumber: activePlayerDetail.playerNumber,
-          actionType: '2PA',
-          actionLabel: 'Fallo 2P',
-          pointsAdded: 0,
-          isOpponentAction: false,
-          scoreSnapshot: { home: 0, away: 0 },
-        });
-      }
-      for (let i = 0; i < activePlayerDetail.threePointsMade; i++) {
-        shotEvents.push({
-          id: `synth_3pm_${i}`,
-          gameId: 'season',
-          timestamp: Date.now() - (i + 20) * 60000,
-          quarter: 3,
-          gameSeconds: 300,
-          gameTimeFormatted: '05:00',
-          playerId: activePlayerDetail.playerId,
-          playerName: activePlayerDetail.playerName,
-          playerNumber: activePlayerDetail.playerNumber,
-          actionType: '3PM',
-          actionLabel: 'Triple Metido',
-          pointsAdded: 3,
-          isOpponentAction: false,
-          scoreSnapshot: { home: 0, away: 0 },
-        });
-      }
-      const missed3P = Math.max(0, activePlayerDetail.threePointsAttempted - activePlayerDetail.threePointsMade);
-      for (let i = 0; i < missed3P; i++) {
-        shotEvents.push({
-          id: `synth_3pa_${i}`,
-          gameId: 'season',
-          timestamp: Date.now() - (i + 30) * 60000,
-          quarter: 4,
-          gameSeconds: 200,
-          gameTimeFormatted: '03:20',
-          playerId: activePlayerDetail.playerId,
-          playerName: activePlayerDetail.playerName,
-          playerNumber: activePlayerDetail.playerNumber,
-          actionType: '3PA',
-          actionLabel: 'Fallo Triple',
-          pointsAdded: 0,
-          isOpponentAction: false,
-          scoreSnapshot: { home: 0, away: 0 },
-        });
-      }
+  // Shot Map filter for accumulated team shots
+  const [playerShotFilter, setPlayerShotFilter] = useState<string>('all'); // 'all' or player id
+
+  // Player table sorting
+  const [playerSortKey, setPlayerSortKey] = useState<keyof PlayerAccumulatedRow>('points');
+  const [playerSortAsc, setPlayerSortAsc] = useState<boolean>(false);
+
+  // Match tab state: quarter filter & sort
+  const [matchQuarterFilter, setMatchQuarterFilter] = useState<number | undefined>(undefined);
+  const [matchSortKey] = useState<keyof PlayerBoxScore>('points');
+  const [matchSortAsc] = useState<boolean>(false);
+
+  // Selected player modal in match tab
+  const [selectedMatchPlayer, setSelectedMatchPlayer] = useState<PlayerBoxScore | null>(null);
+
+  // 1. Current Active Team Profile (Only 1 Team, Never Joined)
+  const currentTeam: TeamProfile = useMemo(() => {
+    if (recordedTeams.length > 0) {
+      const found = recordedTeams.find(t => t.id === selectedTeamId);
+      if (found) return found;
+      return recordedTeams[0];
     }
-
-    return shotEvents;
-  }, [activePlayerDetail, games, currentGame]);
-
-  // Available categories extracted dynamically from games + registered teams
-  const availableCategories = useMemo(() => {
-    const map = new Map<string, string>();
-    recordedTeams.forEach(t => {
-      if (t.category && t.category.trim()) {
-        const cat = t.category.trim();
-        if (!map.has(cat.toLowerCase())) {
-          map.set(cat.toLowerCase(), cat);
-        }
-      }
-    });
-    games.forEach(g => {
-      const cat = getGameCategory(g);
-      if (cat && cat.trim() && !map.has(cat.toLowerCase().trim())) {
-        map.set(cat.toLowerCase().trim(), cat.trim());
-      }
-    });
-    if (map.size === 0) {
-      map.set('senior masculino', 'Senior Masculino');
-    }
-    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
-  }, [games, recordedTeams]);
-
-  // Filtered games based on Category & Team
-  const filteredGames = useMemo(() => {
-    return games.filter(g => {
-      if (selectedCategory !== 'ALL') {
-        const cat = getGameCategory(g);
-        if (cat.toLowerCase().trim() !== selectedCategory.toLowerCase().trim()) return false;
-      }
-      if (selectedTeamFilter !== 'ALL') {
-        if (g.homeTeamName.toLowerCase().trim() !== selectedTeamFilter.toLowerCase().trim() && g.teamId !== selectedTeamFilter) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [games, selectedCategory, selectedTeamFilter]);
-
-  // Consolidated statistics for the current filter
-  const aggregatedStats: SeasonAggregatedStats = useMemo(() => {
-    return calculateSeasonStats(filteredGames);
-  }, [filteredGames]);
-
-  // Filtered and sorted player rows
-  const sortedPlayers = useMemo(() => {
-    let list = [...aggregatedStats.playersAccumulated];
-
-    // Search query filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        p =>
-          p.playerName.toLowerCase().includes(q) ||
-          p.playerNumber.toString().includes(q) ||
-          (p.position && p.position.toLowerCase().includes(q))
-      );
-    }
-
-    // Position filter
-    if (selectedPosition !== 'ALL') {
-      list = list.filter(p => p.position === selectedPosition);
-    }
-
-    // Sorting
-    list.sort((a, b) => {
-      let valA: any = a[sortField];
-      let valB: any = b[sortField];
-
-      if (sortField === 'playerName') {
-        return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      }
-
-      valA = Number(valA || 0);
-      valB = Number(valB || 0);
-      return sortAsc ? valA - valB : valB - valA;
-    });
-
-    return list;
-  }, [aggregatedStats.playersAccumulated, searchQuery, selectedPosition, sortField, sortAsc]);
-
-  // Leaders calculations
-  const leaders = useMemo(() => {
-    const list = aggregatedStats.playersAccumulated;
-    if (list.length === 0) return null;
-
-    const topPoints = [...list].sort((a, b) => b.pointsTotal - a.pointsTotal)[0];
-    const topValuation = [...list].sort((a, b) => b.efficiencyAvg - a.efficiencyAvg)[0];
-    const topRebounds = [...list].sort((a, b) => b.totalRebounds - a.totalRebounds)[0];
-    const topAssists = [...list].sort((a, b) => b.assists - a.assists)[0];
-    const topThrees = [...list].sort((a, b) => b.threePointsMade - a.threePointsMade)[0];
-    const topSteals = [...list].sort((a, b) => b.steals - a.steals)[0];
-
+    // Fallback if no recorded teams exist
     return {
-      topPoints,
-      topValuation,
-      topRebounds,
-      topAssists,
-      topThrees,
-      topSteals,
+      id: currentGame?.teamId || 'default-team',
+      name: currentGame?.homeTeamName || 'Mi Equipo',
+      category: currentGame?.category || 'Senior Masculino',
+      roster: currentGame?.players || [],
+      primaryColor: '#ea580c',
     };
-  }, [aggregatedStats.playersAccumulated]);
+  }, [recordedTeams, selectedTeamId, currentGame]);
 
-  // Toggle sort field
-  const handleSort = (field: SortField) => {
+  // 2. All matches belonging strictly to THIS team
+  const teamAllMatches = useMemo(() => {
+    if (!currentTeam) return [];
+    const tName = currentTeam.name.toLowerCase().trim();
+    const tId = currentTeam.id;
+
+    const seenIds = new Set<string>();
+    const matches: Game[] = [];
+
+    // Combine library games with current game if not already present
+    const combined = [...games];
+    if (currentGame && !combined.some(g => g.id === currentGame.id)) {
+      combined.push(currentGame);
+    }
+
+    combined.forEach(g => {
+      const isMatch =
+        (g.teamId && g.teamId === tId) ||
+        (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) ||
+        (g.awayTeamName && g.awayTeamName.toLowerCase().trim() === tName);
+
+      if (isMatch && !seenIds.has(g.id)) {
+        seenIds.add(g.id);
+        matches.push(g);
+      }
+    });
+
+    return matches.sort((a, b) => {
+      const timeA = a.events?.[0]?.timestamp || (a.date ? new Date(a.date).getTime() : 0);
+      const timeB = b.events?.[0]?.timestamp || (b.date ? new Date(b.date).getTime() : 0);
+      return timeB - timeA;
+    });
+  }, [currentTeam, games, currentGame]);
+
+  // 3. Separate included matches vs discarded matches
+  const { includedGames, discardedGames } = useMemo(() => {
+    const inc: Game[] = [];
+    const disc: Game[] = [];
+
+    teamAllMatches.forEach(g => {
+      if (discardedGameIds.has(g.id)) {
+        disc.push(g);
+      } else {
+        inc.push(g);
+      }
+    });
+
+    return { includedGames: inc, discardedGames: disc };
+  }, [teamAllMatches, discardedGameIds]);
+
+  // 4. Calculate aggregated metrics STRICTLY for this team
+  const { teamMetrics, playerRows, teamShots } = useMemo(() => {
+    if (!currentTeam) {
+      return {
+        teamMetrics: {} as any,
+        playerRows: [] as PlayerAccumulatedRow[],
+        teamShots: [] as PlayEvent[],
+      };
+    }
+    return calculateTeamAggregatedStats(currentTeam, includedGames);
+  }, [currentTeam, includedGames]);
+
+  // 5. Sorted players for accumulated table
+  const sortedAccumulatedPlayers = useMemo(() => {
+    return [...playerRows].sort((a, b) => {
+      const valA = a[playerSortKey];
+      const valB = b[playerSortKey];
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return playerSortAsc ? valA - valB : valB - valA;
+      }
+      return 0;
+    });
+  }, [playerRows, playerSortKey, playerSortAsc]);
+
+  // 6. Match Box Score (for 'match' tab)
+  const matchPlayerStats: PlayerBoxScore[] = useMemo(() => {
+    if (!currentGame) return [];
+    return currentGame.players.map(p =>
+      calculatePlayerStats(p, currentGame.events, matchQuarterFilter)
+    );
+  }, [currentGame, matchQuarterFilter]);
+
+  const sortedMatchPlayers = useMemo(() => {
+    return [...matchPlayerStats].sort((a, b) => {
+      const valA = a[matchSortKey];
+      const valB = b[matchSortKey];
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return matchSortAsc ? valA - valB : valB - valA;
+      }
+      return 0;
+    });
+  }, [matchPlayerStats, matchSortKey, matchSortAsc]);
+
+  const matchTeamStats = useMemo(() => {
+    if (!currentGame) return null;
+    return calculateTeamStats(currentGame.players, currentGame.events, currentGame.homeTeamName, matchQuarterFilter);
+  }, [currentGame, matchQuarterFilter]);
+
+  // Match highlights
+  const matchMVP = useMemo(() => {
+    if (!currentGame) return null;
+    const all = currentGame.players.map(p => calculatePlayerStats(p, currentGame.events));
+    return [...all].sort((a, b) => b.efficiency - a.efficiency)[0] || null;
+  }, [currentGame]);
+
+  const matchTopScorer = useMemo(() => {
+    if (!currentGame) return null;
+    const all = currentGame.players.map(p => calculatePlayerStats(p, currentGame.events));
+    return [...all].sort((a, b) => b.points - a.points)[0] || null;
+  }, [currentGame]);
+
+  // Handlers for Match Discard Filter
+  const toggleDiscardGame = (gameId: string) => {
+    triggerHaptic('light');
     playSound('click', soundEnabled);
-    if (sortField === field) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortField(field);
-      setSortAsc(false);
+    setDiscardedGameIds(prev => {
+      const next = new Set(prev);
+      if (next.has(gameId)) {
+        next.delete(gameId);
+      } else {
+        next.add(gameId);
+      }
+      return next;
+    });
+  };
+
+  const handleIncludeAllGames = () => {
+    triggerHaptic('medium');
+    playSound('click', soundEnabled);
+    setDiscardedGameIds(new Set());
+  };
+
+  const handleFilterWinsOnly = () => {
+    triggerHaptic('medium');
+    playSound('click', soundEnabled);
+    const newDiscarded = new Set<string>();
+    const tName = currentTeam.name.toLowerCase().trim();
+    teamAllMatches.forEach(g => {
+      const isHome = g.homeTeamName.toLowerCase().trim() === tName;
+      const isWin = isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
+      if (!isWin) {
+        newDiscarded.add(g.id);
+      }
+    });
+    setDiscardedGameIds(newDiscarded);
+  };
+
+  const handleFilterLossesOnly = () => {
+    triggerHaptic('medium');
+    playSound('click', soundEnabled);
+    const newDiscarded = new Set<string>();
+    const tName = currentTeam.name.toLowerCase().trim();
+    teamAllMatches.forEach(g => {
+      const isHome = g.homeTeamName.toLowerCase().trim() === tName;
+      const isWin = isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
+      if (isWin) {
+        newDiscarded.add(g.id);
+      }
+    });
+    setDiscardedGameIds(newDiscarded);
+  };
+
+  // PDF & Sharing Actions for Accumulated Team Stats
+  const handleDownloadTeamPdf = () => {
+    triggerHaptic('medium');
+    playSound('score', soundEnabled);
+    downloadTeamStatsPdf(currentTeam, includedGames, discardedGames);
+    setShareFeedbackMsg('¡Informe PDF del equipo descargado correctamente!');
+    setTimeout(() => setShareFeedbackMsg(null), 3500);
+  };
+
+  const handleShareTeamPdf = async () => {
+    triggerHaptic('medium');
+    playSound('click', soundEnabled);
+    setIsSharing(true);
+    try {
+      const res = await shareTeamStatsPdf(currentTeam, includedGames, discardedGames);
+      if (res.success) {
+        setShareFeedbackMsg(
+          res.method === 'native'
+            ? '¡Informe compartido con éxito!'
+            : '¡Informe PDF descargado para compartir!'
+        );
+      }
+    } catch {
+      // Fallback to WhatsApp text
+      const waText = getTeamStatsWhatsAppSummary(currentTeam, includedGames, discardedGames);
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(waText)}`, '_blank');
+      setShareFeedbackMsg('Abriendo WhatsApp con el resumen...');
+    } finally {
+      setIsSharing(false);
+      setTimeout(() => setShareFeedbackMsg(null), 4000);
     }
   };
 
-  // CSV Export
-  const handleExportCSV = () => {
+  // PDF & Sharing Actions for Current Match
+  const handleDownloadMatchPdf = () => {
+    if (!currentGame) return;
+    triggerHaptic('medium');
     playSound('score', soundEnabled);
-    const csvContent = exportSeasonToCSV(filteredGames, aggregatedStats);
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const catSuffix = selectedCategory !== 'ALL' ? `_${selectedCategory}` : '_Global';
-    link.setAttribute('download', `BasketStats_Acumuladas${catSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const doc = generateOfficialActaPdf(currentGame);
+    const safeName = (currentGame.homeTeamName || 'Partido').replace(/[^a-zA-Z0-9]/g, '_');
+    doc.save(`Acta_${safeName}_${currentGame.date || 'Hoy'}.pdf`);
+    setShareFeedbackMsg('¡Acta oficial del partido descargada en PDF!');
+    setTimeout(() => setShareFeedbackMsg(null), 3500);
   };
+
+  const handleShareMatchWhatsApp = () => {
+    if (!currentGame) return;
+    triggerHaptic('medium');
+    playSound('click', soundEnabled);
+    const topScorerText = matchTopScorer ? `🏀 Máx. Anotador: #${matchTopScorer.player.number} ${matchTopScorer.player.name} (${matchTopScorer.points} pts)` : '';
+    const mvpText = matchMVP ? `⭐ MVP: #${matchMVP.player.number} ${matchMVP.player.name} (${matchMVP.efficiency} VAL)` : '';
+    const message = `📊 *ESTADÍSTICAS DEL PARTIDO*\n🏀 ${currentGame.homeTeamName} ${currentGame.homeScore} - ${currentGame.awayScore} ${currentGame.awayTeamName}\n📅 ${currentGame.date || 'Fecha'} | ${currentGame.category || 'Baloncesto'}\n\n${topScorerText}\n${mvpText}\n\nGenerado con BasketStats Pro`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+    setShareFeedbackMsg('Abriendo WhatsApp...');
+    setTimeout(() => setShareFeedbackMsg(null), 3500);
+  };
+
+  // Toggle sort field in accumulated
+  const handleAccumulatedSort = (field: keyof PlayerAccumulatedRow) => {
+    playSound('click', soundEnabled);
+    if (playerSortKey === field) {
+      setPlayerSortAsc(!playerSortAsc);
+    } else {
+      setPlayerSortKey(field);
+      setPlayerSortAsc(false);
+    }
+  };
+
+  const rosterPlayers = currentTeam.roster || [];
 
   return (
     <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 space-y-4 pb-28">
-      {/* Top Header Card */}
-      <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 sm:p-4 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-800">
+      {/* 1. TOP BAR: TEAM SELECTOR & PRIMARY MODE TOGGLE */}
+      <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+        {/* Team Selector: ONE TEAM AT A TIME */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-800/80">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-orange-600/20 border border-orange-500/40 text-orange-400">
-              <BarChart3 className="w-5 h-5" />
-            </div>
+            <TeamLogoDisplay
+              logo={currentTeam.logo}
+              teamName={currentTeam.name}
+              size="md"
+            />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-black text-gray-100 uppercase tracking-wide font-scoreboard">
-                  Estadísticas Acumuladas Generales
-                </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/40 font-bold">
-                  {filteredGames.length} {filteredGames.length === 1 ? 'partido sumado' : 'partidos sumados'}
+                <span className="text-[10px] uppercase font-mono font-bold text-orange-400 bg-orange-950/60 border border-orange-700/60 px-2 py-0.5 rounded-full">
+                  Equipo Activo
+                </span>
+                <span className="text-[11px] font-mono text-gray-400">
+                  {teamAllMatches.length} {teamAllMatches.length === 1 ? 'partido registrado' : 'partidos registrados'}
                 </span>
               </div>
-              <p className="text-xs text-gray-400 font-mono mt-0.5">
-                Datos globales consolidados sumando todos los partidos de la biblioteca, separados por categoría y jugadores.
-              </p>
+
+              {/* Team dropdown if multiple teams exist */}
+              {recordedTeams.length > 1 ? (
+                <div className="relative mt-1">
+                  <select
+                    id="team-stats-selector"
+                    value={selectedTeamId}
+                    onChange={e => {
+                      playSound('click', soundEnabled);
+                      setSelectedTeamId(e.target.value);
+                      setDiscardedGameIds(new Set()); // Reset exclusions on team switch
+                    }}
+                    className="bg-neutral-900 text-white font-bold text-base sm:text-lg rounded-lg px-3 py-1 pr-8 border border-neutral-700 focus:border-orange-500 focus:outline-none cursor-pointer appearance-none shadow-sm"
+                  >
+                    {recordedTeams.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.category || 'Equipo'})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-orange-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              ) : (
+                <h1 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide font-scoreboard mt-0.5">
+                  {currentTeam.name}{' '}
+                  <span className="text-xs text-orange-400 font-mono font-normal">
+                    ({currentTeam.category || 'Equipo'})
+                  </span>
+                </h1>
+              )}
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-            <button
-              id="export-accumulated-csv-btn"
-              type="button"
-              onClick={handleExportCSV}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition shadow"
-              title="Descargar estadísticas acumuladas en CSV para Excel"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Exportar Excel</span>
-            </button>
+          {/* Core Action Buttons for Extracting Stats */}
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            {activeTab === 'accumulated' ? (
+              <>
+                <button
+                  id="btn-download-accumulated-pdf"
+                  type="button"
+                  onClick={handleDownloadTeamPdf}
+                  className="py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-orange-600/20 active:scale-95 transition"
+                  title="Descargar informe completo del equipo en PDF con mapa de tiro"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Descargar PDF</span>
+                </button>
+
+                <button
+                  id="btn-share-accumulated-mobile"
+                  type="button"
+                  onClick={handleShareTeamPdf}
+                  disabled={isSharing}
+                  className="py-2 px-3.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition"
+                  title="Enviar informe a WhatsApp o compartir desde el móvil"
+                >
+                  <Share2 className="w-4 h-4 text-emerald-400" />
+                  <span>{isSharing ? 'Enviando...' : 'Móvil / WhatsApp'}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  id="btn-download-match-acta"
+                  type="button"
+                  onClick={handleDownloadMatchPdf}
+                  className="py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-orange-600/20 active:scale-95 transition"
+                  title="Descargar acta oficial del partido en PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Acta PDF</span>
+                </button>
+
+                <button
+                  id="btn-share-match-whatsapp"
+                  type="button"
+                  onClick={handleShareMatchWhatsApp}
+                  className="py-2 px-3.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition"
+                  title="Compartir resultado y destacados del partido por WhatsApp"
+                >
+                  <Send className="w-4 h-4 text-emerald-400" />
+                  <span>WhatsApp</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Category Selector Tabs (Separación por Categoría) */}
-        <div className="pt-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-mono font-bold text-gray-400 flex items-center gap-1">
-              <Filter className="w-3 h-3 text-orange-400" />
-              <span>Separar por Categoría:</span>
-            </span>
-            <span className="text-[10px] font-mono text-gray-500">
-              {selectedCategory === 'ALL'
-                ? 'Mostrando todas las categorías combinadas'
-                : `Filtrado por: ${selectedCategory}`}
-            </span>
+        {/* Feedback message banner */}
+        {shareFeedbackMsg && (
+          <div className="bg-emerald-950/80 border border-emerald-500/60 rounded-xl px-3 py-2 text-emerald-300 text-xs font-mono font-bold flex items-center gap-2 animate-in fade-in">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{shareFeedbackMsg}</span>
           </div>
+        )}
 
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            <button
-              type="button"
-              onClick={() => {
-                playSound('click', soundEnabled);
-                setSelectedCategory('ALL');
-              }}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap ${
-                selectedCategory === 'ALL'
-                  ? 'bg-orange-600 text-white shadow-md'
-                  : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
-              }`}
-            >
-              Todas las Categorías ({games.length})
-            </button>
+        {/* Simple 2-Tab Switcher: 'Acumuladas & Temporada' vs 'Partido Actual' */}
+        <div className="flex items-center gap-2">
+          <button
+            id="subview-tab-accumulated"
+            type="button"
+            onClick={() => {
+              playSound('click', soundEnabled);
+              setActiveTab('accumulated');
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 ${
+              activeTab === 'accumulated'
+                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/25'
+                : 'bg-neutral-900 hover:bg-neutral-800 text-gray-400 border border-neutral-800'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Estadísticas Acumuladas & Tiro</span>
+            <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-black/40 text-orange-300">
+              {includedGames.length} {includedGames.length === 1 ? 'partido' : 'partidos'}
+            </span>
+          </button>
 
-            {availableCategories.map(cat => {
-              const countInCat = games.filter(g => getGameCategory(g).toLowerCase().trim() === cat.toLowerCase().trim()).length;
-              const isSelected = selectedCategory.toLowerCase().trim() === cat.toLowerCase().trim();
-              return (
+          <button
+            id="subview-tab-match"
+            type="button"
+            onClick={() => {
+              playSound('click', soundEnabled);
+              setActiveTab('match');
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 ${
+              activeTab === 'match'
+                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/25'
+                : 'bg-neutral-900 hover:bg-neutral-800 text-gray-400 border border-neutral-800'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Partido Actual (Box Score)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. MAIN CONTENT BODY */}
+      {activeTab === 'accumulated' ? (
+        /* ACCUMULATED STATS VIEW (100% EXCLUSIVE TO THIS TEAM) */
+        <div className="space-y-4">
+          {/* A. PARTIDOS & FILTRO DE DESCARTE (SUPER SIMPLE) */}
+          <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-lg space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-orange-400" />
+                  <h3 className="text-xs sm:text-sm font-black text-gray-200 uppercase tracking-wider font-mono">
+                    Filtro de Partidos (Descartar partidos)
+                  </h3>
+                </div>
+                <p className="text-[11px] text-gray-400 font-mono mt-0.5">
+                  Desmarca cualquier partido para excluirlo al instante de las estadísticas y del mapa de tiro.
+                </p>
+              </div>
+
+              {/* Quick filter buttons */}
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
-                  key={cat}
                   type="button"
-                  onClick={() => {
-                    playSound('click', soundEnabled);
-                    setSelectedCategory(cat);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-orange-600 text-white shadow-md ring-1 ring-orange-400'
-                      : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
+                  onClick={handleIncludeAllGames}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition border ${
+                    discardedGameIds.size === 0
+                      ? 'bg-orange-600/20 text-orange-300 border-orange-500/50'
+                      : 'bg-neutral-900 hover:bg-neutral-800 text-gray-400 border-neutral-800'
                   }`}
                 >
-                  <span>{cat}</span>
-                  <span className="text-[10px] opacity-75 font-normal">({countInCat})</span>
+                  Todos ({teamAllMatches.length})
                 </button>
-              );
-            })}
+                <button
+                  type="button"
+                  onClick={handleFilterWinsOnly}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-neutral-900 hover:bg-neutral-800 text-emerald-400 border border-neutral-800 transition"
+                >
+                  Solo Victorias
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFilterLossesOnly}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-neutral-900 hover:bg-neutral-800 text-red-400 border border-neutral-800 transition"
+                >
+                  Solo Derrotas
+                </button>
+              </div>
+            </div>
+
+            {/* Match List with Checkboxes */}
+            {teamAllMatches.length === 0 ? (
+              <div className="py-6 text-center text-xs text-gray-500 font-mono bg-neutral-900/50 rounded-xl border border-neutral-800/60">
+                Aún no hay partidos guardados para {currentTeam.name}. Los partidos que juegues con este equipo aparecerán aquí automáticamente.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                {teamAllMatches.map(g => {
+                  const isDiscarded = discardedGameIds.has(g.id);
+                  const isHome = (g.homeTeamName || '').toLowerCase().trim() === currentTeam.name.toLowerCase().trim();
+                  const rivalName = isHome ? (g.awayTeamName || 'Rival') : (g.homeTeamName || 'Rival');
+                  const teamScore = isHome ? g.homeScore : g.awayScore;
+                  const oppScore = isHome ? g.awayScore : g.homeScore;
+                  const isWin = teamScore > oppScore;
+
+                  return (
+                    <div
+                      key={g.id}
+                      onClick={() => toggleDiscardGame(g.id)}
+                      className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2 ${
+                        isDiscarded
+                          ? 'bg-neutral-900/40 border-neutral-800/60 text-gray-500 opacity-60'
+                          : 'bg-neutral-900 border-neutral-700/80 hover:border-orange-500 text-white shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border ${
+                            isDiscarded
+                              ? 'border-neutral-700 bg-neutral-800 text-transparent'
+                              : 'border-orange-500 bg-orange-600 text-white'
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold font-mono truncate">
+                            vs {rivalName}
+                          </div>
+                          <div className="text-[10px] font-mono text-gray-400">
+                            {g.date || 'Sin fecha'} · {teamScore} - {oppScore}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                          isWin
+                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/50'
+                            : 'bg-red-950 text-red-400 border border-red-700/50'
+                        }`}
+                      >
+                        {isWin ? 'V' : 'D'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* Global Totals & Averages KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 font-mono">
-        {/* Record */}
-        <div className="bg-[#14161B] border border-gray-800 rounded-lg p-2.5 text-center">
-          <span className="text-[10px] text-gray-400 uppercase font-bold block">Balance Global</span>
-          <span className="text-lg font-black text-orange-400">
-            {aggregatedStats.wins}V - {aggregatedStats.losses}D
-          </span>
-          <span className="text-[10px] text-gray-500 block">({aggregatedStats.winRate}% Victorias)</span>
-        </div>
-
-        {/* Scored Avg & Total */}
-        <div className="bg-[#14161B] border border-gray-800 rounded-lg p-2.5 text-center">
-          <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos Anotados</span>
-          <span className="text-lg font-black text-emerald-400">{aggregatedStats.pointsScoredAvg}</span>
-          <span className="text-[10px] text-gray-500 block">Total: {aggregatedStats.pointsScoredTotal} pts</span>
-        </div>
-
-        {/* Conceded Avg & Total */}
-        <div className="bg-[#14161B] border border-gray-800 rounded-lg p-2.5 text-center">
-          <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos Encajados</span>
-          <span className="text-lg font-black text-rose-400">{aggregatedStats.pointsConcededAvg}</span>
-          <span className="text-[10px] text-gray-500 block">Total: {aggregatedStats.pointsConcededTotal} pts</span>
-        </div>
-
-        {/* Rebounds */}
-        <div className="bg-[#14161B] border border-gray-800 rounded-lg p-2.5 text-center">
-          <span className="text-[10px] text-gray-400 uppercase font-bold block">Rebotes Totales</span>
-          <span className="text-lg font-black text-sky-400">{aggregatedStats.reboundsAvg}</span>
-          <span className="text-[10px] text-gray-500 block">Total: {aggregatedStats.totalRebounds} RT</span>
-        </div>
-
-        {/* Assists / Turnovers Ratio */}
-        <div className="bg-[#14161B] border border-gray-800 rounded-lg p-2.5 text-center">
-          <span className="text-[10px] text-gray-400 uppercase font-bold block">Asistencias / PER</span>
-          <span className="text-lg font-black text-amber-400">{aggregatedStats.assistsAvg}</span>
-          <span className="text-[10px] text-gray-500 block">Ratio AST/TO: {aggregatedStats.astToRatio}</span>
-        </div>
-
-        {/* Valoración Media */}
-        <div className="bg-[#14161B] border border-gray-800 rounded-lg p-2.5 text-center">
-          <span className="text-[10px] text-gray-400 uppercase font-bold block">Valoración PIR</span>
-          <span className="text-lg font-black text-emerald-400">{aggregatedStats.efficiencyAvg}</span>
-          <span className="text-[10px] text-gray-500 block">Media por Partido</span>
-        </div>
-      </div>
-
-      {/* Team Shooting Effectiveness Visual Bars */}
-      <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 space-y-2 font-mono">
-        <div className="flex items-center justify-between pb-1.5 border-b border-gray-800">
-          <span className="text-xs font-bold text-gray-200 uppercase tracking-wide flex items-center gap-1.5">
-            <Target className="w-3.5 h-3.5 text-orange-400" />
-            <span>Efectividad de Tiro Acumulada del Equipo</span>
-          </span>
-          <span className="text-[11px] text-gray-400">
-            TC: <strong className="text-white">{aggregatedStats.fieldGoalsPercentage}%</strong> ({aggregatedStats.fieldGoalsMade}/{aggregatedStats.fieldGoalsAttempted})
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {/* T2 */}
-          <div className="bg-[#0F1115] p-2 rounded-lg border border-gray-800 space-y-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-gray-400 font-bold">Tiros de 2 (T2):</span>
-              <span className="text-emerald-400 font-black">
-                {aggregatedStats.twoPointsPercentage}% ({aggregatedStats.twoPointsMade}/{aggregatedStats.twoPointsAttempted})
+          {/* B. TEAM KPI SUMMARY CARDS */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 font-mono">
+            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
+              <span className="text-[10px] text-gray-400 uppercase font-bold block">Balance</span>
+              <span className="text-xl font-black text-orange-400 font-scoreboard">
+                {teamMetrics.wins || 0}V - {teamMetrics.losses || 0}D
+              </span>
+              <span className="text-[10px] text-gray-500 block">
+                {teamMetrics.gamesCount > 0
+                  ? `${Math.round(((teamMetrics.wins || 0) / teamMetrics.gamesCount) * 100)}% Victorias`
+                  : '0%'}
               </span>
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, aggregatedStats.twoPointsPercentage)}%` }}
+
+            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
+              <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos/Partido</span>
+              <span className="text-xl font-black text-emerald-400 font-scoreboard">
+                {teamMetrics.pointsForAvg || 0}
+              </span>
+              <span className="text-[10px] text-gray-500 block">
+                Total: {teamMetrics.pointsFor || 0} pts
+              </span>
+            </div>
+
+            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
+              <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos Encajados/P</span>
+              <span className="text-xl font-black text-rose-400 font-scoreboard">
+                {teamMetrics.pointsAgainstAvg || 0}
+              </span>
+              <span className="text-[10px] text-gray-500 block">
+                Total: {teamMetrics.pointsAgainst || 0} pts
+              </span>
+            </div>
+
+            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
+              <span className="text-[10px] text-gray-400 uppercase font-bold block">Tiros de Campo</span>
+              <span className="text-xl font-black text-amber-400 font-scoreboard">
+                {teamMetrics.fieldGoalsPercentage || 0}%
+              </span>
+              <span className="text-[10px] text-gray-500 block">
+                {teamMetrics.fieldGoalsMade || 0}/{teamMetrics.fieldGoalsAttempted || 0} TC
+              </span>
+            </div>
+
+            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
+              <span className="text-[10px] text-gray-400 uppercase font-bold block">Eficacia Triples</span>
+              <span className="text-xl font-black text-sky-400 font-scoreboard">
+                {teamMetrics.threePointsPercentage || 0}%
+              </span>
+              <span className="text-[10px] text-gray-500 block">
+                {teamMetrics.threePointsMade || 0}/{teamMetrics.threePointsAttempted || 0} T3
+              </span>
+            </div>
+
+            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
+              <span className="text-[10px] text-gray-400 uppercase font-bold block">Tiros Libres</span>
+              <span className="text-xl font-black text-purple-400 font-scoreboard">
+                {teamMetrics.freeThrowsPercentage || 0}%
+              </span>
+              <span className="text-[10px] text-gray-500 block">
+                {teamMetrics.freeThrowsMade || 0}/{teamMetrics.freeThrowsAttempted || 0} TL
+              </span>
+            </div>
+          </div>
+
+          {/* C. MAPA DE TIRO ACUMULADO DEL EQUIPO */}
+          <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-orange-400" />
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                    Mapa de Tiro Acumulado del Equipo
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-mono">
+                    Todos los lanzamientos registrados en los {includedGames.length} partidos incluidos de este equipo.
+                  </p>
+                </div>
+              </div>
+
+              {/* Player Shot Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-gray-400">Filtrar por jugador:</span>
+                <select
+                  value={playerShotFilter}
+                  onChange={e => setPlayerShotFilter(e.target.value)}
+                  className="bg-neutral-900 text-white text-xs font-mono font-bold rounded-lg px-2.5 py-1.5 border border-neutral-700 focus:border-orange-500 focus:outline-none"
+                >
+                  <option value="all">Todo el Equipo ({teamShots.length} tiros)</option>
+                  {rosterPlayers.map(p => {
+                    const shotsCount = teamShots.filter(s => s.playerId === p.id || s.playerNumber === p.number).length;
+                    return (
+                      <option key={p.id} value={p.id}>
+                        #{p.number} {p.name} ({shotsCount} tiros)
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            {/* Interactive Court Component */}
+            <div className="max-w-2xl mx-auto py-2">
+              <PlayerShotMap
+                shots={
+                  playerShotFilter === 'all'
+                    ? teamShots
+                    : teamShots.filter(s => s.playerId === playerShotFilter || rosterPlayers.find(p => p.id === playerShotFilter)?.number === s.playerNumber)
+                }
+                playerName={
+                  playerShotFilter === 'all'
+                    ? currentTeam.name
+                    : rosterPlayers.find(p => p.id === playerShotFilter)?.name || 'Jugador'
+                }
+                playerNumber={
+                  playerShotFilter === 'all'
+                    ? undefined
+                    : rosterPlayers.find(p => p.id === playerShotFilter)?.number
+                }
+                title={
+                  playerShotFilter === 'all'
+                    ? `Mapa de Tiros · ${currentTeam.name}`
+                    : `Carta de Tiro · #${rosterPlayers.find(p => p.id === playerShotFilter)?.number} ${rosterPlayers.find(p => p.id === playerShotFilter)?.name}`
+                }
               />
             </div>
           </div>
 
-          {/* T3 */}
-          <div className="bg-[#0F1115] p-2 rounded-lg border border-gray-800 space-y-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-gray-400 font-bold">Triples (T3):</span>
-              <span className="text-amber-400 font-black">
-                {aggregatedStats.threePointsPercentage}% ({aggregatedStats.threePointsMade}/{aggregatedStats.threePointsAttempted})
-              </span>
+          {/* D. TABLA ACUMULADA DE LA PLANTILLA */}
+          <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-orange-400" />
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                    Estadísticas Acumuladas de la Plantilla
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-mono">
+                    Rendimiento individual de cada jugador en los {includedGames.length} partidos computados.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-amber-500 h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, aggregatedStats.threePointsPercentage)}%` }}
-              />
-            </div>
-          </div>
 
-          {/* TL */}
-          <div className="bg-[#0F1115] p-2 rounded-lg border border-gray-800 space-y-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-gray-400 font-bold">Tiros Libres (TL):</span>
-              <span className="text-teal-400 font-black">
-                {aggregatedStats.freeThrowsPercentage}% ({aggregatedStats.freeThrowsMade}/{aggregatedStats.freeThrowsAttempted})
-              </span>
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-teal-500 h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, aggregatedStats.freeThrowsPercentage)}%` }}
-              />
+            {/* Scrollable Player Table */}
+            <div className="overflow-x-auto rounded-xl border border-gray-800">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-[#101216] text-gray-400 uppercase text-[10px] font-black border-b border-gray-800">
+                  <tr>
+                    <th className="py-2.5 px-3"># Jugador</th>
+                    <th
+                      onClick={() => handleAccumulatedSort('gamesPlayed')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white"
+                    >
+                      PJ
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('points')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white text-orange-400"
+                    >
+                      PTS
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('pointsAvg')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white text-orange-400"
+                    >
+                      PTS/P
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('twoPointsPct')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white"
+                    >
+                      %T2
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('threePointsPct')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white"
+                    >
+                      %T3
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('freeThrowsPct')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white"
+                    >
+                      %TL
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('reboundsAvg')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white"
+                    >
+                      REB/P
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('assistsAvg')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white"
+                    >
+                      AST/P
+                    </th>
+                    <th
+                      onClick={() => handleAccumulatedSort('efficiencyAvg')}
+                      className="py-2.5 px-2 text-center cursor-pointer hover:text-white text-emerald-400"
+                    >
+                      VAL/P
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/60">
+                  {sortedAccumulatedPlayers.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-6 text-center text-gray-500">
+                        No hay jugadores registrados en esta plantilla aún.
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedAccumulatedPlayers.map(row => (
+                      <tr
+                        key={row.playerId}
+                        className="hover:bg-neutral-800/40 transition"
+                      >
+                        <td className="py-2 px-3 font-bold text-gray-200 flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-neutral-900 border border-neutral-700 text-orange-400 font-scoreboard text-xs flex items-center justify-center shrink-0">
+                            {row.playerNumber}
+                          </span>
+                          <span className="truncate max-w-[140px] sm:max-w-[200px]">{row.playerName}</span>
+                        </td>
+                        <td className="py-2 px-2 text-center text-gray-300 font-bold">{row.gamesPlayed}</td>
+                        <td className="py-2 px-2 text-center font-black text-orange-400">{row.points}</td>
+                        <td className="py-2 px-2 text-center font-black text-orange-300">{row.pointsAvg}</td>
+                        <td className="py-2 px-2 text-center text-gray-300">
+                          {row.twoPointsPct}%{' '}
+                          <span className="text-[9px] text-gray-500">
+                            ({row.twoPointsMade}/{row.twoPointsAttempted})
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-center text-gray-300">
+                          {row.threePointsPct}%{' '}
+                          <span className="text-[9px] text-gray-500">
+                            ({row.threePointsMade}/{row.threePointsAttempted})
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-center text-gray-300">
+                          {row.freeThrowsPct}%{' '}
+                          <span className="text-[9px] text-gray-500">
+                            ({row.freeThrowsMade}/{row.freeThrowsAttempted})
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-center text-blue-300 font-bold">{row.reboundsAvg}</td>
+                        <td className="py-2 px-2 text-center text-cyan-300 font-bold">{row.assistsAvg}</td>
+                        <td className="py-2 px-2 text-center font-black text-emerald-400">{row.efficiencyAvg}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Leaders Podium (Cuadro de Honor de Jugadores) */}
-      {leaders && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wide font-mono">
-              Líderes de la Temporada {selectedCategory !== 'ALL' ? `(${selectedCategory})` : ''}
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {/* Top Scorer */}
-            {leaders.topPoints && (
-              <div
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  setActivePlayerDetail(leaders.topPoints);
-                }}
-                className="bg-[#14161B] hover:bg-gray-800/80 border border-orange-500/40 rounded-xl p-2.5 transition cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-orange-400 font-bold uppercase flex items-center gap-1">
-                    <Flame className="w-3 h-3 text-orange-400" />
-                    <span>Anotación</span>
-                  </span>
-                  <span className="text-[10px] font-mono bg-orange-950 text-orange-400 px-1 rounded border border-orange-800 font-bold">
-                    #{leaders.topPoints.playerNumber}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <span className="text-xs font-bold text-gray-100 block truncate">
-                    {leaders.topPoints.playerName}
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-base font-black text-orange-400 font-scoreboard">
-                      {leaders.topPoints.pointsTotal} <span className="text-[9px] text-gray-500 font-mono font-normal">pts</span>
+      ) : (
+        /* CURRENT MATCH BOX SCORE & SHOT CHART VIEW */
+        <div className="space-y-4">
+          {!currentGame ? (
+            <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-6 text-center font-mono">
+              <p className="text-gray-400 text-sm">No hay un partido en curso en este momento.</p>
+            </div>
+          ) : (
+            <>
+              {/* Match Highlights Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
+                <div className="bg-[#14161B] border border-amber-500/40 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <span>MVP Partido</span>
+                  </div>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <div className="truncate">
+                      <span className="font-scoreboard text-xl font-black text-amber-400">
+                        #{matchMVP?.player.number || '-'}
+                      </span>{' '}
+                      <span className="text-xs font-bold text-gray-200">
+                        {matchMVP?.player.name?.split(' ')[0] || ''}
+                      </span>
+                    </div>
+                    <span className="text-sm font-black text-amber-400">
+                      {matchMVP?.efficiency || 0} <span className="text-[9px] text-gray-500 font-normal">VAL</span>
                     </span>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {leaders.topPoints.pointsAvg} p/p
+                  </div>
+                </div>
+
+                <div className="bg-[#14161B] border border-orange-500/40 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-orange-400 text-[10px] font-bold uppercase tracking-wider">
+                    <Flame className="w-4 h-4 text-orange-400" />
+                    <span>Máx. Anotador</span>
+                  </div>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <div className="truncate">
+                      <span className="font-scoreboard text-xl font-black text-orange-400">
+                        #{matchTopScorer?.player.number || '-'}
+                      </span>{' '}
+                      <span className="text-xs font-bold text-gray-200">
+                        {matchTopScorer?.player.name?.split(' ')[0] || ''}
+                      </span>
+                    </div>
+                    <span className="text-sm font-black text-orange-400">
+                      {matchTopScorer?.points || 0} <span className="text-[9px] text-gray-500 font-normal">PTS</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#14161B] border border-blue-500/40 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+                    <Shield className="w-4 h-4 text-blue-400" />
+                    <span>Rebotes Equipo</span>
+                  </div>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-scoreboard text-2xl font-black text-blue-400">
+                      {matchTeamStats?.totalRebounds || 0}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {matchTeamStats?.offensiveRebounds || 0} Of / {matchTeamStats?.defensiveRebounds || 0} Def
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#14161B] border border-emerald-500/40 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                    <Award className="w-4 h-4 text-emerald-400" />
+                    <span>Asistencias Equipo</span>
+                  </div>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-scoreboard text-2xl font-black text-emerald-400">
+                      {matchTeamStats?.assists || 0}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      VAL Total: {matchTeamStats?.efficiency || 0}
                     </span>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* MVP PIR */}
-            {leaders.topValuation && (
-              <div
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  setActivePlayerDetail(leaders.topValuation);
-                }}
-                className="bg-[#14161B] hover:bg-gray-800/80 border border-amber-500/40 rounded-xl p-2.5 transition cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-amber-400 font-bold uppercase flex items-center gap-1">
-                    <Trophy className="w-3 h-3 text-amber-400" />
-                    <span>MVP (Val)</span>
-                  </span>
-                  <span className="text-[10px] font-mono bg-amber-950 text-amber-400 px-1 rounded border border-amber-800 font-bold">
-                    #{leaders.topValuation.playerNumber}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <span className="text-xs font-bold text-gray-100 block truncate">
-                    {leaders.topValuation.playerName}
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-base font-black text-amber-400 font-scoreboard">
-                      {leaders.topValuation.efficiencyAvg} <span className="text-[9px] text-gray-500 font-mono font-normal">val/p</span>
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      Tot: {leaders.topValuation.efficiencyTotal}
-                    </span>
+              {/* Match Box Score Table */}
+              <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-orange-400" />
+                    <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                      Box Score del Partido · {currentGame.homeTeamName}
+                    </h3>
+                  </div>
+
+                  {/* Quarter filter for match */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setMatchQuarterFilter(undefined)}
+                      className={`px-2 py-1 rounded text-[10px] font-mono font-bold border transition ${
+                        matchQuarterFilter === undefined
+                          ? 'bg-orange-600 text-white border-orange-500'
+                          : 'bg-neutral-900 text-gray-400 border-neutral-700'
+                      }`}
+                    >
+                      Total
+                    </button>
+                    {[1, 2, 3, 4].map(q => (
+                      <button
+                        key={q}
+                        onClick={() => setMatchQuarterFilter(q)}
+                        className={`px-2 py-1 rounded text-[10px] font-mono font-bold border transition ${
+                          matchQuarterFilter === q
+                            ? 'bg-orange-600 text-white border-orange-500'
+                            : 'bg-neutral-900 text-gray-400 border-neutral-700'
+                        }`}
+                      >
+                        Q{q}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Top Rebounder */}
-            {leaders.topRebounds && (
-              <div
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  setActivePlayerDetail(leaders.topRebounds);
-                }}
-                className="bg-[#14161B] hover:bg-gray-800/80 border border-sky-500/40 rounded-xl p-2.5 transition cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-sky-400 font-bold uppercase flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-sky-400" />
-                    <span>Rebotes</span>
-                  </span>
-                  <span className="text-[10px] font-mono bg-sky-950 text-sky-400 px-1 rounded border border-sky-800 font-bold">
-                    #{leaders.topRebounds.playerNumber}
-                  </span>
+                <div className="overflow-x-auto rounded-xl border border-gray-800">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-[#101216] text-gray-400 uppercase text-[10px] font-black border-b border-gray-800">
+                      <tr>
+                        <th className="py-2.5 px-3"># Jugador</th>
+                        <th className="py-2.5 px-2 text-center">Min</th>
+                        <th className="py-2.5 px-2 text-center text-orange-400 font-bold">PTS</th>
+                        <th className="py-2.5 px-2 text-center">T2</th>
+                        <th className="py-2.5 px-2 text-center">T3</th>
+                        <th className="py-2.5 px-2 text-center">TL</th>
+                        <th className="py-2.5 px-2 text-center text-blue-400">REB</th>
+                        <th className="py-2.5 px-2 text-center text-cyan-400">AST</th>
+                        <th className="py-2.5 px-2 text-center">ROB</th>
+                        <th className="py-2.5 px-2 text-center">PER</th>
+                        <th className="py-2.5 px-2 text-center">FAL</th>
+                        <th className="py-2.5 px-2 text-center text-emerald-400 font-bold">VAL</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800/60">
+                      {sortedMatchPlayers.map(row => (
+                        <tr
+                          key={row.player.id}
+                          onClick={() => setSelectedMatchPlayer(row)}
+                          className="hover:bg-neutral-800/40 transition cursor-pointer"
+                        >
+                          <td className="py-2 px-3 font-bold text-gray-200 flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-neutral-900 border border-neutral-700 text-orange-400 font-scoreboard text-xs flex items-center justify-center shrink-0">
+                              {row.player.number}
+                            </span>
+                            <span className="truncate max-w-[140px] sm:max-w-[200px]">{row.player.name}</span>
+                          </td>
+                          <td className="py-2 px-2 text-center text-emerald-400 font-bold">{row.minutesPlayedFormatted}</td>
+                          <td className="py-2 px-2 text-center font-black text-orange-400">{row.points}</td>
+                          <td className="py-2 px-2 text-center text-gray-300">
+                            {row.twoPointsMade}/{row.twoPointsAttempted}
+                          </td>
+                          <td className="py-2 px-2 text-center text-gray-300">
+                            {row.threePointsMade}/{row.threePointsAttempted}
+                          </td>
+                          <td className="py-2 px-2 text-center text-gray-300">
+                            {row.freeThrowsMade}/{row.freeThrowsAttempted}
+                          </td>
+                          <td className="py-2 px-2 text-center text-blue-300 font-bold">{row.totalRebounds}</td>
+                          <td className="py-2 px-2 text-center text-cyan-300 font-bold">{row.assists}</td>
+                          <td className="py-2 px-2 text-center text-gray-300">{row.steals}</td>
+                          <td className="py-2 px-2 text-center text-gray-400">{row.turnovers}</td>
+                          <td className="py-2 px-2 text-center text-gray-300">{row.foulsPersonal}</td>
+                          <td className="py-2 px-2 text-center font-black text-emerald-400">{row.efficiency}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="mt-2">
-                  <span className="text-xs font-bold text-gray-100 block truncate">
-                    {leaders.topRebounds.playerName}
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-base font-black text-sky-400 font-scoreboard">
-                      {leaders.topRebounds.totalRebounds} <span className="text-[9px] text-gray-500 font-mono font-normal">reb</span>
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {leaders.topRebounds.reboundsAvg} r/p
-                    </span>
+              </div>
+
+              {/* Match Shot Chart */}
+              <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-800">
+                  <Target className="w-5 h-5 text-orange-400" />
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                      Carta de Tiro del Partido
+                    </h3>
+                    <p className="text-[11px] text-gray-400 font-mono">
+                      Todos los tiros ejecutados en este partido (verdes = metidos, rojos = fallados).
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Top Assists */}
-            {leaders.topAssists && (
-              <div
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  setActivePlayerDetail(leaders.topAssists);
-                }}
-                className="bg-[#14161B] hover:bg-gray-800/80 border border-emerald-500/40 rounded-xl p-2.5 transition cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-emerald-400" />
-                    <span>Asistencias</span>
-                  </span>
-                  <span className="text-[10px] font-mono bg-emerald-950 text-emerald-400 px-1 rounded border border-emerald-800 font-bold">
-                    #{leaders.topAssists.playerNumber}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <span className="text-xs font-bold text-gray-100 block truncate">
-                    {leaders.topAssists.playerName}
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-base font-black text-emerald-400 font-scoreboard">
-                      {leaders.topAssists.assists} <span className="text-[9px] text-gray-500 font-mono font-normal">ast</span>
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {leaders.topAssists.assistsAvg} a/p
-                    </span>
-                  </div>
+                <div className="max-w-2xl mx-auto py-2">
+                  <PlayerShotMap
+                    shots={currentGame.events.filter(e => !e.isOpponentAction && (e.actionType === '2PM' || e.actionType === '2PA' || e.actionType === '3PM' || e.actionType === '3PA'))}
+                    playerName={currentGame.homeTeamName || 'Mi Equipo'}
+                    title="Carta de Tiro del Partido Actual"
+                  />
                 </div>
               </div>
-            )}
-
-            {/* Top 3-Pointers */}
-            {leaders.topThrees && (
-              <div
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  setActivePlayerDetail(leaders.topThrees);
-                }}
-                className="bg-[#14161B] hover:bg-gray-800/80 border border-purple-500/40 rounded-xl p-2.5 transition cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-purple-400 font-bold uppercase flex items-center gap-1">
-                    <Target className="w-3 h-3 text-purple-400" />
-                    <span>Triples</span>
-                  </span>
-                  <span className="text-[10px] font-mono bg-purple-950 text-purple-400 px-1 rounded border border-purple-800 font-bold">
-                    #{leaders.topThrees.playerNumber}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <span className="text-xs font-bold text-gray-100 block truncate">
-                    {leaders.topThrees.playerName}
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-base font-black text-purple-400 font-scoreboard">
-                      {leaders.topThrees.threePointsMade} <span className="text-[9px] text-gray-500 font-mono font-normal">T3</span>
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {leaders.topThrees.threePointsPercentage}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Top Steals / Defense */}
-            {leaders.topSteals && (
-              <div
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  setActivePlayerDetail(leaders.topSteals);
-                }}
-                className="bg-[#14161B] hover:bg-gray-800/80 border border-teal-500/40 rounded-xl p-2.5 transition cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-teal-400 font-bold uppercase flex items-center gap-1">
-                    <Activity className="w-3 h-3 text-teal-400" />
-                    <span>Robos</span>
-                  </span>
-                  <span className="text-[10px] font-mono bg-teal-950 text-teal-400 px-1 rounded border border-teal-800 font-bold">
-                    #{leaders.topSteals.playerNumber}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <span className="text-xs font-bold text-gray-100 block truncate">
-                    {leaders.topSteals.playerName}
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-base font-black text-teal-400 font-scoreboard">
-                      {leaders.topSteals.steals} <span className="text-[9px] text-gray-500 font-mono font-normal">rob</span>
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {leaders.topSteals.stealsAvg} r/p
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       )}
 
-      {/* Main Players Accumulated Table (Separados por Jugadores) */}
-      <div className="bg-[#14161B] border border-gray-800 rounded-xl overflow-hidden shadow-xl space-y-2">
-        {/* Table Controls */}
-        <div className="p-3 bg-[#101216] border-b border-gray-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-orange-400 shrink-0" />
-            <div>
-              <h3 className="text-xs font-bold text-gray-100 uppercase tracking-wide font-mono">
-                Tabla Acumulada de Jugadores ({sortedPlayers.length})
-              </h3>
-              <span className="text-[10px] text-gray-400 font-mono block">
-                Haz clic en cualquier columna para ordenar o pulsa sobre un jugador para ver su ficha y partidos
-              </span>
-            </div>
-          </div>
-
-          {/* Search & Position Filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Search Input */}
-            <div className="relative flex-1 sm:w-48">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Buscar jugador..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-[#0F1115] border border-gray-700 rounded-lg pl-8 pr-2.5 py-1 text-xs text-gray-200 placeholder-gray-500 font-mono focus:outline-none focus:border-orange-500"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-
-            {/* Position Filter */}
-            <select
-              value={selectedPosition}
-              onChange={e => setSelectedPosition(e.target.value)}
-              className="bg-[#0F1115] border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-200 font-mono focus:outline-none focus:border-orange-500"
-            >
-              <option value="ALL">Todas Pos.</option>
-              <option value="PG">Base (PG)</option>
-              <option value="SG">Escolta (SG)</option>
-              <option value="SF">Alero (SF)</option>
-              <option value="PF">Ala-Pívot (PF)</option>
-              <option value="C">Pívot (C)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Dense Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs font-mono select-none">
-            <thead>
-              <tr className="bg-[#0F1115] text-gray-400 border-b border-gray-800 text-[10px] uppercase">
-                <th
-                  onClick={() => handleSort('playerNumber')}
-                  className="p-2.5 cursor-pointer hover:text-white transition"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>#</span>
-                    {sortField === 'playerNumber' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('playerName')}
-                  className="p-2.5 cursor-pointer hover:text-white transition"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Jugador</span>
-                    {sortField === 'playerName' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th className="p-2.5 text-center">Pos</th>
-                <th
-                  onClick={() => handleSort('gamesPlayed')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition"
-                  title="Partidos Jugados"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>PJ</span>
-                    {sortField === 'gamesPlayed' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('minutesPlayedTotalSeconds')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-emerald-400"
-                  title="Minutos totales y promedio"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>Min/P</span>
-                    {sortField === 'minutesPlayedTotalSeconds' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('pointsTotal')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-orange-400 font-bold"
-                  title="Puntos Totales"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>PTS TOT</span>
-                    {sortField === 'pointsTotal' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('pointsAvg')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-orange-400 font-bold"
-                  title="Puntos por Partido"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>PTS/P</span>
-                    {sortField === 'pointsAvg' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('twoPointsPercentage')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition"
-                  title="Acierto en Tiros de 2"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>T2%</span>
-                    {sortField === 'twoPointsPercentage' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('threePointsPercentage')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition"
-                  title="Acierto en Triples"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>T3%</span>
-                    {sortField === 'threePointsPercentage' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('freeThrowsPercentage')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition"
-                  title="Acierto en Tiros Libres"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>TL%</span>
-                    {sortField === 'freeThrowsPercentage' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('totalRebounds')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-sky-400"
-                  title="Rebotes Totales"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>REB</span>
-                    {sortField === 'totalRebounds' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('reboundsAvg')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-sky-400"
-                  title="Rebotes por Partido"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>REB/P</span>
-                    {sortField === 'reboundsAvg' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('assists')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-amber-400"
-                  title="Asistencias Totales"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>AST</span>
-                    {sortField === 'assists' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('assistsAvg')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-amber-400"
-                  title="Asistencias por Partido"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>AST/P</span>
-                    {sortField === 'assistsAvg' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('steals')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition"
-                  title="Robos Totales"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>ROB</span>
-                    {sortField === 'steals' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('turnovers')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition"
-                  title="Pérdidas de Balón"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>PER</span>
-                    {sortField === 'turnovers' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('efficiencyAvg')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition text-emerald-400 font-black"
-                  title="Valoración Media por Partido"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>VAL/P</span>
-                    {sortField === 'efficiencyAvg' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('plusMinusTotal')}
-                  className="p-2.5 text-center cursor-pointer hover:text-white transition"
-                  title="Balance Más / Menos Total"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>+/-</span>
-                    {sortField === 'plusMinusTotal' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {sortedPlayers.map((p, idx) => (
-                <tr
-                  key={`${p.playerId}-${p.playerNumber}-${idx}`}
-                  onClick={() => {
-                    playSound('click', soundEnabled);
-                    setActivePlayerDetail(p);
-                  }}
-                  className="hover:bg-gray-800/60 transition cursor-pointer group"
-                >
-                  <td className="p-2.5 font-black text-orange-400 group-hover:scale-105 transition-transform">
-                    #{p.playerNumber}
-                  </td>
-                  <td className="p-2.5 font-bold text-gray-100 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <span>{p.playerName}</span>
-                      {idx === 0 && (
-                        <span className="text-[9px] text-amber-400 bg-amber-950/80 px-1 py-0.2 rounded border border-amber-800 font-mono">
-                          ★ Líder
-                        </span>
-                      )}
-                      {p.categories && p.categories.length > 0 && (
-                        <span className="text-[8px] text-gray-400 bg-gray-900 px-1 py-0.2 rounded border border-gray-800 font-mono">
-                          {p.categories.join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-2.5 text-center text-gray-400 text-[10px]">
-                    {p.position ? (POSITION_LABELS[p.position]?.short || p.position) : '-'}
-                  </td>
-                  <td className="p-2.5 text-center text-gray-300 font-bold">{p.gamesPlayed}</td>
-                  <td className="p-2.5 text-center text-emerald-400">{p.minutesAvg || '00:00'}</td>
-                  <td className="p-2.5 text-center font-black text-orange-400">{p.pointsTotal}</td>
-                  <td className="p-2.5 text-center font-black text-orange-300">{p.pointsAvg}</td>
-                  <td className="p-2.5 text-center text-gray-300">
-                    <span className={p.twoPointsPercentage >= 50 ? 'text-emerald-400 font-bold' : ''}>
-                      {p.twoPointsPercentage}%
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">
-                      {p.twoPointsMade}/{p.twoPointsAttempted}
-                    </span>
-                  </td>
-                  <td className="p-2.5 text-center text-gray-300">
-                    <span className={p.threePointsPercentage >= 35 ? 'text-amber-400 font-bold' : ''}>
-                      {p.threePointsPercentage}%
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">
-                      {p.threePointsMade}/{p.threePointsAttempted}
-                    </span>
-                  </td>
-                  <td className="p-2.5 text-center text-gray-300">
-                    <span className={p.freeThrowsPercentage >= 70 ? 'text-teal-400 font-bold' : ''}>
-                      {p.freeThrowsPercentage}%
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">
-                      {p.freeThrowsMade}/{p.freeThrowsAttempted}
-                    </span>
-                  </td>
-                  <td className="p-2.5 text-center text-sky-300 font-bold">{p.totalRebounds}</td>
-                  <td className="p-2.5 text-center text-sky-400 font-bold">{p.reboundsAvg}</td>
-                  <td className="p-2.5 text-center text-amber-300 font-bold">{p.assists}</td>
-                  <td className="p-2.5 text-center text-amber-400 font-bold">{p.assistsAvg}</td>
-                  <td className="p-2.5 text-center text-gray-300">{p.steals}</td>
-                  <td className="p-2.5 text-center text-gray-400">{p.turnovers}</td>
-                  <td className="p-2.5 text-center text-emerald-400 font-black text-sm">
-                    {p.efficiencyAvg}
-                    <span className="text-[9px] text-gray-500 block font-normal">Tot: {p.efficiencyTotal}</span>
-                  </td>
-                  <td
-                    className={`p-2.5 text-center font-bold ${
-                      p.plusMinusTotal > 0 ? 'text-emerald-400' : p.plusMinusTotal < 0 ? 'text-rose-400' : 'text-gray-400'
-                    }`}
-                  >
-                    {p.plusMinusTotal > 0 ? `+${p.plusMinusTotal}` : p.plusMinusTotal}
-                  </td>
-                </tr>
-              ))}
-
-              {sortedPlayers.length === 0 && (
-                <tr>
-                  <td colSpan={18} className="p-8 text-center text-gray-500 font-mono">
-                    No se encontraron jugadores para los filtros seleccionados.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Individual Player Career / Season Detail Modal (Ficha Acumulada de Jugador) */}
-      {activePlayerDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#16191F] border border-gray-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-            {/* Modal Header */}
-            <div className="p-4 bg-[#111317] border-b border-gray-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-orange-600/20 border border-orange-500/50 flex items-center justify-center text-orange-400 font-scoreboard text-2xl font-black">
-                  #{activePlayerDetail.playerNumber}
-                </div>
+      {/* Selected Match Player Detail Modal */}
+      {selectedMatchPlayer && currentGame && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#14161B] border border-orange-500/50 rounded-2xl p-4 max-w-md w-full shadow-2xl space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-full bg-orange-600 text-white font-scoreboard text-base font-black flex items-center justify-center">
+                  {selectedMatchPlayer.player.number}
+                </span>
                 <div>
-                  <h3 className="text-base font-bold text-gray-100 flex items-center gap-2">
-                    <span>{activePlayerDetail.playerName}</span>
-                    <span className="text-xs font-mono font-normal text-orange-400 bg-orange-950 px-2 py-0.5 rounded border border-orange-800">
-                      {POSITION_LABELS[activePlayerDetail.position]?.full || activePlayerDetail.position}
-                    </span>
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5 flex-wrap">
-                    <span>Partidos: <strong className="text-white">{activePlayerDetail.gamesPlayed} PJ</strong></span>
-                    <span>•</span>
-                    <span>Min/P: <strong className="text-emerald-400">{activePlayerDetail.minutesAvg || '00:00'}</strong></span>
-                    {activePlayerDetail.categories && activePlayerDetail.categories.length > 0 && (
-                      <>
-                        <span>•</span>
-                        <span>Cat: <strong className="text-sky-400">{activePlayerDetail.categories.join(', ')}</strong></span>
-                      </>
-                    )}
-                  </div>
+                  <h4 className="font-bold text-white text-sm font-mono">{selectedMatchPlayer.player.name}</h4>
+                  <span className="text-[10px] text-orange-400 font-mono">
+                    Minutos: {selectedMatchPlayer.minutesPlayedFormatted} · {selectedMatchPlayer.points} PTS · {selectedMatchPlayer.efficiency} VAL
+                  </span>
                 </div>
               </div>
-
               <button
-                type="button"
-                onClick={() => {
-                  setActivePlayerDetail(null);
-                  setPlayerModalTab('all');
-                }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                onClick={() => setSelectedMatchPlayer(null)}
+                className="p-1 rounded bg-neutral-800 text-gray-400 hover:text-white"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
-            {/* Modal Tabs Selector */}
-            <div className="flex items-center gap-1.5 px-4 pt-2.5 pb-2 border-b border-gray-800 bg-[#111317]/90 text-xs font-mono overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setPlayerModalTab('all')}
-                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
-                  playerModalTab === 'all'
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`}
-              >
-                <Activity className="w-3.5 h-3.5" />
-                <span>Resumen Completo</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPlayerModalTab('shots')}
-                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
-                  playerModalTab === 'shots'
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`}
-              >
-                <Target className="w-3.5 h-3.5 text-orange-400" />
-                <span>Mapa de Tiros ({playerSeasonShots.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPlayerModalTab('matches')}
-                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
-                  playerModalTab === 'matches'
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`}
-              >
-                <Calendar className="w-3.5 h-3.5 text-sky-400" />
-                <span>Partidos ({activePlayerDetail.matchLog?.length || 0})</span>
-              </button>
+            <div className="max-h-[50vh] overflow-y-auto">
+              <PlayerShotMap
+                shots={currentGame.events.filter(e => e.playerId === selectedMatchPlayer.player.id)}
+                playerName={selectedMatchPlayer.player.name}
+                playerNumber={selectedMatchPlayer.player.number}
+                title="Tiros Metidos y Fallados en este Partido"
+              />
             </div>
 
-            {/* Modal Body */}
-            <div className="p-4 space-y-4 overflow-y-auto font-mono text-xs">
-              {/* Stat summary cards - shown on all or matches tab */}
-              {playerModalTab !== 'shots' && (
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
-                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">PTS TOT</span>
-                    <span className="text-lg font-black text-orange-400 font-scoreboard">
-                      {activePlayerDetail.pointsTotal}
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.pointsAvg} p/p</span>
-                  </div>
-
-                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">REB TOT</span>
-                    <span className="text-lg font-black text-sky-400 font-scoreboard">
-                      {activePlayerDetail.totalRebounds}
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.reboundsAvg} r/p</span>
-                  </div>
-
-                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">AST TOT</span>
-                    <span className="text-lg font-black text-amber-400 font-scoreboard">
-                      {activePlayerDetail.assists}
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.assistsAvg} a/p</span>
-                  </div>
-
-                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">ROB / PER</span>
-                    <span className="text-lg font-black text-teal-400 font-scoreboard">
-                      {activePlayerDetail.steals}
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">{activePlayerDetail.turnovers} pérdidas</span>
-                  </div>
-
-                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">VAL / P</span>
-                    <span className="text-lg font-black text-emerald-400 font-scoreboard">
-                      {activePlayerDetail.efficiencyAvg}
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">Tot: {activePlayerDetail.efficiencyTotal}</span>
-                  </div>
-
-                  <div className="bg-[#0F1115] border border-gray-800 p-2 rounded-lg">
-                    <span className="text-[10px] text-gray-400 block">+/- TOTAL</span>
-                    <span
-                      className={`text-lg font-black font-scoreboard ${
-                        activePlayerDetail.plusMinusTotal > 0
-                          ? 'text-emerald-400'
-                          : activePlayerDetail.plusMinusTotal < 0
-                          ? 'text-rose-400'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      {activePlayerDetail.plusMinusTotal > 0 ? `+${activePlayerDetail.plusMinusTotal}` : activePlayerDetail.plusMinusTotal}
-                    </span>
-                    <span className="text-[9px] text-gray-500 block">Diferencial</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Shooting breakdown bars AND Embedded Court Shot Map */}
-              {(playerModalTab === 'all' || playerModalTab === 'shots') && (
-                <div className="bg-[#0F1115] border border-gray-800 rounded-xl p-3 sm:p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-gray-800/80 pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-orange-600/20 text-orange-400 flex items-center justify-center">
-                        <Target className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-[11px] sm:text-xs font-bold text-gray-200 uppercase tracking-wide">
-                        Desglose y Mapa de Tiro Acumulado
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-orange-400 bg-orange-950/70 px-2 py-0.5 rounded border border-orange-800/70">
-                        TC: {activePlayerDetail.fieldGoalsPercentage}% ({activePlayerDetail.fieldGoalsMade}/{activePlayerDetail.fieldGoalsAttempted})
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Percentage progress bars for T2, T3, TL */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-gray-400">T2:</span>
-                        <span className="text-emerald-400 font-bold">
-                          {activePlayerDetail.twoPointsPercentage}% ({activePlayerDetail.twoPointsMade}/{activePlayerDetail.twoPointsAttempted})
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-1.5 rounded-full"
-                          style={{ width: `${Math.min(100, activePlayerDetail.twoPointsPercentage)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-gray-400">T3:</span>
-                        <span className="text-amber-400 font-bold">
-                          {activePlayerDetail.threePointsPercentage}% ({activePlayerDetail.threePointsMade}/{activePlayerDetail.threePointsAttempted})
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-amber-500 h-1.5 rounded-full"
-                          style={{ width: `${Math.min(100, activePlayerDetail.threePointsPercentage)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-gray-400">TL:</span>
-                        <span className="text-teal-400 font-bold">
-                          {activePlayerDetail.freeThrowsPercentage}% ({activePlayerDetail.freeThrowsMade}/{activePlayerDetail.freeThrowsAttempted})
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-teal-500 h-1.5 rounded-full"
-                          style={{ width: `${Math.min(100, activePlayerDetail.freeThrowsPercentage)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Embedded Player Shot Map right inside this section! */}
-                  <div className="pt-2 border-t border-gray-800/80">
-                    <PlayerShotMap
-                      shots={playerSeasonShots}
-                      playerName={activePlayerDetail.playerName}
-                      playerNumber={activePlayerDetail.playerNumber}
-                      title="Carta y Mapa de Tiros Acumulado"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Match-by-match log (Historial partido a partido) */}
-              {(playerModalTab === 'all' || playerModalTab === 'matches') && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-gray-300 uppercase flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-orange-400" />
-                      <span>Registro Partido a Partido ({activePlayerDetail.matchLog?.length || 0})</span>
-                    </span>
-                  </div>
-
-                  <div className="border border-gray-800 rounded-lg overflow-hidden">
-                    <table className="w-full text-left text-[11px]">
-                      <thead>
-                        <tr className="bg-[#0F1115] text-gray-400 border-b border-gray-800 text-[10px] uppercase">
-                          <th className="p-2">Fecha / Rival</th>
-                          <th className="p-2 text-center">Res</th>
-                          <th className="p-2 text-center">Min</th>
-                          <th className="p-2 text-center text-orange-400 font-bold">PTS</th>
-                          <th className="p-2 text-center">T2</th>
-                          <th className="p-2 text-center">T3</th>
-                          <th className="p-2 text-center">TL</th>
-                          <th className="p-2 text-center text-sky-400">REB</th>
-                          <th className="p-2 text-center text-amber-400">AST</th>
-                          <th className="p-2 text-center text-emerald-400 font-bold">VAL</th>
-                          <th className="p-2 text-center">+/-</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-800/80">
-                        {activePlayerDetail.matchLog?.map((m, mIdx) => (
-                          <tr key={m.gameId + mIdx} className="hover:bg-gray-800/40">
-                            <td className="p-2">
-                              <span className="font-bold text-gray-200 block truncate max-w-[140px]">
-                                vs {m.opponent}
-                              </span>
-                              <span className="text-[9px] text-gray-500">{m.date}</span>
-                            </td>
-                            <td className="p-2 text-center">
-                              <span
-                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                                  m.result === 'W'
-                                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                    : 'bg-rose-950 text-rose-400 border border-rose-800'
-                                }`}
-                              >
-                                {m.result}
-                              </span>
-                            </td>
-                            <td className="p-2 text-center text-gray-400">{m.minutes}</td>
-                            <td className="p-2 text-center font-bold text-orange-400">{m.points}</td>
-                            <td className="p-2 text-center text-gray-400">
-                              {m.twoPointsMade}/{m.twoPointsAttempted}
-                            </td>
-                            <td className="p-2 text-center text-gray-400">
-                              {m.threePointsMade}/{m.threePointsAttempted}
-                            </td>
-                            <td className="p-2 text-center text-gray-400">
-                              {m.freeThrowsMade}/{m.freeThrowsAttempted}
-                            </td>
-                            <td className="p-2 text-center text-sky-400">{m.rebounds}</td>
-                            <td className="p-2 text-center text-amber-400">{m.assists}</td>
-                            <td className="p-2 text-center font-bold text-emerald-400">{m.efficiency}</td>
-                            <td
-                              className={`p-2 text-center font-bold ${
-                                m.plusMinus > 0 ? 'text-emerald-400' : m.plusMinus < 0 ? 'text-rose-400' : 'text-gray-400'
-                              }`}
-                            >
-                              {m.plusMinus > 0 ? `+${m.plusMinus}` : m.plusMinus}
-                            </td>
-                          </tr>
-                        ))}
-
-                        {(!activePlayerDetail.matchLog || activePlayerDetail.matchLog.length === 0) && (
-                          <tr>
-                            <td colSpan={11} className="p-4 text-center text-gray-500">
-                              No hay partidos registrados para este jugador.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 bg-[#111317] border-t border-gray-800 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setActivePlayerDetail(null);
-                  setPlayerModalTab('all');
-                }}
-                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-mono font-bold transition"
-              >
-                Cerrar Ficha
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedMatchPlayer(null)}
+              className="w-full py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold font-mono uppercase tracking-wider rounded-xl text-xs"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}

@@ -249,20 +249,20 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             <button
               id="toggle-clock-btn"
               onClick={toggleClock}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded font-mono font-black text-xs sm:text-base border transition active:scale-95 ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg font-mono font-black text-sm sm:text-lg md:text-xl border transition active:scale-95 shadow-md ${
                 game.isClockRunning
                   ? isCourtMode
-                    ? 'bg-neutral-900 border-neutral-700 text-emerald-300'
+                    ? 'bg-neutral-900 border-emerald-500/80 text-emerald-300 ring-1 ring-emerald-500/30'
                     : 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-sm'
                   : isCourtMode
-                  ? 'bg-black border-neutral-700 text-amber-300'
+                  ? 'bg-black border-amber-500/60 text-amber-300'
                   : 'bg-black/60 border-orange-500/50 text-orange-400'
               }`}
             >
               {game.isClockRunning ? (
-                <Pause className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 fill-emerald-400 ${isCourtMode ? '' : 'animate-pulse'}`} />
+                <Pause className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 fill-emerald-400 ${isCourtMode ? '' : 'animate-pulse'}`} />
               ) : (
-                <Play className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-orange-400 fill-orange-400'}`} />
+                <Play className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-orange-400 fill-orange-400'}`} />
               )}
               <span className="tracking-widest">{formatGameTime(game.currentSecondsRemaining)}</span>
             </button>

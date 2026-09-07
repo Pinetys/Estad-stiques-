@@ -346,10 +346,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       </div>
 
       {/* 2. MAIN PROMINENT DIGITAL SCOREBOARD (GRANDE Y VISIBLE) */}
-      <div className="bg-gradient-to-b from-[#12141a] to-[#0a0a0d] border-b border-neutral-800 px-2 sm:px-4 py-1.5 shrink-0 shadow-lg">
-        <div className="max-w-md mx-auto grid grid-cols-12 items-center gap-1.5">
+      <div className="bg-gradient-to-b from-[#12141a] to-[#0a0a0d] border-b border-neutral-800 px-2 sm:px-4 py-2 shrink-0 shadow-lg">
+        <div className="max-w-xl mx-auto grid grid-cols-12 items-center gap-1.5 sm:gap-2">
           {/* LOCAL (HOME) */}
-          <div className="col-span-4 flex flex-col items-center justify-center text-center">
+          <div className="col-span-3 flex flex-col items-center justify-center text-center">
             <div className="text-[10px] sm:text-xs font-black text-orange-400 uppercase tracking-wider truncate w-full px-1">
               {game.homeTeamName || 'LOCAL'}
             </div>
@@ -371,32 +371,48 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </div>
           </div>
 
-          {/* CENTER: GAME CLOCK & 24s SHOT CLOCK */}
-          <div className="col-span-4 flex flex-col items-center justify-center px-1">
+          {/* CENTER: GAME CLOCK (MUCHO MÁS GRANDE) & 24s SHOT CLOCK */}
+          <div className="col-span-6 flex flex-col items-center justify-center px-1">
             {/* Big Clock Play/Pause Button */}
             <button
               onClick={toggleClock}
-              className={`w-full py-1 px-1.5 rounded-xl border flex items-center justify-center gap-1.5 font-mono font-black text-base sm:text-lg transition active:scale-95 shadow-md ${
+              className={`w-full py-1.5 sm:py-2 px-2 sm:px-3 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 shadow-xl ${
                 game.isClockRunning
-                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.35)]'
-                  : 'bg-neutral-900/95 border-neutral-700 text-neutral-200'
+                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
+                  : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
               }`}
               title="Iniciar / Pausar tiempo de partido"
             >
-              {game.isClockRunning ? (
-                <Pause className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400 shrink-0" />
-              ) : (
-                <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
-              )}
-              <span>{formatGameTime(game.currentSecondsRemaining)}</span>
+              <div className="flex items-center justify-center gap-2">
+                {game.isClockRunning ? (
+                  <Pause className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
+                ) : (
+                  <Play className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 fill-amber-400 shrink-0" />
+                )}
+                <span className="font-scoreboard font-black text-3xl sm:text-4xl md:text-5xl tracking-widest leading-none drop-shadow-md">
+                  {formatGameTime(game.currentSecondsRemaining)}
+                </span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5">
+                {game.isClockRunning ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    EN JUEGO
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold text-amber-400/90 uppercase tracking-wider">
+                    PAUSA · TOCAR PARA JUGAR
+                  </span>
+                )}
+              </div>
             </button>
 
             {/* 24s / 14s Shot Clock Controls */}
-            <div className="flex items-center gap-1 mt-1">
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-1.5 w-full flex-wrap">
               <button
                 type="button"
                 onClick={() => handleResetShotClock(24)}
-                className="px-1.5 py-0.5 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95"
+                className="px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
                 title="Reiniciar a 24s"
               >
                 24s
@@ -404,7 +420,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <button
                 type="button"
                 onClick={() => handleResetShotClock(14)}
-                className="px-1.5 py-0.5 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95"
+                className="px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
                 title="Reiniciar a 14s (Rebote ofensivo / Falta pista delantera)"
               >
                 14s
@@ -412,11 +428,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <button
                 type="button"
                 onClick={handleToggleShotClock}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-black font-mono border transition active:scale-95 ${
+                className={`px-2 py-0.5 rounded text-[11px] font-black font-mono border transition active:scale-95 shadow-sm ${
                   shotClockSecs <= 5
                     ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
                     : (game.isShotClockRunning ?? true)
-                    ? 'bg-black text-amber-400 border-amber-500/50'
+                    ? 'bg-black text-amber-400 border-amber-500/60'
                     : 'bg-neutral-900 text-neutral-400 border-neutral-700'
                 }`}
                 title="Pausar / Reanudar 24s"
@@ -427,23 +443,23 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               {/* Quick +-10s micro-adjust */}
               <button
                 onClick={() => adjustSeconds(10)}
-                className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold"
-                title="+10s"
+                className="px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[9px] font-mono font-bold active:scale-95 transition"
+                title="+10 segundos"
               >
-                +10
+                +10s
               </button>
               <button
                 onClick={() => adjustSeconds(-10)}
-                className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold"
-                title="-10s"
+                className="px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[9px] font-mono font-bold active:scale-95 transition"
+                title="-10 segundos"
               >
-                -10
+                -10s
               </button>
             </div>
           </div>
 
           {/* VISITANTE (AWAY) */}
-          <div className="col-span-4 flex flex-col items-center justify-center text-center">
+          <div className="col-span-3 flex flex-col items-center justify-center text-center">
             <div className="text-[10px] sm:text-xs font-black text-sky-400 uppercase tracking-wider truncate w-full px-1">
               {game.awayTeamName || 'RIVAL'}
             </div>
