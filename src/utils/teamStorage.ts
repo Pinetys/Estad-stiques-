@@ -146,8 +146,14 @@ export function upsertTeamProfile(team: TeamProfile): TeamProfile[] {
       const allMatches = getSavedGamesFromStorage();
       let changed = false;
       const updatedMatches = allMatches.map(m => {
-        if (m.teamId === team.id || m.homeTeamName?.toLowerCase().trim() === team.name.toLowerCase().trim()) {
+        // Only update if it belongs to THIS team by teamId, or if no teamId and matches both name and existing category
+        if (m.teamId === team.id) {
           if (!m.category || m.category !== team.category) {
+            changed = true;
+            return { ...m, category: team.category };
+          }
+        } else if (!m.teamId && m.homeTeamName?.toLowerCase().trim() === team.name.toLowerCase().trim()) {
+          if (!m.category || m.category.toLowerCase().trim() === team.category.toLowerCase().trim()) {
             changed = true;
             return { ...m, category: team.category, teamId: team.id };
           }
@@ -181,20 +187,29 @@ export function deleteTeamProfile(teamId: string): TeamProfile[] {
 }
 
 /**
- * Filter all saved matches for a specific team
+ * Filter all saved matches for a specific team (strictly respecting teamId and category)
  */
 export function getTeamMatches(teamIdOrName: string): Game[] {
   const allMatches = getSavedGamesFromStorage();
   const teams = getRegisteredTeams();
-  const team = teams.find(t => t.id === teamIdOrName || t.name.toLowerCase() === teamIdOrName.toLowerCase());
+  const team = teams.find(t => t.id === teamIdOrName || t.name.toLowerCase().trim() === teamIdOrName.toLowerCase().trim());
   
-  const targetName = team ? team.name.toLowerCase() : teamIdOrName.toLowerCase();
   const targetId = team ? team.id : teamIdOrName;
+  const targetName = team ? team.name.toLowerCase().trim() : teamIdOrName.toLowerCase().trim();
+  const targetCat = team?.category?.toLowerCase().trim();
 
   return allMatches.filter(game => {
-    if (game.teamId && game.teamId === targetId) return true;
-    if (game.homeTeamName.toLowerCase().trim() === targetName.trim()) return true;
-    return false;
+    if (game.teamId) {
+      return game.teamId === targetId;
+    }
+    // For legacy games without teamId, match name and category
+    const isHome = game.homeTeamName?.toLowerCase().trim() === targetName;
+    const isAway = game.awayTeamName?.toLowerCase().trim() === targetName;
+    if (!isHome && !isAway) return false;
+    if (targetCat && game.category) {
+      return game.category.toLowerCase().trim() === targetCat;
+    }
+    return true;
   });
 }
 

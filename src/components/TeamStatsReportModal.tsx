@@ -71,6 +71,17 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
     return teams.find(t => t.id === selectedTeamId) || teams[0];
   }, [teams, selectedTeamId]);
 
+  // Group teams by category for clean display
+  const teamsByCategory = useMemo(() => {
+    const groups: Record<string, TeamProfile[]> = {};
+    teams.forEach(t => {
+      const cat = t.category?.trim() || 'General';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(t);
+    });
+    return groups;
+  }, [teams]);
+
   // All matches belonging to this team (saved in library or current in progress)
   const teamAllMatches = useMemo(() => {
     if (!currentTeam) return [];
@@ -79,12 +90,24 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
 
     const seenIds = new Set<string>();
     const matches: Game[] = [];
+    const tCat = currentTeam.category?.toLowerCase().trim();
 
     allGames.forEach(g => {
-      const isMatch =
-        (g.teamId && g.teamId === tId) ||
-        (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) ||
-        (g.awayTeamName && g.awayTeamName.toLowerCase().trim() === tName);
+      let isMatch = false;
+      if (g.teamId) {
+        isMatch = g.teamId === tId;
+      } else {
+        const isNameMatch =
+          (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) ||
+          (g.awayTeamName && g.awayTeamName.toLowerCase().trim() === tName);
+        if (isNameMatch) {
+          if (tCat && g.category) {
+            isMatch = g.category.toLowerCase().trim() === tCat;
+          } else {
+            isMatch = true;
+          }
+        }
+      }
 
       if (isMatch && !seenIds.has(g.id)) {
         seenIds.add(g.id);
@@ -333,10 +356,14 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                       }}
                       className="text-sm sm:text-base font-black text-white bg-neutral-800/80 hover:bg-neutral-800 border border-gray-700 rounded-lg px-2 py-0.5 pr-6 cursor-pointer focus:outline-none focus:border-orange-500 transition appearance-none"
                     >
-                      {teams.map(t => (
-                        <option key={t.id} value={t.id} className="bg-neutral-900 text-white">
-                          {t.name} ({t.category || 'Senior'})
-                        </option>
+                      {Object.entries(teamsByCategory).map(([category, catTeams]) => (
+                        <optgroup key={category} label={`📁 Categoría: ${category}`}>
+                          {catTeams.map(t => (
+                            <option key={t.id} value={t.id} className="bg-neutral-900 text-white">
+                              {t.name}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   ) : (

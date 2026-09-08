@@ -560,9 +560,35 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
                         type="text"
                         value={formCategory}
                         onChange={e => setFormCategory(e.target.value)}
-                        placeholder="Ej. Senior A, Cadete Masc, etc."
+                        placeholder="Ej. Senior Masc, Cadete Fem, etc."
                         className="w-full bg-[#0d0e12] border border-gray-700 rounded-lg px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-orange-500"
                       />
+                      {/* Fast Category Chips */}
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {[
+                          'Senior Masc',
+                          'Senior Fem',
+                          'Junior Masc',
+                          'Junior Fem',
+                          'Cadete Masc',
+                          'Cadete Fem',
+                          'Infantil',
+                          'Minibasket',
+                        ].map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setFormCategory(cat)}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition border ${
+                              formCategory.toLowerCase() === cat.toLowerCase()
+                                ? 'bg-orange-600 text-white border-orange-500'
+                                : 'bg-neutral-800 hover:bg-neutral-700 text-gray-300 border-gray-700'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="space-y-1">

@@ -139,6 +139,20 @@ export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): 
   });
 
   games.forEach(g => {
+    // Check match ownership: if the game explicitly has a different teamId, skip
+    if (g.teamId && g.teamId !== team.id) {
+      return;
+    }
+    // If no teamId, verify both name and category
+    if (!g.teamId) {
+      const isHome = g.homeTeamName?.toLowerCase().trim() === team.name.toLowerCase().trim();
+      const isAway = g.awayTeamName?.toLowerCase().trim() === team.name.toLowerCase().trim();
+      if (!isHome && !isAway) return;
+      if (team.category && g.category && team.category.trim().toLowerCase() !== g.category.trim().toLowerCase()) {
+        return;
+      }
+    }
+
     // Record calculation
     const isHome = g.teamId === team.id || g.homeTeamName.toLowerCase().trim() === team.name.toLowerCase().trim();
     const teamScore = isHome ? g.homeScore : g.awayScore;
@@ -149,7 +163,7 @@ export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): 
     if (teamScore > oppScore) wins++;
     else if (teamScore < oppScore) losses++;
 
-    // Track which players played in this game
+    // Track which players of THIS team's roster played in this game
     const gamePlayersSeen = new Set<string>();
 
     g.players.forEach(p => {
@@ -158,41 +172,14 @@ export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): 
       if (!matchedRow) {
         // try match by dorsal & name
         const byDorsal = Array.from(playerStatsMap.values()).find(
-          r => r.playerNumber === p.number && r.playerName.toLowerCase() === p.name.toLowerCase()
+          r => r.playerNumber === p.number && r.playerName.toLowerCase().trim() === p.name.toLowerCase().trim()
         );
         if (byDorsal) matchedRow = byDorsal;
       }
 
+      // If this player is NOT in this team's roster, do NOT inject them into this team's table!
       if (!matchedRow) {
-        // player outside roster recorded in this game
-        matchedRow = {
-          playerId: p.id,
-          playerName: p.name,
-          playerNumber: p.number,
-          gamesPlayed: 0,
-          totalSeconds: 0,
-          points: 0,
-          pointsAvg: 0,
-          twoPointsMade: 0,
-          twoPointsAttempted: 0,
-          twoPointsPct: 0,
-          threePointsMade: 0,
-          threePointsAttempted: 0,
-          threePointsPct: 0,
-          freeThrowsMade: 0,
-          freeThrowsAttempted: 0,
-          freeThrowsPct: 0,
-          rebounds: 0,
-          reboundsAvg: 0,
-          assists: 0,
-          assistsAvg: 0,
-          steals: 0,
-          turnovers: 0,
-          efficiency: 0,
-          efficiencyAvg: 0,
-          plusMinus: 0,
-        };
-        playerStatsMap.set(p.id, matchedRow);
+        return;
       }
 
       if (p.minutesPlayedSeconds && p.minutesPlayedSeconds > 0) {

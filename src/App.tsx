@@ -62,6 +62,7 @@ import {
   MoreVertical,
   Activity,
   ArrowLeft,
+  Play,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -1069,132 +1070,158 @@ export default function App() {
         />
       ) : (
         <>
-          {/* High Density Top Header - Strictly Responsive without Horizontal Overflow */}
-          <header className="h-13 sm:h-16 bg-[#1A1D23] border-b border-gray-800 flex items-center justify-between px-2 sm:px-4 shrink-0 sticky top-0 z-40 w-full max-w-full">
-            {/* Left: Brand & Navigation */}
-            <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
+          {/* Clean, Simple & Unified Navigation Header */}
+          <header className="h-14 bg-[#14161B] border-b border-gray-800 flex items-center justify-between px-3 sm:px-5 shrink-0 sticky top-0 z-40 w-full">
+            {/* Left: Brand + Active Team/Category */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => {
                   playSound('click', game.settings.soundEnabled);
                   setActiveTab('teams');
                 }}
-                className="flex flex-col min-w-0 shrink-0 text-left hover:opacity-90 transition cursor-pointer"
-                title="Ir al Menú Principal de Equipos"
+                className="flex items-center gap-1.5 hover:opacity-90 transition shrink-0"
+                title="Ir a Equipos"
               >
-                <h1 className="text-xs sm:text-base font-black tracking-tight text-white uppercase truncate leading-none">
-                  BasketStats <span className="text-orange-500 font-mono">PRO</span>
-                </h1>
-                <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-orange-400 font-bold leading-none mt-0.5 hidden xs:inline">
-                  {activeTab === 'teams' ? 'Menú Equipos' : 'En Partido'}
+                <div className="w-7 h-7 rounded-lg bg-orange-600/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+                  <Shield className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-sm sm:text-base font-black tracking-tight text-white uppercase hidden xs:inline">
+                  BasketStats <span className="text-orange-500 font-mono text-xs">PRO</span>
                 </span>
               </button>
 
-              {activeTab !== 'teams' ? (
-                /* Return to Teams Hub Quick Button */
-                <button
-                  id="header-back-to-teams-btn"
-                  type="button"
-                  onClick={() => {
-                    playSound('click', game.settings.soundEnabled);
-                    setActiveTab('teams');
-                  }}
-                  className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-orange-600/20 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-500/40 text-[11px] sm:text-xs font-bold transition shadow-sm shrink-0"
-                  title="Volver al Menú Principal de Equipos"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden xs:inline">Menú Equipos</span>
-                  <span className="xs:hidden">Equipos</span>
-                </button>
-              ) : (
-                /* Active Team Switcher Badge */
-                <button
-                  id="open-teams-modal-btn"
-                  onClick={() => {
-                    playSound('click', game.settings.soundEnabled);
-                    setShowTeamModal(true);
-                  }}
-                  className="flex items-center gap-1 bg-[#12141a] hover:bg-neutral-800 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded border border-orange-500/40 text-[11px] sm:text-xs font-mono transition shadow-sm min-w-0"
-                  title="Cambiar o gestionar equipos y categorías"
-                >
-                  <Shield className="w-3 h-3 text-orange-400 shrink-0" />
-                  <span className="text-white font-extrabold max-w-[65px] xs:max-w-[90px] sm:max-w-[140px] truncate">
-                    {teams.find(t => t.id === activeTeamId)?.name || game.homeTeamName}
+              {/* Active Team / Category Selector Chip */}
+              <button
+                id="open-teams-modal-btn"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  setShowTeamModal(true);
+                }}
+                className="flex items-center gap-1.5 bg-[#0e1014] hover:bg-neutral-800 px-2 py-1 rounded-lg border border-gray-700 hover:border-orange-500/50 text-xs font-mono transition shadow-sm min-w-0"
+                title="Cambiar de equipo o categoría"
+              >
+                <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                <span className="text-white font-bold truncate max-w-[85px] xs:max-w-[110px] sm:max-w-[140px]">
+                  {teams.find(t => t.id === activeTeamId)?.name || game.homeTeamName}
+                </span>
+                {teams.find(t => t.id === activeTeamId)?.category && (
+                  <span className="text-[10px] text-orange-400 font-normal hidden sm:inline truncate max-w-[90px]">
+                    • {teams.find(t => t.id === activeTeamId)?.category}
                   </span>
-                  <span className="text-[8px] bg-orange-600/30 text-orange-300 px-1 py-0.2 rounded font-bold shrink-0">
-                    ▼
-                  </span>
-                </button>
-              )}
+                )}
+                <span className="text-[9px] text-gray-400">▼</span>
+              </button>
             </div>
 
-            {/* Right: Quick Actions */}
-            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-              {/* Modo Pista Button (Priority action, visible always on all screens) */}
+            {/* Center / Navigation Tabs */}
+            <nav className="flex items-center gap-1 font-mono text-xs font-bold">
+              <button
+                id="nav-tab-teams"
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  setActiveTab('teams');
+                }}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${
+                  activeTab === 'teams'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-300 hover:text-white hover:bg-neutral-800'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Equipos</span>
+              </button>
+
+              <button
+                id="nav-tab-match"
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  setActiveTab('live');
+                }}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${
+                  activeTab === 'live' || activeTab === 'charts' || activeTab === 'playbyplay'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-300 hover:text-white hover:bg-neutral-800'
+                }`}
+              >
+                <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                <span className="hidden sm:inline">Partido</span>
+              </button>
+
+              <button
+                id="nav-tab-stats"
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  setActiveTab('stats');
+                  setStatsSubMode('accumulated');
+                  setLibraryGames(getSavedGamesFromStorage());
+                }}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${
+                  activeTab === 'stats'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-gray-300 hover:text-white hover:bg-neutral-800'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Estadísticas</span>
+              </button>
+
+              <button
+                id="nav-tab-library"
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  setShowLibraryModal(true);
+                }}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-neutral-800 transition flex items-center gap-1"
+              >
+                <Library className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <span className="hidden sm:inline">Biblioteca</span>
+              </button>
+            </nav>
+
+            {/* Right: Court Mode Button & Quick Actions Menu */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 id="toggle-court-mode-btn"
                 onClick={toggleCourtMode}
-                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-xs font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 shadow-md shrink-0"
-                title="Entrar a Modo Pista para apuntar estadísticas"
+                className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-xs font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 shadow-md shrink-0"
+                title="Entrar a Modo Pista para anotar rápido en banquillo"
               >
                 <Zap className="w-3.5 h-3.5 fill-black shrink-0" />
                 <span className="text-[11px] font-black">Pista</span>
               </button>
 
-              {/* Cloud Sync Quick Button (Direct 1-tap backup on all screens) */}
-              <button
-                id="open-cloud-btn"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  setShowCloudBackupModal(true);
-                }}
-                className="p-1.5 rounded-lg bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 flex items-center justify-center transition active:scale-95 shrink-0"
-                title="Copia en Nube Firebase y Respaldo"
-              >
-                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-              </button>
-
-              {/* Mobile Overflow Menu (for screens < md) */}
-              <div className="relative md:hidden">
+              {/* Menu Dropdown Toggle */}
+              <div className="relative">
                 <button
-                  id="mobile-header-menu-btn"
+                  id="quick-menu-btn"
                   onClick={() => setShowMobileHeaderMenu(!showMobileHeaderMenu)}
-                  className="p-1.5 rounded-lg bg-[#14161B] hover:bg-gray-800 text-gray-200 border border-gray-700 flex items-center justify-center transition active:scale-95 shrink-0"
-                  title="Más herramientas y opciones"
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-gray-700 flex items-center justify-center transition"
+                  title="Opciones y herramientas"
                 >
-                  <MoreVertical className="w-3.5 h-3.5 text-gray-300" />
+                  <MoreVertical className="w-4 h-4 text-gray-300" />
                 </button>
 
-                {/* Mobile Dropdown Menu Popup */}
                 {showMobileHeaderMenu && (
                   <>
                     <div
-                      className="fixed inset-0 z-40 bg-black/50"
+                      className="fixed inset-0 z-40 bg-black/40"
                       onClick={() => setShowMobileHeaderMenu(false)}
                     />
                     <div className="absolute right-0 top-full mt-2 w-56 bg-[#14161B] border border-gray-700 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95">
                       <button
                         onClick={() => {
                           setShowMobileHeaderMenu(false);
-                          setActiveTab('stats');
-                          setStatsSubMode('accumulated');
-                          setLibraryGames(getSavedGamesFromStorage());
+                          setShowNewGameModal(true);
                         }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-orange-400 text-xs font-bold text-left transition"
                       >
-                        <BarChart3 className="w-4 h-4 text-orange-400 shrink-0" />
-                        <span>Estadísticas Acumuladas</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowLibraryModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
-                      >
-                        <Library className="w-4 h-4 text-indigo-400 shrink-0" />
-                        <span>Biblioteca de Partidos</span>
+                        <PlusCircle className="w-4 h-4 text-orange-500 shrink-0" />
+                        <span>Nuevo Partido</span>
                       </button>
 
                       <button
@@ -1222,6 +1249,17 @@ export default function App() {
                       <button
                         onClick={() => {
                           setShowMobileHeaderMenu(false);
+                          setShowCloudBackupModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
+                      >
+                        <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span>Sincronizar en la Nube</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
                           setShowAICoachModal(true);
                         }}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
@@ -1229,6 +1267,8 @@ export default function App() {
                         <Brain className="w-4 h-4 text-orange-400 shrink-0" />
                         <span>Scout Táctico con IA</span>
                       </button>
+
+                      <div className="h-px bg-gray-800 my-1" />
 
                       <button
                         onClick={() => {
@@ -1254,132 +1294,14 @@ export default function App() {
                           {game.settings.soundEnabled ? 'ON' : 'OFF'}
                         </span>
                       </button>
-
-                      <div className="h-px bg-gray-800 my-1" />
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowNewGameModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 text-xs font-bold text-left transition border border-orange-500/30"
-                      >
-                        <PlusCircle className="w-4 h-4 shrink-0" />
-                        <span>Nuevo Partido</span>
-                      </button>
                     </div>
                   </>
                 )}
               </div>
-
-              {/* Desktop Full Menu (Visible on md and up) */}
-              <div className="hidden md:flex items-center gap-1.5">
-                {/* General Accumulated Stats Quick Button */}
-                <button
-                  id="open-accumulated-stats-btn"
-                  onClick={() => {
-                    playSound('click', game.settings.soundEnabled);
-                    setActiveTab('stats');
-                    setStatsSubMode('accumulated');
-                    setLibraryGames(getSavedGamesFromStorage());
-                  }}
-                  className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition active:scale-95 ${
-                    activeTab === 'stats' && statsSubMode === 'accumulated'
-                      ? 'bg-orange-600 text-white border border-orange-500 shadow-sm'
-                      : 'bg-orange-950/40 hover:bg-orange-900/60 text-orange-300 border border-orange-700/60'
-                  }`}
-                  title="Estadísticas acumuladas generales sumando todos los partidos"
-                >
-                  <BarChart3 className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="text-[10px]">Acumuladas</span>
-                </button>
-
-                {/* Match Library / History Button */}
-                <button
-                  id="open-library-btn"
-                  onClick={() => {
-                    playSound('click', game.settings.soundEnabled);
-                    setShowLibraryModal(true);
-                  }}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-indigo-950/70 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition active:scale-95"
-                  title="Biblioteca de partidos y estadísticas acumuladas"
-                >
-                  <Library className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="text-[10px]">Biblioteca</span>
-                </button>
-
-                {/* AI Coach Scout Quick Button */}
-                <button
-                  id="open-ai-coach-btn"
-                  onClick={() => {
-                    playSound('click', game.settings.soundEnabled);
-                    setShowAICoachModal(true);
-                  }}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-500/50 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 shadow-sm"
-                  title="Generar informe táctico con IA"
-                >
-                  <Brain className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="text-[10px]">Scout IA</span>
-                </button>
-
-                {/* Sound Toggle */}
-                <button
-                  onClick={() => {
-                    setGame(prev => ({
-                      ...prev,
-                      settings: {
-                        ...prev.settings,
-                        soundEnabled: !prev.settings.soundEnabled,
-                      },
-                    }));
-                  }}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition"
-                  title={game.settings.soundEnabled ? 'Sonido activado' : 'Sonido silenciado'}
-                >
-                  {game.settings.soundEnabled ? (
-                    <Volume2 className="w-3.5 h-3.5 text-orange-500" />
-                  ) : (
-                    <VolumeX className="w-3.5 h-3.5 text-gray-500" />
-                  )}
-                  <span className="text-[10px]">
-                    {game.settings.soundEnabled ? 'Audio ON' : 'Mute'}
-                  </span>
-                </button>
-
-                {/* Roster Button */}
-                <button
-                  onClick={() => setShowRosterModal(true)}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
-                  title="Gestionar Plantilla"
-                >
-                  <Users className="w-3.5 h-3.5 text-orange-500" />
-                  <span className="text-[10px]">Plantilla</span>
-                </button>
-
-                {/* Share / Export */}
-                <button
-                  onClick={() => setShowShareModal(true)}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-emerald-950/70 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
-                  title="Compartir acta por WhatsApp"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[10px]">Acta</span>
-                </button>
-
-                {/* New Game */}
-                <button
-                  onClick={() => setShowNewGameModal(true)}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-600/40 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition"
-                  title="Nuevo Partido"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">Nuevo</span>
-                </button>
-              </div>
             </div>
           </header>
 
-          {/* Main Scoreboard Header (Purely informative in Standard Mode with quarter progression) - only when in match */}
+          {/* Main Scoreboard Header (only when in match) */}
           {activeTab !== 'teams' && (
             <ScoreHeader
               game={game}
@@ -1396,53 +1318,25 @@ export default function App() {
           )}
 
           {/* Match In-Screen Sub-Navigation when inside a game */}
-          {activeTab !== 'teams' && activeTab !== 'scout' && (
-            <div className="bg-[#14161B] border-b border-gray-800 px-2 sm:px-4 py-1.5 shrink-0 sticky top-13 sm:top-16 z-30">
+          {activeTab !== 'teams' && activeTab !== 'stats' && activeTab !== 'scout' && (
+            <div className="bg-[#14161B] border-b border-gray-800 px-3 sm:px-6 py-1.5 shrink-0 sticky top-14 z-30">
               <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
-                <button
-                  type="button"
-                  onClick={() => {
-                    playSound('click', game.settings.soundEnabled);
-                    setActiveTab('teams');
-                  }}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-neutral-900 hover:bg-neutral-800 text-orange-300 hover:text-white border border-orange-500/40 text-xs font-bold transition shrink-0"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Menú Equipos</span>
-                  <span className="sm:hidden">Equipos</span>
-                </button>
-
                 <div className="flex items-center gap-1 font-mono text-xs font-bold">
                   <button
                     onClick={() => setActiveTab('live')}
-                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
+                    className={`px-3 py-1 rounded-lg transition flex items-center gap-1 uppercase ${
                       activeTab === 'live'
                         ? 'bg-orange-600 text-white shadow'
                         : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
                     }`}
                   >
                     <Flame className="w-3 h-3" />
-                    <span>Resumen</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('stats');
-                      setStatsSubMode('match');
-                    }}
-                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
-                      activeTab === 'stats' && statsSubMode === 'match'
-                        ? 'bg-orange-600 text-white shadow'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
-                    }`}
-                  >
-                    <BarChart3 className="w-3 h-3" />
-                    <span>Box Score</span>
+                    <span>Mesa Directo</span>
                   </button>
 
                   <button
                     onClick={() => setActiveTab('charts')}
-                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
+                    className={`px-3 py-1 rounded-lg transition flex items-center gap-1 uppercase ${
                       activeTab === 'charts'
                         ? 'bg-orange-600 text-white shadow'
                         : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
@@ -1454,7 +1348,7 @@ export default function App() {
 
                   <button
                     onClick={() => setActiveTab('playbyplay')}
-                    className={`px-2.5 py-1 rounded transition flex items-center gap-1 uppercase ${
+                    className={`px-3 py-1 rounded-lg transition flex items-center gap-1 uppercase ${
                       activeTab === 'playbyplay'
                         ? 'bg-orange-600 text-white shadow'
                         : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
@@ -1463,16 +1357,16 @@ export default function App() {
                     <ListOrdered className="w-3 h-3" />
                     <span>Jugadas</span>
                   </button>
-
-                  <button
-                    onClick={() => setShowOfficialSheet(true)}
-                    className="px-2.5 py-1 rounded bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 transition flex items-center gap-1 uppercase"
-                    title="Ver acta oficial del partido"
-                  >
-                    <Share2 className="w-3 h-3 text-emerald-400" />
-                    <span>Acta</span>
-                  </button>
                 </div>
+
+                <button
+                  onClick={() => setShowOfficialSheet(true)}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 transition flex items-center gap-1 text-xs font-bold uppercase"
+                  title="Ver acta oficial del partido"
+                >
+                  <Share2 className="w-3 h-3 text-emerald-400" />
+                  <span>Acta</span>
+                </button>
               </div>
             </div>
           )}

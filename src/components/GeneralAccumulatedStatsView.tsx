@@ -96,11 +96,12 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
     };
   }, [recordedTeams, selectedTeamId, currentGame]);
 
-  // 2. All matches belonging strictly to THIS team
+  // 2. All matches belonging strictly to THIS team (same ID or legacy name+category)
   const teamAllMatches = useMemo(() => {
     if (!currentTeam) return [];
     const tName = currentTeam.name.toLowerCase().trim();
     const tId = currentTeam.id;
+    const tCat = currentTeam.category?.toLowerCase().trim();
 
     const seenIds = new Set<string>();
     const matches: Game[] = [];
@@ -112,10 +113,23 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
     }
 
     combined.forEach(g => {
-      const isMatch =
-        (g.teamId && g.teamId === tId) ||
-        (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) ||
-        (g.awayTeamName && g.awayTeamName.toLowerCase().trim() === tName);
+      let isMatch = false;
+      if (g.teamId) {
+        // If game has teamId, it must strictly match THIS team
+        isMatch = g.teamId === tId;
+      } else {
+        // Legacy game without teamId: must match name AND category
+        const isNameMatch =
+          (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) ||
+          (g.awayTeamName && g.awayTeamName.toLowerCase().trim() === tName);
+        if (isNameMatch) {
+          if (tCat && g.category) {
+            isMatch = g.category.toLowerCase().trim() === tCat;
+          } else {
+            isMatch = true;
+          }
+        }
+      }
 
       if (isMatch && !seenIds.has(g.id)) {
         seenIds.add(g.id);
@@ -129,6 +143,17 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
       return timeB - timeA;
     });
   }, [currentTeam, games, currentGame]);
+
+  // Group teams by category for clean, unambiguous team selection
+  const teamsByCategory = useMemo(() => {
+    const groups: Record<string, TeamProfile[]> = {};
+    recordedTeams.forEach(t => {
+      const cat = t.category?.trim() || 'General';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(t);
+    });
+    return groups;
+  }, [recordedTeams]);
 
   // 3. Separate included matches vs discarded matches
   const { includedGames, discardedGames } = useMemo(() => {
@@ -363,10 +388,14 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                     }}
                     className="bg-neutral-900 text-white font-bold text-base sm:text-lg rounded-lg px-3 py-1 pr-8 border border-neutral-700 focus:border-orange-500 focus:outline-none cursor-pointer appearance-none shadow-sm"
                   >
-                    {recordedTeams.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.category || 'Equipo'})
-                      </option>
+                    {Object.entries(teamsByCategory).map(([category, catTeams]) => (
+                      <optgroup key={category} label={`📁 Categoría: ${category}`}>
+                        {catTeams.map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                   <ChevronDown className="w-4 h-4 text-orange-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />

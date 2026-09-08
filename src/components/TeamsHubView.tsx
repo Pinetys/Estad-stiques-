@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { TeamProfile, Game, Player } from '../types';
-import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { TeamProfile, Game } from '../types';
+import { playSound } from '../utils/soundHaptics';
 import { getTeamMatches } from '../utils/teamStorage';
 import { formatGameTime } from '../utils/statsCalculator';
 import { TeamLogoDisplay } from './TeamLogoPicker';
@@ -10,21 +10,11 @@ import {
   Trash2,
   Edit2,
   Users,
-  Trophy,
   Play,
-  Flame,
   BarChart3,
   Search,
+  ArrowRight,
   Filter,
-  Cloud,
-  Library,
-  Zap,
-  CheckCircle2,
-  Calendar,
-  Layers,
-  ChevronRight,
-  Target,
-  FileText,
 } from 'lucide-react';
 
 interface TeamsHubViewProps {
@@ -42,7 +32,7 @@ interface TeamsHubViewProps {
   onOpenTeamStatsReport?: (team: TeamProfile) => void;
   onOpenLibrary: () => void;
   onOpenCloudBackup: () => void;
-  onOpenTeamEditor: (team: TeamProfile | null) => void; // null means create new
+  onOpenTeamEditor: (team: TeamProfile | null) => void;
   soundEnabled?: boolean;
 }
 
@@ -51,23 +41,18 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   activeTeamId,
   currentGame,
   onSelectTeam,
-  onSaveTeam,
   onDeleteTeam,
   onCreateMatchForTeam,
   onResumeGame,
-  onOpenCourtMode,
   onOpenRosterModal,
-  onOpenStatsForCategory,
   onOpenTeamStatsReport,
-  onOpenLibrary,
-  onOpenCloudBackup,
   onOpenTeamEditor,
   soundEnabled = true,
 }) => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Extract all distinct categories from registered teams
+  // Extract all distinct categories
   const availableCategories = useMemo(() => {
     const map = new Map<string, { name: string; count: number }>();
     teams.forEach(t => {
@@ -82,7 +67,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [teams]);
 
-  // Filtered teams based on category and search query
+  // Filter teams by category and search
   const filteredTeams = useMemo(() => {
     return teams.filter(team => {
       if (selectedCategoryFilter !== 'ALL') {
@@ -102,7 +87,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
     });
   }, [teams, selectedCategoryFilter, searchQuery]);
 
-  // Determine if there is an active match worth resuming
+  // Check if current game is actively in session
   const isMatchInProgress = useMemo(() => {
     return (
       currentGame.status === 'live' &&
@@ -114,7 +99,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
     );
   }, [currentGame]);
 
-  // Handle Team Deletion with confirmation
+  // Delete team with confirmation
   const handleDelete = (team: TeamProfile, e: React.MouseEvent) => {
     e.stopPropagation();
     if (teams.length <= 1) {
@@ -122,7 +107,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
       return;
     }
     const confirmed = window.confirm(
-      `¿Seguro que deseas eliminar el equipo "${team.name}" y su plantilla? Los partidos guardados seguirán en la biblioteca.`
+      `¿Deseas eliminar el equipo "${team.name}" (${team.category || 'Sin categoría'})? Los partidos guardados seguirán en la biblioteca.`
     );
     if (confirmed) {
       playSound('click', soundEnabled);
@@ -131,207 +116,103 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 pb-28">
-      {/* 1. Header & Welcome Hub */}
-      <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-orange-600/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
-                <Shield className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white flex items-center gap-2">
-                  <span>Equipos & Categorías</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-600 text-white font-mono font-bold tracking-widest uppercase">
-                    PRO
-                  </span>
-                </h1>
-                <p className="text-xs text-gray-400">
-                  Selecciona un equipo para iniciar un partido, editar su plantilla o ver estadísticas por categoría.
-                </p>
-              </div>
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 pb-24 text-gray-100">
+      {/* 1. Clean, Modern Header */}
+      <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-orange-600/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+              <Shield className="w-4 h-4" />
             </div>
+            <h1 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white">
+              Equipos y Categorías
+            </h1>
           </div>
-
-          {/* Quick Actions Header */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <button
-              id="hub-create-team-btn"
-              type="button"
-              onClick={() => {
-                playSound('click', soundEnabled);
-                onOpenTeamEditor(null);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-orange-600/20 transition active:scale-95 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nuevo Equipo / Categoría</span>
-            </button>
-
-            <button
-              id="hub-open-stats-report-btn"
-              type="button"
-              onClick={() => {
-                playSound('click', soundEnabled);
-                const targetTeam = teams.find(t => t.id === activeTeamId) || teams[0];
-                if (targetTeam && onOpenTeamStatsReport) {
-                  onOpenTeamStatsReport(targetTeam);
-                }
-              }}
-              className="px-3 py-2 rounded-xl bg-orange-950/60 hover:bg-orange-900/80 text-orange-300 border border-orange-700/60 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shrink-0 shadow-sm"
-              title="Estadísticas generales de todo el equipo, mapa de tiro y filtro de partidos (PDF y móvil)"
-            >
-              <Target className="w-4 h-4 text-orange-400" />
-              <span className="hidden sm:inline">Estadísticas & Mapa de Tiro</span>
-              <span className="sm:hidden">Stats & Tiro</span>
-            </button>
-
-            <button
-              id="hub-open-library-btn"
-              type="button"
-              onClick={() => {
-                playSound('click', soundEnabled);
-                onOpenLibrary();
-              }}
-              className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-gray-700 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shrink-0"
-              title="Ver partidos guardados en biblioteca"
-            >
-              <Library className="w-4 h-4 text-indigo-400" />
-              <span className="hidden xs:inline">Biblioteca</span>
-            </button>
-
-            <button
-              id="hub-open-cloud-btn"
-              type="button"
-              onClick={() => {
-                playSound('click', soundEnabled);
-                onOpenCloudBackup();
-              }}
-              className="px-3 py-2 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/60 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shrink-0"
-              title="Sincronización en la Nube con Firebase"
-            >
-              <Cloud className="w-4 h-4 text-cyan-400" />
-              <span className="hidden sm:inline">Nube</span>
-            </button>
-          </div>
+          <p className="text-xs text-gray-400">
+            Gestiona tus plantillas separadas por categoría, inicia partidos y consulta estadísticas independientes.
+          </p>
         </div>
 
-        {/* Global Summary Metric Strip */}
-        <div className="grid grid-cols-3 gap-2 pt-4 mt-4 border-t border-gray-800/80 font-mono text-center">
-          <div className="bg-[#0e1014] rounded-xl p-2 border border-gray-800">
-            <span className="text-[10px] text-gray-400 uppercase font-bold block">Equipos Registrados</span>
-            <span className="text-base sm:text-lg font-black text-white">{teams.length}</span>
-          </div>
-          <div className="bg-[#0e1014] rounded-xl p-2 border border-gray-800">
-            <span className="text-[10px] text-gray-400 uppercase font-bold block">Categorías Activas</span>
-            <span className="text-base sm:text-lg font-black text-orange-400">{availableCategories.length}</span>
-          </div>
-          <div className="bg-[#0e1014] rounded-xl p-2 border border-gray-800">
-            <span className="text-[10px] text-gray-400 uppercase font-bold block">Temporada</span>
-            <span className="text-base sm:text-lg font-black text-emerald-400">2025/2026</span>
-          </div>
-        </div>
+        {/* Primary Action Button */}
+        <button
+          id="hub-create-team-btn"
+          type="button"
+          onClick={() => {
+            playSound('click', soundEnabled);
+            onOpenTeamEditor(null);
+          }}
+          className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-orange-600/20 transition active:scale-95 shrink-0 self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Nuevo Equipo / Categoría</span>
+        </button>
       </div>
 
-      {/* 2. Active Match in Progress Card (If any game is in session) */}
+      {/* 2. Compact Match In Progress Banner (if active) */}
       {isMatchInProgress && (
-        <div className="bg-gradient-to-r from-orange-950/40 via-[#1A1D23] to-[#14161B] border border-orange-500/50 rounded-2xl p-4 sm:p-5 shadow-2xl relative overflow-hidden animate-in fade-in">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-1.5">
+        <div className="bg-gradient-to-r from-orange-950/50 via-[#1A1D23] to-[#14161B] border border-orange-500/50 rounded-xl px-4 py-3 shadow-md flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500" />
+            </span>
+            <div>
               <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500" />
-                </span>
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-orange-400">
-                  Partido en Curso (Q{currentGame.currentQuarter} • {formatGameTime(currentGame.currentSecondsRemaining)})
+                <span className="text-xs font-bold text-white">
+                  {currentGame.homeTeamName} {currentGame.homeScore} - {currentGame.awayScore} {currentGame.awayTeamName}
                 </span>
                 {currentGame.category && (
-                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-gray-800 text-gray-300 font-mono">
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-orange-600/20 text-orange-400 font-mono">
                     {currentGame.category}
                   </span>
                 )}
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg sm:text-xl font-black text-white">{currentGame.homeTeamName}</span>
-                  <span className="text-xl sm:text-2xl font-black font-mono text-orange-400">
-                    {currentGame.homeScore}
-                  </span>
-                </div>
-                <span className="text-gray-500 font-bold text-sm">vs</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl sm:text-2xl font-black font-mono text-sky-400">
-                    {currentGame.awayScore}
-                  </span>
-                  <span className="text-lg sm:text-xl font-black text-white">{currentGame.awayTeamName}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  onResumeGame();
-                }}
-                className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition active:scale-95"
-              >
-                <Play className="w-4 h-4 fill-black" />
-                <span>Continuar Partido</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  playSound('click', soundEnabled);
-                  onOpenCourtMode();
-                }}
-                className="px-3 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-gray-700 text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
-                title="Ir directo a Mesa Modo Pista"
-              >
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span className="hidden sm:inline">Modo Pista</span>
-              </button>
+              <span className="text-[10px] font-mono text-gray-400">
+                Cuarto {currentGame.currentQuarter} • {formatGameTime(currentGame.currentSecondsRemaining)}
+              </span>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click', soundEnabled);
+              onResumeGame();
+            }}
+            className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95"
+          >
+            <span>Continuar Partido</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
-      {/* 3. Category Filter Tabs Bar */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-orange-400" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-300">
-              Filtrar por Categoría
-            </h2>
+      {/* 3. Category Filter Tabs */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between text-xs text-gray-400 font-mono">
+          <div className="flex items-center gap-1.5">
+            <Filter className="w-3.5 h-3.5 text-orange-400" />
+            <span className="uppercase font-bold text-gray-300">Categoría:</span>
           </div>
-          <span className="text-[11px] font-mono text-gray-400">
-            {filteredTeams.length} {filteredTeams.length === 1 ? 'equipo' : 'equipos'} en vista
+          <span>
+            {filteredTeams.length} {filteredTeams.length === 1 ? 'equipo' : 'equipos'}
           </span>
         </div>
 
-        {/* Category Pills Slider */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             type="button"
             onClick={() => {
               playSound('click', soundEnabled);
               setSelectedCategoryFilter('ALL');
             }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap ${
               selectedCategoryFilter === 'ALL'
-                ? 'bg-orange-600 text-white shadow-md'
+                ? 'bg-orange-600 text-white shadow-sm'
                 : 'bg-[#14161B] text-gray-300 hover:bg-neutral-800 border border-gray-800'
             }`}
           >
-            <span>Todas las Categorías</span>
-            <span className="text-[10px] opacity-75 font-normal">({teams.length})</span>
+            Todas ({teams.length})
           </button>
 
           {availableCategories.map(cat => {
@@ -344,259 +225,231 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                   playSound('click', soundEnabled);
                   setSelectedCategoryFilter(cat.name);
                 }}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap ${
                   isSelected
-                    ? 'bg-orange-600 text-white shadow-md ring-1 ring-orange-400'
+                    ? 'bg-orange-600 text-white shadow-sm'
                     : 'bg-[#14161B] text-gray-300 hover:bg-neutral-800 border border-gray-800'
                 }`}
               >
-                <span>{cat.name}</span>
-                <span className="text-[10px] opacity-75 font-normal">({cat.count})</span>
+                {cat.name} ({cat.count})
               </button>
             );
           })}
-
-          <button
-            type="button"
-            onClick={() => {
-              playSound('click', soundEnabled);
-              onOpenTeamEditor(null);
-            }}
-            className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-neutral-900 text-orange-400 hover:bg-neutral-800 border border-dashed border-orange-500/40 transition whitespace-nowrap flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Nueva Categoría</span>
-          </button>
         </div>
       </div>
 
-      {/* 4. Search and Filter Input */}
+      {/* 4. Search Filter */}
       <div className="relative">
-        <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Buscar por nombre de equipo, categoría o jugador..."
-          className="w-full bg-[#14161B] border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition shadow-inner font-mono"
+          placeholder="Buscar por equipo, categoría o jugador..."
+          className="w-full bg-[#14161B] border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition"
         />
         {searchQuery && (
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs font-mono"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
           >
-            Limpiar
+            ✕
           </button>
         )}
       </div>
 
-      {/* 5. Teams Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTeams.map(team => {
-          const teamMatches = getTeamMatches(team.id);
-          const wins = teamMatches.filter(m => m.homeScore > m.awayScore).length;
-          const losses = teamMatches.filter(m => m.homeScore < m.awayScore).length;
-          const starters = team.roster.filter(p => p.starter || p.onCourt).slice(0, 5);
-          const isActive = team.id === activeTeamId;
+      {/* 5. Team Cards Grid */}
+      {filteredTeams.length === 0 ? (
+        <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-8 text-center space-y-3">
+          <p className="text-gray-400 text-xs">No se encontraron equipos con este filtro.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategoryFilter('ALL');
+              setSearchQuery('');
+            }}
+            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-mono"
+          >
+            Mostrar todos los equipos
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTeams.map(team => {
+            const teamMatches = getTeamMatches(team.id);
+            const wins = teamMatches.filter(m => m.homeScore > m.awayScore).length;
+            const losses = teamMatches.filter(m => m.homeScore < m.awayScore).length;
+            const isActive = team.id === activeTeamId;
 
-          return (
-            <div
-              key={team.id}
-              className={`bg-[#14161B] border rounded-2xl p-4 shadow-xl flex flex-col justify-between transition hover:border-gray-700 relative overflow-hidden group ${
-                isActive ? 'border-orange-500/50 ring-1 ring-orange-500/30' : 'border-gray-800'
-              }`}
-            >
-              {/* Color Accent Top Bar */}
+            return (
               <div
-                className="absolute top-0 left-0 right-0 h-1.5 opacity-90"
-                style={{ backgroundColor: team.primaryColor || '#f97316' }}
-              />
+                key={team.id}
+                className={`bg-[#14161B] border rounded-2xl p-4 shadow-md flex flex-col justify-between transition hover:border-gray-700 relative overflow-hidden ${
+                  isActive ? 'border-orange-500/60 ring-1 ring-orange-500/20' : 'border-gray-800'
+                }`}
+              >
+                {/* Accent top color */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-1"
+                  style={{ backgroundColor: team.primaryColor || '#f97316' }}
+                />
 
-              {/* Card Top: Logo, Info & Category */}
-              <div className="space-y-3 pt-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-gray-800 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
-                      <TeamLogoDisplay logo={team.logo} teamName={team.name} size="md" />
-                    </div>
+                {/* Team Card Header */}
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-gray-800 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                        <TeamLogoDisplay logo={team.logo} teamName={team.name} size="md" />
+                      </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-base font-black text-white truncate tracking-tight">
-                          {team.name}
-                        </h3>
-                        {isActive && (
-                          <span className="text-[9px] font-mono font-bold bg-orange-600/20 text-orange-400 border border-orange-500/30 px-1.5 py-0.2 rounded shrink-0">
-                            Activo
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h2 className="text-sm font-black text-white truncate tracking-tight">
+                            {team.name}
+                          </h2>
+                          {isActive && (
+                            <span className="text-[9px] font-mono font-bold bg-orange-600/20 text-orange-400 border border-orange-500/30 px-1 py-0.2 rounded shrink-0">
+                              Activo
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Category & Season */}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-orange-600/20 text-orange-300 border border-orange-500/30">
+                            {team.category || 'General'}
                           </span>
-                        )}
+                          <span className="text-[10px] font-mono text-gray-400">
+                            {team.season || '2025/2026'}
+                          </span>
+                        </div>
                       </div>
+                    </div>
 
-                      {/* Category Badge & Season */}
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                          {team.category || 'Senior Masculino'}
-                        </span>
-                        <span className="text-[10px] font-mono text-gray-400">
-                          {team.season || '2025/2026'}
-                        </span>
-                      </div>
+                    {/* Edit & Delete Icons */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onOpenTeamEditor(team)}
+                        className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 transition"
+                        title="Editar nombre, categoría o escudo"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={e => handleDelete(team, e)}
+                        className="p-1.5 rounded-lg bg-neutral-900 hover:bg-rose-950/60 text-gray-400 hover:text-rose-400 border border-gray-800 transition"
+                        title="Eliminar equipo"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Actions Dropdown / Edit */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => onOpenTeamEditor(team)}
-                      className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 transition"
-                      title="Editar datos del equipo"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={e => handleDelete(team, e)}
-                      className="p-1.5 rounded-lg bg-neutral-900 hover:bg-rose-950/60 text-gray-400 hover:text-rose-400 border border-gray-800 transition"
-                      title="Eliminar equipo"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  {/* Metrics: Roster & Balance */}
+                  <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-[#0e1014] border border-gray-800/80 font-mono text-center">
+                    <div>
+                      <span className="text-[9px] text-gray-500 uppercase block">Plantilla</span>
+                      <span className="text-xs font-bold text-gray-200">
+                        {team.roster.length} Jugadores
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-gray-500 uppercase block">Partidos</span>
+                      <span className="text-xs font-bold text-orange-400">
+                        {teamMatches.length > 0 ? `${wins}V - ${losses}D (${teamMatches.length})` : '0 jugados'}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Team Quick Stats / Record */}
-                <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-[#0e1014] border border-gray-800/80 font-mono text-center">
-                  <div>
-                    <span className="text-[9px] text-gray-500 uppercase block">Plantilla</span>
-                    <span className="text-xs font-bold text-gray-200">
-                      {team.roster.length} Jugadores
+                  {/* Roster Dorsals Preview */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono text-gray-400 flex items-center justify-between">
+                      <span>Dorsales registrados:</span>
+                      <button
+                        type="button"
+                        onClick={() => onOpenRosterModal(team)}
+                        className="text-orange-400 hover:text-orange-300 text-[10px] font-bold"
+                      >
+                        Ver todos →
+                      </button>
                     </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-gray-500 uppercase block">Balance Partidos</span>
-                    <span className="text-xs font-bold text-orange-400">
-                      {teamMatches.length > 0 ? `${wins}V - ${losses}D (${teamMatches.length})` : 'Sin partidos'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Starter Numbers Quick Preview */}
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono text-gray-400 flex items-center justify-between">
-                    <span>Quinteto Inicial / Referentes:</span>
-                    <button
-                      type="button"
-                      onClick={() => onOpenRosterModal(team)}
-                      className="text-orange-400 hover:text-orange-300 text-[10px] font-bold"
-                    >
-                      Ver plantilla →
-                    </button>
-                  </span>
-                  <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-                    {starters.length > 0 ? (
-                      starters.map(p => (
+                    <div className="flex items-center gap-1 overflow-x-auto py-0.5 scrollbar-none">
+                      {team.roster.slice(0, 7).map(p => (
                         <div
                           key={p.id}
-                          className="px-2 py-1 rounded-lg bg-neutral-800 border border-gray-700 text-[10px] font-mono font-bold text-gray-200 flex items-center gap-1 shrink-0"
+                          className="px-1.5 py-0.5 rounded bg-neutral-800 border border-gray-700 text-[10px] font-mono font-bold text-gray-200 flex items-center gap-0.5 shrink-0"
                           title={`${p.name} (#${p.number})`}
                         >
                           <span className="text-orange-400">#{p.number}</span>
-                          <span className="truncate max-w-[70px]">{p.name.split(' ')[0]}</span>
+                          <span className="truncate max-w-[50px]">{p.name.split(' ')[0]}</span>
                         </div>
-                      ))
-                    ) : (
-                      team.roster.slice(0, 5).map(p => (
-                        <div
-                          key={p.id}
-                          className="px-2 py-1 rounded-lg bg-neutral-800/70 border border-gray-800 text-[10px] font-mono text-gray-300 flex items-center gap-1 shrink-0"
-                        >
-                          <span className="text-orange-400">#{p.number}</span>
-                          <span className="truncate max-w-[70px]">{p.name.split(' ')[0]}</span>
-                        </div>
-                      ))
-                    )}
+                      ))}
+                      {team.roster.length > 7 && (
+                        <span className="text-[10px] font-mono text-gray-500 shrink-0">
+                          +{team.roster.length - 7} más
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3 Clear, Dedicated Actions */}
+                <div className="pt-3 mt-3 border-t border-gray-800/80 space-y-1.5">
+                  {/* Action 1: Start Match */}
+                  <button
+                    id={`team-create-match-btn-${team.id}`}
+                    type="button"
+                    onClick={() => {
+                      playSound('click', soundEnabled);
+                      onCreateMatchForTeam(team);
+                    }}
+                    className="w-full py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-orange-600/20 transition active:scale-98"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Empezar Partido</span>
+                  </button>
+
+                  {/* Actions 2 & 3: Roster and Stats */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playSound('click', soundEnabled);
+                        onOpenRosterModal(team);
+                      }}
+                      className="py-1.5 px-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-200 border border-gray-800 text-xs font-bold flex items-center justify-center gap-1 transition"
+                      title="Ver y editar jugadores y dorsales de este equipo"
+                    >
+                      <Users className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Plantilla</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playSound('click', soundEnabled);
+                        if (onOpenTeamStatsReport) {
+                          onOpenTeamStatsReport(team);
+                        } else {
+                          onSelectTeam(team.id);
+                        }
+                      }}
+                      className="py-1.5 px-2 rounded-lg bg-orange-950/40 hover:bg-orange-900/60 text-orange-300 border border-orange-700/40 text-xs font-bold flex items-center justify-center gap-1 transition"
+                      title="Ver estadísticas acumuladas y mapa de tiro de esta categoría"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Estadísticas</span>
+                    </button>
                   </div>
                 </div>
               </div>
-
-              {/* Card Bottom: Core Action: CREAR PARTIDO */}
-              <div className="pt-4 mt-3 border-t border-gray-800/80 space-y-2">
-                <button
-                  id={`team-create-match-btn-${team.id}`}
-                  type="button"
-                  onClick={() => {
-                    playSound('click', soundEnabled);
-                    onCreateMatchForTeam(team);
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-600/25 transition active:scale-98"
-                >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>CREAR PARTIDO CON ESTE EQUIPO</span>
-                </button>
-
-                {/* Secondary Actions Bar */}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playSound('click', soundEnabled);
-                      onOpenRosterModal(team);
-                    }}
-                    className="py-1.5 px-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition"
-                  >
-                    <Users className="w-3.5 h-3.5 text-orange-400" />
-                    <span>Plantilla</span>
-                  </button>
-
-                  <button
-                    id={`team-stats-btn-${team.id}`}
-                    type="button"
-                    onClick={() => {
-                      playSound('click', soundEnabled);
-                      if (onOpenTeamStatsReport) {
-                        onOpenTeamStatsReport(team);
-                      } else {
-                        onOpenStatsForCategory(team.category || 'Senior Masculino', team.id);
-                      }
-                    }}
-                    className="py-1.5 px-2 rounded-lg bg-orange-950/60 hover:bg-orange-900 text-orange-300 hover:text-white border border-orange-700/60 text-[11px] font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
-                    title="Estadísticas de todo el equipo, mapa de tiro, filtro de partidos y exportar a PDF"
-                  >
-                    <Target className="w-3.5 h-3.5 text-orange-400" />
-                    <span>Estadísticas & Tiro</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Create New Team Empty Card in Grid */}
-        <div
-          onClick={() => {
-            playSound('click', soundEnabled);
-            onOpenTeamEditor(null);
-          }}
-          className="bg-[#14161B]/50 border-2 border-dashed border-gray-800 hover:border-orange-500/60 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-center cursor-pointer transition min-h-[260px] group"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-gray-800 group-hover:border-orange-500/50 flex items-center justify-center text-gray-400 group-hover:text-orange-400 transition shadow-inner">
-            <Plus className="w-7 h-7" />
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-gray-200 group-hover:text-white transition">
-              Crear Nuevo Equipo / Categoría
-            </h4>
-            <p className="text-xs text-gray-500 max-w-xs">
-              Registra un nuevo club o categoría (ej. Cadete, Infantil, Senior B) con su plantilla personalizada.
-            </p>
-          </div>
-          <span className="mt-2 text-xs font-mono font-bold text-orange-400 group-hover:underline">
-            + Añadir Equipo Ahora
-          </span>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 };
