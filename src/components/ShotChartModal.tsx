@@ -62,6 +62,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
     pendingShot?.playerId || initialPlayerId || (game.players.find(p => p.onCourt)?.id || game.players[0]?.id || '')
   );
   const [hoveredEvent, setHoveredEvent] = useState<PlayEvent | null>(null);
+  const [hoveredEventPos, setHoveredEventPos] = useState<{ x: number; y: number } | null>(null);
 
   // Pending quick placement state
   const [assistStepLocation, setAssistStepLocation] = useState<{
@@ -563,59 +564,99 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                   const isMade = ['2PM', '3PM'].includes(shot.actionType);
                   const posX = loc.x;
                   const posY = (loc.y / 100) * 93.3;
+                  const isHovered = hoveredEvent?.id ? hoveredEvent.id === shot.id : hoveredEvent === shot;
 
                   return (
                     <g
                       key={shot.id || idx}
-                      className="transition transform hover:scale-125 cursor-pointer"
-                      onMouseEnter={() => setHoveredEvent(shot)}
-                      onMouseLeave={() => setHoveredEvent(null)}
+                      className="cursor-pointer"
+                      onMouseEnter={() => {
+                        setHoveredEvent(shot);
+                        setHoveredEventPos({ x: posX, y: posY });
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredEvent(null);
+                        setHoveredEventPos(null);
+                      }}
                     >
-                      {isMade ? (
-                        <>
+                      {/* Generous invisible hit-area circle for stable hover without jitter */}
+                      <circle
+                        cx={posX}
+                        cy={posY}
+                        r="6"
+                        fill="transparent"
+                        style={{ pointerEvents: 'all' }}
+                      />
+
+                      {/* Visual Marker (pointerEvents: none prevents flickering) */}
+                      <g style={{ pointerEvents: 'none' }}>
+                        {isHovered && (
                           <circle
                             cx={posX}
                             cy={posY}
-                            r="2.6"
-                            fill="#10b981"
-                            stroke="#064e3b"
-                            strokeWidth="0.6"
-                            className="shadow-md"
+                            r="5.5"
+                            fill={isMade ? '#10b981' : '#f43f5e'}
+                            fillOpacity="0.4"
+                            stroke={isMade ? '#34d399' : '#fb7185'}
+                            strokeWidth="0.8"
                           />
-                          <text
-                            x={posX}
-                            y={posY + 0.9}
-                            textAnchor="middle"
-                            fill="#ffffff"
-                            fontSize="2.4"
-                            fontWeight="bold"
-                            fontFamily="monospace"
-                          >
-                            {shot.playerNumber ?? '✓'}
-                          </text>
-                        </>
-                      ) : (
-                        <>
-                          <line
-                            x1={posX - 1.8}
-                            y1={posY - 1.8}
-                            x2={posX + 1.8}
-                            y2={posY + 1.8}
-                            stroke="#f43f5e"
-                            strokeWidth="0.9"
-                            strokeLinecap="round"
-                          />
-                          <line
-                            x1={posX - 1.8}
-                            y1={posY + 1.8}
-                            x2={posX + 1.8}
-                            y2={posY - 1.8}
-                            stroke="#f43f5e"
-                            strokeWidth="0.9"
-                            strokeLinecap="round"
-                          />
-                        </>
-                      )}
+                        )}
+
+                        {isMade ? (
+                          <>
+                            <circle
+                              cx={posX}
+                              cy={posY}
+                              r={isHovered ? 3.5 : 2.6}
+                              fill="#10b981"
+                              stroke="#064e3b"
+                              strokeWidth="0.6"
+                              className="shadow-md"
+                            />
+                            <text
+                              x={posX}
+                              y={posY + 0.9}
+                              textAnchor="middle"
+                              fill="#ffffff"
+                              fontSize={isHovered ? '2.7' : '2.4'}
+                              fontWeight="bold"
+                              fontFamily="monospace"
+                            >
+                              {shot.playerNumber ?? '✓'}
+                            </text>
+                          </>
+                        ) : (
+                          <g className="drop-shadow">
+                            <circle
+                              cx={posX}
+                              cy={posY}
+                              r={isHovered ? 3.2 : 2.5}
+                              fill="#4c0519"
+                              fillOpacity="0.85"
+                              stroke="#f43f5e"
+                              strokeWidth="0.5"
+                            />
+                            <line
+                              x1={posX - (isHovered ? 2.0 : 1.6)}
+                              y1={posY - (isHovered ? 2.0 : 1.6)}
+                              x2={posX + (isHovered ? 2.0 : 1.6)}
+                              y2={posY + (isHovered ? 2.0 : 1.6)}
+                              stroke="#f43f5e"
+                              strokeWidth={isHovered ? '1.3' : '1.0'}
+                              strokeLinecap="round"
+                            />
+                            <line
+                              x1={posX - (isHovered ? 2.0 : 1.6)}
+                              y1={posY + (isHovered ? 2.0 : 1.6)}
+                              x2={posX + (isHovered ? 2.0 : 1.6)}
+                              y2={posY - (isHovered ? 2.0 : 1.6)}
+                              stroke="#f43f5e"
+                              strokeWidth={isHovered ? '1.3' : '1.0'}
+                              strokeLinecap="round"
+                            />
+                          </g>
+                        )}
+                      </g>
                     </g>
                   );
                 })}
@@ -675,6 +716,66 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                   </g>
                 )}
               </svg>
+
+              {/* Floating On-Court Tooltip on Hover */}
+              {hoveredEvent && hoveredEventPos && (
+                <div
+                  className="absolute z-20 pointer-events-none transition-transform duration-75 ease-out"
+                  style={{
+                    left: `${hoveredEventPos.x}%`,
+                    top: `${(hoveredEventPos.y / 93.3) * 100}%`,
+                    transform:
+                      hoveredEventPos.y < 28
+                        ? 'translate(-50%, 14px)'
+                        : 'translate(-50%, -108%)',
+                  }}
+                >
+                  <div
+                    className={`px-2.5 py-1.5 rounded-lg border shadow-2xl backdrop-blur-md text-xs font-mono whitespace-nowrap flex items-center gap-2 ${
+                      ['2PM', '3PM'].includes(hoveredEvent.actionType)
+                        ? 'bg-emerald-950/95 border-emerald-500 text-emerald-100 shadow-emerald-950/80'
+                        : 'bg-rose-950/95 border-rose-500 text-rose-100 shadow-rose-950/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {['2PM', '3PM'].includes(hoveredEvent.actionType) ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      )}
+                      <div>
+                        <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                          {hoveredEvent.playerName && (
+                            <span className="text-white font-black">
+                              #{hoveredEvent.playerNumber} {hoveredEvent.playerName}
+                            </span>
+                          )}
+                          <span
+                            className={
+                              ['2PM', '3PM'].includes(hoveredEvent.actionType)
+                                ? 'text-emerald-300'
+                                : 'text-rose-300'
+                            }
+                          >
+                            {hoveredEvent.actionLabel || hoveredEvent.actionType}
+                          </span>
+                        </div>
+                        <div className="text-[9px] text-neutral-300 opacity-90 flex items-center gap-1">
+                          <span>Q{hoveredEvent.quarter}</span>
+                          {hoveredEvent.gameTimeFormatted && (
+                            <span>• {hoveredEvent.gameTimeFormatted}</span>
+                          )}
+                          {hoveredEvent.assistedByPlayerName && (
+                            <span className="text-amber-300">
+                              • Ast: {hoveredEvent.assistedByPlayerName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tooltip info */}
