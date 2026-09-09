@@ -270,6 +270,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   assistPromptEnabled: true,
   courtMode: false,
   shotChartAutoOpen: 'baskets',
+  keepScreenAwake: true,
 };
 
 export const DEFAULT_ROSTER: Player[] = [

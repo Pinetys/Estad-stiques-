@@ -110,6 +110,7 @@ export interface GameSettings {
   assistPromptEnabled: boolean; // Preguntar si hubo asistencia tras canasta
   courtMode: boolean; // Modo Pista: reduce intensidad de color y desactiva animaciones para ahorrar batería
   shotChartAutoOpen?: 'baskets' | 'all' | 'off'; // Abrir carta de tiro al anotar canasta (default: 'baskets')
+  keepScreenAwake?: boolean; // Anti-bloqueo: mantener pantalla encendida en pista para no bloquear el móvil
 }
 
 export interface PendingShot {

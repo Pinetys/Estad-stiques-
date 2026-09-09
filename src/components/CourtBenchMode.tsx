@@ -23,7 +23,10 @@ import {
   CheckCircle2,
   Save,
   Check,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useScreenWakeLock } from '../utils/screenWakeLock';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -113,6 +116,32 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   const [lastActionToast, setLastActionToast] = useState<string | null>(null);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+
+  // Screen Wake Lock (Anti-Bloqueo Móvil) for Court Stat-Keeping
+  const isKeepAwakeConfigured = game.settings.keepScreenAwake !== false;
+  const { isActive: isWakeLockActive, toggle: toggleWakeLock } = useScreenWakeLock(isKeepAwakeConfigured);
+
+  const handleToggleWakeLock = () => {
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    const nextState = !isWakeLockActive;
+    toggleWakeLock();
+    onUpdateGame(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        keepScreenAwake: nextState,
+      },
+    }));
+    setLastActionToast(
+      nextState
+        ? '💡 Pantalla activa: El móvil no se bloqueará mientras anotes'
+        : '🌙 Bloqueo normal automático activado'
+    );
+    setTimeout(() => {
+      setLastActionToast(null);
+    }, 2800);
+  };
 
   const playersOnCourt = game.players.filter(p => p.onCourt);
   const benchPlayers = game.players.filter(p => !p.onCourt);
@@ -303,6 +332,37 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               ›
             </button>
           </div>
+
+          {/* Anti-Bloqueo Móvil (Keep Screen Awake) */}
+          <button
+            type="button"
+            onClick={handleToggleWakeLock}
+            className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95 border ${
+              isWakeLockActive
+                ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-950'
+                : 'bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200'
+            }`}
+            title={
+              isWakeLockActive
+                ? 'Pantalla activa (Anti-bloqueo): el móvil no se apagará ni bloqueará mientras anotas en pista'
+                : 'Tocar para activar anti-bloqueo y evitar que se apague la pantalla'
+            }
+          >
+            {isWakeLockActive ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <Sun className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="hidden xs:inline">PANTALLA ACTIVA</span>
+                <span className="xs:hidden">ACTIVA</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3 h-3 text-neutral-500 shrink-0" />
+                <span className="hidden xs:inline">BLOQUEO AUTO</span>
+                <span className="xs:hidden">AUTO</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Quick Tools: Carta de Tiro, Acta PDF & Cerrar Partido */}

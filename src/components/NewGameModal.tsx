@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   Flame,
   Clock,
+  Sun,
 } from 'lucide-react';
 import { playSound } from '../utils/soundHaptics';
 
@@ -133,6 +134,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     currentGame.settings.shotChartAutoOpen || 'baskets'
   );
   const [courtMode, setCourtMode] = useState(currentGame.settings.courtMode || false);
+  const [keepScreenAwake, setKeepScreenAwake] = useState(currentGame.settings.keepScreenAwake ?? true);
 
   // Handle selecting a recorded home team
   const handleSelectHomeRecordedTeam = (teamId: string) => {
@@ -247,6 +249,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         assistPromptEnabled,
         shotChartAutoOpen,
         courtMode,
+        keepScreenAwake,
       },
     });
     onClose();
@@ -790,6 +793,25 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   checked={courtMode}
                   onChange={e => setCourtMode(e.target.checked)}
                   className="rounded bg-[#14161B] border-gray-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4 ml-2"
+                />
+              </label>
+
+              {/* Anti-Bloqueo Móvil */}
+              <label className="flex items-center justify-between p-2 rounded-lg bg-emerald-950/25 border border-emerald-800/40 text-gray-300 font-bold cursor-pointer hover:bg-emerald-950/40 transition">
+                <div className="flex flex-col">
+                  <span className="flex items-center gap-1.5 text-xs text-emerald-300">
+                    <Sun className="w-3.5 h-3.5 text-emerald-400" />
+                    Mantener Pantalla Activa (Anti-bloqueo)
+                  </span>
+                  <span className="text-[10px] text-emerald-400/80 font-normal">
+                    Evita que el móvil se apague o bloquee mientras anotas en pista
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={keepScreenAwake}
+                  onChange={e => setKeepScreenAwake(e.target.checked)}
+                  className="rounded bg-[#14161B] border-emerald-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4 ml-2"
                 />
               </label>
             </div>

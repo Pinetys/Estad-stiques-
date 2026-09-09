@@ -40,6 +40,7 @@ import {
   upsertTeamProfile,
   syncTeamsFromCloud,
 } from './utils/teamStorage';
+import { useScreenWakeLock } from './utils/screenWakeLock';
 
 // Icons
 import {
@@ -1055,6 +1056,9 @@ export default function App() {
 
   const recentEvent = game.events.length > 0 ? game.events[0] : null;
   const isCourtMode = Boolean(game.settings.courtMode);
+
+  // Screen Wake Lock (Anti-bloqueo móvil en pista y registro en directo)
+  useScreenWakeLock((isCourtMode || activeTab === 'live') && game.settings.keepScreenAwake !== false);
 
   return (
     <div className={`min-h-screen ${isCourtMode ? 'bg-black text-neutral-200' : 'bg-[#0F1115] text-gray-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
