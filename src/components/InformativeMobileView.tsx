@@ -21,22 +21,28 @@ import {
   Target,
 } from 'lucide-react';
 import { PlayerShotMap } from './PlayerShotMap';
+import { StartingFiveModal } from './StartingFiveModal';
 
 interface InformativeMobileViewProps {
   game: Game;
   onToggleCourtMode: () => void;
   onOpenSubstitutionModal?: () => void;
   onOpenRosterModal?: () => void;
+  onUpdateGame?: (updater: (prev: Game) => Game) => void;
 }
 
 export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
   game,
   onToggleCourtMode,
   onOpenRosterModal,
+  onUpdateGame,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'oncourt' | 'all' | 'team' | 'leaders'>('oncourt');
   const [selectedPlayerDetail, setSelectedPlayerDetail] = useState<Player | null>(null);
   const [playerDetailTab, setPlayerDetailTab] = useState<'stats' | 'shotChart'>('stats');
+  const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
+
+  const isPreGame = game.events.length === 0 && !game.isClockRunning && game.currentQuarter === 1;
 
   const playersOnCourt = game.players.filter(p => p.onCourt);
   const benchPlayers = game.players.filter(p => !p.onCourt);
@@ -209,9 +215,25 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               Quinteto en Pista ({playersOnCourt.length}/5)
             </span>
-            <span className="text-gray-500 font-mono text-[10px]">
-              Toca un jugador para ver desglose
-            </span>
+            <div className="flex items-center gap-2">
+              {isPreGame && onUpdateGame && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setShowStartingFiveModal(true);
+                  }}
+                  className="px-2 py-0.5 rounded-md bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/40 font-mono font-bold text-[10px] flex items-center gap-1 transition"
+                  title="Editar quinteto titular antes de comenzar"
+                >
+                  <Users className="w-3 h-3" />
+                  <span>Editar Quinteto</span>
+                </button>
+              )}
+              <span className="text-gray-500 font-mono text-[10px] hidden sm:inline">
+                Toca un jugador para ver desglose
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -738,6 +760,31 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Starting Five Modal */}
+      {showStartingFiveModal && onUpdateGame && (
+        <StartingFiveModal
+          players={game.players}
+          soundEnabled={game.settings.soundEnabled}
+          vibrationEnabled={game.settings.vibrationEnabled}
+          onSaveStartingFive={newStarterIds => {
+            onUpdateGame(prev => ({
+              ...prev,
+              players: prev.players.map(p => {
+                const isStarter = newStarterIds.includes(p.id);
+                return {
+                  ...p,
+                  starter: isStarter,
+                  onCourt: isStarter,
+                };
+              }),
+            }));
+            setShowStartingFiveModal(false);
+          }}
+          onClose={() => setShowStartingFiveModal(false)}
+          title={`Quinteto Inicial · ${game.homeTeamName}`}
+        />
       )}
     </div>
   );

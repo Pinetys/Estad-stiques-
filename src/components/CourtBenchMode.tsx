@@ -27,6 +27,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
+import { StartingFiveModal } from './StartingFiveModal';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -74,6 +75,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showBenchInModal, setShowBenchInModal] = useState(false);
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [matchClosedSuccess, setMatchClosedSuccess] = useState(false);
+  const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
+
+  // Pre-game state: clock not started, no events logged yet in Q1
+  const isPreGame = game.events.length === 0 && !game.isClockRunning && game.currentQuarter === 1;
 
   // Opponent scouting dorsal prompt state
   const [scoutingOppAction, setScoutingOppAction] = useState<'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL' | null>(null);
@@ -633,6 +638,26 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 5. QUINTETO EN PISTA (COMPACTO Y 100% SINCRONIZADO AL INSTANTE) */}
       <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-1 shrink-0">
+        {isPreGame && (
+          <div className="flex items-center justify-between px-1 pb-1 text-[11px] font-mono">
+            <span className="text-amber-400 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              PRE-PARTIDO · QUINTETO INICIAL
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                setShowStartingFiveModal(true);
+              }}
+              className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 underline text-[10px]"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Editar Quinteto</span>
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-between bg-[#111317] border border-neutral-800 rounded-xl px-2 py-1 text-xs">
           <div className="flex items-center gap-1 grow overflow-x-hidden">
             <div className="grid grid-cols-5 gap-1.5 grow">
@@ -688,18 +713,33 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('light', game.settings.vibrationEnabled);
-              onOpenSubstitutionModal();
-            }}
-            className="ml-2 px-3 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-[11px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-md active:scale-95 transition shrink-0"
-            title="Sustituciones de jugadores"
-          >
-            <ArrowRightLeft className="w-4 h-4" />
-            <span className="leading-tight font-black text-[10px]">CAMBIOS</span>
-          </button>
+          {isPreGame ? (
+            <button
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                setShowStartingFiveModal(true);
+              }}
+              className="ml-2 px-2.5 py-2 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-[10px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-lg active:scale-95 transition shrink-0 border border-orange-400"
+              title="Editar el quinteto inicial antes de empezar el partido"
+            >
+              <Users className="w-4 h-4 text-white" />
+              <span className="leading-tight font-black text-[9px] whitespace-nowrap">QUINTETO</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                onOpenSubstitutionModal();
+              }}
+              className="ml-2 px-3 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-[11px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-md active:scale-95 transition shrink-0"
+              title="Sustituciones de jugadores"
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+              <span className="leading-tight font-black text-[10px]">CAMBIOS</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1289,6 +1329,31 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           <CheckCircle2 className="w-5 h-5 text-white" />
           <span>¡Partido finalizado y guardado en la Biblioteca!</span>
         </div>
+      )}
+
+      {/* MODAL EDITAR QUINTETO INICIAL (PRE-PARTIDO) */}
+      {showStartingFiveModal && (
+        <StartingFiveModal
+          players={game.players}
+          soundEnabled={game.settings.soundEnabled}
+          vibrationEnabled={game.settings.vibrationEnabled}
+          onSaveStartingFive={newStarterIds => {
+            onUpdateGame(prev => ({
+              ...prev,
+              players: prev.players.map(p => {
+                const isStarter = newStarterIds.includes(p.id);
+                return {
+                  ...p,
+                  starter: isStarter,
+                  onCourt: isStarter,
+                };
+              }),
+            }));
+            setShowStartingFiveModal(false);
+          }}
+          onClose={() => setShowStartingFiveModal(false)}
+          title={`Quinteto Inicial · ${game.homeTeamName}`}
+        />
       )}
     </div>
   );

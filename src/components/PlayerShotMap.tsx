@@ -124,6 +124,13 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
   const [hoveredShot, setHoveredShot] = useState<PlayEvent | null>(null);
   const [hoveredShotPos, setHoveredShotPos] = useState<{ x: number; y: number } | null>(null);
   const [hoveredZoneId, setHoveredZoneId] = useState<CourtZoneId | null>(null);
+  const [cursorPos, setCursorPos] = useState<{
+    pctX: number;
+    pctY: number;
+    courtX: number;
+    courtY: number;
+    distanceMeters: number;
+  } | null>(null);
 
   // Field shot events
   const fieldShots = useMemo(() => {
@@ -235,6 +242,71 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
   }, [fieldShots]);
 
   const activeHoveredZoneData = hoveredZoneId ? zonesStatsMap[hoveredZoneId] : null;
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const pctX = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const pctY = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+
+    // Court coordinates in SVG viewBox (0..100, 0..93.3)
+    const courtX = Math.max(2, Math.min(98, pctX));
+    const courtY = Math.max(2, Math.min(91.3, (pctY / 100) * 93.3));
+
+    // Distance to hoop (hoop rim at cx=50, cy=11; 43.5 SVG units = 6.75m)
+    const dx = courtX - 50;
+    const dy = courtY - 11;
+    const distUnits = Math.hypot(dx, dy);
+    const distanceMeters = Math.max(0, Math.round((distUnits / 43.5) * 6.75 * 10) / 10);
+
+    // Identify court zone accurately
+    const zoneId = classifyShotZone(courtX, courtY);
+    setHoveredZoneId(zoneId);
+
+    // Check for nearby shot marker in 'shots' or 'combined' mode
+    if (viewMode !== 'heat' && displayedShots.length > 0) {
+      let nearestShot: PlayEvent | null = null;
+      let minDistance = 5.0; // Detection threshold in SVG units
+      let nearestCoords: { x: number; y: number } | null = null;
+
+      displayedShots.forEach((shot, idx) => {
+        const coords = getShotCoordinates(shot, idx);
+        const distToShot = Math.hypot(coords.x - courtX, coords.y - courtY);
+        if (distToShot < minDistance) {
+          minDistance = distToShot;
+          nearestShot = shot;
+          nearestCoords = coords;
+        }
+      });
+
+      if (nearestShot && nearestCoords) {
+        setHoveredShot(nearestShot);
+        setHoveredShotPos(nearestCoords);
+      } else {
+        setHoveredShot(null);
+        setHoveredShotPos(null);
+      }
+    } else {
+      setHoveredShot(null);
+      setHoveredShotPos(null);
+    }
+
+    setCursorPos({
+      pctX,
+      pctY,
+      courtX,
+      courtY,
+      distanceMeters,
+    });
+  };
+
+  const handlePointerLeave = () => {
+    setHoveredZoneId(null);
+    setHoveredShot(null);
+    setHoveredShotPos(null);
+    setCursorPos(null);
+  };
 
   const isDark = theme === 'dark';
 
@@ -402,10 +474,16 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
       </div>
 
       {/* SVG Basketball Court Map with Interactive Zones & Markers */}
-      <div className="relative w-full max-w-md mx-auto aspect-[100/93.3] select-none">
+      <div
+        className="relative w-full max-w-md mx-auto aspect-[100/93.3] select-none touch-none cursor-crosshair group"
+        onPointerMove={handlePointerMove}
+        onPointerDown={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        onPointerCancel={handlePointerLeave}
+      >
         <svg
           viewBox="0 0 100 93.3"
-          className={`w-full h-full rounded-xl border shadow-inner ${
+          className={`w-full h-full rounded-xl border shadow-inner pointer-events-none ${
             isDark ? 'bg-[#0f1218] border-neutral-800' : 'bg-amber-50/40 border-neutral-300'
           }`}
         >
@@ -431,12 +509,14 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
               <path
                 d="M 8 28 L 2 28 L 2 91.3 L 98 91.3 L 98 28 L 92 28 A 43.5 43.5 0 0 1 8 28 Z"
                 fill={zonesStatsMap.top3.heatColor}
-                fillOpacity={hoveredZoneId === 'top3' ? zonesStatsMap.top3.fillOpacity + 0.15 : zonesStatsMap.top3.fillOpacity}
+                fillOpacity={
+                  hoveredZoneId === 'top3'
+                    ? Math.min(0.65, zonesStatsMap.top3.fillOpacity + 0.22)
+                    : zonesStatsMap.top3.fillOpacity
+                }
                 stroke={hoveredZoneId === 'top3' ? '#f97316' : 'none'}
-                strokeWidth="1.2"
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredZoneId('top3')}
-                onMouseLeave={() => setHoveredZoneId(null)}
+                strokeWidth={hoveredZoneId === 'top3' ? 1.5 : 0}
+                className="transition-all duration-150"
               />
 
               {/* Paint / Key Zone */}
@@ -446,48 +526,56 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 width="32.6"
                 height="38.6"
                 fill={zonesStatsMap.paint.heatColor}
-                fillOpacity={hoveredZoneId === 'paint' ? zonesStatsMap.paint.fillOpacity + 0.15 : zonesStatsMap.paint.fillOpacity}
+                fillOpacity={
+                  hoveredZoneId === 'paint'
+                    ? Math.min(0.65, zonesStatsMap.paint.fillOpacity + 0.22)
+                    : zonesStatsMap.paint.fillOpacity
+                }
                 stroke={hoveredZoneId === 'paint' ? '#f97316' : 'none'}
-                strokeWidth="1.2"
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredZoneId('paint')}
-                onMouseLeave={() => setHoveredZoneId(null)}
+                strokeWidth={hoveredZoneId === 'paint' ? 1.5 : 0}
+                className="transition-all duration-150"
               />
 
               {/* Mid-Range Left Zone */}
               <path
                 d="M 8 2 L 33.7 2 L 33.7 40.6 L 33.7 51.33 A 43.5 43.5 0 0 1 8 28 Z"
                 fill={zonesStatsMap.mid_left.heatColor}
-                fillOpacity={hoveredZoneId === 'mid_left' ? zonesStatsMap.mid_left.fillOpacity + 0.15 : zonesStatsMap.mid_left.fillOpacity}
+                fillOpacity={
+                  hoveredZoneId === 'mid_left'
+                    ? Math.min(0.65, zonesStatsMap.mid_left.fillOpacity + 0.22)
+                    : zonesStatsMap.mid_left.fillOpacity
+                }
                 stroke={hoveredZoneId === 'mid_left' ? '#f97316' : 'none'}
-                strokeWidth="1.2"
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredZoneId('mid_left')}
-                onMouseLeave={() => setHoveredZoneId(null)}
+                strokeWidth={hoveredZoneId === 'mid_left' ? 1.5 : 0}
+                className="transition-all duration-150"
               />
 
               {/* Mid-Range Right Zone */}
               <path
                 d="M 66.3 2 L 92 2 L 92 28 A 43.5 43.5 0 0 1 66.3 51.33 L 66.3 40.6 Z"
                 fill={zonesStatsMap.mid_right.heatColor}
-                fillOpacity={hoveredZoneId === 'mid_right' ? zonesStatsMap.mid_right.fillOpacity + 0.15 : zonesStatsMap.mid_right.fillOpacity}
+                fillOpacity={
+                  hoveredZoneId === 'mid_right'
+                    ? Math.min(0.65, zonesStatsMap.mid_right.fillOpacity + 0.22)
+                    : zonesStatsMap.mid_right.fillOpacity
+                }
                 stroke={hoveredZoneId === 'mid_right' ? '#f97316' : 'none'}
-                strokeWidth="1.2"
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredZoneId('mid_right')}
-                onMouseLeave={() => setHoveredZoneId(null)}
+                strokeWidth={hoveredZoneId === 'mid_right' ? 1.5 : 0}
+                className="transition-all duration-150"
               />
 
               {/* Mid-Range Center (Free Throw Line to 3pt arc) */}
               <path
                 d="M 33.7 40.6 L 66.3 40.6 L 66.3 51.33 A 43.5 43.5 0 0 1 33.7 51.33 Z"
                 fill={zonesStatsMap.mid_center.heatColor}
-                fillOpacity={hoveredZoneId === 'mid_center' ? zonesStatsMap.mid_center.fillOpacity + 0.15 : zonesStatsMap.mid_center.fillOpacity}
+                fillOpacity={
+                  hoveredZoneId === 'mid_center'
+                    ? Math.min(0.65, zonesStatsMap.mid_center.fillOpacity + 0.22)
+                    : zonesStatsMap.mid_center.fillOpacity
+                }
                 stroke={hoveredZoneId === 'mid_center' ? '#f97316' : 'none'}
-                strokeWidth="1.2"
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredZoneId('mid_center')}
-                onMouseLeave={() => setHoveredZoneId(null)}
+                strokeWidth={hoveredZoneId === 'mid_center' ? 1.5 : 0}
+                className="transition-all duration-150"
               />
 
               {/* Corner 3 Left */}
@@ -497,12 +585,14 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 width="6"
                 height="26"
                 fill={zonesStatsMap.corner3_left.heatColor}
-                fillOpacity={hoveredZoneId === 'corner3_left' ? zonesStatsMap.corner3_left.fillOpacity + 0.15 : zonesStatsMap.corner3_left.fillOpacity}
+                fillOpacity={
+                  hoveredZoneId === 'corner3_left'
+                    ? Math.min(0.65, zonesStatsMap.corner3_left.fillOpacity + 0.22)
+                    : zonesStatsMap.corner3_left.fillOpacity
+                }
                 stroke={hoveredZoneId === 'corner3_left' ? '#f97316' : 'none'}
-                strokeWidth="1.2"
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredZoneId('corner3_left')}
-                onMouseLeave={() => setHoveredZoneId(null)}
+                strokeWidth={hoveredZoneId === 'corner3_left' ? 1.5 : 0}
+                className="transition-all duration-150"
               />
 
               {/* Corner 3 Right */}
@@ -512,12 +602,14 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 width="6"
                 height="26"
                 fill={zonesStatsMap.corner3_right.heatColor}
-                fillOpacity={hoveredZoneId === 'corner3_right' ? zonesStatsMap.corner3_right.fillOpacity + 0.15 : zonesStatsMap.corner3_right.fillOpacity}
+                fillOpacity={
+                  hoveredZoneId === 'corner3_right'
+                    ? Math.min(0.65, zonesStatsMap.corner3_right.fillOpacity + 0.22)
+                    : zonesStatsMap.corner3_right.fillOpacity
+                }
                 stroke={hoveredZoneId === 'corner3_right' ? '#f97316' : 'none'}
-                strokeWidth="1.2"
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredZoneId('corner3_right')}
-                onMouseLeave={() => setHoveredZoneId(null)}
+                strokeWidth={hoveredZoneId === 'corner3_right' ? 1.5 : 0}
+                className="transition-all duration-150"
               />
 
               {/* Zone Effectiveness Badges (Only in 'heat' mode or when hovered) */}
@@ -529,8 +621,8 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 return (
                   <g
                     key={`badge-${zid}`}
-                    transform={`translate(${z.anchorX}, ${z.anchorY})`}
-                    className="pointer-events-none"
+                    transform={`translate(${z.anchorX}, ${z.anchorY}) scale(${isHovered ? 1.15 : 1})`}
+                    className="pointer-events-none transition-transform duration-150"
                   >
                     <rect
                       x="-8"
@@ -539,9 +631,9 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                       height="8"
                       rx="2.5"
                       fill={isDark ? '#11141b' : '#ffffff'}
-                      fillOpacity={isHovered ? 0.95 : 0.85}
+                      fillOpacity={isHovered ? 0.98 : 0.85}
                       stroke={isHovered ? '#f97316' : z.heatColor}
-                      strokeWidth={isHovered ? 1 : 0.6}
+                      strokeWidth={isHovered ? 1.4 : 0.6}
                       className="drop-shadow"
                     />
                     <text
@@ -729,113 +821,111 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
               return (
                 <g
                   key={shot.id || idx}
-                  className="cursor-pointer"
-                  onMouseEnter={() => {
-                    setHoveredShot(shot);
-                    setHoveredShotPos({ x, y });
-                  }}
-                  onMouseLeave={() => {
-                    setHoveredShot(null);
-                    setHoveredShotPos(null);
-                  }}
-                  onClick={() => {
-                    setHoveredShot(shot);
-                    setHoveredShotPos({ x, y });
-                  }}
+                  className="pointer-events-none"
                 >
-                  {/* Generous INVISIBLE Hit-Area Circle: Guarantees 100% stable, jitter-free hover */}
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r="6.5"
-                    fill="transparent"
-                    style={{ pointerEvents: 'all' }}
-                  />
+                  {/* Hover halo glow */}
+                  {isHovered && (
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="5.8"
+                      fill={isMade ? '#10b981' : '#ef4444'}
+                      fillOpacity="0.45"
+                      stroke={isMade ? '#34d399' : '#f87171'}
+                      strokeWidth="0.9"
+                      filter={isMade ? 'url(#made-glow)' : 'url(#miss-glow)'}
+                    />
+                  )}
 
-                  {/* VISIBLE MARKER (pointerEvents none to avoid mouseleave thrashing) */}
-                  <g style={{ pointerEvents: 'none' }}>
-                    {/* Hover halo glow */}
-                    {isHovered && (
+                  {isMade ? (
+                    // Made Shot: Emerald Green Circle with Point Badge
+                    <g className="transition-transform duration-100">
                       <circle
                         cx={x}
                         cy={y}
-                        r="5.5"
-                        fill={isMade ? '#10b981' : '#ef4444'}
-                        fillOpacity="0.4"
-                        stroke={isMade ? '#34d399' : '#f87171'}
-                        strokeWidth="0.8"
-                        filter={isMade ? 'url(#made-glow)' : 'url(#miss-glow)'}
+                        r={isHovered ? 4.2 : 3.1}
+                        fill="#10b981"
+                        stroke="#064e3b"
+                        strokeWidth="0.7"
+                        className="drop-shadow"
                       />
-                    )}
-
-                    {isMade ? (
-                      // Made Shot: Emerald Green Circle with Point Badge
-                      <>
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={isHovered ? 4.0 : 3.1}
-                          fill="#10b981"
-                          stroke="#064e3b"
-                          strokeWidth="0.7"
-                          className="drop-shadow"
-                        />
-                        <text
-                          x={x}
-                          y={y + 1.0}
-                          textAnchor="middle"
-                          fill="#ffffff"
-                          fontSize={isHovered ? '2.9' : '2.6'}
-                          fontWeight="900"
-                          fontFamily="monospace"
-                        >
-                          {shot.actionType === '3PM' ? '3' : '2'}
-                        </text>
-                      </>
-                    ) : (
-                      // Missed Shot: Vivid Red 'X' with subtle backing circle
-                      <g className="drop-shadow">
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={isHovered ? 3.6 : 2.8}
-                          fill={isDark ? '#450a0a' : '#fee2e2'}
-                          fillOpacity="0.85"
-                          stroke="#ef4444"
-                          strokeWidth="0.6"
-                        />
-                        <line
-                          x1={x - (isHovered ? 2.2 : 1.7)}
-                          y1={y - (isHovered ? 2.2 : 1.7)}
-                          x2={x + (isHovered ? 2.2 : 1.7)}
-                          y2={y + (isHovered ? 2.2 : 1.7)}
-                          stroke="#ef4444"
-                          strokeWidth={isHovered ? '1.4' : '1.1'}
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={x - (isHovered ? 2.2 : 1.7)}
-                          y1={y + (isHovered ? 2.2 : 1.7)}
-                          x2={x + (isHovered ? 2.2 : 1.7)}
-                          y2={y - (isHovered ? 2.2 : 1.7)}
-                          stroke="#ef4444"
-                          strokeWidth={isHovered ? '1.4' : '1.1'}
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    )}
-                  </g>
+                      <text
+                        x={x}
+                        y={y + 1.0}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize={isHovered ? '2.9' : '2.6'}
+                        fontWeight="900"
+                        fontFamily="monospace"
+                      >
+                        {shot.actionType === '3PM' ? '3' : '2'}
+                      </text>
+                    </g>
+                  ) : (
+                    // Missed Shot: Vivid Red 'X' with subtle backing circle
+                    <g className="drop-shadow transition-transform duration-100">
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={isHovered ? 3.8 : 2.8}
+                        fill={isDark ? '#450a0a' : '#fee2e2'}
+                        fillOpacity="0.85"
+                        stroke="#ef4444"
+                        strokeWidth="0.6"
+                      />
+                      <line
+                        x1={x - (isHovered ? 2.4 : 1.7)}
+                        y1={y - (isHovered ? 2.4 : 1.7)}
+                        x2={x + (isHovered ? 2.4 : 1.7)}
+                        y2={y + (isHovered ? 2.4 : 1.7)}
+                        stroke="#ef4444"
+                        strokeWidth={isHovered ? '1.5' : '1.1'}
+                        strokeLinecap="round"
+                      />
+                      <line
+                        x1={x - (isHovered ? 2.4 : 1.7)}
+                        y1={y + (isHovered ? 2.4 : 1.7)}
+                        x2={x + (isHovered ? 2.4 : 1.7)}
+                        y2={y - (isHovered ? 2.4 : 1.7)}
+                        stroke="#ef4444"
+                        strokeWidth={isHovered ? '1.5' : '1.1'}
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  )}
                 </g>
               );
             })}
+
+          {/* Active pointer target reticle */}
+          {cursorPos && (
+            <g className="pointer-events-none transition-opacity duration-100">
+              <circle
+                cx={cursorPos.courtX}
+                cy={cursorPos.courtY}
+                r="3.5"
+                fill="none"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                strokeDasharray="1.2, 1"
+                opacity="0.85"
+              />
+              <circle
+                cx={cursorPos.courtX}
+                cy={cursorPos.courtY}
+                r="0.9"
+                fill="#f97316"
+              />
+            </g>
+          )}
         </svg>
 
         {/* =================================================== */}
-        {/* 4. FLOATING ON-COURT TOOLTIP (FOLLOWS HOVERED SHOT) */}
+        {/* 4. FLOATING ON-COURT TOOLTIP (HOVERED SHOT) */}
         {/* =================================================== */}
         {hoveredShot && hoveredShotPos && (
           <div
-            className="absolute z-20 pointer-events-none transition-transform duration-75 ease-out"
+            className="absolute z-30 pointer-events-none transition-transform duration-75 ease-out"
             style={{
               left: `${hoveredShotPos.x}%`,
               top: `${(hoveredShotPos.y / 93.3) * 100}%`,
@@ -883,6 +973,9 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                         • Ast: {hoveredShot.assistedByPlayerName}
                       </span>
                     )}
+                    {cursorPos && (
+                      <span className="text-neutral-300">• ~{cursorPos.distanceMeters} m</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -891,53 +984,79 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
         )}
 
         {/* =================================================== */}
-        {/* 5. FLOATING ON-COURT TOOLTIP (FOLLOWS HOVERED ZONE) */}
+        {/* 5. FLOATING ON-COURT TOOLTIP (HOVERED ZONE) */}
         {/* =================================================== */}
-        {activeHoveredZoneData && !hoveredShot && (viewMode === 'heat' || viewMode === 'combined') && (
-          <div
-            className="absolute z-20 pointer-events-none transition-transform duration-75 ease-out"
-            style={{
-              left: `${activeHoveredZoneData.anchorX}%`,
-              top: `${(activeHoveredZoneData.anchorY / 93.3) * 100}%`,
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            <div className="px-2.5 py-1.5 rounded-lg border border-orange-500/80 bg-neutral-950/95 shadow-2xl backdrop-blur-md text-xs font-mono whitespace-nowrap text-white">
-              <div className="flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-orange-400" />
-                <span className="font-black text-orange-300 uppercase tracking-wide text-[11px]">
-                  {activeHoveredZoneData.name}
-                </span>
-              </div>
-              <div className="text-[10px] text-neutral-300 mt-0.5 flex items-center gap-2">
-                <span className="font-bold text-white">
-                  {activeHoveredZoneData.made}/{activeHoveredZoneData.attempted} (
-                  {activeHoveredZoneData.pct}%)
-                </span>
-                <span>• {activeHoveredZoneData.points} pts</span>
-                <span
-                  className={`font-bold ${
-                    activeHoveredZoneData.heatLevel === 'hot'
-                      ? 'text-orange-400'
+        {activeHoveredZoneData && !hoveredShot && cursorPos && (viewMode === 'heat' || viewMode === 'combined') && (() => {
+          const tooltipLeft = Math.max(6, Math.min(94, cursorPos.pctX));
+          const tooltipTop = Math.max(6, Math.min(94, cursorPos.pctY));
+          const isNearBottom = cursorPos.courtY > 52;
+          const isNearLeft = cursorPos.pctX < 26;
+          const isNearRight = cursorPos.pctX > 74;
+
+          let transformX = '-50%';
+          if (isNearLeft) transformX = '0%';
+          else if (isNearRight) transformX = '-100%';
+
+          const transformY = isNearBottom ? '-115%' : '18px';
+
+          return (
+            <div
+              className="absolute z-30 pointer-events-none transition-transform duration-75 ease-out"
+              style={{
+                left: `${tooltipLeft}%`,
+                top: `${tooltipTop}%`,
+                transform: `translate(${transformX}, ${transformY})`,
+              }}
+            >
+              <div className="px-3 py-2 rounded-xl border border-orange-500/80 bg-neutral-950/95 shadow-2xl backdrop-blur-md text-xs font-mono whitespace-nowrap text-white min-w-[190px]">
+                <div className="flex items-center justify-between gap-2 border-b border-neutral-800 pb-1.5 mb-1.5">
+                  <div className="flex items-center gap-1.5 font-black text-orange-300 uppercase tracking-wide text-[11px]">
+                    <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0 animate-pulse" />
+                    <span>{activeHoveredZoneData.name}</span>
+                  </div>
+                  <span
+                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                      activeHoveredZoneData.heatLevel === 'hot'
+                        ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                        : activeHoveredZoneData.heatLevel === 'warm'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : activeHoveredZoneData.heatLevel === 'cold'
+                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                        : 'bg-neutral-800 text-neutral-400'
+                    }`}
+                  >
+                    {activeHoveredZoneData.heatLevel === 'hot'
+                      ? '🔥 Caliente'
                       : activeHoveredZoneData.heatLevel === 'warm'
-                      ? 'text-amber-400'
+                      ? '⚡ Media'
                       : activeHoveredZoneData.heatLevel === 'cold'
-                      ? 'text-sky-400'
-                      : 'text-neutral-400'
-                  }`}
-                >
-                  {activeHoveredZoneData.heatLevel === 'hot'
-                    ? '🔥 Caliente'
-                    : activeHoveredZoneData.heatLevel === 'warm'
-                    ? '⚡ Media'
-                    : activeHoveredZoneData.heatLevel === 'cold'
-                    ? '❄️ Fría'
-                    : 'Sin tiros'}
-                </span>
+                      ? '❄️ Fría'
+                      : 'Sin tiros'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div>
+                    <span className="text-neutral-400 block text-[9px]">Aciertos:</span>
+                    <span className="font-bold text-white text-xs">
+                      {activeHoveredZoneData.made}/{activeHoveredZoneData.attempted}{' '}
+                      <span className="text-orange-400">({activeHoveredZoneData.pct}%)</span>
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-neutral-400 block text-[9px]">Puntos:</span>
+                    <span className="font-bold text-white text-xs">{activeHoveredZoneData.points} pts</span>
+                  </div>
+                </div>
+
+                <div className="mt-1.5 pt-1.5 border-t border-neutral-800/80 text-[9px] text-neutral-400 flex items-center justify-between">
+                  <span>Distancia al aro:</span>
+                  <span className="font-bold text-neutral-200">~{cursorPos.distanceMeters} m</span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Empty state overlay when no shots recorded */}
         {fieldShots.length === 0 && (
@@ -983,6 +1102,7 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                   {hoveredShot.gameTimeFormatted && ` • ${hoveredShot.gameTimeFormatted}`}
                   {hoveredShot.assistedByPlayerName &&
                     ` • Asistencia: ${hoveredShot.assistedByPlayerName}`}
+                  {cursorPos && ` • Distancia: ~${cursorPos.distanceMeters} m`}
                 </span>
               </div>
             </div>
@@ -1001,6 +1121,7 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 <span className="text-[9px] opacity-80 block">
                   Aciertos: {activeHoveredZoneData.made}/{activeHoveredZoneData.attempted} (
                   {activeHoveredZoneData.pct}%) • Puntos: {activeHoveredZoneData.points}
+                  {cursorPos && ` • Distancia: ~${cursorPos.distanceMeters} m`}
                 </span>
               </div>
             </div>
@@ -1027,7 +1148,7 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
         ) : (
           <div className="flex items-center gap-2 text-neutral-400 text-[11px] w-full justify-center">
             <Info className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-            <span>Pasa el cursor por la pista o toca un tiro o zona para ver estadísticas detalladas</span>
+            <span>Pasa el cursor por la pista o toca una zona para ver estadísticas detalladas</span>
           </div>
         )}
       </div>

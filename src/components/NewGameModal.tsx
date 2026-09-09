@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Game, GameSettings, TeamProfile, Player } from '../types';
-import { DEFAULT_ROSTER, OPPONENT_TEAMS } from '../data/defaultData';
+import { DEFAULT_ROSTER, OPPONENT_TEAMS, POSITION_LABELS } from '../data/defaultData';
 import { TeamLogoDisplay, TeamLogoPickerModal } from './TeamLogoPicker';
+import { StartingFiveModal } from './StartingFiveModal';
 import {
   getRecordedOpponents,
   saveRecordedOpponent,
@@ -27,8 +28,10 @@ import {
   Flame,
   Clock,
   Sun,
+  AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
-import { playSound } from '../utils/soundHaptics';
+import { playSound, triggerHaptic } from '../utils/soundHaptics';
 
 interface NewGameModalProps {
   currentGame: Game;
@@ -136,6 +139,24 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const [courtMode, setCourtMode] = useState(currentGame.settings.courtMode || false);
   const [keepScreenAwake, setKeepScreenAwake] = useState(currentGame.settings.keepScreenAwake ?? true);
 
+  // Squad / Roster of the chosen home team with customized starters
+  const [currentRoster, setCurrentRoster] = useState<Player[]>(() => {
+    if (initialHomeTeam && initialHomeTeam.roster && initialHomeTeam.roster.length > 0) {
+      return JSON.parse(JSON.stringify(initialHomeTeam.roster));
+    }
+    if (currentGame.players && currentGame.players.length > 0) {
+      return JSON.parse(JSON.stringify(currentGame.players));
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_ROSTER));
+  });
+
+  const [showStartingFiveFullModal, setShowStartingFiveFullModal] = useState(false);
+  const [starterWarning, setStarterWarning] = useState<string | null>(null);
+
+  const startersCount = useMemo(() => {
+    return currentRoster.filter(p => p.starter || p.onCourt).length;
+  }, [currentRoster]);
+
   // Handle selecting a recorded home team
   const handleSelectHomeRecordedTeam = (teamId: string) => {
     setSelectedHomeTeamId(teamId);
@@ -144,6 +165,9 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       setHomeTeam(target.name);
       setHomeLogo(target.logo || '🏀');
       if (target.primaryColor) setHomeColor(target.primaryColor);
+      if (target.roster && target.roster.length > 0) {
+        setCurrentRoster(JSON.parse(JSON.stringify(target.roster)));
+      }
       playSound('click', soundEnabled);
     }
   };
@@ -166,12 +190,77 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     setHomeTeam(awayTeam);
     setHomeLogo(awayLogo);
     setHomeColor(awayColor);
-    setHomeTeamMode(awayTeamMode === 'recorded' ? 'manual' : 'manual'); // Usually away might be custom
+    setHomeTeamMode(awayTeamMode === 'recorded' ? 'manual' : 'manual');
 
     setAwayTeam(tempName);
     setAwayLogo(tempLogo);
     setAwayColor(tempColor);
     setAwayTeamMode(tempMode);
+
+    const targetNewHome = availableTeams.find(t => t.name.toLowerCase() === awayTeam.toLowerCase());
+    if (targetNewHome && targetNewHome.roster && targetNewHome.roster.length > 0) {
+      setCurrentRoster(JSON.parse(JSON.stringify(targetNewHome.roster)));
+    }
+  };
+
+  // Toggle starter in squad roster
+  const handleToggleStarterInRoster = (playerId: string) => {
+    playSound('click', soundEnabled);
+    triggerHaptic('light', vibrationEnabled);
+    setCurrentRoster(prev => {
+      const target = prev.find(p => p.id === playerId);
+      if (!target) return prev;
+      const isCurrentlyStarter = target.starter || target.onCourt;
+
+      if (isCurrentlyStarter) {
+        setStarterWarning(null);
+        return prev.map(p =>
+          p.id === playerId ? { ...p, starter: false, onCourt: false } : p
+        );
+      } else {
+        const currentStarters = prev.filter(p => p.starter || p.onCourt);
+        if (currentStarters.length >= 5) {
+          setStarterWarning('Ya has seleccionado 5 titulares. Desmarca a uno para incluir a este jugador.');
+          triggerHaptic('warning', vibrationEnabled);
+          setTimeout(() => setStarterWarning(null), 3000);
+          return prev;
+        }
+        setStarterWarning(null);
+        return prev.map(p =>
+          p.id === playerId ? { ...p, starter: true, onCourt: true } : p
+        );
+      }
+    });
+  };
+
+  const handleAutocompleteStarters = () => {
+    playSound('click', soundEnabled);
+    triggerHaptic('light', vibrationEnabled);
+    setCurrentRoster(prev => {
+      const currentlySelected = prev.filter(p => p.starter || p.onCourt);
+      let needed = 5 - currentlySelected.length;
+      if (needed <= 0) return prev;
+      return prev.map(p => {
+        if (p.starter || p.onCourt) return p;
+        if (needed > 0) {
+          needed--;
+          return { ...p, starter: true, onCourt: true };
+        }
+        return p;
+      });
+    });
+    setStarterWarning(null);
+  };
+
+  const handleResetStartersToDefault = () => {
+    playSound('click', soundEnabled);
+    triggerHaptic('light', vibrationEnabled);
+    if (currentSelectedTeam && currentSelectedTeam.roster) {
+      setCurrentRoster(JSON.parse(JSON.stringify(currentSelectedTeam.roster)));
+    } else {
+      setCurrentRoster(JSON.parse(JSON.stringify(DEFAULT_ROSTER)));
+    }
+    setStarterWarning(null);
   };
 
   // Filtered opponents
@@ -189,11 +278,28 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     e.preventDefault();
     if (!homeTeam.trim() || !awayTeam.trim()) return;
 
-    let selectedRoster: Player[] | undefined;
+    if (startersCount !== 5) {
+      setStarterWarning(`Debes seleccionar exactamente 5 jugadores titulares (actualmente: ${startersCount}/5).`);
+      triggerHaptic('warning', vibrationEnabled);
+      return;
+    }
+
+    const finalRoster: Player[] = currentRoster.map(p => {
+      const isStarter = Boolean(p.starter || p.onCourt);
+      return {
+        ...p,
+        starter: isStarter,
+        onCourt: isStarter,
+        foulsCount: 0,
+        isFouledOut: false,
+        minutesPlayedSeconds: 0,
+        quarterSeconds: {},
+      };
+    });
+
     let homeTeamIdToUse: string | undefined;
 
     if (homeTeamMode === 'recorded' && currentSelectedTeam) {
-      selectedRoster = currentSelectedTeam.roster;
       homeTeamIdToUse = currentSelectedTeam.id;
     } else if (saveHomeAsNewRecorded && homeTeam.trim()) {
       // Save new team to library
@@ -204,14 +310,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         season: '2025/2026',
         primaryColor: homeColor,
         logo: homeLogo || '🏀',
-        roster: DEFAULT_ROSTER.map(p => ({
-          ...p,
-          id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-${p.number}`,
-          foulsCount: 0,
-          isFouledOut: false,
-          minutesPlayedSeconds: 0,
-          quarterSeconds: {},
-        })),
+        roster: finalRoster,
         createdAt: new Date().toISOString(),
       };
       if (onSaveNewTeam) {
@@ -220,7 +319,6 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         upsertTeamProfile(newTeamProfile);
       }
       homeTeamIdToUse = newTeamProfile.id;
-      selectedRoster = newTeamProfile.roster;
     }
 
     // If away team requested to be saved as recorded opponent
@@ -239,7 +337,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       homeTeamColor: homeColor,
       awayTeamColor: awayColor,
       homeTeamId: homeTeamIdToUse,
-      selectedRoster,
+      selectedRoster: finalRoster,
       settings: {
         ...currentGame.settings,
         quarterDurationMinutes: quarterDuration,
@@ -637,6 +735,136 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             />
           )}
 
+          {/* ===================== STARTING FIVE (QUINTETO INICIAL) ===================== */}
+          <div className="pt-2.5 border-t border-gray-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-orange-400" />
+                <span className="text-xs font-black uppercase tracking-wider text-gray-200">
+                  Quinteto Inicial (Titulares)
+                </span>
+              </div>
+              <span
+                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border ${
+                  startersCount === 5
+                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/60'
+                    : 'bg-amber-950/80 text-amber-300 border-amber-500/60'
+                }`}
+              >
+                {startersCount === 5 ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    5/5 LISTOS
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-amber-400" />
+                    {startersCount}/5 SELECCIONADOS
+                  </>
+                )}
+              </span>
+            </div>
+
+            <p className="text-[11px] text-gray-400">
+              Configura los 5 jugadores que comenzarán en pista. Toca cualquier jugador para cambiar su rol:
+            </p>
+
+            {starterWarning && (
+              <div className="p-2 rounded-lg bg-amber-950/70 border border-amber-500/60 text-amber-200 text-xs font-mono flex items-center gap-1.5 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>{starterWarning}</span>
+              </div>
+            )}
+
+            {/* Quick action tools */}
+            <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+              <span className="text-gray-400 text-[10px] truncate max-w-[170px]">
+                Plantilla: <span className="text-gray-200 font-bold">{homeTeam}</span>
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                {startersCount < 5 && (
+                  <button
+                    type="button"
+                    onClick={handleAutocompleteStarters}
+                    className="px-2 py-0.5 rounded bg-orange-950/60 hover:bg-orange-900/80 text-orange-300 border border-orange-600/40 font-bold transition"
+                    title="Autocompletar hasta 5 con jugadores del banquillo"
+                  >
+                    + Completar 5
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResetStartersToDefault}
+                  className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 font-bold transition flex items-center gap-0.5"
+                  title="Restablecer quinteto predeterminado"
+                >
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  <span>Restablecer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowStartingFiveFullModal(true)}
+                  className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 font-bold transition"
+                  title="Abrir selector ampliado"
+                >
+                  Modo Amplio
+                </button>
+              </div>
+            </div>
+
+            {/* Grid of players in squad */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
+              {currentRoster.map(player => {
+                const isStarter = Boolean(player.starter || player.onCourt);
+                return (
+                  <button
+                    key={player.id}
+                    type="button"
+                    onClick={() => handleToggleStarterInRoster(player.id)}
+                    className={`p-1.5 rounded-lg border text-left flex items-center justify-between transition active:scale-95 ${
+                      isStarter
+                        ? 'bg-orange-950/50 border-orange-500 text-white shadow-sm ring-1 ring-orange-500/40'
+                        : 'bg-[#14161B] hover:bg-[#1A1D24] border-gray-800 text-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className={`w-6 h-6 rounded flex items-center justify-center font-scoreboard font-black text-xs shrink-0 border ${
+                          isStarter
+                            ? 'bg-orange-600 text-white border-orange-400'
+                            : 'bg-neutral-800 text-amber-400 border-neutral-700'
+                        }`}
+                      >
+                        #{player.number}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-gray-200 truncate leading-tight">
+                          {player.name}
+                        </p>
+                        <p className="text-[9px] text-gray-400 font-mono">
+                          {POSITION_LABELS[player.position]?.short || player.position}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 ml-1">
+                      {isStarter ? (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/60 text-[9px] font-mono font-bold flex items-center gap-0.5">
+                          <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
+                          TIT
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded bg-neutral-800/80 text-neutral-400 border border-neutral-700 text-[9px] font-mono">
+                          BAN
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* ===================== MATCH RULES & SETTINGS ===================== */}
           <div className="pt-2 border-t border-gray-800 space-y-2.5">
             <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
@@ -828,13 +1056,40 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             </button>
             <button
               type="submit"
-              className="w-2/3 py-2.5 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white font-black rounded-xl text-xs shadow-lg flex items-center justify-center gap-1.5 transition"
+              disabled={startersCount !== 5}
+              className={`w-2/3 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 transition ${
+                startersCount === 5
+                  ? 'bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white cursor-pointer'
+                  : 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed'
+              }`}
             >
               <Check className="w-4 h-4" />
-              <span>Comenzar Partido</span>
+              <span>
+                {startersCount === 5 ? 'Comenzar Partido' : `Selecciona 5 Titulares (${startersCount}/5)`}
+              </span>
             </button>
           </div>
         </form>
+
+        {/* Modal ampliado de selección de Quinteto Inicial */}
+        {showStartingFiveFullModal && (
+          <StartingFiveModal
+            players={currentRoster}
+            soundEnabled={soundEnabled}
+            vibrationEnabled={vibrationEnabled}
+            onSaveStartingFive={newStarterIds => {
+              setCurrentRoster(prev =>
+                prev.map(p => {
+                  const isStarter = newStarterIds.includes(p.id);
+                  return { ...p, starter: isStarter, onCourt: isStarter };
+                })
+              );
+              setShowStartingFiveFullModal(false);
+            }}
+            onClose={() => setShowStartingFiveFullModal(false)}
+            title={`Quinteto Inicial · ${homeTeam}`}
+          />
+        )}
       </div>
     </div>
   );

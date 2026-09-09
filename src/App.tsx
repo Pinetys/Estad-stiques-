@@ -1434,6 +1434,7 @@ export default function App() {
                 onToggleCourtMode={toggleCourtMode}
                 onOpenSubstitutionModal={() => setShowSubModal(true)}
                 onOpenRosterModal={() => setShowRosterModal(true)}
+                onUpdateGame={handleUpdateGame}
               />
             )}
 
