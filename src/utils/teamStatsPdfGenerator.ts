@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { TeamProfile, Game, PlayEvent } from '../types';
 import { getShotCoordinates } from '../components/PlayerShotMap';
+import { isGameForTeam } from './teamIsolation';
 
 export interface TeamAggregatedMetrics {
   gamesCount: number;
@@ -139,22 +140,13 @@ export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): 
   });
 
   games.forEach(g => {
-    // Check match ownership: if the game explicitly has a different teamId, skip
-    if (g.teamId && g.teamId !== team.id) {
+    // Check match ownership: strictly verify game belongs to this team
+    if (!isGameForTeam(g, team)) {
       return;
-    }
-    // If no teamId, verify both name and category
-    if (!g.teamId) {
-      const isHome = g.homeTeamName?.toLowerCase().trim() === team.name.toLowerCase().trim();
-      const isAway = g.awayTeamName?.toLowerCase().trim() === team.name.toLowerCase().trim();
-      if (!isHome && !isAway) return;
-      if (team.category && g.category && team.category.trim().toLowerCase() !== g.category.trim().toLowerCase()) {
-        return;
-      }
     }
 
     // Record calculation
-    const isHome = g.teamId === team.id || g.homeTeamName.toLowerCase().trim() === team.name.toLowerCase().trim();
+    const isHome = g.teamId === team.id || (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === team.name.toLowerCase().trim());
     const teamScore = isHome ? g.homeScore : g.awayScore;
     const oppScore = isHome ? g.awayScore : g.homeScore;
     pointsFor += teamScore;
@@ -192,11 +184,13 @@ export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): 
     g.events.forEach(e => {
       if (e.isOpponentAction) return;
 
-      // Find player row
+      // Find player row: MUST match by id, or by dorsal AND matching name
       let pRow: PlayerAccumulatedRow | undefined;
       if (e.playerId) pRow = playerStatsMap.get(e.playerId);
       if (!pRow && e.playerNumber !== undefined) {
-        pRow = Array.from(playerStatsMap.values()).find(r => r.playerNumber === e.playerNumber);
+        pRow = Array.from(playerStatsMap.values()).find(
+          r => r.playerNumber === e.playerNumber && (!e.playerName || r.playerName.toLowerCase().trim() === e.playerName.toLowerCase().trim())
+        );
       }
 
       if (pRow) {

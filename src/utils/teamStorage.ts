@@ -1,6 +1,7 @@
 import { Player, TeamProfile, Game } from '../types';
 import { DEFAULT_ROSTER, OPPONENT_TEAMS } from '../data/defaultData';
 import { getSavedGamesFromStorage, saveGamesToStorage } from './libraryUtils';
+import { getMatchesForTeam } from './teamIsolation';
 import {
   syncTeamToCloud,
   deleteTeamFromCloud,
@@ -187,30 +188,14 @@ export function deleteTeamProfile(teamId: string): TeamProfile[] {
 }
 
 /**
- * Filter all saved matches for a specific team (strictly respecting teamId and category)
+ * Filter all saved matches for a specific team (strictly respecting teamId, category and roster)
  */
 export function getTeamMatches(teamIdOrName: string): Game[] {
   const allMatches = getSavedGamesFromStorage();
   const teams = getRegisteredTeams();
   const team = teams.find(t => t.id === teamIdOrName || t.name.toLowerCase().trim() === teamIdOrName.toLowerCase().trim());
-  
-  const targetId = team ? team.id : teamIdOrName;
-  const targetName = team ? team.name.toLowerCase().trim() : teamIdOrName.toLowerCase().trim();
-  const targetCat = team?.category?.toLowerCase().trim();
-
-  return allMatches.filter(game => {
-    if (game.teamId) {
-      return game.teamId === targetId;
-    }
-    // For legacy games without teamId, match name and category
-    const isHome = game.homeTeamName?.toLowerCase().trim() === targetName;
-    const isAway = game.awayTeamName?.toLowerCase().trim() === targetName;
-    if (!isHome && !isAway) return false;
-    if (targetCat && game.category) {
-      return game.category.toLowerCase().trim() === targetCat;
-    }
-    return true;
-  });
+  if (!team) return [];
+  return getMatchesForTeam(team, allMatches, undefined, teams);
 }
 
 export interface RecordedOpponent {

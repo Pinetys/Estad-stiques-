@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Game, SeasonAggregatedStats } from '../types';
+import { Game, SeasonAggregatedStats, TeamProfile } from '../types';
 import {
   calculateSeasonStats,
   deleteGameFromLibrary,
@@ -11,6 +11,7 @@ import {
   saveGamesToStorage,
   saveOrUpdateGameInLibrary,
 } from '../utils/libraryUtils';
+import { sanitizeAndIsolateLibraryGames } from '../utils/teamIsolation';
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -47,6 +48,9 @@ import {
 
 interface MatchLibraryModalProps {
   currentGame: Game;
+  recordedTeams?: TeamProfile[];
+  activeTeamId?: string;
+  onSelectTeam?: (teamId: string) => void;
   onLoadGame: (game: Game) => void;
   onClose: () => void;
   onDeleteGame?: (deletedGameId: string) => void;
@@ -54,6 +58,9 @@ interface MatchLibraryModalProps {
 
 export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   currentGame,
+  recordedTeams = [],
+  activeTeamId,
+  onSelectTeam,
   onLoadGame,
   onClose,
   onDeleteGame,
@@ -75,12 +82,21 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
   const fileImportRef = useRef<HTMLInputElement | null>(null);
 
-  // Load library from storage on mount (only real matches created by the user)
+  // Load library from storage on mount (healing any cross-contaminated games)
   useEffect(() => {
     const saved = getSavedGamesFromStorage();
-    setLibrary(saved);
-    setSeasonStats(calculateSeasonStats(saved));
-  }, []);
+    if (recordedTeams && recordedTeams.length > 0) {
+      const { sanitized, changed } = sanitizeAndIsolateLibraryGames(saved, recordedTeams);
+      if (changed) {
+        saveGamesToStorage(sanitized);
+      }
+      setLibrary(sanitized);
+      setSeasonStats(calculateSeasonStats(sanitized));
+    } else {
+      setLibrary(saved);
+      setSeasonStats(calculateSeasonStats(saved));
+    }
+  }, [recordedTeams]);
 
   const refreshLibrary = (games: Game[]) => {
     setLibrary(games);
@@ -623,6 +639,9 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
             <div className="pt-1">
               <GeneralAccumulatedStatsView
                 games={library}
+                recordedTeams={recordedTeams}
+                activeTeamId={activeTeamId}
+                onSelectTeam={onSelectTeam}
                 currentGame={currentGame}
                 soundEnabled={currentGame.settings.soundEnabled}
               />

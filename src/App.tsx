@@ -30,7 +30,8 @@ import { OfficialMatchSheetModal } from './components/OfficialMatchSheetModal';
 import { GeneralAccumulatedStatsView } from './components/GeneralAccumulatedStatsView';
 import { TeamsHubView } from './components/TeamsHubView';
 import { TeamStatsReportModal } from './components/TeamStatsReportModal';
-import { saveGameToLibrary, syncMatchesFromCloud, getSavedGamesFromStorage } from './utils/libraryUtils';
+import { saveGameToLibrary, saveOrUpdateGameInLibrary, syncMatchesFromCloud, getSavedGamesFromStorage, saveGamesToStorage } from './utils/libraryUtils';
+import { sanitizeAndIsolateLibraryGames } from './utils/teamIsolation';
 import {
   getRegisteredTeams,
   saveRegisteredTeams,
@@ -67,27 +68,27 @@ import {
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
 
-function createInitialGame(): Game {
+function createInitialGame(targetTeam?: TeamProfile): Game {
   const registeredTeams = getRegisteredTeams();
   const activeId = getActiveTeamId();
-  const initialTeam = registeredTeams.find(t => t.id === activeId) || registeredTeams[0];
-  const initialRoster = initialTeam && initialTeam.roster.length > 0 ? initialTeam.roster : DEFAULT_ROSTER;
+  const teamToUse = targetTeam || registeredTeams.find(t => t.id === activeId) || registeredTeams[0];
+  const initialRoster = teamToUse && teamToUse.roster && teamToUse.roster.length > 0 ? teamToUse.roster : DEFAULT_ROSTER;
 
   return {
     id: `game-${Date.now()}`,
-    teamId: initialTeam ? initialTeam.id : undefined,
-    category: initialTeam?.category?.trim() || 'Senior Masculino',
+    teamId: teamToUse ? teamToUse.id : undefined,
+    category: teamToUse?.category?.trim() || 'Senior Masculino',
     title: 'Partido en Directo',
     date: new Date().toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
     }),
-    homeTeamName: initialTeam ? initialTeam.name : 'CB Triunfo',
+    homeTeamName: teamToUse ? teamToUse.name : 'CB Triunfo',
     awayTeamName: 'CB Rival',
-    homeTeamColor: initialTeam?.primaryColor || '#f97316',
+    homeTeamColor: teamToUse?.primaryColor || '#f97316',
     awayTeamColor: '#3b82f6',
-    homeTeamLogo: initialTeam?.logo || '🏀',
+    homeTeamLogo: teamToUse?.logo || '🏀',
     homeScore: 0,
     awayScore: 0,
     currentQuarter: 1,
@@ -99,7 +100,15 @@ function createInitialGame(): Game {
     awayQuarterFouls: 0,
     status: 'live',
     settings: DEFAULT_SETTINGS,
-    players: initialRoster,
+    players: initialRoster.map((p, idx) => ({
+      ...p,
+      starter: idx < 5,
+      onCourt: idx < 5,
+      minutesPlayedSeconds: 0,
+      quarterSeconds: {},
+      foulsCount: 0,
+      isFouledOut: false,
+    })),
     events: [],
     quarterScores: [
       { quarter: 1, quarterLabel: 'Q1', home: 0, away: 0 },
@@ -204,8 +213,19 @@ export default function App() {
     async function loadCloudData() {
       try {
         const cloudTeams = await syncTeamsFromCloud();
+        const currentTeams = cloudTeams.length > 0 ? cloudTeams : getRegisteredTeams();
         if (cloudTeams.length > 0) setTeams(cloudTeams);
         await syncMatchesFromCloud();
+
+        // Sanitize any previously contaminated matches in storage
+        const currentMatches = getSavedGamesFromStorage();
+        if (currentMatches.length > 0 && currentTeams.length > 0) {
+          const { sanitized, changed } = sanitizeAndIsolateLibraryGames(currentMatches, currentTeams);
+          if (changed) {
+            saveGamesToStorage(sanitized);
+            setLibraryGames(sanitized);
+          }
+        }
       } catch (err) {
         console.warn('Initial cloud sync notice:', err);
       }
@@ -237,9 +257,11 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
-      // Also persist to library so all matches are accumulated
-      saveGameToLibrary(game);
-      setLibraryGames(getSavedGamesFromStorage());
+      // Only persist to library if the match has actually started or has events/score
+      if (game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
+        saveGameToLibrary(game);
+        setLibraryGames(getSavedGamesFromStorage());
+      }
     } catch {
       // Storage quota or private mode
     }
@@ -253,36 +275,26 @@ export default function App() {
     setActiveTeamId(teamId);
     setActiveTeamIdState(teamId);
 
-    // Update active game with selected team's roster & branding
-    // Preserve in-game accumulated fouls and minutes for players who remain
     setGame(prev => {
-      const existingPlayerStatsMap = new Map(prev.players.map(p => [p.id, p]));
-      const updatedPlayers = targetTeam.roster.map(p => {
-        const existing = existingPlayerStatsMap.get(p.id);
-        if (existing) {
-          return {
-            ...p,
-            foulsCount: existing.foulsCount,
-            isFouledOut: existing.isFouledOut,
-            minutesPlayedSeconds: existing.minutesPlayedSeconds || 0,
-            quarterSeconds: existing.quarterSeconds || {},
-          };
-        }
+      // If previous game already belongs to this team, update branding and category
+      if (prev.teamId === targetTeam.id) {
         return {
-          ...p,
-          minutesPlayedSeconds: 0,
-          quarterSeconds: {},
+          ...prev,
+          category: targetTeam.category || prev.category,
+          homeTeamName: targetTeam.name,
+          homeTeamLogo: targetTeam.logo,
+          homeTeamColor: targetTeam.primaryColor || prev.homeTeamColor,
         };
-      });
+      }
 
-      return {
-        ...prev,
-        teamId: targetTeam.id,
-        homeTeamName: targetTeam.name,
-        homeTeamLogo: targetTeam.logo,
-        homeTeamColor: targetTeam.primaryColor || prev.homeTeamColor,
-        players: updatedPlayers,
-      };
+      // If previous game belongs to ANOTHER team and has recorded stats,
+      // preserve it in library so its stats stay with that team!
+      if (prev.events.length > 0 || prev.homeScore > 0 || prev.awayScore > 0) {
+        saveOrUpdateGameInLibrary(prev);
+      }
+
+      // Initialize a clean, strictly isolated match for targetTeam
+      return createInitialGame(targetTeam);
     });
   };
 
@@ -1393,8 +1405,10 @@ export default function App() {
                   setShowRosterModal(true);
                 }}
                 onOpenStatsForCategory={(cat, teamId) => {
+                  if (teamId) {
+                    handleSelectTeam(teamId);
+                  }
                   setActiveTab('stats');
-                  setStatsSubMode('accumulated');
                   setLibraryGames(getSavedGamesFromStorage());
                 }}
                 onOpenTeamStatsReport={handleOpenTeamStatsReport}
@@ -1423,6 +1437,8 @@ export default function App() {
               <GeneralAccumulatedStatsView
                 games={libraryGames.length > 0 ? libraryGames : [game]}
                 recordedTeams={teams}
+                activeTeamId={activeTeamId}
+                onSelectTeam={handleSelectTeam}
                 currentGame={game}
                 soundEnabled={game.settings.soundEnabled}
               />
@@ -1679,6 +1695,9 @@ export default function App() {
       {showLibraryModal && (
         <MatchLibraryModal
           currentGame={game}
+          recordedTeams={teams}
+          activeTeamId={activeTeamId}
+          onSelectTeam={handleSelectTeam}
           onClose={() => setShowLibraryModal(false)}
           onLoadGame={loadedGame => {
             setGame(loadedGame);

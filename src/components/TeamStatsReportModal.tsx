@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TeamProfile, Game, PlayEvent } from '../types';
 import { playSound } from '../utils/soundHaptics';
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { PlayerShotMap } from './PlayerShotMap';
+import { getMatchesForTeam } from '../utils/teamIsolation';
 import {
   calculateTeamAggregatedStats,
   downloadTeamStatsPdf,
@@ -52,6 +53,14 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
     return initialTeamId || (teams.length > 0 ? teams[0].id : '');
   });
 
+  // Sync selectedTeamId when initialTeamId changes
+  useEffect(() => {
+    if (initialTeamId && teams.some(t => t.id === initialTeamId)) {
+      setSelectedTeamId(initialTeamId);
+      setDiscardedGameIds(new Set());
+    }
+  }, [initialTeamId, teams]);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'shots' | 'players' | 'filter'>('overview');
   const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(new Set());
   const [isSharing, setIsSharing] = useState<boolean>(false);
@@ -82,46 +91,11 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
     return groups;
   }, [teams]);
 
-  // All matches belonging to this team (saved in library or current in progress)
+  // All matches belonging strictly to this team (isolated by teamId, category, and roster)
   const teamAllMatches = useMemo(() => {
     if (!currentTeam) return [];
-    const tName = currentTeam.name.toLowerCase().trim();
-    const tId = currentTeam.id;
-
-    const seenIds = new Set<string>();
-    const matches: Game[] = [];
-    const tCat = currentTeam.category?.toLowerCase().trim();
-
-    allGames.forEach(g => {
-      let isMatch = false;
-      if (g.teamId) {
-        isMatch = g.teamId === tId;
-      } else {
-        const isNameMatch =
-          (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) ||
-          (g.awayTeamName && g.awayTeamName.toLowerCase().trim() === tName);
-        if (isNameMatch) {
-          if (tCat && g.category) {
-            isMatch = g.category.toLowerCase().trim() === tCat;
-          } else {
-            isMatch = true;
-          }
-        }
-      }
-
-      if (isMatch && !seenIds.has(g.id)) {
-        seenIds.add(g.id);
-        matches.push(g);
-      }
-    });
-
-    // Sort by event timestamp or date descending
-    return matches.sort((a, b) => {
-      const timeA = a.events?.[0]?.timestamp || (a.date ? new Date(a.date).getTime() : 0);
-      const timeB = b.events?.[0]?.timestamp || (b.date ? new Date(b.date).getTime() : 0);
-      return timeB - timeA;
-    });
-  }, [currentTeam, allGames]);
+    return getMatchesForTeam(currentTeam, allGames, undefined, teams);
+  }, [currentTeam, allGames, teams]);
 
   // Included vs Discarded matches
   const { includedGames, discardedGames } = useMemo(() => {
@@ -360,7 +334,7 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                         <optgroup key={category} label={`📁 Categoría: ${category}`}>
                           {catTeams.map(t => (
                             <option key={t.id} value={t.id} className="bg-neutral-900 text-white">
-                              {t.name}
+                              {t.name} — {t.category || category}
                             </option>
                           ))}
                         </optgroup>

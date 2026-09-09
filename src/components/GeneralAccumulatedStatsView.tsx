@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Game, TeamProfile, PlayEvent, PlayerBoxScore } from '../types';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
 import {
@@ -9,6 +9,7 @@ import {
   PlayerAccumulatedRow,
 } from '../utils/teamStatsPdfGenerator';
 import { generateOfficialActaPdf } from '../utils/actaPdfGenerator';
+import { getMatchesForTeam } from '../utils/teamIsolation';
 import { PlayerShotMap } from './PlayerShotMap';
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -33,22 +34,30 @@ import {
 export interface GeneralAccumulatedStatsViewProps {
   games: Game[];
   recordedTeams?: TeamProfile[];
+  activeTeamId?: string;
   currentGame?: Game;
   soundEnabled?: boolean;
   onSelectGame?: (game: Game) => void;
+  onSelectTeam?: (teamId: string) => void;
 }
 
 export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewProps> = ({
   games,
   recordedTeams = [],
+  activeTeamId,
   currentGame,
   soundEnabled = true,
+  onSelectGame,
+  onSelectTeam,
 }) => {
   // Main view mode: 'accumulated' (Acumuladas del Equipo) or 'match' (Partido Actual)
   const [activeTab, setActiveTab] = useState<'accumulated' | 'match'>('accumulated');
 
   // Selected Team ID: STRICTLY ONE TEAM AT A TIME (TEAMS ARE NEVER JOINED)
   const [selectedTeamId, setSelectedTeamId] = useState<string>(() => {
+    if (activeTeamId && recordedTeams.some(t => t.id === activeTeamId)) {
+      return activeTeamId;
+    }
     if (currentGame?.teamId) {
       const matchTeam = recordedTeams.find(t => t.id === currentGame.teamId);
       if (matchTeam) return matchTeam.id;
@@ -56,6 +65,13 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
     if (recordedTeams.length > 0) return recordedTeams[0].id;
     return 'default-team';
   });
+
+  // Keep selectedTeamId in sync with incoming activeTeamId
+  useEffect(() => {
+    if (activeTeamId && recordedTeams.some(t => t.id === activeTeamId)) {
+      setSelectedTeamId(activeTeamId);
+    }
+  }, [activeTeamId, recordedTeams]);
 
   // Discarded game IDs for accumulated team stats
   const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(new Set());
@@ -96,53 +112,11 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
     };
   }, [recordedTeams, selectedTeamId, currentGame]);
 
-  // 2. All matches belonging strictly to THIS team (same ID or legacy name+category)
+  // 2. All matches belonging strictly to THIS team (strictly isolated by ID, category, and roster)
   const teamAllMatches = useMemo(() => {
     if (!currentTeam) return [];
-    const tName = currentTeam.name.toLowerCase().trim();
-    const tId = currentTeam.id;
-    const tCat = currentTeam.category?.toLowerCase().trim();
-
-    const seenIds = new Set<string>();
-    const matches: Game[] = [];
-
-    // Combine library games with current game if not already present
-    const combined = [...games];
-    if (currentGame && !combined.some(g => g.id === currentGame.id)) {
-      combined.push(currentGame);
-    }
-
-    combined.forEach(g => {
-      let isMatch = false;
-      if (g.teamId) {
-        // If game has teamId, it must strictly match THIS team
-        isMatch = g.teamId === tId;
-      } else {
-        // Legacy game without teamId: must match name AND category
-        const isNameMatch =
-          (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) ||
-          (g.awayTeamName && g.awayTeamName.toLowerCase().trim() === tName);
-        if (isNameMatch) {
-          if (tCat && g.category) {
-            isMatch = g.category.toLowerCase().trim() === tCat;
-          } else {
-            isMatch = true;
-          }
-        }
-      }
-
-      if (isMatch && !seenIds.has(g.id)) {
-        seenIds.add(g.id);
-        matches.push(g);
-      }
-    });
-
-    return matches.sort((a, b) => {
-      const timeA = a.events?.[0]?.timestamp || (a.date ? new Date(a.date).getTime() : 0);
-      const timeB = b.events?.[0]?.timestamp || (b.date ? new Date(b.date).getTime() : 0);
-      return timeB - timeA;
-    });
-  }, [currentTeam, games, currentGame]);
+    return getMatchesForTeam(currentTeam, games, currentGame, recordedTeams);
+  }, [currentTeam, games, currentGame, recordedTeams]);
 
   // Group teams by category for clean, unambiguous team selection
   const teamsByCategory = useMemo(() => {
@@ -383,8 +357,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                     value={selectedTeamId}
                     onChange={e => {
                       playSound('click', soundEnabled);
-                      setSelectedTeamId(e.target.value);
+                      const newId = e.target.value;
+                      setSelectedTeamId(newId);
                       setDiscardedGameIds(new Set()); // Reset exclusions on team switch
+                      onSelectTeam?.(newId);
                     }}
                     className="bg-neutral-900 text-white font-bold text-base sm:text-lg rounded-lg px-3 py-1 pr-8 border border-neutral-700 focus:border-orange-500 focus:outline-none cursor-pointer appearance-none shadow-sm"
                   >
@@ -392,7 +368,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                       <optgroup key={category} label={`📁 Categoría: ${category}`}>
                         {catTeams.map(t => (
                           <option key={t.id} value={t.id}>
-                            {t.name}
+                            {t.name} — {t.category || category}
                           </option>
                         ))}
                       </optgroup>
