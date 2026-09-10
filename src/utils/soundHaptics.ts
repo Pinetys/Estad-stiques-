@@ -90,7 +90,10 @@ export const playSound = (type: 'score' | 'three' | 'foul' | 'buzzer' | 'click' 
   }
 };
 
-export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'warning' = 'light', enabled = true) => {
+export const triggerHaptic = (
+  type: 'light' | 'medium' | 'heavy' | 'warning' | 'basket' | 'three' | 'foul' | 'undo' | 'bonus' = 'light',
+  enabled = true
+) => {
   if (!enabled || typeof window === 'undefined' || !navigator.vibrate) return;
   try {
     if (type === 'light') {
@@ -101,6 +104,16 @@ export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'warning' = '
       navigator.vibrate([40, 30, 40]);
     } else if (type === 'warning') {
       navigator.vibrate([60, 50, 100]);
+    } else if (type === 'basket') {
+      navigator.vibrate([28, 25, 45]);
+    } else if (type === 'three') {
+      navigator.vibrate([35, 25, 35, 25, 65]);
+    } else if (type === 'foul') {
+      navigator.vibrate([60, 40, 80]);
+    } else if (type === 'undo') {
+      navigator.vibrate(90);
+    } else if (type === 'bonus') {
+      navigator.vibrate([40, 30, 40, 30, 70]);
     }
   } catch {
     // Haptics not available

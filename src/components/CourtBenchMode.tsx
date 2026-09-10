@@ -25,6 +25,8 @@ import {
   Check,
   Sun,
   Moon,
+  Target,
+  Zap,
 } from 'lucide-react';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
 import { StartingFiveModal } from './StartingFiveModal';
@@ -76,6 +78,13 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [matchClosedSuccess, setMatchClosedSuccess] = useState(false);
   const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
+
+  // Bonus Situations Assistant (FIBA 5+ fouls rule)
+  const [bonusFreeThrowPrompt, setBonusFreeThrowPrompt] = useState<{
+    team: 'home' | 'away';
+    count: number;
+    targetPlayerId?: string;
+  } | null>(null);
 
   // Pre-game state: clock not started, no events logged yet in Q1
   const isPreGame = game.events.length === 0 && !game.isClockRunning && game.currentQuarter === 1;
@@ -150,6 +159,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   const playersOnCourt = game.players.filter(p => p.onCourt);
   const benchPlayers = game.players.filter(p => !p.onCourt);
+  const selectedPlayer = selectedPlayerId ? game.players.find(p => p.id === selectedPlayerId) : null;
 
   // Toggle clock play/pause
   const toggleClock = () => {
@@ -192,61 +202,77 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     });
   };
 
-  // 1. STEP 1: USER PRESSES ACTION BUTTON
-  const handleInitiateAction = (actionType: StatActionType) => {
-    playSound('click', game.settings.soundEnabled);
-    triggerHaptic('light', game.settings.vibrationEnabled);
-    setPendingAction(actionType);
-    setShowBenchInModal(false);
-  };
-
-  // 2. STEP 2: USER SELECTS PLAYER FOR THE PENDING ACTION
-  const handleConfirmPlayerForAction = (player: Player) => {
-    if (!pendingAction) return;
-    const actionType = pendingAction;
+  // Unified Action Execution with differentiated audio and tactile feedback
+  const executeActionForPlayer = (player: Player, actionType: StatActionType) => {
     const actionDef = ACTION_DEFINITIONS[actionType];
     if (!actionDef) return;
 
-    // Trigger haptic and audio according to action type
+    // Trigger differentiated haptic and audio according to action type
     if (actionType === '3PM') {
       playSound('three', game.settings.soundEnabled);
-      triggerHaptic('heavy', game.settings.vibrationEnabled);
-      setLastActionToast(`+3 Triple anotado por #${player.number} ${player.name.split(' ')[0]}`);
+      triggerHaptic('three', game.settings.vibrationEnabled);
+      setLastActionToast(`🎯 +3 Triple anotado por #${player.number} ${player.name.split(' ')[0]}`);
     } else if (actionType === '2PM') {
       playSound('score', game.settings.soundEnabled);
-      triggerHaptic('medium', game.settings.vibrationEnabled);
-      setLastActionToast(`+2 Canasta anotada por #${player.number} ${player.name.split(' ')[0]}`);
+      triggerHaptic('basket', game.settings.vibrationEnabled);
+      setLastActionToast(`🏀 +2 Canasta anotada por #${player.number} ${player.name.split(' ')[0]}`);
     } else if (actionType === 'FTM') {
       playSound('score', game.settings.soundEnabled);
-      triggerHaptic('medium', game.settings.vibrationEnabled);
-      setLastActionToast(`+1 TL anotado por #${player.number} ${player.name.split(' ')[0]}`);
+      triggerHaptic('basket', game.settings.vibrationEnabled);
+      setLastActionToast(`🎯 +1 TL anotado por #${player.number} ${player.name.split(' ')[0]}`);
     } else if (actionDef.category === 'fouls') {
       playSound('foul', game.settings.soundEnabled);
-      triggerHaptic('warning', game.settings.vibrationEnabled);
-      setLastActionToast(`Falta Personal #${player.number} ${player.name.split(' ')[0]}`);
+      triggerHaptic('foul', game.settings.vibrationEnabled);
+      setLastActionToast(`⚠️ Falta Personal #${player.number} ${player.name.split(' ')[0]}`);
     } else {
       playSound('click', game.settings.soundEnabled);
       triggerHaptic('light', game.settings.vibrationEnabled);
-      setLastActionToast(`${actionDef.shortLabel} anotado a #${player.number} ${player.name.split(' ')[0]}`);
+      setLastActionToast(`${actionDef.shortLabel} a #${player.number} ${player.name.split(' ')[0]}`);
     }
 
     setTimeout(() => {
       setLastActionToast(null);
     }, 2200);
 
-    // Update active player tracker
-    onSelectPlayer(player.id);
+    onSelectPlayer('');
 
-    // Close player selection modal
+    // Close player selection modal if open
     setPendingAction(null);
     setShowBenchInModal(false);
+
+    // FIBA Bonus situations check
+    const currentBonusLimit = game.settings.bonusFoulsLimit || 5;
+    if (actionDef.category === 'fouls') {
+      const nextHomeFouls = (game.homeQuarterFouls || 0) + 1;
+      if (nextHomeFouls >= currentBonusLimit) {
+        setTimeout(() => {
+          triggerHaptic('bonus', game.settings.vibrationEnabled);
+          setBonusFreeThrowPrompt({ team: 'home', count: nextHomeFouls });
+        }, 350);
+      }
+    } else if (actionType === 'FD') {
+      // Drawn foul -> Rival commits foul
+      const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+      if (nextAwayFouls >= currentBonusLimit) {
+        setTimeout(() => {
+          triggerHaptic('bonus', game.settings.vibrationEnabled);
+          setBonusFreeThrowPrompt({ team: 'away', count: nextAwayFouls, targetPlayerId: player.id });
+        }, 350);
+      }
+    }
 
     // If it's a basket OR a missed field goal (2PA/3PA) and auto-open is active:
     const isBasket = actionType === '2PM' || actionType === '3PM';
     const isMissedFieldGoal = actionType === '2PA' || actionType === '3PA';
     const isFieldGoal = isBasket || isMissedFieldGoal;
 
-    if (isFieldGoal && game.settings.shotChartAutoOpen !== 'off' && onOpenShotChartForBasket) {
+    const shouldOpenShotChart =
+      isFieldGoal &&
+      Boolean(onOpenShotChartForBasket) &&
+      (game.settings.shotChartAutoOpen === 'all' ||
+        (game.settings.shotChartAutoOpen !== 'off' && isBasket));
+
+    if (shouldOpenShotChart && onOpenShotChartForBasket) {
       onOpenShotChartForBasket({
         playerId: player.id,
         playerName: player.name,
@@ -277,6 +303,78 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     }
   };
 
+  // 1. STEP 1: USER PRESSES ACTION BUTTON -> PROMPT FOR PLAYER
+  const handleInitiateAction = (actionType: StatActionType) => {
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    setPendingAction(actionType);
+    setShowBenchInModal(false);
+  };
+
+  // 2. STEP 2: USER SELECTS PLAYER FOR THE PENDING ACTION
+  const handleConfirmPlayerForAction = (player: Player) => {
+    if (!pendingAction) return;
+    executeActionForPlayer(player, pendingAction);
+  };
+
+  // BONUS SITUATION FREE THROW HANDLERS
+  const handleLogBonusFreeThrows = (targetPlayerId?: string, madeCount: number = 0) => {
+    const player =
+      (targetPlayerId ? game.players.find(p => p.id === targetPlayerId) : null) ||
+      (selectedPlayerId ? game.players.find(p => p.id === selectedPlayerId) : null) ||
+      playersOnCourt[0];
+
+    if (!player) {
+      setBonusFreeThrowPrompt(null);
+      return;
+    }
+
+    if (madeCount === 2) {
+      onLogPlayerAction(player.id, 'FTM');
+      setTimeout(() => onLogPlayerAction(player.id, 'FTM'), 60);
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('basket', game.settings.vibrationEnabled);
+      setLastActionToast(`🎯 2/2 Tiros Libres anotados por #${player.number} ${player.name.split(' ')[0]} (+2)`);
+    } else if (madeCount === 1) {
+      onLogPlayerAction(player.id, 'FTM');
+      setTimeout(() => onLogPlayerAction(player.id, 'FTA'), 60);
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('basket', game.settings.vibrationEnabled);
+      setLastActionToast(`🎯 1/2 Tiro Libre anotado por #${player.number} ${player.name.split(' ')[0]} (+1)`);
+    } else {
+      onLogPlayerAction(player.id, 'FTA');
+      setTimeout(() => onLogPlayerAction(player.id, 'FTA'), 60);
+      playSound('click', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setLastActionToast(`❌ 0/2 Tiros Libres fallados por #${player.number} ${player.name.split(' ')[0]}`);
+    }
+
+    setBonusFreeThrowPrompt(null);
+    setTimeout(() => setLastActionToast(null), 2500);
+  };
+
+  const handleLogOpponentBonusFreeThrows = (madeCount: number) => {
+    if (madeCount === 2) {
+      onLogOpponentAction('OPP_1P');
+      setTimeout(() => onLogOpponentAction('OPP_1P'), 60);
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('basket', game.settings.vibrationEnabled);
+      setLastActionToast(`⚠️ +2 TL Rival Anotados (+2 pts)`);
+    } else if (madeCount === 1) {
+      onLogOpponentAction('OPP_1P');
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('basket', game.settings.vibrationEnabled);
+      setLastActionToast(`⚠️ +1 TL Rival Anotado (+1 pt)`);
+    } else {
+      playSound('click', game.settings.soundEnabled);
+      triggerHaptic('light', game.settings.vibrationEnabled);
+      setLastActionToast(`Rival falló ambos tiros libres (0 pts)`);
+    }
+
+    setBonusFreeThrowPrompt(null);
+    setTimeout(() => setLastActionToast(null), 2500);
+  };
+
   // 3. STEP 3: ASSIST SELECTION (UNCHANGED AS REQUESTED)
   const handleAssistSelection = (assistantId?: string) => {
     if (!assistPromptForEvent) return;
@@ -299,6 +397,30 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const bonusLimit = game.settings.bonusFoulsLimit || 5;
   const homeIsBonus = (game.homeQuarterFouls || 0) >= bonusLimit;
   const awayIsBonus = (game.awayQuarterFouls || 0) >= bonusLimit;
+
+  // Rapid 1-Touch Shot Chart Auto-Open cycle toggle
+  const currentShotMode = game.settings.shotChartAutoOpen || 'baskets';
+  const nextShotMode = currentShotMode === 'baskets' ? 'all' : currentShotMode === 'all' ? 'off' : 'baskets';
+
+  const handleCycleShotMode = () => {
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    onUpdateGame(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        shotChartAutoOpen: nextShotMode,
+      },
+    }));
+    setLastActionToast(
+      nextShotMode === 'baskets'
+        ? '🎯 Mapa de Tiro: Auto al anotar canastas'
+        : nextShotMode === 'all'
+        ? '🎯 Mapa de Tiro: Auto en todos los tiros'
+        : '⚡ Mapa de Tiro: Desactivado (modo ultra-rápido)'
+    );
+    setTimeout(() => setLastActionToast(null), 2200);
+  };
 
   return (
     <div className="h-[100dvh] max-h-[100dvh] w-full bg-black text-white flex flex-col overflow-hidden select-none">
@@ -373,15 +495,31 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         {/* Quick Tools: Carta de Tiro, Acta PDF & Cerrar Partido */}
         <div className="flex items-center gap-1">
           {onOpenShotChart && (
-            <button
-              type="button"
-              onClick={onOpenShotChart}
-              className="p-1 px-2 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/40 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-              title="Abrir Carta de Tiro"
-            >
-              <Crosshair className="w-3 h-3 text-orange-400" />
-              <span>Tiro</span>
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={onOpenShotChart}
+                className="p-1 px-1.5 sm:px-2 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/40 rounded text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+                title="Abrir Carta de Tiro completa"
+              >
+                <Crosshair className="w-3 h-3 text-orange-400" />
+                <span className="hidden sm:inline">Mapa</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCycleShotMode}
+                className={`p-1 px-1.5 rounded text-[9px] sm:text-[10px] font-bold font-mono border transition active:scale-95 ${
+                  currentShotMode === 'off'
+                    ? 'bg-neutral-900 border-neutral-700 text-neutral-400'
+                    : currentShotMode === 'all'
+                    ? 'bg-amber-950/80 border-amber-500/70 text-amber-300'
+                    : 'bg-orange-950/80 border-orange-500/70 text-orange-300'
+                }`}
+                title="Modo automático de Carta de Tiro al anotar: Toca para cambiar (Canastas / Todos / Off para máxima rapidez)"
+              >
+                {currentShotMode === 'baskets' ? 'AUTO' : currentShotMode === 'all' ? 'TODOS' : 'OFF'}
+              </button>
+            </div>
           )}
           {onOpenOfficialSheet && (
             <button
@@ -579,7 +717,16 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onLogOpponentAction('OPP_FOUL')}
+              onClick={() => {
+                onLogOpponentAction('OPP_FOUL');
+                const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+                if (nextAwayFouls >= bonusLimit) {
+                  setTimeout(() => {
+                    triggerHaptic('bonus', game.settings.vibrationEnabled);
+                    setBonusFreeThrowPrompt({ team: 'away', count: nextAwayFouls });
+                  }, 200);
+                }
+              }}
               className="px-1.5 sm:px-2 py-0.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
               title="Sumar Falta Rival al instante"
             >
@@ -602,6 +749,118 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         <div className="bg-orange-600 text-white font-mono font-bold text-[11px] px-2 py-1 text-center sticky top-0 z-30 shadow-md flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
           <Flame className="w-3.5 h-3.5 fill-white" />
           <span>{lastActionToast}</span>
+        </div>
+      )}
+
+      {/* BONUS ASSISTANT CARD (FIBA 5+ FOULED TEAM) */}
+      {bonusFreeThrowPrompt && (
+        <div className="bg-[#19150d] border-2 border-amber-500/90 rounded-2xl p-2.5 sm:p-3 shadow-2xl animate-in slide-in-from-top text-xs font-mono my-1 max-w-xl mx-auto w-full shrink-0 z-30">
+          <div className="flex items-center justify-between pb-1.5 border-b border-amber-500/30">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+              <span className="text-[11px] sm:text-xs uppercase tracking-wide">
+                {bonusFreeThrowPrompt.team === 'away'
+                  ? `⚠️ ¡RIVAL EN BONUS (${bonusFreeThrowPrompt.count}ª FALTA)!`
+                  : `⚠️ ¡EQUIPO EN BONUS (${bonusFreeThrowPrompt.count}ª FALTA)!`}
+              </span>
+            </div>
+            <button
+              onClick={() => setBonusFreeThrowPrompt(null)}
+              className="p-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-full"
+              title="Cerrar asistente"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {bonusFreeThrowPrompt.team === 'away' ? (
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-neutral-300">
+                <span>El rival acumuló 5+ faltas en el cuarto. Conceder <strong>2 Tiros Libres</strong>:</span>
+                <span className="text-amber-400 font-bold text-[10px]">
+                  Tirador:{' '}
+                  {bonusFreeThrowPrompt.targetPlayerId
+                    ? `#${game.players.find(p => p.id === bonusFreeThrowPrompt.targetPlayerId)?.number}`
+                    : selectedPlayer
+                    ? `#${selectedPlayer.number}`
+                    : 'Pista'}
+                </span>
+              </div>
+
+              {/* Rapid Free Throw result buttons */}
+              <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                <button
+                  onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 2)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-emerald-400 flex flex-col items-center justify-center"
+                >
+                  <span className="text-xs sm:text-sm font-black leading-none">2 de 2 (+2)</span>
+                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó ambos</span>
+                </button>
+                <button
+                  onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 1)}
+                  className="bg-amber-600 hover:bg-amber-500 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-amber-400 flex flex-col items-center justify-center"
+                >
+                  <span className="text-xs sm:text-sm font-black leading-none">1 de 2 (+1)</span>
+                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Metió 1 TL</span>
+                </button>
+                <button
+                  onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 0)}
+                  className="bg-[#1a1c24] hover:bg-neutral-800 text-neutral-300 font-bold py-2 px-2 rounded-xl text-center active:scale-95 border border-neutral-700 flex flex-col items-center justify-center"
+                >
+                  <span className="text-xs sm:text-sm font-black leading-none">0 de 2 (0p)</span>
+                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-80">Falló ambos</span>
+                </button>
+              </div>
+
+              <div className="flex justify-end pt-0.5">
+                <button
+                  onClick={() => setBonusFreeThrowPrompt(null)}
+                  className="text-[10px] text-neutral-400 hover:text-neutral-200 underline"
+                >
+                  Sin tiros libres (falta en ataque / saque de banda)
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-2">
+              <div className="text-[11px] text-neutral-300">
+                Nuestro equipo ha acumulado 5+ faltas en el cuarto. Concedidos TL reglamentarios al rival:
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                <button
+                  onClick={() => handleLogOpponentBonusFreeThrows(2)}
+                  className="bg-rose-700 hover:bg-rose-600 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-rose-500 flex flex-col items-center justify-center"
+                >
+                  <span className="text-xs sm:text-sm font-black leading-none">+2 TL Rival</span>
+                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó 2</span>
+                </button>
+                <button
+                  onClick={() => handleLogOpponentBonusFreeThrows(1)}
+                  className="bg-orange-700 hover:bg-orange-600 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-orange-500 flex flex-col items-center justify-center"
+                >
+                  <span className="text-xs sm:text-sm font-black leading-none">+1 TL Rival</span>
+                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó 1</span>
+                </button>
+                <button
+                  onClick={() => handleLogOpponentBonusFreeThrows(0)}
+                  className="bg-[#1a1c24] hover:bg-neutral-800 text-neutral-300 font-bold py-2 px-2 rounded-xl text-center active:scale-95 border border-neutral-700 flex flex-col items-center justify-center"
+                >
+                  <span className="text-xs sm:text-sm font-black leading-none">0 Fallados</span>
+                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-80">Sin puntos</span>
+                </button>
+              </div>
+
+              <div className="flex justify-end pt-0.5">
+                <button
+                  onClick={() => setBonusFreeThrowPrompt(null)}
+                  className="text-[10px] text-neutral-400 hover:text-neutral-200 underline"
+                >
+                  Sin tiros libres (falta en ataque / saque de banda)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -673,7 +932,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                     onClick={() => {
                       playSound('click', game.settings.soundEnabled);
                       triggerHaptic('light', game.settings.vibrationEnabled);
-                      onSelectPlayer(player.id);
+                      onSelectPlayer(selectedPlayerId === player.id ? '' : player.id);
                     }}
                     className={`flex flex-col items-center justify-center p-1 sm:p-1.5 rounded-lg border font-mono transition active:scale-95 text-center ${
                       selectedPlayerId === player.id
@@ -972,7 +1231,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           <button
             onClick={() => {
               playSound('click', game.settings.soundEnabled);
-              triggerHaptic('medium', game.settings.vibrationEnabled);
+              triggerHaptic('undo', game.settings.vibrationEnabled);
               onUndoLastAction();
             }}
             disabled={!recentEvent}
