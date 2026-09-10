@@ -30,18 +30,30 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
     onClose();
   };
 
+  const outPlayer = selectedOutId ? playersOnCourt.find(p => p.id === selectedOutId) : null;
+  const inPlayer = selectedInId ? benchPlayers.find(p => p.id === selectedInId) : null;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
-      <div className="bg-[#1A1D23] border border-gray-800 rounded max-w-lg w-full p-3.5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#1A1D23] border border-gray-800 rounded-xl max-w-lg w-full p-3.5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-gray-800">
-          <div className="flex items-center gap-1.5">
-            <ArrowRightLeft className="w-4 h-4 text-orange-500" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-100">Sustitución de Jugadores</h2>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-orange-600/20 border border-orange-500/40 flex items-center justify-center">
+              <ArrowRightLeft className="w-4 h-4 text-orange-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-wider text-gray-100 leading-tight">
+                Cambiar Jugadores de Pista
+              </h2>
+              <span className="text-[10px] font-mono text-gray-400">
+                Sustituciones · {game.homeTeamName}
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="w-6 h-6 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 flex items-center justify-center text-xs font-bold border border-gray-700"
+            className="w-7 h-7 rounded-lg bg-[#14161B] hover:bg-gray-800 text-gray-300 flex items-center justify-center text-xs font-bold border border-gray-700 transition"
           >
             ✕
           </button>
@@ -142,6 +154,33 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
           )}
         </div>
 
+        {/* Pending substitution summary banner */}
+        {(outPlayer || inPlayer) && (
+          <div className="p-2 bg-[#12141A] rounded-lg border border-gray-800 flex items-center justify-between text-xs font-mono">
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-400 font-bold">SALE:</span>
+              {outPlayer ? (
+                <span className="text-rose-400 font-black">
+                  #{outPlayer.number} {outPlayer.name.split(' ')[0]}
+                </span>
+              ) : (
+                <span className="text-gray-600 italic">Pendiente...</span>
+              )}
+            </div>
+            <ArrowRightLeft className="w-3.5 h-3.5 text-gray-500" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-400 font-bold">ENTRA:</span>
+              {inPlayer ? (
+                <span className="text-emerald-400 font-black">
+                  #{inPlayer.number} {inPlayer.name.split(' ')[0]}
+                </span>
+              ) : (
+                <span className="text-gray-600 italic">Pendiente...</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Action Button */}
         <div className="pt-1.5 flex items-center gap-2">
           <button
@@ -155,10 +194,14 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
             id="confirm-sub-btn"
             disabled={!selectedOutId || !selectedInId}
             onClick={handleConfirmSub}
-            className="w-2/3 py-2 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 disabled:opacity-40 disabled:pointer-events-none text-white font-extrabold rounded text-xs flex items-center justify-center gap-1.5 shadow"
+            className="w-2/3 py-2.5 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 active:scale-95 disabled:opacity-30 disabled:pointer-events-none text-white font-black rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-lg border border-orange-400/60 transition"
           >
-            <Check className="w-3.5 h-3.5" />
-            <span>Confirmar Sustitución</span>
+            <Check className="w-4 h-4 stroke-[3]" />
+            <span>
+              {outPlayer && inPlayer
+                ? `Cambiar: #${outPlayer.number} ➔ #${inPlayer.number}`
+                : 'Confirmar Cambio de Pista'}
+            </span>
           </button>
         </div>
       </div>

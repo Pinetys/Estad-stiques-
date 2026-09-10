@@ -895,28 +895,63 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         </div>
       )}
 
-      {/* 5. QUINTETO EN PISTA (COMPACTO Y 100% SINCRONIZADO AL INSTANTE) */}
+      {/* 5. JUGADORES EN PISTA & BOTÓN CAMBIAR JUGADORES */}
       <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-0.5 sm:pt-1 shrink-0">
-        {isPreGame && (
-          <div className="flex items-center justify-between px-1 pb-1 text-[10px] sm:text-[11px] font-mono">
-            <span className="text-amber-400 font-bold flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400 animate-pulse" />
-              PRE-PARTIDO · QUINTETO INICIAL
+        <div className="flex items-center justify-between px-1 pb-1 text-[10px] sm:text-xs font-mono">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <span className="text-amber-400 font-black flex items-center gap-1.5 uppercase tracking-wide shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              En Pista ({playersOnCourt.length}/5)
             </span>
+            <span className="text-neutral-600 shrink-0">·</span>
             <button
               type="button"
               onClick={() => {
                 playSound('click', game.settings.soundEnabled);
                 triggerHaptic('light', game.settings.vibrationEnabled);
-                setShowStartingFiveModal(true);
+                onOpenSubstitutionModal();
               }}
-              className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 underline text-[9px] sm:text-[10px]"
+              className="text-neutral-400 hover:text-amber-300 font-bold underline transition truncate"
+              title="Ver suplentes y cambiar jugadores"
             >
-              <Users className="w-3 h-3" />
-              <span>Editar Quinteto</span>
+              Banquillo ({benchPlayers.length})
             </button>
           </div>
-        )}
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isPreGame && (
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('light', game.settings.vibrationEnabled);
+                  setShowStartingFiveModal(true);
+                }}
+                className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-[9px] sm:text-[10px] font-bold flex items-center gap-1 transition"
+                title="Configurar los 5 titulares iniciales"
+              >
+                <Users className="w-3 h-3 text-orange-400" />
+                <span className="hidden xs:inline">Elegir</span> 5 Titulares
+              </button>
+            )}
+
+            <button
+              type="button"
+              id="top-change-players-btn"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                onOpenSubstitutionModal();
+              }}
+              className="px-2 sm:px-3 py-1 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-[10px] sm:text-xs uppercase rounded-lg shadow-md flex items-center gap-1 border border-amber-300 transition"
+              title="Cambiar jugadores de pista / Sustituciones"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Cambiar Jugadores</span>
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between bg-[#111317] border border-neutral-800 rounded-xl px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs">
           <div className="flex items-center gap-1 grow overflow-x-hidden">
             <div className="grid grid-cols-5 gap-1 sm:gap-1.5 grow">
@@ -972,33 +1007,22 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </div>
           </div>
 
-          {isPreGame ? (
-            <button
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                setShowStartingFiveModal(true);
-              }}
-              className="ml-1.5 sm:ml-2 px-2 sm:px-2.5 py-1.5 sm:py-2 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-[9px] sm:text-[10px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-lg active:scale-95 transition shrink-0 border border-orange-400"
-              title="Editar el quinteto inicial antes de empezar el partido"
-            >
-              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-              <span className="leading-tight font-black text-[8px] sm:text-[9px] whitespace-nowrap">QUINTETO</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                onOpenSubstitutionModal();
-              }}
-              className="ml-1.5 sm:ml-2 px-2 sm:px-3 py-1.5 sm:py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] sm:text-[11px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-md active:scale-95 transition shrink-0"
-              title="Sustituciones de jugadores"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="leading-tight font-black text-[9px] sm:text-[10px]">CAMBIOS</span>
-            </button>
-          )}
+          {/* BOTÓN CAMBIOS / SUSTITUCIONES: SIEMPRE VISIBLE */}
+          <button
+            id="court-side-cambios-btn"
+            onClick={() => {
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('light', game.settings.vibrationEnabled);
+              onOpenSubstitutionModal();
+            }}
+            className="ml-1.5 sm:ml-2 px-2 sm:px-3 py-1.5 sm:py-2.5 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-[10px] sm:text-[11px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-md active:scale-95 transition shrink-0 border border-amber-300 min-w-[56px] sm:min-w-[64px]"
+            title="Cambiar jugadores de pista / Sustituciones"
+          >
+            <ArrowRightLeft className="w-4 h-4 text-black stroke-[2.5]" />
+            <span className="leading-tight font-black text-[9px] sm:text-[10px] tracking-tight whitespace-nowrap">
+              CAMBIOS
+            </span>
+          </button>
         </div>
       </div>
 

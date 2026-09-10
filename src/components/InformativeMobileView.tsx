@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Edit2,
   Target,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { PlayerShotMap } from './PlayerShotMap';
 import { StartingFiveModal } from './StartingFiveModal';
@@ -34,6 +35,7 @@ interface InformativeMobileViewProps {
 export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
   game,
   onToggleCourtMode,
+  onOpenSubstitutionModal,
   onOpenRosterModal,
   onUpdateGame,
 }) => {
@@ -228,6 +230,20 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                 >
                   <Users className="w-3 h-3" />
                   <span>Editar Quinteto</span>
+                </button>
+              )}
+              {onOpenSubstitutionModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    onOpenSubstitutionModal();
+                  }}
+                  className="px-2 sm:px-2.5 py-0.5 rounded-md bg-amber-500 hover:bg-amber-400 text-black font-mono font-black text-[10px] sm:text-xs uppercase flex items-center gap-1 shadow transition active:scale-95"
+                  title="Cambiar jugadores de pista / Sustituciones"
+                >
+                  <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
+                  <span>Cambiar Jugadores</span>
                 </button>
               )}
               <span className="text-gray-500 font-mono text-[10px] hidden sm:inline">
