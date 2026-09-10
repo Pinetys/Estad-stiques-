@@ -25,6 +25,14 @@
   letter-spacing: 0.05em;
 }
 
+/* iOS and Android safe area insets */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
 /* Custom scrollbar for high density dark interfaces */
 ::-webkit-scrollbar {
   height: 5px;

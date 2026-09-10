@@ -1061,7 +1061,7 @@ export default function App() {
   useScreenWakeLock((isCourtMode || activeTab === 'live') && game.settings.keepScreenAwake !== false);
 
   return (
-    <div className={`min-h-screen ${isCourtMode ? 'bg-black text-neutral-200' : 'bg-[#0F1115] text-gray-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
+    <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-black text-neutral-200' : 'min-h-screen bg-[#0F1115] text-gray-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
       {/* 1. If Court Mode is Active: Show Ultra-Clean Bench Tactile Console */}
       {isCourtMode ? (
         <CourtBenchMode

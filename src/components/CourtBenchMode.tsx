@@ -301,7 +301,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const awayIsBonus = (game.awayQuarterFouls || 0) >= bonusLimit;
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full bg-black text-white flex flex-col justify-between overflow-hidden select-none">
+    <div className="h-[100dvh] max-h-[100dvh] w-full bg-black text-white flex flex-col overflow-hidden select-none">
       {/* 1. TOP BAR: MODES & QUARTER */}
       <div className="bg-[#0c0d10] border-b border-neutral-800 px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
         <div className="flex items-center gap-1.5">
@@ -411,14 +411,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       </div>
 
       {/* 2. MAIN PROMINENT DIGITAL SCOREBOARD (GRANDE Y VISIBLE) */}
-      <div className="bg-gradient-to-b from-[#12141a] to-[#0a0a0d] border-b border-neutral-800 px-2 sm:px-4 py-2 shrink-0 shadow-lg">
+      <div className="bg-gradient-to-b from-[#12141a] to-[#0a0a0d] border-b border-neutral-800 px-2 sm:px-4 py-1.5 sm:py-2 shrink-0 shadow-lg">
         <div className="max-w-xl mx-auto grid grid-cols-12 items-center gap-1.5 sm:gap-2">
           {/* LOCAL (HOME) */}
           <div className="col-span-3 flex flex-col items-center justify-center text-center">
             <div className="text-[10px] sm:text-xs font-black text-orange-400 uppercase tracking-wider truncate w-full px-1">
               {game.homeTeamName || 'LOCAL'}
             </div>
-            <div className="font-scoreboard font-black text-3xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
+            <div className="font-scoreboard font-black text-2xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
               {game.homeScore}
             </div>
             <div className="flex items-center gap-1 text-[10px] font-mono">
@@ -441,31 +441,31 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             {/* Big Clock Play/Pause Button */}
             <button
               onClick={toggleClock}
-              className={`w-full py-1.5 sm:py-2 px-2 sm:px-3 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 shadow-xl ${
+              className={`w-full py-1 sm:py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 shadow-xl ${
                 game.isClockRunning
                   ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
                   : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
               }`}
               title="Iniciar / Pausar tiempo de partido"
             >
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                 {game.isClockRunning ? (
-                  <Pause className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
+                  <Pause className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
                 ) : (
-                  <Play className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 fill-amber-400 shrink-0" />
+                  <Play className="w-4 h-4 sm:w-6 sm:h-6 text-amber-400 fill-amber-400 shrink-0" />
                 )}
-                <span className="font-scoreboard font-black text-3xl sm:text-4xl md:text-5xl tracking-widest leading-none drop-shadow-md">
+                <span className="font-scoreboard font-black text-2xl sm:text-4xl md:text-5xl tracking-widest leading-none drop-shadow-md">
                   {formatGameTime(game.currentSecondsRemaining)}
                 </span>
               </div>
               <div className="mt-0.5 flex items-center gap-1.5">
                 {game.isClockRunning ? (
-                  <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest">
+                  <span className="inline-flex items-center gap-1 text-[8px] sm:text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     EN JUEGO
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold text-amber-400/90 uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 text-[8px] sm:text-[10px] font-mono font-bold text-amber-400/90 uppercase tracking-wider">
                     PAUSA · TOCAR PARA JUGAR
                   </span>
                 )}
@@ -473,11 +473,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </button>
 
             {/* 24s / 14s Shot Clock Controls */}
-            <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-1.5 w-full flex-wrap">
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5 w-full flex-wrap">
               <button
                 type="button"
                 onClick={() => handleResetShotClock(24)}
-                className="px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
+                className="px-1.5 sm:px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] sm:text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
                 title="Reiniciar a 24s"
               >
                 24s
@@ -485,7 +485,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <button
                 type="button"
                 onClick={() => handleResetShotClock(14)}
-                className="px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
+                className="px-1.5 sm:px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] sm:text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
                 title="Reiniciar a 14s (Rebote ofensivo / Falta pista delantera)"
               >
                 14s
@@ -493,7 +493,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <button
                 type="button"
                 onClick={handleToggleShotClock}
-                className={`px-2 py-0.5 rounded text-[11px] font-black font-mono border transition active:scale-95 shadow-sm ${
+                className={`px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-black font-mono border transition active:scale-95 shadow-sm ${
                   shotClockSecs <= 5
                     ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
                     : (game.isShotClockRunning ?? true)
@@ -508,14 +508,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               {/* Quick +-10s micro-adjust */}
               <button
                 onClick={() => adjustSeconds(10)}
-                className="px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[9px] font-mono font-bold active:scale-95 transition"
+                className="px-1 sm:px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] sm:text-[9px] font-mono font-bold active:scale-95 transition"
                 title="+10 segundos"
               >
                 +10s
               </button>
               <button
                 onClick={() => adjustSeconds(-10)}
-                className="px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[9px] font-mono font-bold active:scale-95 transition"
+                className="px-1 sm:px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] sm:text-[9px] font-mono font-bold active:scale-95 transition"
                 title="-10 segundos"
               >
                 -10s
@@ -528,7 +528,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             <div className="text-[10px] sm:text-xs font-black text-sky-400 uppercase tracking-wider truncate w-full px-1">
               {game.awayTeamName || 'RIVAL'}
             </div>
-            <div className="font-scoreboard font-black text-3xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(56,189,248,0.35)]">
+            <div className="font-scoreboard font-black text-2xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(56,189,248,0.35)]">
               {game.awayScore}
             </div>
             <div className="flex items-center gap-1 text-[10px] font-mono">
@@ -548,15 +548,15 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         </div>
 
         {/* Rival Quick Score Bar (1-touch immediate point/foul logging) */}
-        <div className="max-w-md mx-auto mt-1 pt-1 border-t border-neutral-800/70 flex items-center justify-between gap-1 text-[11px] font-mono">
-          <span className="text-sky-400 font-bold text-[10px] shrink-0">
+        <div className="max-w-md mx-auto mt-0.5 sm:mt-1 pt-0.5 sm:pt-1 border-t border-neutral-800/70 flex items-center justify-between gap-1 text-[10px] sm:text-[11px] font-mono">
+          <span className="text-sky-400 font-bold text-[9px] sm:text-[10px] shrink-0">
             Rival:
           </span>
           <div className="flex items-center gap-1 grow justify-end">
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_1P')}
-              className="px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              className="px-1.5 sm:px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
               title="Sumar +1 TL Rival al instante"
             >
               +1 TL
@@ -564,7 +564,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_2P')}
-              className="px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              className="px-1.5 sm:px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
               title="Sumar +2 Canasta Rival al instante"
             >
               +2 Canasta
@@ -572,7 +572,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_3P')}
-              className="px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              className="px-1.5 sm:px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
               title="Sumar +3 Triple Rival al instante"
             >
               +3 Triple
@@ -580,7 +580,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_FOUL')}
-              className="px-2 py-0.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-800/60 rounded font-bold text-[10px] transition active:scale-95"
+              className="px-1.5 sm:px-2 py-0.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
               title="Sumar Falta Rival al instante"
             >
               +Falta
@@ -588,7 +588,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             <button
               type="button"
               onClick={() => setScoutingOppAction('OPP_2P')}
-              className="px-1.5 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded text-[9px] font-bold"
+              className="px-1 sm:px-1.5 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded text-[9px] font-bold"
               title="Anotar rival indicando dorsal"
             >
               #
@@ -637,11 +637,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       )}
 
       {/* 5. QUINTETO EN PISTA (COMPACTO Y 100% SINCRONIZADO AL INSTANTE) */}
-      <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-1 shrink-0">
+      <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-0.5 sm:pt-1 shrink-0">
         {isPreGame && (
-          <div className="flex items-center justify-between px-1 pb-1 text-[11px] font-mono">
+          <div className="flex items-center justify-between px-1 pb-1 text-[10px] sm:text-[11px] font-mono">
             <span className="text-amber-400 font-bold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400 animate-pulse" />
               PRE-PARTIDO · QUINTETO INICIAL
             </span>
             <button
@@ -651,16 +651,16 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 triggerHaptic('light', game.settings.vibrationEnabled);
                 setShowStartingFiveModal(true);
               }}
-              className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 underline text-[10px]"
+              className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 underline text-[9px] sm:text-[10px]"
             >
-              <Users className="w-3.5 h-3.5" />
+              <Users className="w-3 h-3" />
               <span>Editar Quinteto</span>
             </button>
           </div>
         )}
-        <div className="flex items-center justify-between bg-[#111317] border border-neutral-800 rounded-xl px-2 py-1 text-xs">
+        <div className="flex items-center justify-between bg-[#111317] border border-neutral-800 rounded-xl px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs">
           <div className="flex items-center gap-1 grow overflow-x-hidden">
-            <div className="grid grid-cols-5 gap-1.5 grow">
+            <div className="grid grid-cols-5 gap-1 sm:gap-1.5 grow">
               {playersOnCourt.map(player => {
                 // Instantly synchronized stats from events
                 const stats = calculatePlayerStats(player, game.events);
@@ -675,7 +675,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                       triggerHaptic('light', game.settings.vibrationEnabled);
                       onSelectPlayer(player.id);
                     }}
-                    className={`flex flex-col items-center justify-center p-1.5 rounded-lg border font-mono transition active:scale-95 text-center ${
+                    className={`flex flex-col items-center justify-center p-1 sm:p-1.5 rounded-lg border font-mono transition active:scale-95 text-center ${
                       selectedPlayerId === player.id
                         ? 'bg-amber-500/20 border-amber-500 text-white shadow-sm ring-1 ring-amber-400/60'
                         : isFouledOut
@@ -686,14 +686,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                     }`}
                   >
                     <div className="flex items-center justify-center">
-                      <span className="font-scoreboard font-black text-sm sm:text-base text-amber-400 leading-none">
+                      <span className="font-scoreboard font-black text-xs sm:text-base text-amber-400 leading-none">
                         #{player.number}
                       </span>
                     </div>
-                    <div className="text-[10px] sm:text-xs font-bold text-neutral-300 truncate w-full mt-0.5">
+                    <div className="text-[9px] sm:text-xs font-bold text-neutral-300 truncate w-full mt-0.5">
                       {player.name.split(' ')[0]}
                     </div>
-                    <div className="text-[9px] sm:text-[10px] font-mono flex items-center justify-center gap-1 mt-0.5 font-bold leading-none">
+                    <div className="text-[8px] sm:text-[10px] font-mono flex items-center justify-center gap-0.5 sm:gap-1 mt-0.5 font-bold leading-none">
                       <span className="text-orange-400">{stats.points}p</span>
                       <span
                         className={
@@ -720,11 +720,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 triggerHaptic('light', game.settings.vibrationEnabled);
                 setShowStartingFiveModal(true);
               }}
-              className="ml-2 px-2.5 py-2 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-[10px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-lg active:scale-95 transition shrink-0 border border-orange-400"
+              className="ml-1.5 sm:ml-2 px-2 sm:px-2.5 py-1.5 sm:py-2 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-black text-[9px] sm:text-[10px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-lg active:scale-95 transition shrink-0 border border-orange-400"
               title="Editar el quinteto inicial antes de empezar el partido"
             >
-              <Users className="w-4 h-4 text-white" />
-              <span className="leading-tight font-black text-[9px] whitespace-nowrap">QUINTETO</span>
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+              <span className="leading-tight font-black text-[8px] sm:text-[9px] whitespace-nowrap">QUINTETO</span>
             </button>
           ) : (
             <button
@@ -733,215 +733,215 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 triggerHaptic('light', game.settings.vibrationEnabled);
                 onOpenSubstitutionModal();
               }}
-              className="ml-2 px-3 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-[11px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-md active:scale-95 transition shrink-0"
+              className="ml-1.5 sm:ml-2 px-2 sm:px-3 py-1.5 sm:py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] sm:text-[11px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-md active:scale-95 transition shrink-0"
               title="Sustituciones de jugadores"
             >
-              <ArrowRightLeft className="w-4 h-4" />
-              <span className="leading-tight font-black text-[10px]">CAMBIOS</span>
+              <ArrowRightLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="leading-tight font-black text-[9px] sm:text-[10px]">CAMBIOS</span>
             </button>
           )}
         </div>
       </div>
 
       {/* 6. MAIN MEASUREMENT / ACTION BUTTONS CONSOLE (OPTIMIZADO MÓVIL Y TABLET) */}
-      <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 sm:px-4 flex-1 flex flex-col justify-center gap-2 sm:gap-2.5 my-auto">
-        <div className="text-center">
-          <span className="text-[11px] sm:text-xs font-mono uppercase font-bold text-neutral-400 tracking-wider">
+      <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 sm:px-4 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly gap-1.5 sm:gap-2 py-1">
+        <div className="text-center hidden xs:block">
+          <span className="text-[10px] sm:text-xs font-mono uppercase font-bold text-neutral-400 tracking-wider">
             Toca la acción:
           </span>
         </div>
 
         {/* SECTION A: SCORING / SHOTS (ORDEN EXCLUSIVO: 3 PUNTOS, 2 PUNTOS, 1 PUNTO) */}
-        <div className="grid grid-cols-2 gap-2 w-full">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 w-full">
           {/* FILA 1: +3 TRIPLE METIDO & FALLO 3P */}
           <button
             onClick={() => handleInitiateAction('3PM')}
-            className="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-black rounded-xl py-2 sm:py-2.5 px-3 flex items-center justify-between border border-amber-400 shadow-md active:scale-95 transition min-h-[44px]"
+            className="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-black rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-amber-400 shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-base sm:text-lg font-black font-mono leading-none">+3 TRIPLE</span>
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold text-amber-100 mt-0.5">Triple Metido</span>
+              <span className="text-xs sm:text-lg font-black font-mono leading-none">+3 TRIPLE</span>
+              <span className="text-[8px] sm:text-[10px] uppercase font-bold text-amber-100 mt-0.5">Triple Metido</span>
             </div>
-            <span className="text-xl font-mono font-black opacity-90 leading-none">+3</span>
+            <span className="text-base sm:text-xl font-mono font-black opacity-90 leading-none">+3</span>
           </button>
 
           <button
             onClick={() => handleInitiateAction('3PA')}
-            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-2 sm:py-2.5 px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[44px]"
+            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-sm sm:text-base font-black font-mono leading-none">FALLO 3P</span>
-              <span className="text-[9px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
+              <span className="text-xs sm:text-base font-black font-mono leading-none">FALLO 3P</span>
+              <span className="text-[8px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
             </div>
-            <span className="text-xs font-mono text-neutral-500 font-bold">3PA</span>
+            <span className="text-[10px] sm:text-xs font-mono text-neutral-500 font-bold">3PA</span>
           </button>
 
           {/* FILA 2: +2 CANASTA METIDA & FALLO 2P */}
           <button
             onClick={() => handleInitiateAction('2PM')}
-            className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black rounded-xl py-2 sm:py-2.5 px-3 flex items-center justify-between border border-emerald-400 shadow-md active:scale-95 transition min-h-[44px]"
+            className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-emerald-400 shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-base sm:text-lg font-black font-mono leading-none">+2 CANASTA</span>
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-100 mt-0.5">Tiro 2 Metido</span>
+              <span className="text-xs sm:text-lg font-black font-mono leading-none">+2 CANASTA</span>
+              <span className="text-[8px] sm:text-[10px] uppercase font-bold text-emerald-100 mt-0.5">Tiro 2 Metido</span>
             </div>
-            <span className="text-xl font-mono font-black opacity-90 leading-none">+2</span>
+            <span className="text-base sm:text-xl font-mono font-black opacity-90 leading-none">+2</span>
           </button>
 
           <button
             onClick={() => handleInitiateAction('2PA')}
-            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-2 sm:py-2.5 px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[44px]"
+            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-sm sm:text-base font-black font-mono leading-none">FALLO 2P</span>
-              <span className="text-[9px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
+              <span className="text-xs sm:text-base font-black font-mono leading-none">FALLO 2P</span>
+              <span className="text-[8px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
             </div>
-            <span className="text-xs font-mono text-neutral-500 font-bold">2PA</span>
+            <span className="text-[10px] sm:text-xs font-mono text-neutral-500 font-bold">2PA</span>
           </button>
 
           {/* FILA 3: +1 TIRO LIBRE METIDO & FALLO TL */}
           <button
             onClick={() => handleInitiateAction('FTM')}
-            className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white font-black rounded-xl py-2 sm:py-2.5 px-3 flex items-center justify-between border border-teal-400 shadow-md active:scale-95 transition min-h-[44px]"
+            className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white font-black rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-teal-400 shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-base sm:text-lg font-black font-mono leading-none">+1 T. LIBRE</span>
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold text-teal-100 mt-0.5">TL Anotado</span>
+              <span className="text-xs sm:text-lg font-black font-mono leading-none">+1 T. LIBRE</span>
+              <span className="text-[8px] sm:text-[10px] uppercase font-bold text-teal-100 mt-0.5">TL Anotado</span>
             </div>
-            <span className="text-xl font-mono font-black opacity-90 leading-none">+1</span>
+            <span className="text-base sm:text-xl font-mono font-black opacity-90 leading-none">+1</span>
           </button>
 
           <button
             onClick={() => handleInitiateAction('FTA')}
-            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-2 sm:py-2.5 px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[44px]"
+            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-sm sm:text-base font-black font-mono leading-none">FALLO TL</span>
-              <span className="text-[9px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
+              <span className="text-xs sm:text-base font-black font-mono leading-none">FALLO TL</span>
+              <span className="text-[8px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
             </div>
-            <span className="text-xs font-mono text-neutral-500 font-bold">1PA</span>
+            <span className="text-[10px] sm:text-xs font-mono text-neutral-500 font-bold">1PA</span>
           </button>
         </div>
 
-        {/* SECTION B: REBOUNDS & GAMEPLAY (REBOTES, ASISTENCIAS, ROBOS, PÉRDIDAS, TAPONES) - EXTRA GRANDES Y CÓMODOS */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 w-full pt-1">
+        {/* SECTION B: REBOUNDS & GAMEPLAY (REBOTES, ASISTENCIAS, ROBOS, PÉRDIDAS, TAPONES) */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2 w-full pt-0.5 sm:pt-1">
           {/* REBOTE DEFENSIVO */}
           <button
             onClick={() => handleInitiateAction('DREB')}
-            className="bg-blue-950/90 hover:bg-blue-900 active:bg-blue-950 text-blue-200 border-2 border-blue-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[58px] sm:min-h-[66px]"
+            className="bg-blue-950/90 hover:bg-blue-900 active:bg-blue-950 text-blue-200 border border-blue-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
             title="Rebote Defensivo"
           >
-            <span className="text-sm sm:text-base font-black font-mono leading-none text-blue-100">REB DEF</span>
-            <span className="text-[10px] sm:text-xs uppercase text-blue-300 font-bold mt-1">Defensivo</span>
+            <span className="text-xs sm:text-base font-black font-mono leading-none text-blue-100">REB DEF</span>
+            <span className="text-[8px] sm:text-xs uppercase text-blue-300 font-bold mt-0.5">Defensivo</span>
           </button>
 
           {/* REBOTE OFENSIVO */}
           <button
             onClick={() => handleInitiateAction('OREB')}
-            className="bg-indigo-950/90 hover:bg-indigo-900 active:bg-indigo-950 text-indigo-200 border-2 border-indigo-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[58px] sm:min-h-[66px]"
+            className="bg-indigo-950/90 hover:bg-indigo-900 active:bg-indigo-950 text-indigo-200 border border-indigo-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
             title="Rebote Ofensivo"
           >
-            <span className="text-sm sm:text-base font-black font-mono leading-none text-indigo-100">REB OF</span>
-            <span className="text-[10px] sm:text-xs uppercase text-indigo-300 font-bold mt-1">Ofensivo</span>
+            <span className="text-xs sm:text-base font-black font-mono leading-none text-indigo-100">REB OF</span>
+            <span className="text-[8px] sm:text-xs uppercase text-indigo-300 font-bold mt-0.5">Ofensivo</span>
           </button>
 
           {/* ASISTENCIA */}
           <button
             onClick={() => handleInitiateAction('AST')}
-            className="bg-sky-950/90 hover:bg-sky-900 active:bg-sky-950 text-sky-200 border-2 border-sky-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[58px] sm:min-h-[66px]"
+            className="bg-sky-950/90 hover:bg-sky-900 active:bg-sky-950 text-sky-200 border border-sky-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
             title="Asistencia"
           >
-            <span className="text-sm sm:text-base font-black font-mono leading-none text-sky-100">ASIST</span>
-            <span className="text-[10px] sm:text-xs uppercase text-sky-300 font-bold mt-1">Pase Gol</span>
+            <span className="text-xs sm:text-base font-black font-mono leading-none text-sky-100">ASIST</span>
+            <span className="text-[8px] sm:text-xs uppercase text-sky-300 font-bold mt-0.5">Pase Gol</span>
           </button>
 
           {/* ROBO */}
           <button
             onClick={() => handleInitiateAction('STL')}
-            className="bg-emerald-950/90 hover:bg-emerald-900 active:bg-emerald-950 text-emerald-200 border-2 border-emerald-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[58px] sm:min-h-[66px]"
+            className="bg-emerald-950/90 hover:bg-emerald-900 active:bg-emerald-950 text-emerald-200 border border-emerald-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
             title="Robo de balón"
           >
-            <span className="text-sm sm:text-base font-black font-mono leading-none text-emerald-100">ROBO</span>
-            <span className="text-[10px] sm:text-xs uppercase text-emerald-300 font-bold mt-1">Recupera</span>
+            <span className="text-xs sm:text-base font-black font-mono leading-none text-emerald-100">ROBO</span>
+            <span className="text-[8px] sm:text-xs uppercase text-emerald-300 font-bold mt-0.5">Recupera</span>
           </button>
 
           {/* PÉRDIDA */}
           <button
             onClick={() => handleInitiateAction('TO')}
-            className="bg-zinc-800/95 hover:bg-zinc-700 active:bg-zinc-800 text-zinc-100 border-2 border-zinc-500 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[58px] sm:min-h-[66px]"
+            className="bg-zinc-800/95 hover:bg-zinc-700 active:bg-zinc-800 text-zinc-100 border border-zinc-500 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
             title="Pérdida de balón"
           >
-            <span className="text-sm sm:text-base font-black font-mono leading-none text-zinc-100">PÉRDIDA</span>
-            <span className="text-[10px] sm:text-xs uppercase text-zinc-300 font-bold mt-1">Error</span>
+            <span className="text-xs sm:text-base font-black font-mono leading-none text-zinc-100">PÉRDIDA</span>
+            <span className="text-[8px] sm:text-xs uppercase text-zinc-300 font-bold mt-0.5">Error</span>
           </button>
 
           {/* TAPÓN */}
           <button
             onClick={() => handleInitiateAction('BLK')}
-            className="bg-purple-950/90 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border-2 border-purple-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[58px] sm:min-h-[66px]"
+            className="bg-purple-950/90 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border border-purple-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
             title="Tapón"
           >
-            <span className="text-sm sm:text-base font-black font-mono leading-none text-purple-100">TAPÓN</span>
-            <span className="text-[10px] sm:text-xs uppercase text-purple-300 font-bold mt-1">Bloqueo</span>
+            <span className="text-xs sm:text-base font-black font-mono leading-none text-purple-100">TAPÓN</span>
+            <span className="text-[8px] sm:text-xs uppercase text-purple-300 font-bold mt-0.5">Bloqueo</span>
           </button>
         </div>
 
-        {/* SECTION C: FIBA FOULS (FALTAS CLASIFICADAS FIBA) - EXTRA GRANDES Y CÓMODOS */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 w-full pt-1">
+        {/* SECTION C: FIBA FOULS (FALTAS CLASIFICADAS FIBA) */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2 w-full pt-0.5 sm:pt-1">
           {/* FALTA PERSONAL (P) */}
           <button
             onClick={() => handleInitiateAction('PF')}
-            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border-2 border-rose-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[56px] sm:min-h-[64px]"
+            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border border-rose-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
             title="Falta Personal simple (P)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-rose-100">FALTA (P)</span>
-            <span className="text-[10px] sm:text-xs uppercase text-rose-300 font-bold mt-1">Personal</span>
+            <span className="text-[8px] sm:text-xs uppercase text-rose-300 font-bold mt-0.5">Personal</span>
           </button>
 
           {/* FALTA TIRO (PFT) */}
           <button
             onClick={() => handleInitiateAction('PFT')}
-            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border-2 border-rose-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[56px] sm:min-h-[64px]"
+            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border border-rose-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
             title="Falta con tiros concedidos (P1/2/3)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-rose-100">TIRO (PFT)</span>
-            <span className="text-[10px] sm:text-xs uppercase text-rose-300 font-bold mt-1">Con Tiros</span>
+            <span className="text-[8px] sm:text-xs uppercase text-rose-300 font-bold mt-0.5">Con Tiros</span>
           </button>
 
           {/* FALTA EN ATAQUE (OF) */}
           <button
             onClick={() => handleInitiateAction('OF')}
-            className="bg-orange-950/95 hover:bg-orange-900 active:bg-orange-950 text-orange-200 border-2 border-orange-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[56px] sm:min-h-[64px]"
+            className="bg-orange-950/95 hover:bg-orange-900 active:bg-orange-950 text-orange-200 border border-orange-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
             title="Falta en Ataque sin tiros (O)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-orange-200">ATAQUE (O)</span>
-            <span className="text-[10px] sm:text-xs uppercase text-orange-300 font-bold mt-1">En Ataque</span>
+            <span className="text-[8px] sm:text-xs uppercase text-orange-300 font-bold mt-0.5">En Ataque</span>
           </button>
 
           {/* FALTA TÉCNICA / ANTIDEP */}
           <button
             onClick={() => handleInitiateAction('TF')}
-            className="bg-purple-950/95 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border-2 border-purple-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[56px] sm:min-h-[64px]"
+            className="bg-purple-950/95 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border border-purple-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
             title="Falta Técnica o Antideportiva"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-purple-200">TÉC / ANT</span>
-            <span className="text-[10px] sm:text-xs uppercase text-purple-300 font-bold mt-1">Especial</span>
+            <span className="text-[8px] sm:text-xs uppercase text-purple-300 font-bold mt-0.5">Especial</span>
           </button>
 
           {/* FALTA RECIBIDA (FD) */}
           <button
             onClick={() => handleInitiateAction('FD')}
-            className="bg-lime-950/95 hover:bg-lime-900 active:bg-lime-950 text-lime-100 border-2 border-lime-600/80 font-black rounded-xl py-3 sm:py-3.5 px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[56px] sm:min-h-[64px]"
+            className="bg-lime-950/95 hover:bg-lime-900 active:bg-lime-950 text-lime-100 border border-lime-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
             title="Falta Personal Recibida o Provocada (+1 Valoración)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-lime-200">RECIB (FD)</span>
-            <span className="text-[10px] sm:text-xs uppercase text-lime-300 font-bold mt-1">Provocada</span>
+            <span className="text-[8px] sm:text-xs uppercase text-lime-300 font-bold mt-0.5">Provocada</span>
           </button>
         </div>
       </div>
 
       {/* 7. BOTTOM BAR: RECENT PLAY & BIG UNDO BUTTON */}
-      <div className="bg-[#0c0d11] border-t border-neutral-800 px-2 sm:px-4 py-1.5 z-40 shrink-0">
+      <div className="bg-[#0c0d11] border-t border-neutral-800 px-2 sm:px-4 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] z-40 shrink-0">
         <div className="max-w-3xl md:max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* Recent Action Tag & Drawer Toggle */}
           <div className="flex items-center gap-1.5 grow overflow-hidden">
@@ -976,7 +976,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               onUndoLastAction();
             }}
             disabled={!recentEvent}
-            className="px-3.5 py-2 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
+            className="px-3 sm:px-3.5 py-1.5 sm:py-2 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
           >
             <Undo2 className="w-4 h-4" />
             <span>DESHACER</span>
@@ -1034,7 +1034,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       {/* 8. MODAL / OVERLAY: ESCOGER JUGADOR TRAS MARCAR LA ACCIÓN */}
       {pendingAction && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in">
-          <div className="bg-[#12141a] border border-amber-500/60 rounded-2xl p-3.5 max-w-md w-full mx-auto shadow-2xl space-y-2.5 animate-in slide-in-from-bottom">
+          <div className="bg-[#12141a] border border-amber-500/60 rounded-2xl p-3.5 pb-safe max-w-md w-full mx-auto shadow-2xl space-y-2.5 animate-in slide-in-from-bottom">
             {/* Modal Header with Action badge */}
             <div className="flex items-center justify-between pb-1.5 border-b border-neutral-800">
               <div className="flex items-center gap-2">
