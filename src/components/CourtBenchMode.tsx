@@ -34,6 +34,8 @@ import { useIsLandscapeTablet } from '../hooks/useIsLandscapeTablet';
 import { CourtScoreboard } from './CourtScoreboard';
 import { CourtActionConsole } from './CourtActionConsole';
 import { CourtPlayersBar } from './CourtPlayersBar';
+import { CourtLandscapeHeader } from './CourtLandscapeHeader';
+import { CourtRosterPanel } from './CourtRosterPanel';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -47,6 +49,7 @@ interface CourtBenchModeProps {
   onUndoLastAction: () => void;
   onDeleteEvent?: (eventId: string) => void;
   onOpenSubstitutionModal: () => void;
+  onPerformSubstitution?: (playerOutId: string, playerInId: string) => void;
   selectedPlayerId: string | null;
   onSelectPlayer: (playerId: string) => void;
   recentEvent: PlayEvent | null;
@@ -66,6 +69,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onUndoLastAction,
   onDeleteEvent,
   onOpenSubstitutionModal,
+  onPerformSubstitution,
   selectedPlayerId,
   onSelectPlayer,
   recentEvent,
@@ -76,6 +80,23 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onOpenShotChartForBasket,
   onCloseMatch,
 }) => {
+  // Direct In-Game Substitution handler
+  const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
+    if (onPerformSubstitution) {
+      onPerformSubstitution(playerOutId, playerInId);
+    } else {
+      onUpdateGame(prev => ({
+        ...prev,
+        players: prev.players.map(p => {
+          if (p.id === playerOutId) return { ...p, onCourt: false };
+          if (p.id === playerInId) return { ...p, onCourt: true };
+          return p;
+        }),
+      }));
+      onSelectPlayer(playerInId);
+    }
+  };
+
   // Action-first workflow state
   const [pendingAction, setPendingAction] = useState<StatActionType | null>(null);
   const [showBenchInModal, setShowBenchInModal] = useState(false);
@@ -669,8 +690,51 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   return (
     <div className="h-[100dvh] max-h-[100dvh] w-full bg-black text-white flex flex-col overflow-hidden select-none">
-      {/* 1. TOP BAR: MODES & QUARTER */}
-      <div className="bg-[#0c0d10] border-b border-neutral-800 px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
+      {/* 1. TOP BAR: LANDSCAPE (CENTERED QUARTER CLOCK & ALL CONTROLS) VS PORTRAIT */}
+      {isLandscapeTablet ? (
+        <CourtLandscapeHeader
+          game={game}
+          homeIsBonus={homeIsBonus}
+          awayIsBonus={awayIsBonus}
+          shotClockSecs={shotClockSecs}
+          bonusLimit={bonusLimit}
+          isWakeLockActive={isWakeLockActive}
+          currentShotMode={currentShotMode}
+          toggleClock={toggleClock}
+          adjustSeconds={adjustSeconds}
+          handleResetShotClock={handleResetShotClock}
+          handleToggleShotClock={handleToggleShotClock}
+          onLogOpponentAction={onLogOpponentAction}
+          onOpenScoutingDorsal={() => setScoutingOppAction('OPP_2P')}
+          onTriggerOpponentFoulBonus={(count) => {
+            triggerHaptic('bonus', game.settings.vibrationEnabled);
+            setBonusFreeThrowPrompt({ team: 'away', count });
+          }}
+          onToggleCourtMode={onToggleCourtMode}
+          onToggleWakeLock={handleToggleWakeLock}
+          onOpenShotChart={onOpenShotChart}
+          onOpenOfficialSheet={onOpenOfficialSheet}
+          onCloseMatch={() => {
+            playSound('click', game.settings.soundEnabled);
+            triggerHaptic('medium', game.settings.vibrationEnabled);
+            setShowCloseConfirmModal(true);
+          }}
+          onCycleShotMode={handleCycleShotMode}
+          onSelectQuarter={(quarter) => {
+            triggerHaptic('medium', game.settings.vibrationEnabled);
+            playSound('click', game.settings.soundEnabled);
+            onUpdateGame(prev => ({
+              ...prev,
+              currentQuarter: quarter,
+              currentSecondsRemaining: prev.settings.quarterDurationMinutes * 60,
+              isClockRunning: false,
+              homeQuarterFouls: 0,
+              awayQuarterFouls: 0,
+            }));
+          }}
+        />
+      ) : (
+        <div className="bg-[#0c0d10] border-b border-neutral-800 px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
         <div className="flex items-center gap-1.5">
           {/* Exit Court Mode button */}
           <button
@@ -792,6 +856,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* 2. MAIN DIGITAL SCOREBOARD (PORTRAIT ONLY - LANDSCAPE HAS IT IN LEFT COLUMN) */}
       {!isLandscapeTablet && (
@@ -855,86 +920,67 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       {/* 6. BOTTOM BAR (PORTRAIT ONLY - LANDSCAPE HAS IT IN LEFT COLUMN) */}
       {!isLandscapeTablet && renderBottomBar(false)}
 
-      {/* 7. TABLET LANDSCAPE LAYOUT (DUAL-COLUMN BALANCED VIEW - ZERO SCROLLING) */}
+      {/* 7. TABLET LANDSCAPE LAYOUT (FULL SQUAD ON LEFT + CENTERED ACTIONS ON RIGHT) */}
       {isLandscapeTablet && (
-        <div className="flex-1 min-h-0 w-full flex flex-row items-stretch px-2 sm:px-3 py-1 gap-2.5 max-w-7xl mx-auto overflow-hidden">
-          {/* LEFT COLUMN: Scoreboard, Bonus Prompt, Players Bar, Bottom Bar */}
-          <div className="w-[44%] lg:w-[42%] flex flex-col justify-between h-full overflow-y-auto overscroll-contain pr-1.5 border-r border-neutral-800/80 gap-1.5">
-            <div className="space-y-1.5">
-              <CourtScoreboard
-                game={game}
-                homeIsBonus={homeIsBonus}
-                awayIsBonus={awayIsBonus}
-                shotClockSecs={shotClockSecs}
-                bonusLimit={bonusLimit}
-                compact={true}
-                toggleClock={toggleClock}
-                adjustSeconds={adjustSeconds}
-                handleResetShotClock={handleResetShotClock}
-                handleToggleShotClock={handleToggleShotClock}
-                onLogOpponentAction={onLogOpponentAction}
-                onOpenScoutingDorsal={() => setScoutingOppAction('OPP_2P')}
-                onTriggerOpponentFoulBonus={(count) => {
-                  triggerHaptic('bonus', game.settings.vibrationEnabled);
-                  setBonusFreeThrowPrompt({ team: 'away', count });
-                }}
-              />
-
-              {bonusFreeThrowPrompt && renderBonusAssistant()}
-
-              <CourtPlayersBar
-                game={game}
-                playersOnCourt={playersOnCourt}
-                benchPlayers={benchPlayers}
-                selectedPlayerId={selectedPlayerId}
-                isPreGame={isPreGame}
-                isLandscape={true}
-                onSelectPlayer={onSelectPlayer}
-                onOpenSubstitutionModal={onOpenSubstitutionModal}
-                onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
-              />
-            </div>
-
-            {/* Bottom Bar attached to bottom of left column */}
-            <div className="pt-1 border-t border-neutral-800/80">
-              {renderBottomBar(true)}
-            </div>
+        <div className="flex-1 min-h-0 w-full flex flex-row items-stretch px-2 sm:px-3 py-1 gap-2.5 max-w-[1500px] mx-auto overflow-hidden">
+          {/* LEFT COLUMN: ENTIRE ROSTER & DIRECT FAST IN-GAME SUBSTITUTIONS */}
+          <div className="w-[42%] lg:w-[38%] xl:w-[35%] h-full flex flex-col justify-between overflow-hidden">
+            <CourtRosterPanel
+              game={game}
+              playersOnCourt={playersOnCourt}
+              benchPlayers={benchPlayers}
+              selectedPlayerId={selectedPlayerId}
+              isPreGame={isPreGame}
+              onSelectPlayer={onSelectPlayer}
+              onPerformSubstitution={handlePerformDirectSub}
+              onOpenSubstitutionModal={onOpenSubstitutionModal}
+              onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
+            />
           </div>
 
-          {/* RIGHT COLUMN: Vertically and Horizontally Centered Action Console */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center my-auto p-1 sm:p-2 overflow-hidden gap-1.5">
-            {/* Active player indicator */}
-            <div className="text-center font-mono text-xs text-neutral-300 pb-0.5 border-b border-neutral-800/60 flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs uppercase font-bold text-neutral-400">
-                {selectedPlayer ? (
-                  <>
-                    Anotar para:{' '}
-                    <strong className="text-amber-400 font-black">
+          {/* RIGHT COLUMN: CENTERED ACTION CONSOLE & UNDO BAR */}
+          <div className="flex-1 min-w-0 flex flex-col justify-between h-full p-1 overflow-hidden gap-1">
+            {/* Top Prompt Area: Bonus / Assist / Selected Player Header */}
+            <div className="shrink-0 space-y-1">
+              {bonusFreeThrowPrompt && renderBonusAssistant()}
+              {assistPromptForEvent && renderAssistPrompt()}
+
+              <div className="flex items-center justify-between px-2.5 py-1 bg-[#12141c] border border-neutral-800/80 rounded-xl text-xs font-mono">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400">Acción para:</span>
+                  {selectedPlayer ? (
+                    <span className="text-amber-400 font-black truncate">
                       #{selectedPlayer.number} {selectedPlayer.name}
-                    </strong>
-                  </>
-                ) : (
-                  'Toca una acción directa o elige jugador:'
+                    </span>
+                  ) : (
+                    <span className="text-neutral-500 italic text-[11px]">
+                      Toca un botón de acción o selecciona un jugador
+                    </span>
+                  )}
+                </div>
+                {selectedPlayer && (
+                  <button
+                    onClick={() => onSelectPlayer('')}
+                    className="text-[10px] text-neutral-400 hover:text-white underline font-bold shrink-0 ml-1"
+                  >
+                    Deseleccionar ✕
+                  </button>
                 )}
-              </span>
-              {selectedPlayer && (
-                <button
-                  onClick={() => onSelectPlayer('')}
-                  className="text-[10px] text-neutral-400 hover:text-white underline font-bold"
-                >
-                  Deseleccionar ✕
-                </button>
-              )}
+              </div>
             </div>
 
-            {assistPromptForEvent ? (
-              renderAssistPrompt()
-            ) : (
+            {/* Centered Large Tactile Action Console */}
+            <div className="flex-1 min-h-0 flex flex-col justify-center my-auto overflow-y-auto overscroll-contain py-1">
               <CourtActionConsole
                 onInitiateAction={handleInitiateAction}
                 isLandscape={true}
               />
-            )}
+            </div>
+
+            {/* Bottom Bar: Recent Play Event & Big Undo Button */}
+            <div className="shrink-0 pt-0.5 border-t border-neutral-800/60">
+              {renderBottomBar(true)}
+            </div>
           </div>
         </div>
       )}

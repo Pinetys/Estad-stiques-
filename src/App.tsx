@@ -1072,6 +1072,7 @@ export default function App() {
           onUndoLastAction={handleUndoLastAction}
           onDeleteEvent={handleDeleteEvent}
           onOpenSubstitutionModal={() => setShowSubModal(true)}
+          onPerformSubstitution={handlePerformSubstitution}
           selectedPlayerId={selectedPlayerId}
           onSelectPlayer={setSelectedPlayerId}
           recentEvent={recentEvent}
