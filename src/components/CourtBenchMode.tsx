@@ -30,6 +30,10 @@ import {
 } from 'lucide-react';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
 import { StartingFiveModal } from './StartingFiveModal';
+import { useIsLandscapeTablet } from '../hooks/useIsLandscapeTablet';
+import { CourtScoreboard } from './CourtScoreboard';
+import { CourtActionConsole } from './CourtActionConsole';
+import { CourtPlayersBar } from './CourtPlayersBar';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -78,6 +82,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [matchClosedSuccess, setMatchClosedSuccess] = useState(false);
   const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
+  const isLandscapeTablet = useIsLandscapeTablet();
 
   // Bonus Situations Assistant (FIBA 5+ fouls rule)
   const [bonusFreeThrowPrompt, setBonusFreeThrowPrompt] = useState<{
@@ -422,6 +427,246 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     setTimeout(() => setLastActionToast(null), 2200);
   };
 
+  const renderBonusAssistant = () => {
+    if (!bonusFreeThrowPrompt) return null;
+    return (
+      <div className="bg-[#19150d] border-2 border-amber-500/90 rounded-2xl p-2.5 sm:p-3 shadow-2xl animate-in slide-in-from-top text-xs font-mono my-1 max-w-xl mx-auto w-full shrink-0 z-30">
+        <div className="flex items-center justify-between pb-1.5 border-b border-amber-500/30">
+          <div className="flex items-center gap-2 text-amber-400 font-black">
+            <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+            <span className="text-[11px] sm:text-xs uppercase tracking-wide">
+              {bonusFreeThrowPrompt.team === 'away'
+                ? `⚠️ ¡RIVAL EN BONUS (${bonusFreeThrowPrompt.count}ª FALTA)!`
+                : `⚠️ ¡EQUIPO EN BONUS (${bonusFreeThrowPrompt.count}ª FALTA)!`}
+            </span>
+          </div>
+          <button
+            onClick={() => setBonusFreeThrowPrompt(null)}
+            className="p-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-full"
+            title="Cerrar asistente"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {bonusFreeThrowPrompt.team === 'away' ? (
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-neutral-300">
+              <span>El rival acumuló 5+ faltas en el cuarto. Conceder <strong>2 Tiros Libres</strong>:</span>
+              <span className="text-amber-400 font-bold text-[10px]">
+                Tirador:{' '}
+                {bonusFreeThrowPrompt.targetPlayerId
+                  ? `#${game.players.find(p => p.id === bonusFreeThrowPrompt.targetPlayerId)?.number}`
+                  : selectedPlayer
+                  ? `#${selectedPlayer.number}`
+                  : 'Pista'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+              <button
+                onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 2)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-emerald-400 flex flex-col items-center justify-center"
+              >
+                <span className="text-xs sm:text-sm font-black leading-none">2 de 2 (+2)</span>
+                <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó ambos</span>
+              </button>
+              <button
+                onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 1)}
+                className="bg-amber-600 hover:bg-amber-500 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-amber-400 flex flex-col items-center justify-center"
+              >
+                <span className="text-xs sm:text-sm font-black leading-none">1 de 2 (+1)</span>
+                <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Metió 1 TL</span>
+              </button>
+              <button
+                onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 0)}
+                className="bg-[#1a1c24] hover:bg-neutral-800 text-neutral-300 font-bold py-2 px-2 rounded-xl text-center active:scale-95 border border-neutral-700 flex flex-col items-center justify-center"
+              >
+                <span className="text-xs sm:text-sm font-black leading-none">0 de 2 (0p)</span>
+                <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-80">Falló ambos</span>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-0.5">
+              <button
+                onClick={() => setBonusFreeThrowPrompt(null)}
+                className="text-[10px] text-neutral-400 hover:text-neutral-200 underline"
+              >
+                Sin tiros libres (falta en ataque / saque de banda)
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2 space-y-2">
+            <div className="text-[11px] text-neutral-300">
+              Nuestro equipo ha acumulado 5+ faltas en el cuarto. Concedidos TL reglamentarios al rival:
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+              <button
+                onClick={() => handleLogOpponentBonusFreeThrows(2)}
+                className="bg-rose-700 hover:bg-rose-600 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-rose-500 flex flex-col items-center justify-center"
+              >
+                <span className="text-xs sm:text-sm font-black leading-none">+2 TL Rival</span>
+                <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó 2</span>
+              </button>
+              <button
+                onClick={() => handleLogOpponentBonusFreeThrows(1)}
+                className="bg-orange-700 hover:bg-orange-600 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-orange-500 flex flex-col items-center justify-center"
+              >
+                <span className="text-xs sm:text-sm font-black leading-none">+1 TL Rival</span>
+                <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó 1</span>
+              </button>
+              <button
+                onClick={() => handleLogOpponentBonusFreeThrows(0)}
+                className="bg-[#1a1c24] hover:bg-neutral-800 text-neutral-300 font-bold py-2 px-2 rounded-xl text-center active:scale-95 border border-neutral-700 flex flex-col items-center justify-center"
+              >
+                <span className="text-xs sm:text-sm font-black leading-none">0 Fallados</span>
+                <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-80">Sin puntos</span>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-0.5">
+              <button
+                onClick={() => setBonusFreeThrowPrompt(null)}
+                className="text-[10px] text-neutral-400 hover:text-neutral-200 underline"
+              >
+                Sin tiros libres (falta en ataque / saque de banda)
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderAssistPrompt = () => {
+    if (!assistPromptForEvent) return null;
+    return (
+      <div className="bg-[#141820] border-y border-sky-500/50 px-2 py-1.5 text-center animate-in fade-in sticky top-0 z-30 shadow-xl shrink-0">
+        <div className="flex items-center justify-between max-w-md mx-auto mb-1">
+          <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">
+            ¿Quién dio la Asistencia?
+          </span>
+          <button
+            onClick={() => handleAssistSelection(undefined)}
+            className="text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded font-mono hover:text-white"
+          >
+            Sin asistencia ✕
+          </button>
+        </div>
+        <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
+          {playersOnCourt
+            .filter(p => p.id !== assistPromptForEvent.scorerId)
+            .map(p => (
+              <button
+                key={p.id}
+                onClick={() => handleAssistSelection(p.id)}
+                className="bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-700/60 rounded-lg p-1.5 text-center active:scale-95 font-mono shadow"
+              >
+                <div className="text-base font-black text-sky-300">#{p.number}</div>
+                <div className="text-[9px] font-bold truncate">{p.name.split(' ')[0]}</div>
+              </button>
+            ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBottomBar = (compact = false) => {
+    return (
+      <div className={`bg-[#0c0d11] ${compact ? 'p-1' : 'border-t border-neutral-800 px-2 sm:px-4 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))]'} z-40 shrink-0 select-none`}>
+        <div className="max-w-3xl md:max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
+          {/* Recent Action Tag & Drawer Toggle */}
+          <div className="flex items-center gap-1.5 grow overflow-hidden">
+            <button
+              onClick={() => setShowHistoryDrawer(!showHistoryDrawer)}
+              className="p-1.5 bg-[#161820] text-neutral-300 border border-neutral-700/80 rounded-lg text-xs font-mono flex items-center gap-1 shrink-0 active:scale-95"
+              title="Ver o borrar últimas jugadas"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[10px] font-bold">({game.events.length})</span>
+            </button>
+
+            {recentEvent ? (
+              <div className="truncate text-xs font-mono text-neutral-300">
+                <span className="text-neutral-500 text-[10px]">Última:</span>{' '}
+                <strong className="text-amber-300 font-bold">
+                  {recentEvent.isOpponentAction
+                    ? recentEvent.actionLabel
+                    : `#${recentEvent.playerNumber} ${recentEvent.playerName?.split(' ')[0]} - ${recentEvent.actionLabel}`}
+                </strong>
+              </div>
+            ) : (
+              <div className="text-xs text-neutral-500 italic">Esperando jugada...</div>
+            )}
+          </div>
+
+          {/* BIG UNDO BUTTON */}
+          <button
+            onClick={() => {
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('undo', game.settings.vibrationEnabled);
+              onUndoLastAction();
+            }}
+            disabled={!recentEvent}
+            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
+          >
+            <Undo2 className="w-4 h-4" />
+            <span>DESHACER</span>
+          </button>
+        </div>
+
+        {/* History Drawer Modal Overlay */}
+        {showHistoryDrawer && (
+          <div className="bg-[#12141a] border border-neutral-800 p-2 mt-1.5 rounded-lg max-h-40 overflow-y-auto space-y-1 animate-in slide-in-from-bottom">
+            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-neutral-400 pb-1 border-b border-neutral-800">
+              <span>Últimas jugadas (pulsa icono para borrar):</span>
+              <button
+                onClick={() => setShowHistoryDrawer(false)}
+                className="text-neutral-400 hover:text-white px-1 font-mono"
+              >
+                ✕
+              </button>
+            </div>
+
+            {game.events.length === 0 ? (
+              <div className="text-xs text-neutral-600 italic py-2 text-center">
+                No hay jugadas registradas
+              </div>
+            ) : (
+              game.events.slice(0, 5).map(event => (
+                <div
+                  key={event.id}
+                  className="bg-[#181a22] p-1.5 rounded border border-neutral-800 flex items-center justify-between text-xs"
+                >
+                  <span className="text-neutral-300 truncate">
+                    {event.isOpponentAction
+                      ? event.actionLabel
+                      : `#${event.playerNumber} ${event.playerName?.split(' ')[0]} - ${event.actionLabel}`}
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (onDeleteEvent) {
+                        onDeleteEvent(event.id);
+                        playSound('click', game.settings.soundEnabled);
+                        triggerHaptic('medium', game.settings.vibrationEnabled);
+                      }
+                    }}
+                    className="p-1 bg-rose-950 text-rose-300 rounded border border-rose-800"
+                    title="Eliminar jugada"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="h-[100dvh] max-h-[100dvh] w-full bg-black text-white flex flex-col overflow-hidden select-none">
       {/* 1. TOP BAR: MODES & QUARTER */}
@@ -548,201 +793,27 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         </div>
       </div>
 
-      {/* 2. MAIN PROMINENT DIGITAL SCOREBOARD (GRANDE Y VISIBLE) */}
-      <div className="bg-gradient-to-b from-[#12141a] to-[#0a0a0d] border-b border-neutral-800 px-2 sm:px-4 py-1.5 sm:py-2 shrink-0 shadow-lg">
-        <div className="max-w-xl mx-auto grid grid-cols-12 items-center gap-1.5 sm:gap-2">
-          {/* LOCAL (HOME) */}
-          <div className="col-span-3 flex flex-col items-center justify-center text-center">
-            <div className="text-[10px] sm:text-xs font-black text-orange-400 uppercase tracking-wider truncate w-full px-1">
-              {game.homeTeamName || 'LOCAL'}
-            </div>
-            <div className="font-scoreboard font-black text-2xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
-              {game.homeScore}
-            </div>
-            <div className="flex items-center gap-1 text-[10px] font-mono">
-              <span className="text-neutral-400 text-[9px]">F:</span>
-              <span
-                className={`font-black px-1 rounded text-[10px] ${
-                  homeIsBonus
-                    ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse'
-                    : 'text-neutral-300 bg-neutral-900 border border-neutral-800'
-                }`}
-              >
-                {game.homeQuarterFouls || 0}
-                {homeIsBonus && <span className="ml-0.5 text-[8px] text-red-400 font-bold">BONUS</span>}
-              </span>
-            </div>
-          </div>
-
-          {/* CENTER: GAME CLOCK (MUCHO MÁS GRANDE) & 24s SHOT CLOCK */}
-          <div className="col-span-6 flex flex-col items-center justify-center px-1">
-            {/* Big Clock Play/Pause Button */}
-            <button
-              onClick={toggleClock}
-              className={`w-full py-1 sm:py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 shadow-xl ${
-                game.isClockRunning
-                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
-                  : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-              }`}
-              title="Iniciar / Pausar tiempo de partido"
-            >
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-                {game.isClockRunning ? (
-                  <Pause className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
-                ) : (
-                  <Play className="w-4 h-4 sm:w-6 sm:h-6 text-amber-400 fill-amber-400 shrink-0" />
-                )}
-                <span className="font-scoreboard font-black text-2xl sm:text-4xl md:text-5xl tracking-widest leading-none drop-shadow-md">
-                  {formatGameTime(game.currentSecondsRemaining)}
-                </span>
-              </div>
-              <div className="mt-0.5 flex items-center gap-1.5">
-                {game.isClockRunning ? (
-                  <span className="inline-flex items-center gap-1 text-[8px] sm:text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    EN JUEGO
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[8px] sm:text-[10px] font-mono font-bold text-amber-400/90 uppercase tracking-wider">
-                    PAUSA · TOCAR PARA JUGAR
-                  </span>
-                )}
-              </div>
-            </button>
-
-            {/* 24s / 14s Shot Clock Controls */}
-            <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5 w-full flex-wrap">
-              <button
-                type="button"
-                onClick={() => handleResetShotClock(24)}
-                className="px-1.5 sm:px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] sm:text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
-                title="Reiniciar a 24s"
-              >
-                24s
-              </button>
-              <button
-                type="button"
-                onClick={() => handleResetShotClock(14)}
-                className="px-1.5 sm:px-2 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] sm:text-[10px] font-black font-mono transition active:scale-95 shadow-sm"
-                title="Reiniciar a 14s (Rebote ofensivo / Falta pista delantera)"
-              >
-                14s
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleShotClock}
-                className={`px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-black font-mono border transition active:scale-95 shadow-sm ${
-                  shotClockSecs <= 5
-                    ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
-                    : (game.isShotClockRunning ?? true)
-                    ? 'bg-black text-amber-400 border-amber-500/60'
-                    : 'bg-neutral-900 text-neutral-400 border-neutral-700'
-                }`}
-                title="Pausar / Reanudar 24s"
-              >
-                {shotClockSecs}s
-              </button>
-
-              {/* Quick +-10s micro-adjust */}
-              <button
-                onClick={() => adjustSeconds(10)}
-                className="px-1 sm:px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] sm:text-[9px] font-mono font-bold active:scale-95 transition"
-                title="+10 segundos"
-              >
-                +10s
-              </button>
-              <button
-                onClick={() => adjustSeconds(-10)}
-                className="px-1 sm:px-1.5 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] sm:text-[9px] font-mono font-bold active:scale-95 transition"
-                title="-10 segundos"
-              >
-                -10s
-              </button>
-            </div>
-          </div>
-
-          {/* VISITANTE (AWAY) */}
-          <div className="col-span-3 flex flex-col items-center justify-center text-center">
-            <div className="text-[10px] sm:text-xs font-black text-sky-400 uppercase tracking-wider truncate w-full px-1">
-              {game.awayTeamName || 'RIVAL'}
-            </div>
-            <div className="font-scoreboard font-black text-2xl sm:text-4xl text-white tracking-tight leading-none my-0.5 drop-shadow-[0_2px_8px_rgba(56,189,248,0.35)]">
-              {game.awayScore}
-            </div>
-            <div className="flex items-center gap-1 text-[10px] font-mono">
-              <span className="text-neutral-400 text-[9px]">F:</span>
-              <span
-                className={`font-black px-1 rounded text-[10px] ${
-                  awayIsBonus
-                    ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse'
-                    : 'text-neutral-300 bg-neutral-900 border border-neutral-800'
-                }`}
-              >
-                {game.awayQuarterFouls || 0}
-                {awayIsBonus && <span className="ml-0.5 text-[8px] text-red-400 font-bold">BONUS</span>}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Rival Quick Score Bar (1-touch immediate point/foul logging) */}
-        <div className="max-w-md mx-auto mt-0.5 sm:mt-1 pt-0.5 sm:pt-1 border-t border-neutral-800/70 flex items-center justify-between gap-1 text-[10px] sm:text-[11px] font-mono">
-          <span className="text-sky-400 font-bold text-[9px] sm:text-[10px] shrink-0">
-            Rival:
-          </span>
-          <div className="flex items-center gap-1 grow justify-end">
-            <button
-              type="button"
-              onClick={() => onLogOpponentAction('OPP_1P')}
-              className="px-1.5 sm:px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
-              title="Sumar +1 TL Rival al instante"
-            >
-              +1 TL
-            </button>
-            <button
-              type="button"
-              onClick={() => onLogOpponentAction('OPP_2P')}
-              className="px-1.5 sm:px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
-              title="Sumar +2 Canasta Rival al instante"
-            >
-              +2 Canasta
-            </button>
-            <button
-              type="button"
-              onClick={() => onLogOpponentAction('OPP_3P')}
-              className="px-1.5 sm:px-2 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
-              title="Sumar +3 Triple Rival al instante"
-            >
-              +3 Triple
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onLogOpponentAction('OPP_FOUL');
-                const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
-                if (nextAwayFouls >= bonusLimit) {
-                  setTimeout(() => {
-                    triggerHaptic('bonus', game.settings.vibrationEnabled);
-                    setBonusFreeThrowPrompt({ team: 'away', count: nextAwayFouls });
-                  }, 200);
-                }
-              }}
-              className="px-1.5 sm:px-2 py-0.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-800/60 rounded font-bold text-[9px] sm:text-[10px] transition active:scale-95"
-              title="Sumar Falta Rival al instante"
-            >
-              +Falta
-            </button>
-            <button
-              type="button"
-              onClick={() => setScoutingOppAction('OPP_2P')}
-              className="px-1 sm:px-1.5 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded text-[9px] font-bold"
-              title="Anotar rival indicando dorsal"
-            >
-              #
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* 2. MAIN DIGITAL SCOREBOARD (PORTRAIT ONLY - LANDSCAPE HAS IT IN LEFT COLUMN) */}
+      {!isLandscapeTablet && (
+        <CourtScoreboard
+          game={game}
+          homeIsBonus={homeIsBonus}
+          awayIsBonus={awayIsBonus}
+          shotClockSecs={shotClockSecs}
+          bonusLimit={bonusLimit}
+          compact={false}
+          toggleClock={toggleClock}
+          adjustSeconds={adjustSeconds}
+          handleResetShotClock={handleResetShotClock}
+          handleToggleShotClock={handleToggleShotClock}
+          onLogOpponentAction={onLogOpponentAction}
+          onOpenScoutingDorsal={() => setScoutingOppAction('OPP_2P')}
+          onTriggerOpponentFoulBonus={(count) => {
+            triggerHaptic('bonus', game.settings.vibrationEnabled);
+            setBonusFreeThrowPrompt({ team: 'away', count });
+          }}
+        />
+      )}
 
       {/* 3. TOAST FEEDBACK */}
       {lastActionToast && (
@@ -752,567 +823,121 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         </div>
       )}
 
-      {/* BONUS ASSISTANT CARD (FIBA 5+ FOULED TEAM) */}
-      {bonusFreeThrowPrompt && (
-        <div className="bg-[#19150d] border-2 border-amber-500/90 rounded-2xl p-2.5 sm:p-3 shadow-2xl animate-in slide-in-from-top text-xs font-mono my-1 max-w-xl mx-auto w-full shrink-0 z-30">
-          <div className="flex items-center justify-between pb-1.5 border-b border-amber-500/30">
-            <div className="flex items-center gap-2 text-amber-400 font-black">
-              <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
-              <span className="text-[11px] sm:text-xs uppercase tracking-wide">
-                {bonusFreeThrowPrompt.team === 'away'
-                  ? `⚠️ ¡RIVAL EN BONUS (${bonusFreeThrowPrompt.count}ª FALTA)!`
-                  : `⚠️ ¡EQUIPO EN BONUS (${bonusFreeThrowPrompt.count}ª FALTA)!`}
-              </span>
-            </div>
-            <button
-              onClick={() => setBonusFreeThrowPrompt(null)}
-              className="p-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-full"
-              title="Cerrar asistente"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
+      {/* 3. ASSIST & BONUS PROMPTS (PORTRAIT ONLY - LANDSCAPE HANDLES IN ITS COLUMNS) */}
+      {!isLandscapeTablet && bonusFreeThrowPrompt && renderBonusAssistant()}
+      {!isLandscapeTablet && assistPromptForEvent && renderAssistPrompt()}
 
-          {bonusFreeThrowPrompt.team === 'away' ? (
-            <div className="mt-2 space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-neutral-300">
-                <span>El rival acumuló 5+ faltas en el cuarto. Conceder <strong>2 Tiros Libres</strong>:</span>
-                <span className="text-amber-400 font-bold text-[10px]">
-                  Tirador:{' '}
-                  {bonusFreeThrowPrompt.targetPlayerId
-                    ? `#${game.players.find(p => p.id === bonusFreeThrowPrompt.targetPlayerId)?.number}`
-                    : selectedPlayer
-                    ? `#${selectedPlayer.number}`
-                    : 'Pista'}
-                </span>
-              </div>
+      {/* 4. JUGADORES EN PISTA (PORTRAIT ONLY) */}
+      {!isLandscapeTablet && (
+        <CourtPlayersBar
+          game={game}
+          playersOnCourt={playersOnCourt}
+          benchPlayers={benchPlayers}
+          selectedPlayerId={selectedPlayerId}
+          isPreGame={isPreGame}
+          isLandscape={false}
+          onSelectPlayer={onSelectPlayer}
+          onOpenSubstitutionModal={onOpenSubstitutionModal}
+          onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
+        />
+      )}
 
-              {/* Rapid Free Throw result buttons */}
-              <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                <button
-                  onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 2)}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-emerald-400 flex flex-col items-center justify-center"
-                >
-                  <span className="text-xs sm:text-sm font-black leading-none">2 de 2 (+2)</span>
-                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó ambos</span>
-                </button>
-                <button
-                  onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 1)}
-                  className="bg-amber-600 hover:bg-amber-500 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-amber-400 flex flex-col items-center justify-center"
-                >
-                  <span className="text-xs sm:text-sm font-black leading-none">1 de 2 (+1)</span>
-                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Metió 1 TL</span>
-                </button>
-                <button
-                  onClick={() => handleLogBonusFreeThrows(bonusFreeThrowPrompt.targetPlayerId, 0)}
-                  className="bg-[#1a1c24] hover:bg-neutral-800 text-neutral-300 font-bold py-2 px-2 rounded-xl text-center active:scale-95 border border-neutral-700 flex flex-col items-center justify-center"
-                >
-                  <span className="text-xs sm:text-sm font-black leading-none">0 de 2 (0p)</span>
-                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-80">Falló ambos</span>
-                </button>
-              </div>
-
-              <div className="flex justify-end pt-0.5">
-                <button
-                  onClick={() => setBonusFreeThrowPrompt(null)}
-                  className="text-[10px] text-neutral-400 hover:text-neutral-200 underline"
-                >
-                  Sin tiros libres (falta en ataque / saque de banda)
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-2 space-y-2">
-              <div className="text-[11px] text-neutral-300">
-                Nuestro equipo ha acumulado 5+ faltas en el cuarto. Concedidos TL reglamentarios al rival:
-              </div>
-
-              <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                <button
-                  onClick={() => handleLogOpponentBonusFreeThrows(2)}
-                  className="bg-rose-700 hover:bg-rose-600 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-rose-500 flex flex-col items-center justify-center"
-                >
-                  <span className="text-xs sm:text-sm font-black leading-none">+2 TL Rival</span>
-                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó 2</span>
-                </button>
-                <button
-                  onClick={() => handleLogOpponentBonusFreeThrows(1)}
-                  className="bg-orange-700 hover:bg-orange-600 text-white font-black py-2 px-2 rounded-xl text-center active:scale-95 shadow border border-orange-500 flex flex-col items-center justify-center"
-                >
-                  <span className="text-xs sm:text-sm font-black leading-none">+1 TL Rival</span>
-                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-90">Anotó 1</span>
-                </button>
-                <button
-                  onClick={() => handleLogOpponentBonusFreeThrows(0)}
-                  className="bg-[#1a1c24] hover:bg-neutral-800 text-neutral-300 font-bold py-2 px-2 rounded-xl text-center active:scale-95 border border-neutral-700 flex flex-col items-center justify-center"
-                >
-                  <span className="text-xs sm:text-sm font-black leading-none">0 Fallados</span>
-                  <span className="text-[8px] sm:text-[9px] uppercase mt-0.5 opacity-80">Sin puntos</span>
-                </button>
-              </div>
-
-              <div className="flex justify-end pt-0.5">
-                <button
-                  onClick={() => setBonusFreeThrowPrompt(null)}
-                  className="text-[10px] text-neutral-400 hover:text-neutral-200 underline"
-                >
-                  Sin tiros libres (falta en ataque / saque de banda)
-                </button>
-              </div>
-            </div>
-          )}
+      {/* 5. MAIN ACTION BUTTONS CONSOLE (PORTRAIT ONLY) */}
+      {!isLandscapeTablet && (
+        <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 sm:px-4 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly gap-1.5 sm:gap-2 py-1">
+          <CourtActionConsole
+            onInitiateAction={handleInitiateAction}
+            isLandscape={false}
+          />
         </div>
       )}
 
-      {/* 4. ASSIST QUESTION BANNER (When Basket Scored) */}
-      {assistPromptForEvent && (
-        <div className="bg-[#141820] border-y border-sky-500/50 px-2 py-1.5 text-center animate-in fade-in sticky top-0 z-30 shadow-xl shrink-0">
-          <div className="flex items-center justify-between max-w-md mx-auto mb-1">
-            <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">
-              ¿Quién dio la Asistencia?
-            </span>
-            <button
-              onClick={() => handleAssistSelection(undefined)}
-              className="text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded font-mono hover:text-white"
-            >
-              Sin asistencia ✕
-            </button>
-          </div>
-          <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
-            {playersOnCourt
-              .filter(p => p.id !== assistPromptForEvent.scorerId)
-              .map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => handleAssistSelection(p.id)}
-                  className="bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-700/60 rounded-lg p-1.5 text-center active:scale-95 font-mono shadow"
-                >
-                  <div className="text-base font-black text-sky-300">#{p.number}</div>
-                  <div className="text-[9px] font-bold truncate">{p.name.split(' ')[0]}</div>
-                </button>
-              ))}
-          </div>
-        </div>
-      )}
+      {/* 6. BOTTOM BAR (PORTRAIT ONLY - LANDSCAPE HAS IT IN LEFT COLUMN) */}
+      {!isLandscapeTablet && renderBottomBar(false)}
 
-      {/* 5. JUGADORES EN PISTA & BOTÓN CAMBIAR JUGADORES */}
-      <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-0.5 sm:pt-1 shrink-0">
-        <div className="flex items-center justify-between px-1 pb-1 text-[10px] sm:text-xs font-mono">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <span className="text-amber-400 font-black flex items-center gap-1.5 uppercase tracking-wide shrink-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              En Pista ({playersOnCourt.length}/5)
-            </span>
-            <span className="text-neutral-600 shrink-0">·</span>
-            <button
-              type="button"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                onOpenSubstitutionModal();
-              }}
-              className="text-neutral-400 hover:text-amber-300 font-bold underline transition truncate"
-              title="Ver suplentes y cambiar jugadores"
-            >
-              Banquillo ({benchPlayers.length})
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {isPreGame && (
-              <button
-                type="button"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  triggerHaptic('light', game.settings.vibrationEnabled);
-                  setShowStartingFiveModal(true);
+      {/* 7. TABLET LANDSCAPE LAYOUT (DUAL-COLUMN BALANCED VIEW - ZERO SCROLLING) */}
+      {isLandscapeTablet && (
+        <div className="flex-1 min-h-0 w-full flex flex-row items-stretch px-2 sm:px-3 py-1 gap-2.5 max-w-7xl mx-auto overflow-hidden">
+          {/* LEFT COLUMN: Scoreboard, Bonus Prompt, Players Bar, Bottom Bar */}
+          <div className="w-[44%] lg:w-[42%] flex flex-col justify-between h-full overflow-y-auto overscroll-contain pr-1.5 border-r border-neutral-800/80 gap-1.5">
+            <div className="space-y-1.5">
+              <CourtScoreboard
+                game={game}
+                homeIsBonus={homeIsBonus}
+                awayIsBonus={awayIsBonus}
+                shotClockSecs={shotClockSecs}
+                bonusLimit={bonusLimit}
+                compact={true}
+                toggleClock={toggleClock}
+                adjustSeconds={adjustSeconds}
+                handleResetShotClock={handleResetShotClock}
+                handleToggleShotClock={handleToggleShotClock}
+                onLogOpponentAction={onLogOpponentAction}
+                onOpenScoutingDorsal={() => setScoutingOppAction('OPP_2P')}
+                onTriggerOpponentFoulBonus={(count) => {
+                  triggerHaptic('bonus', game.settings.vibrationEnabled);
+                  setBonusFreeThrowPrompt({ team: 'away', count });
                 }}
-                className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-[9px] sm:text-[10px] font-bold flex items-center gap-1 transition"
-                title="Configurar los 5 titulares iniciales"
-              >
-                <Users className="w-3 h-3 text-orange-400" />
-                <span className="hidden xs:inline">Elegir</span> 5 Titulares
-              </button>
-            )}
+              />
 
-            <button
-              type="button"
-              id="top-change-players-btn"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                onOpenSubstitutionModal();
-              }}
-              className="px-2 sm:px-3 py-1 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-[10px] sm:text-xs uppercase rounded-lg shadow-md flex items-center gap-1 border border-amber-300 transition"
-              title="Cambiar jugadores de pista / Sustituciones"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Cambiar Jugadores</span>
-            </button>
-          </div>
-        </div>
+              {bonusFreeThrowPrompt && renderBonusAssistant()}
 
-        <div className="flex items-center justify-between bg-[#111317] border border-neutral-800 rounded-xl px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs">
-          <div className="flex items-center gap-1 grow overflow-x-hidden">
-            <div className="grid grid-cols-5 gap-1 sm:gap-1.5 grow">
-              {playersOnCourt.map(player => {
-                // Instantly synchronized stats from events
-                const stats = calculatePlayerStats(player, game.events);
-                const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
-                const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
+              <CourtPlayersBar
+                game={game}
+                playersOnCourt={playersOnCourt}
+                benchPlayers={benchPlayers}
+                selectedPlayerId={selectedPlayerId}
+                isPreGame={isPreGame}
+                isLandscape={true}
+                onSelectPlayer={onSelectPlayer}
+                onOpenSubstitutionModal={onOpenSubstitutionModal}
+                onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
+              />
+            </div>
 
-                return (
-                  <button
-                    key={player.id}
-                    onClick={() => {
-                      playSound('click', game.settings.soundEnabled);
-                      triggerHaptic('light', game.settings.vibrationEnabled);
-                      onSelectPlayer(selectedPlayerId === player.id ? '' : player.id);
-                    }}
-                    className={`flex flex-col items-center justify-center p-1 sm:p-1.5 rounded-lg border font-mono transition active:scale-95 text-center ${
-                      selectedPlayerId === player.id
-                        ? 'bg-amber-500/20 border-amber-500 text-white shadow-sm ring-1 ring-amber-400/60'
-                        : isFouledOut
-                        ? 'bg-red-950/40 border-red-800 text-red-300'
-                        : isFoulDanger
-                        ? 'bg-amber-950/40 border-amber-700 text-amber-200'
-                        : 'bg-[#181a24] border-neutral-800 text-neutral-200 hover:border-neutral-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center">
-                      <span className="font-scoreboard font-black text-xs sm:text-base text-amber-400 leading-none">
-                        #{player.number}
-                      </span>
-                    </div>
-                    <div className="text-[9px] sm:text-xs font-bold text-neutral-300 truncate w-full mt-0.5">
-                      {player.name.split(' ')[0]}
-                    </div>
-                    <div className="text-[8px] sm:text-[10px] font-mono flex items-center justify-center gap-0.5 sm:gap-1 mt-0.5 font-bold leading-none">
-                      <span className="text-orange-400">{stats.points}p</span>
-                      <span
-                        className={
-                          isFouledOut
-                            ? 'text-red-400 font-black'
-                            : isFoulDanger
-                            ? 'text-amber-400 font-black'
-                            : 'text-neutral-400'
-                        }
-                      >
-                        {stats.foulsPersonal}F
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+            {/* Bottom Bar attached to bottom of left column */}
+            <div className="pt-1 border-t border-neutral-800/80">
+              {renderBottomBar(true)}
             </div>
           </div>
 
-          {/* BOTÓN CAMBIOS / SUSTITUCIONES: SIEMPRE VISIBLE */}
-          <button
-            id="court-side-cambios-btn"
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('light', game.settings.vibrationEnabled);
-              onOpenSubstitutionModal();
-            }}
-            className="ml-1.5 sm:ml-2 px-2 sm:px-3 py-1.5 sm:py-2.5 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-[10px] sm:text-[11px] uppercase rounded-xl flex flex-col items-center justify-center gap-0.5 shadow-md active:scale-95 transition shrink-0 border border-amber-300 min-w-[56px] sm:min-w-[64px]"
-            title="Cambiar jugadores de pista / Sustituciones"
-          >
-            <ArrowRightLeft className="w-4 h-4 text-black stroke-[2.5]" />
-            <span className="leading-tight font-black text-[9px] sm:text-[10px] tracking-tight whitespace-nowrap">
-              CAMBIOS
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* 6. MAIN MEASUREMENT / ACTION BUTTONS CONSOLE (OPTIMIZADO MÓVIL Y TABLET) */}
-      <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 sm:px-4 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly gap-1.5 sm:gap-2 py-1">
-        <div className="text-center hidden xs:block">
-          <span className="text-[10px] sm:text-xs font-mono uppercase font-bold text-neutral-400 tracking-wider">
-            Toca la acción:
-          </span>
-        </div>
-
-        {/* SECTION A: SCORING / SHOTS (ORDEN EXCLUSIVO: 3 PUNTOS, 2 PUNTOS, 1 PUNTO) */}
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 w-full">
-          {/* FILA 1: +3 TRIPLE METIDO & FALLO 3P */}
-          <button
-            onClick={() => handleInitiateAction('3PM')}
-            className="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-black rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-amber-400 shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
-          >
-            <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-lg font-black font-mono leading-none">+3 TRIPLE</span>
-              <span className="text-[8px] sm:text-[10px] uppercase font-bold text-amber-100 mt-0.5">Triple Metido</span>
-            </div>
-            <span className="text-base sm:text-xl font-mono font-black opacity-90 leading-none">+3</span>
-          </button>
-
-          <button
-            onClick={() => handleInitiateAction('3PA')}
-            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
-          >
-            <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-base font-black font-mono leading-none">FALLO 3P</span>
-              <span className="text-[8px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
-            </div>
-            <span className="text-[10px] sm:text-xs font-mono text-neutral-500 font-bold">3PA</span>
-          </button>
-
-          {/* FILA 2: +2 CANASTA METIDA & FALLO 2P */}
-          <button
-            onClick={() => handleInitiateAction('2PM')}
-            className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-emerald-400 shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
-          >
-            <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-lg font-black font-mono leading-none">+2 CANASTA</span>
-              <span className="text-[8px] sm:text-[10px] uppercase font-bold text-emerald-100 mt-0.5">Tiro 2 Metido</span>
-            </div>
-            <span className="text-base sm:text-xl font-mono font-black opacity-90 leading-none">+2</span>
-          </button>
-
-          <button
-            onClick={() => handleInitiateAction('2PA')}
-            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
-          >
-            <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-base font-black font-mono leading-none">FALLO 2P</span>
-              <span className="text-[8px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
-            </div>
-            <span className="text-[10px] sm:text-xs font-mono text-neutral-500 font-bold">2PA</span>
-          </button>
-
-          {/* FILA 3: +1 TIRO LIBRE METIDO & FALLO TL */}
-          <button
-            onClick={() => handleInitiateAction('FTM')}
-            className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white font-black rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-teal-400 shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
-          >
-            <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-lg font-black font-mono leading-none">+1 T. LIBRE</span>
-              <span className="text-[8px] sm:text-[10px] uppercase font-bold text-teal-100 mt-0.5">TL Anotado</span>
-            </div>
-            <span className="text-base sm:text-xl font-mono font-black opacity-90 leading-none">+1</span>
-          </button>
-
-          <button
-            onClick={() => handleInitiateAction('FTA')}
-            className="bg-[#181a22] hover:bg-neutral-800 active:bg-neutral-900 text-neutral-200 font-bold rounded-xl py-1.5 sm:py-2.5 px-2.5 sm:px-3 flex items-center justify-between border border-neutral-700 shadow-sm active:scale-95 transition min-h-[38px] sm:min-h-[44px]"
-          >
-            <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-base font-black font-mono leading-none">FALLO TL</span>
-              <span className="text-[8px] sm:text-[10px] uppercase text-neutral-400 mt-0.5">Errado</span>
-            </div>
-            <span className="text-[10px] sm:text-xs font-mono text-neutral-500 font-bold">1PA</span>
-          </button>
-        </div>
-
-        {/* SECTION B: REBOUNDS & GAMEPLAY (REBOTES, ASISTENCIAS, ROBOS, PÉRDIDAS, TAPONES) */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2 w-full pt-0.5 sm:pt-1">
-          {/* REBOTE DEFENSIVO */}
-          <button
-            onClick={() => handleInitiateAction('DREB')}
-            className="bg-blue-950/90 hover:bg-blue-900 active:bg-blue-950 text-blue-200 border border-blue-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
-            title="Rebote Defensivo"
-          >
-            <span className="text-xs sm:text-base font-black font-mono leading-none text-blue-100">REB DEF</span>
-            <span className="text-[8px] sm:text-xs uppercase text-blue-300 font-bold mt-0.5">Defensivo</span>
-          </button>
-
-          {/* REBOTE OFENSIVO */}
-          <button
-            onClick={() => handleInitiateAction('OREB')}
-            className="bg-indigo-950/90 hover:bg-indigo-900 active:bg-indigo-950 text-indigo-200 border border-indigo-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
-            title="Rebote Ofensivo"
-          >
-            <span className="text-xs sm:text-base font-black font-mono leading-none text-indigo-100">REB OF</span>
-            <span className="text-[8px] sm:text-xs uppercase text-indigo-300 font-bold mt-0.5">Ofensivo</span>
-          </button>
-
-          {/* ASISTENCIA */}
-          <button
-            onClick={() => handleInitiateAction('AST')}
-            className="bg-sky-950/90 hover:bg-sky-900 active:bg-sky-950 text-sky-200 border border-sky-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
-            title="Asistencia"
-          >
-            <span className="text-xs sm:text-base font-black font-mono leading-none text-sky-100">ASIST</span>
-            <span className="text-[8px] sm:text-xs uppercase text-sky-300 font-bold mt-0.5">Pase Gol</span>
-          </button>
-
-          {/* ROBO */}
-          <button
-            onClick={() => handleInitiateAction('STL')}
-            className="bg-emerald-950/90 hover:bg-emerald-900 active:bg-emerald-950 text-emerald-200 border border-emerald-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
-            title="Robo de balón"
-          >
-            <span className="text-xs sm:text-base font-black font-mono leading-none text-emerald-100">ROBO</span>
-            <span className="text-[8px] sm:text-xs uppercase text-emerald-300 font-bold mt-0.5">Recupera</span>
-          </button>
-
-          {/* PÉRDIDA */}
-          <button
-            onClick={() => handleInitiateAction('TO')}
-            className="bg-zinc-800/95 hover:bg-zinc-700 active:bg-zinc-800 text-zinc-100 border border-zinc-500 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
-            title="Pérdida de balón"
-          >
-            <span className="text-xs sm:text-base font-black font-mono leading-none text-zinc-100">PÉRDIDA</span>
-            <span className="text-[8px] sm:text-xs uppercase text-zinc-300 font-bold mt-0.5">Error</span>
-          </button>
-
-          {/* TAPÓN */}
-          <button
-            onClick={() => handleInitiateAction('BLK')}
-            className="bg-purple-950/90 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border border-purple-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[66px]"
-            title="Tapón"
-          >
-            <span className="text-xs sm:text-base font-black font-mono leading-none text-purple-100">TAPÓN</span>
-            <span className="text-[8px] sm:text-xs uppercase text-purple-300 font-bold mt-0.5">Bloqueo</span>
-          </button>
-        </div>
-
-        {/* SECTION C: FIBA FOULS (FALTAS CLASIFICADAS FIBA) */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2 w-full pt-0.5 sm:pt-1">
-          {/* FALTA PERSONAL (P) */}
-          <button
-            onClick={() => handleInitiateAction('PF')}
-            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border border-rose-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
-            title="Falta Personal simple (P)"
-          >
-            <span className="text-xs sm:text-sm font-black font-mono leading-none text-rose-100">FALTA (P)</span>
-            <span className="text-[8px] sm:text-xs uppercase text-rose-300 font-bold mt-0.5">Personal</span>
-          </button>
-
-          {/* FALTA TIRO (PFT) */}
-          <button
-            onClick={() => handleInitiateAction('PFT')}
-            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border border-rose-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
-            title="Falta con tiros concedidos (P1/2/3)"
-          >
-            <span className="text-xs sm:text-sm font-black font-mono leading-none text-rose-100">TIRO (PFT)</span>
-            <span className="text-[8px] sm:text-xs uppercase text-rose-300 font-bold mt-0.5">Con Tiros</span>
-          </button>
-
-          {/* FALTA EN ATAQUE (OF) */}
-          <button
-            onClick={() => handleInitiateAction('OF')}
-            className="bg-orange-950/95 hover:bg-orange-900 active:bg-orange-950 text-orange-200 border border-orange-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
-            title="Falta en Ataque sin tiros (O)"
-          >
-            <span className="text-xs sm:text-sm font-black font-mono leading-none text-orange-200">ATAQUE (O)</span>
-            <span className="text-[8px] sm:text-xs uppercase text-orange-300 font-bold mt-0.5">En Ataque</span>
-          </button>
-
-          {/* FALTA TÉCNICA / ANTIDEP */}
-          <button
-            onClick={() => handleInitiateAction('TF')}
-            className="bg-purple-950/95 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border border-purple-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
-            title="Falta Técnica o Antideportiva"
-          >
-            <span className="text-xs sm:text-sm font-black font-mono leading-none text-purple-200">TÉC / ANT</span>
-            <span className="text-[8px] sm:text-xs uppercase text-purple-300 font-bold mt-0.5">Especial</span>
-          </button>
-
-          {/* FALTA RECIBIDA (FD) */}
-          <button
-            onClick={() => handleInitiateAction('FD')}
-            className="bg-lime-950/95 hover:bg-lime-900 active:bg-lime-950 text-lime-100 border border-lime-600/80 font-black rounded-xl py-1.5 sm:py-3.5 px-1.5 sm:px-2 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[38px] sm:min-h-[64px]"
-            title="Falta Personal Recibida o Provocada (+1 Valoración)"
-          >
-            <span className="text-xs sm:text-sm font-black font-mono leading-none text-lime-200">RECIB (FD)</span>
-            <span className="text-[8px] sm:text-xs uppercase text-lime-300 font-bold mt-0.5">Provocada</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 7. BOTTOM BAR: RECENT PLAY & BIG UNDO BUTTON */}
-      <div className="bg-[#0c0d11] border-t border-neutral-800 px-2 sm:px-4 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] z-40 shrink-0">
-        <div className="max-w-3xl md:max-w-4xl mx-auto flex items-center justify-between gap-2">
-          {/* Recent Action Tag & Drawer Toggle */}
-          <div className="flex items-center gap-1.5 grow overflow-hidden">
-            <button
-              onClick={() => setShowHistoryDrawer(!showHistoryDrawer)}
-              className="p-1.5 bg-[#161820] text-neutral-300 border border-neutral-700/80 rounded-lg text-xs font-mono flex items-center gap-1 shrink-0 active:scale-95"
-              title="Ver o borrar últimas jugadas"
-            >
-              <History className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[10px] font-bold">({game.events.length})</span>
-            </button>
-
-            {recentEvent ? (
-              <div className="truncate text-xs font-mono text-neutral-300">
-                <span className="text-neutral-500 text-[10px]">Última:</span>{' '}
-                <strong className="text-amber-300 font-bold">
-                  {recentEvent.isOpponentAction
-                    ? recentEvent.actionLabel
-                    : `#${recentEvent.playerNumber} ${recentEvent.playerName?.split(' ')[0]} - ${recentEvent.actionLabel}`}
-                </strong>
-              </div>
-            ) : (
-              <div className="text-xs text-neutral-500 italic">Esperando jugada...</div>
-            )}
-          </div>
-
-          {/* BIG UNDO BUTTON */}
-          <button
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('undo', game.settings.vibrationEnabled);
-              onUndoLastAction();
-            }}
-            disabled={!recentEvent}
-            className="px-3 sm:px-3.5 py-1.5 sm:py-2 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
-          >
-            <Undo2 className="w-4 h-4" />
-            <span>DESHACER</span>
-          </button>
-        </div>
-
-        {/* History Drawer Modal Overlay */}
-        {showHistoryDrawer && (
-          <div className="bg-[#12141a] border-t border-neutral-800 p-2 mt-1.5 rounded-t-lg max-h-40 overflow-y-auto space-y-1 animate-in slide-in-from-bottom">
-            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-neutral-400 pb-1 border-b border-neutral-800">
-              <span>Últimas jugadas (pulsa icono para borrar):</span>
-              <button
-                onClick={() => setShowHistoryDrawer(false)}
-                className="text-neutral-400 hover:text-white px-1 font-mono"
-              >
-                ✕
-              </button>
-            </div>
-
-            {game.events.length === 0 ? (
-              <div className="text-xs text-neutral-600 italic py-2 text-center">
-                No hay jugadas registradas
-              </div>
-            ) : (
-              game.events.slice(0, 5).map(event => (
-                <div
-                  key={event.id}
-                  className="bg-[#181a22] p-1.5 rounded border border-neutral-800 flex items-center justify-between text-xs"
+          {/* RIGHT COLUMN: Vertically and Horizontally Centered Action Console */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center my-auto p-1 sm:p-2 overflow-hidden gap-1.5">
+            {/* Active player indicator */}
+            <div className="text-center font-mono text-xs text-neutral-300 pb-0.5 border-b border-neutral-800/60 flex items-center justify-between">
+              <span className="text-[10px] sm:text-xs uppercase font-bold text-neutral-400">
+                {selectedPlayer ? (
+                  <>
+                    Anotar para:{' '}
+                    <strong className="text-amber-400 font-black">
+                      #{selectedPlayer.number} {selectedPlayer.name}
+                    </strong>
+                  </>
+                ) : (
+                  'Toca una acción directa o elige jugador:'
+                )}
+              </span>
+              {selectedPlayer && (
+                <button
+                  onClick={() => onSelectPlayer('')}
+                  className="text-[10px] text-neutral-400 hover:text-white underline font-bold"
                 >
-                  <span className="text-neutral-300 truncate">
-                    {event.isOpponentAction
-                      ? event.actionLabel
-                      : `#${event.playerNumber} ${event.playerName?.split(' ')[0]} - ${event.actionLabel}`}
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (onDeleteEvent) {
-                        onDeleteEvent(event.id);
-                        playSound('click', game.settings.soundEnabled);
-                        triggerHaptic('medium', game.settings.vibrationEnabled);
-                      }
-                    }}
-                    className="p-1 bg-rose-950 text-rose-300 rounded border border-rose-800"
-                    title="Eliminar jugada"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))
+                  Deseleccionar ✕
+                </button>
+              )}
+            </div>
+
+            {assistPromptForEvent ? (
+              renderAssistPrompt()
+            ) : (
+              <CourtActionConsole
+                onInitiateAction={handleInitiateAction}
+                isLandscape={true}
+              />
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 8. MODAL / OVERLAY: ESCOGER JUGADOR TRAS MARCAR LA ACCIÓN */}
       {pendingAction && (

@@ -35,7 +35,7 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
-      <div className="bg-[#1A1D23] border border-gray-800 rounded-xl max-w-lg w-full p-3.5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#1A1D23] border border-gray-800 rounded-xl max-w-lg md:max-w-2xl lg:max-w-3xl w-full p-3.5 shadow-2xl space-y-3 max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-gray-800">
           <div className="flex items-center gap-2">
@@ -59,99 +59,102 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
           </button>
         </div>
 
-        {/* Step 1: Select Player Going OUT (En Pista) */}
-        <div>
-          <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-400 mb-1 flex items-center justify-between">
-            <span>1. Selecciona quién SALE (En Pista):</span>
-            <span className="text-gray-400">({playersOnCourt.length} en pista)</span>
-          </div>
-
-          <div className="grid grid-cols-5 gap-1">
-            {playersOnCourt.map(player => {
-              const isSelected = selectedOutId === player.id;
-              const stats = calculatePlayerStats(player, game.events);
-              const isFouledOut = stats.foulsPersonal >= game.settings.foulOutLimit;
-
-              return (
-                <button
-                  key={player.id}
-                  onClick={() => {
-                    playSound('click', game.settings.soundEnabled);
-                    triggerHaptic('light', game.settings.vibrationEnabled);
-                    setSelectedOutId(player.id);
-                  }}
-                  className={`p-1.5 rounded text-center border transition relative flex flex-col items-center justify-between ${
-                    isSelected
-                      ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/50 shadow-md text-rose-100'
-                      : isFouledOut
-                      ? 'bg-red-950/40 border-red-800 text-red-300'
-                      : 'bg-[#14161B] hover:bg-gray-800 border-gray-800 text-gray-200'
-                  }`}
-                >
-                  <span className="font-scoreboard text-lg font-black text-rose-400 leading-none">
-                    #{player.number}
-                  </span>
-                  <span className="text-[10px] font-semibold truncate w-full mt-0.5">
-                    {player.name.split(' ')[0]}
-                  </span>
-                  <span className="text-[9px] font-mono text-gray-400 mt-0.5">
-                    ⏱ {stats.minutesPlayedFormatted} | {stats.foulsPersonal}F
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Step 2: Select Player Coming IN (Del Banquillo) */}
-        <div>
-          <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 mb-1 flex items-center justify-between">
-            <span>2. Selecciona quién ENTRA (Banquillo):</span>
-            <span className="text-gray-400">({benchPlayers.length} suplentes)</span>
-          </div>
-
-          {benchPlayers.length === 0 ? (
-            <div className="p-2.5 bg-[#14161B] rounded border border-gray-800 text-center text-xs text-gray-500 font-mono">
-              No hay jugadores en el banquillo.
+        {/* Steps Container: Stacked on mobile, 2 columns on tablet landscape */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Step 1: Select Player Going OUT (En Pista) */}
+          <div className="flex flex-col justify-between">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-400 mb-1 flex items-center justify-between">
+              <span>1. Selecciona quién SALE (En Pista):</span>
+              <span className="text-gray-400">({playersOnCourt.length} en pista)</span>
             </div>
-          ) : (
-            <div className="grid grid-cols-5 gap-1 max-h-40 overflow-y-auto">
-              {benchPlayers.map(player => {
-                const isSelected = selectedInId === player.id;
+
+            <div className="grid grid-cols-5 gap-1">
+              {playersOnCourt.map(player => {
+                const isSelected = selectedOutId === player.id;
                 const stats = calculatePlayerStats(player, game.events);
                 const isFouledOut = stats.foulsPersonal >= game.settings.foulOutLimit;
 
                 return (
                   <button
                     key={player.id}
-                    disabled={isFouledOut}
                     onClick={() => {
                       playSound('click', game.settings.soundEnabled);
                       triggerHaptic('light', game.settings.vibrationEnabled);
-                      setSelectedInId(player.id);
+                      setSelectedOutId(player.id);
                     }}
                     className={`p-1.5 rounded text-center border transition relative flex flex-col items-center justify-between ${
                       isSelected
-                        ? 'bg-emerald-950/90 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md text-emerald-100'
+                        ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/50 shadow-md text-rose-100'
                         : isFouledOut
-                        ? 'bg-red-950/20 border-red-900/40 opacity-40 cursor-not-allowed'
+                        ? 'bg-red-950/40 border-red-800 text-red-300'
                         : 'bg-[#14161B] hover:bg-gray-800 border-gray-800 text-gray-200'
                     }`}
                   >
-                    <span className="font-scoreboard text-lg font-black text-emerald-400 leading-none">
+                    <span className="font-scoreboard text-lg font-black text-rose-400 leading-none">
                       #{player.number}
                     </span>
                     <span className="text-[10px] font-semibold truncate w-full mt-0.5">
                       {player.name.split(' ')[0]}
                     </span>
                     <span className="text-[9px] font-mono text-gray-400 mt-0.5">
-                      {isFouledOut ? 'EXPULSADO' : `⏱ ${stats.minutesPlayedFormatted} | ${stats.foulsPersonal}F`}
+                      ⏱ {stats.minutesPlayedFormatted} | {stats.foulsPersonal}F
                     </span>
                   </button>
                 );
               })}
             </div>
-          )}
+          </div>
+
+          {/* Step 2: Select Player Coming IN (Del Banquillo) */}
+          <div className="flex flex-col justify-between">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 mb-1 flex items-center justify-between">
+              <span>2. Selecciona quién ENTRA (Banquillo):</span>
+              <span className="text-gray-400">({benchPlayers.length} suplentes)</span>
+            </div>
+
+            {benchPlayers.length === 0 ? (
+              <div className="p-2.5 bg-[#14161B] rounded border border-gray-800 text-center text-xs text-gray-500 font-mono">
+                No hay jugadores en el banquillo.
+              </div>
+            ) : (
+              <div className="grid grid-cols-5 gap-1 max-h-44 overflow-y-auto">
+                {benchPlayers.map(player => {
+                  const isSelected = selectedInId === player.id;
+                  const stats = calculatePlayerStats(player, game.events);
+                  const isFouledOut = stats.foulsPersonal >= game.settings.foulOutLimit;
+
+                  return (
+                    <button
+                      key={player.id}
+                      disabled={isFouledOut}
+                      onClick={() => {
+                        playSound('click', game.settings.soundEnabled);
+                        triggerHaptic('light', game.settings.vibrationEnabled);
+                        setSelectedInId(player.id);
+                      }}
+                      className={`p-1.5 rounded text-center border transition relative flex flex-col items-center justify-between ${
+                        isSelected
+                          ? 'bg-emerald-950/90 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md text-emerald-100'
+                          : isFouledOut
+                          ? 'bg-red-950/20 border-red-900/40 opacity-40 cursor-not-allowed'
+                          : 'bg-[#14161B] hover:bg-gray-800 border-gray-800 text-gray-200'
+                      }`}
+                    >
+                      <span className="font-scoreboard text-lg font-black text-emerald-400 leading-none">
+                        #{player.number}
+                      </span>
+                      <span className="text-[10px] font-semibold truncate w-full mt-0.5">
+                        {player.name.split(' ')[0]}
+                      </span>
+                      <span className="text-[9px] font-mono text-gray-400 mt-0.5">
+                        {isFouledOut ? 'EXPULSADO' : `⏱ ${stats.minutesPlayedFormatted} | ${stats.foulsPersonal}F`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Pending substitution summary banner */}
