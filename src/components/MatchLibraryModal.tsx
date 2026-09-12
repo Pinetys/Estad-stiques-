@@ -10,6 +10,7 @@ import {
   getSavedGamesFromStorage,
   saveGamesToStorage,
   saveOrUpdateGameInLibrary,
+  syncMatchesFromCloud,
 } from '../utils/libraryUtils';
 import { sanitizeAndIsolateLibraryGames } from '../utils/teamIsolation';
 import { TeamLogoDisplay } from './TeamLogoPicker';
@@ -79,10 +80,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiFocus, setAiFocus] = useState<string>('Plan Integral de Mejora Táctica y Microciclo');
   const [copiedPlan, setCopiedPlan] = useState<boolean>(false);
+  const [isCloudRefreshing, setIsCloudRefreshing] = useState<boolean>(false);
 
   const fileImportRef = useRef<HTMLInputElement | null>(null);
 
-  // Load library from storage on mount (healing any cross-contaminated games)
+  // Load library from storage on mount (healing any cross-contaminated games) and sync from cloud
   useEffect(() => {
     const saved = getSavedGamesFromStorage();
     if (recordedTeams && recordedTeams.length > 0) {
@@ -96,11 +98,45 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       setLibrary(saved);
       setSeasonStats(calculateSeasonStats(saved));
     }
+
+    // Auto sync from cloud Firestore
+    syncMatchesFromCloud().then(cloudMatches => {
+      if (cloudMatches && cloudMatches.length > 0) {
+        if (recordedTeams && recordedTeams.length > 0) {
+          const { sanitized } = sanitizeAndIsolateLibraryGames(cloudMatches, recordedTeams);
+          setLibrary(sanitized);
+          setSeasonStats(calculateSeasonStats(sanitized));
+        } else {
+          setLibrary(cloudMatches);
+          setSeasonStats(calculateSeasonStats(cloudMatches));
+        }
+      }
+    }).catch(err => console.warn('Cloud sync error in modal:', err));
   }, [recordedTeams]);
 
   const refreshLibrary = (games: Game[]) => {
     setLibrary(games);
     setSeasonStats(calculateSeasonStats(games));
+  };
+
+  const handleRefreshFromCloud = async () => {
+    setIsCloudRefreshing(true);
+    playSound('click', currentGame.settings.soundEnabled);
+    try {
+      const cloudMatches = await syncMatchesFromCloud();
+      if (recordedTeams && recordedTeams.length > 0) {
+        const { sanitized } = sanitizeAndIsolateLibraryGames(cloudMatches, recordedTeams);
+        refreshLibrary(sanitized);
+      } else {
+        refreshLibrary(cloudMatches);
+      }
+      playSound('score', currentGame.settings.soundEnabled);
+      triggerHaptic('medium', currentGame.settings.vibrationEnabled);
+    } catch (err) {
+      console.warn('Manual cloud sync failed:', err);
+    } finally {
+      setIsCloudRefreshing(false);
+    }
   };
 
   const handleSaveCurrentMatch = () => {
@@ -418,6 +454,18 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
+                  {/* Sincronizar Nube */}
+                  <button
+                    type="button"
+                    onClick={handleRefreshFromCloud}
+                    disabled={isCloudRefreshing}
+                    className="p-1.5 px-2.5 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-800/60 rounded flex items-center gap-1 font-semibold transition active:scale-95"
+                    title="Actualizar y descargar partidos desde la nube Firestore"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isCloudRefreshing ? 'animate-spin' : ''}`} />
+                    <span>{isCloudRefreshing ? 'Sincronizando...' : 'Sincronizar Nube'}</span>
+                  </button>
+
                   {/* Vaciar Biblioteca */}
                   {library.length > 0 && (
                     <button

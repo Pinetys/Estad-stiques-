@@ -11,19 +11,6 @@ export function isDemoGame(game: Partial<Game>): boolean {
   if (!game) return true;
   if (game.id && DEMO_GAME_IDS.has(game.id)) return true;
   if (game.id && game.id.startsWith('game-sample-')) return true;
-  const title = (game.title || '').toLowerCase();
-  const away = (game.awayTeamName || '').toLowerCase();
-  if (title.includes('jornada 1 - liga regular') || away === 'cb leones') return true;
-  if (title.includes('jornada 2 - torneo de copa') || away === 'basket titanes') return true;
-  // Also filter out empty unplayed ghost matches (0 points, 0 events) that were saved without user play
-  if (
-    (!game.events || game.events.length === 0) &&
-    game.homeScore === 0 &&
-    game.awayScore === 0 &&
-    game.status !== 'finished'
-  ) {
-    return true;
-  }
   return false;
 }
 
@@ -113,25 +100,46 @@ export function clearAllGamesFromLibrary(): Game[] {
   return [];
 }
 
+export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
+  const cleanCloudMatches = cloudMatches.filter(m => {
+    if (isDemoGame(m)) {
+      deleteMatchFromCloud(m.id);
+      return false;
+    }
+    return true;
+  });
+
+  const localMatches = getSavedGamesFromStorage();
+  const mergedMap = new Map<string, Game>();
+  localMatches.forEach(m => mergedMap.set(m.id, m));
+  cleanCloudMatches.forEach(m => {
+    const existing = mergedMap.get(m.id);
+    // If existing local game exists, choose the one with later updatedAt or more events/score
+    if (existing) {
+      const cloudUpdated = m.updatedAt ? new Date(m.updatedAt).getTime() : 0;
+      const localUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      if (cloudUpdated >= localUpdated || (m.events?.length || 0) >= (existing.events?.length || 0)) {
+        mergedMap.set(m.id, m);
+      }
+    } else {
+      mergedMap.set(m.id, m);
+    }
+  });
+
+  const merged = Array.from(mergedMap.values()).filter(m => !isDemoGame(m));
+  try {
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(merged));
+  } catch (e) {
+    console.warn('Error persisting merged matches:', e);
+  }
+  return merged;
+}
+
 export async function syncMatchesFromCloud(): Promise<Game[]> {
   try {
     const cloudMatches = await fetchAllMatchesFromCloud();
-    const cleanCloudMatches = cloudMatches.filter(m => {
-      if (isDemoGame(m)) {
-        deleteMatchFromCloud(m.id);
-        return false;
-      }
-      return true;
-    });
-
-    if (cleanCloudMatches.length > 0) {
-      const localMatches = getSavedGamesFromStorage();
-      const mergedMap = new Map<string, Game>();
-      localMatches.forEach(m => mergedMap.set(m.id, m));
-      cleanCloudMatches.forEach(m => mergedMap.set(m.id, m));
-      const merged = Array.from(mergedMap.values()).filter(m => !isDemoGame(m));
-      localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(merged));
-      return merged;
+    if (cloudMatches.length > 0) {
+      return mergeCloudMatches(cloudMatches);
     }
   } catch (err) {
     console.warn('Sync matches from cloud failed:', err);

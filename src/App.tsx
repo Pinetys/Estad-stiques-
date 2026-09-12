@@ -30,7 +30,14 @@ import { OfficialMatchSheetModal } from './components/OfficialMatchSheetModal';
 import { GeneralAccumulatedStatsView } from './components/GeneralAccumulatedStatsView';
 import { TeamsHubView } from './components/TeamsHubView';
 import { TeamStatsReportModal } from './components/TeamStatsReportModal';
-import { saveGameToLibrary, saveOrUpdateGameInLibrary, syncMatchesFromCloud, getSavedGamesFromStorage, saveGamesToStorage } from './utils/libraryUtils';
+import {
+  saveGameToLibrary,
+  saveOrUpdateGameInLibrary,
+  syncMatchesFromCloud,
+  mergeCloudMatches,
+  getSavedGamesFromStorage,
+  saveGamesToStorage,
+} from './utils/libraryUtils';
 import { sanitizeAndIsolateLibraryGames } from './utils/teamIsolation';
 import {
   getRegisteredTeams,
@@ -39,7 +46,18 @@ import {
   setActiveTeamId,
   upsertTeamProfile,
   syncTeamsFromCloud,
+  mergeCloudTeams,
 } from './utils/teamStorage';
+import {
+  isFirebaseConfigured,
+  testFirebaseConnection,
+  subscribeToMatches,
+  subscribeToTeams,
+  subscribeToActiveMatchMetadata,
+  syncMatchToCloud,
+  updateActiveMatchMetadata,
+  ActiveMatchMetadata,
+} from './lib/firebase';
 import { useScreenWakeLock } from './utils/screenWakeLock';
 
 // Icons
@@ -65,6 +83,7 @@ import {
   Activity,
   ArrowLeft,
   Play,
+  X,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -209,17 +228,49 @@ export default function App() {
     };
   }, [game.isClockRunning, game.status]);
 
-  // Sync teams and matches from Firebase Cloud Firestore on initial mount
+  // Cloud Firestore Sync State (real-time sync between Tablet and Mobile)
+  const [cloudSyncState, setCloudSyncState] = useState<{
+    status: 'connected' | 'syncing' | 'offline' | 'error';
+    lastSyncTime?: Date;
+    errorMessage?: string;
+  }>({
+    status: isFirebaseConfigured ? 'syncing' : 'offline',
+  });
+  const [activeCloudMatchNotice, setActiveCloudMatchNotice] = useState<ActiveMatchMetadata | null>(null);
+
+  // Sync teams and matches from Firebase Cloud Firestore and subscribe to real-time changes
   useEffect(() => {
-    async function loadCloudData() {
+    let unsubMatches: (() => void) | undefined;
+    let unsubTeams: (() => void) | undefined;
+    let unsubActiveMatch: (() => void) | undefined;
+
+    async function initCloudSync() {
+      if (!isFirebaseConfigured) {
+        setCloudSyncState({ status: 'offline' });
+        return;
+      }
+
+      setCloudSyncState({ status: 'syncing' });
       try {
-        const cloudTeams = await syncTeamsFromCloud();
-        const currentTeams = cloudTeams.length > 0 ? cloudTeams : getRegisteredTeams();
+        const testRes = await testFirebaseConnection();
+        if (!testRes.connected) {
+          console.warn('Firebase test connection failed:', testRes.error);
+          setCloudSyncState({ status: 'error', errorMessage: testRes.error });
+        } else {
+          setCloudSyncState({ status: 'connected', lastSyncTime: new Date() });
+        }
+
+        // 1. Initial fetch & merge from cloud
+        const [cloudTeams, cloudMatches] = await Promise.all([
+          syncTeamsFromCloud(),
+          syncMatchesFromCloud(),
+        ]);
         if (cloudTeams.length > 0) setTeams(cloudTeams);
-        await syncMatchesFromCloud();
+        if (cloudMatches.length > 0) setLibraryGames(cloudMatches);
 
         // Sanitize any previously contaminated matches in storage
         const currentMatches = getSavedGamesFromStorage();
+        const currentTeams = getRegisteredTeams();
         if (currentMatches.length > 0 && currentTeams.length > 0) {
           const { sanitized, changed } = sanitizeAndIsolateLibraryGames(currentMatches, currentTeams);
           if (changed) {
@@ -227,12 +278,113 @@ export default function App() {
             setLibraryGames(sanitized);
           }
         }
-      } catch (err) {
+
+        // 2. Real-time listener for matches: instantly synchronizes actions recorded on tablet onto mobile
+        unsubMatches = subscribeToMatches(matches => {
+          if (matches && matches.length > 0) {
+            const merged = mergeCloudMatches(matches);
+            setLibraryGames(merged);
+            setCloudSyncState({ status: 'connected', lastSyncTime: new Date() });
+
+            // If the match currently being viewed has new events or scores from tablet, update state
+            setGame(currentGame => {
+              const remoteGame = matches.find(m => m.id === currentGame.id);
+              if (remoteGame) {
+                const remoteUpdated = remoteGame.updatedAt ? new Date(remoteGame.updatedAt).getTime() : 0;
+                const localUpdated = currentGame.updatedAt ? new Date(currentGame.updatedAt).getTime() : 0;
+                if (
+                  (remoteGame.events?.length || 0) > (currentGame.events?.length || 0) ||
+                  remoteUpdated > localUpdated
+                ) {
+                  return remoteGame;
+                }
+              }
+              return currentGame;
+            });
+          }
+        });
+
+        // 3. Real-time listener for teams: keeps roster and team metadata synchronized
+        unsubTeams = subscribeToTeams(teams => {
+          if (teams && teams.length > 0) {
+            const merged = mergeCloudTeams(teams);
+            setTeams(merged);
+          }
+        });
+
+        // 4. Real-time listener for active live match metadata: alerts mobile user when a game is in progress on tablet
+        unsubActiveMatch = subscribeToActiveMatchMetadata(meta => {
+          if (meta && meta.activeGameId && meta.status === 'live') {
+            setActiveCloudMatchNotice(meta);
+          } else {
+            setActiveCloudMatchNotice(null);
+          }
+        });
+      } catch (err: any) {
         console.warn('Initial cloud sync notice:', err);
+        setCloudSyncState({ status: 'error', errorMessage: err?.message || 'Error en conexión' });
       }
     }
-    loadCloudData();
+
+    initCloudSync();
+
+    return () => {
+      if (unsubMatches) unsubMatches();
+      if (unsubTeams) unsubTeams();
+      if (unsubActiveMatch) unsubActiveMatch();
+    };
   }, []);
+
+  const handleForceSyncCloud = async () => {
+    setCloudSyncState(prev => ({ ...prev, status: 'syncing' }));
+    try {
+      const conn = await testFirebaseConnection();
+      if (!conn.connected) {
+        setCloudSyncState({ status: 'error', errorMessage: conn.error || 'Sin conexión a Firebase' });
+        return;
+      }
+      const [cloudTeams, cloudMatches] = await Promise.all([
+        syncTeamsFromCloud(),
+        syncMatchesFromCloud(),
+      ]);
+      if (cloudTeams.length > 0) setTeams(cloudTeams);
+      if (cloudMatches.length > 0) setLibraryGames(cloudMatches);
+
+      // Also ensure current active game is pushed to cloud
+      if (game && game.id && (game.status === 'live' || game.events.length > 0)) {
+        await syncMatchToCloud(game);
+        await updateActiveMatchMetadata(game);
+      }
+
+      setCloudSyncState({
+        status: 'connected',
+        lastSyncTime: new Date(),
+      });
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+    } catch (err: any) {
+      setCloudSyncState({
+        status: 'error',
+        errorMessage: err?.message || 'Error en sincronización',
+      });
+    }
+  };
+
+  const handleLoadCloudGame = async (gameId: string) => {
+    playSound('click', game.settings.soundEnabled);
+    const allSaved = getSavedGamesFromStorage();
+    let target = allSaved.find(g => g.id === gameId);
+    if (!target) {
+      const synced = await syncMatchesFromCloud();
+      target = synced.find(g => g.id === gameId);
+    }
+    if (target) {
+      setGame(target);
+      setActiveTab('live');
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('heavy', game.settings.vibrationEnabled);
+    }
+  };
 
   // Modals
   const [showSubModal, setShowSubModal] = useState(false);
@@ -254,14 +406,17 @@ export default function App() {
     setShowTeamStatsReportModal(true);
   };
 
-  // Save to localStorage & Library
+  // Save to localStorage & Library & broadcast active match to cloud
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
-      // Only persist to library if the match has actually started or has events/score
-      if (game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
+      // Persist to library and sync if match is live or has events
+      if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
         saveGameToLibrary(game);
         setLibraryGames(getSavedGamesFromStorage());
+        if (game.status === 'live') {
+          updateActiveMatchMetadata(game).catch(() => {});
+        }
       }
     } catch {
       // Storage quota or private mode
@@ -1200,8 +1355,47 @@ export default function App() {
               </button>
             </nav>
 
-            {/* Right: Court Mode Button & Quick Actions Menu */}
+            {/* Right: Cloud Sync, Court Mode Button & Quick Actions Menu */}
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Quick Cloud Sync Badge & Trigger */}
+              <button
+                id="cloud-sync-status-btn"
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  handleForceSyncCloud();
+                }}
+                className={`px-2 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 ${
+                  cloudSyncState.status === 'connected'
+                    ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/50'
+                    : cloudSyncState.status === 'syncing'
+                    ? 'bg-amber-950/40 border-amber-500/30 text-amber-300 animate-pulse'
+                    : cloudSyncState.status === 'error'
+                    ? 'bg-rose-950/40 border-rose-500/30 text-rose-300 hover:bg-rose-900/50'
+                    : 'bg-neutral-900 border-gray-700 text-gray-400'
+                }`}
+                title={
+                  cloudSyncState.status === 'connected'
+                    ? '🟢 Sincronizado en tiempo real con Firestore (Toca para refrescar)'
+                    : cloudSyncState.status === 'syncing'
+                    ? '🟡 Sincronizando con la nube...'
+                    : cloudSyncState.status === 'error'
+                    ? `🔴 Error de sincronización: ${cloudSyncState.errorMessage || 'Sin conexión'}. Toca para reintentar.`
+                    : '⚪ Sincronización en la nube'
+                }
+              >
+                <Cloud className={`w-3.5 h-3.5 ${cloudSyncState.status === 'syncing' ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline text-[11px]">
+                  {cloudSyncState.status === 'connected'
+                    ? 'Nube OK'
+                    : cloudSyncState.status === 'syncing'
+                    ? 'Sincronizando'
+                    : cloudSyncState.status === 'error'
+                    ? 'Reintentar'
+                    : 'Nube'}
+                </span>
+              </button>
+
               <button
                 id="toggle-court-mode-btn"
                 onClick={toggleCourtMode}
@@ -1318,6 +1512,41 @@ export default function App() {
             </div>
           </header>
 
+          {/* Active Cloud Match Alert Banner (e.g. tablet is recording match) */}
+          {activeCloudMatchNotice && activeCloudMatchNotice.activeGameId !== game.id && activeCloudMatchNotice.status === 'live' && (
+            <div className="bg-gradient-to-r from-blue-950 via-[#131A29] to-blue-950 border-b border-blue-500/50 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs text-blue-200 sticky top-14 z-40 shadow-lg animate-in slide-in-from-top duration-300">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="flex h-2.5 w-2.5 relative shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
+                </span>
+                <span className="truncate">
+                  <strong className="text-white font-bold">Partido en directo en Tablet:</strong>{' '}
+                  {activeCloudMatchNotice.homeTeamName} {activeCloudMatchNotice.homeScore} - {activeCloudMatchNotice.awayScore} {activeCloudMatchNotice.awayTeamName}{' '}
+                  <span className="text-blue-400 font-mono font-bold">(Q{activeCloudMatchNotice.currentQuarter} • {formatGameTime(activeCloudMatchNotice.currentSecondsRemaining)})</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleLoadCloudGame(activeCloudMatchNotice.activeGameId)}
+                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition flex items-center gap-1.5 shadow active:scale-95"
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>Sincronizar en móvil</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCloudMatchNotice(null)}
+                  className="text-gray-400 hover:text-white p-1"
+                  title="Descartar aviso"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Main Scoreboard Header (only when in match) */}
           {activeTab !== 'teams' && (
             <ScoreHeader
@@ -1396,6 +1625,10 @@ export default function App() {
                 teams={teams}
                 activeTeamId={activeTeamId}
                 currentGame={game}
+                activeCloudMatch={activeCloudMatchNotice}
+                onLoadCloudGame={handleLoadCloudGame}
+                cloudSyncStatus={cloudSyncState}
+                onForceCloudSync={handleForceSyncCloud}
                 onSelectTeam={id => handleSelectTeam(id)}
                 onSaveTeam={handleSaveTeam}
                 onDeleteTeam={handleDeleteTeam}

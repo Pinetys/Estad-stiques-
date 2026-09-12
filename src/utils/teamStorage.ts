@@ -67,29 +67,36 @@ export function saveRegisteredTeams(teams: TeamProfile[]): void {
   }
 }
 
+export function mergeCloudTeams(cloudTeams: TeamProfile[]): TeamProfile[] {
+  const cleanCloudTeams = cloudTeams.filter(t => {
+    if (isDemoTeam(t)) {
+      deleteTeamFromCloud(t.id);
+      return false;
+    }
+    return true;
+  });
+
+  const localTeams = getRegisteredTeams();
+  const mergedMap = new Map<string, TeamProfile>();
+  localTeams.forEach(t => mergedMap.set(t.id, t));
+  cleanCloudTeams.forEach(t => mergedMap.set(t.id, t));
+  const merged = Array.from(mergedMap.values()).filter(t => !isDemoTeam(t));
+  try {
+    localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(merged));
+  } catch (err) {
+    console.warn('Error persisting merged teams:', err);
+  }
+  return merged;
+}
+
 /**
  * Fetch and merge teams from cloud Firestore (filtering out any demo teams)
  */
 export async function syncTeamsFromCloud(): Promise<TeamProfile[]> {
   try {
     const cloudTeams = await fetchAllTeamsFromCloud();
-    const cleanCloudTeams = cloudTeams.filter(t => {
-      if (isDemoTeam(t)) {
-        deleteTeamFromCloud(t.id);
-        return false;
-      }
-      return true;
-    });
-
-    if (cleanCloudTeams.length > 0) {
-      const localTeams = getRegisteredTeams();
-      // Merge by ID
-      const mergedMap = new Map<string, TeamProfile>();
-      localTeams.forEach(t => mergedMap.set(t.id, t));
-      cleanCloudTeams.forEach(t => mergedMap.set(t.id, t));
-      const merged = Array.from(mergedMap.values()).filter(t => !isDemoTeam(t));
-      localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(merged));
-      return merged;
+    if (cloudTeams.length > 0) {
+      return mergeCloudTeams(cloudTeams);
     }
   } catch (err) {
     console.warn('Sync from cloud failed:', err);

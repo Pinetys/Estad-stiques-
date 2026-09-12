@@ -1,8 +1,10 @@
 {
-  "collections": {
-    "teams": {
-      "description": "Registered basketball clubs/teams with rosters and branding",
-      "fields": {
+  "entities": {
+    "TeamProfile": {
+      "title": "TeamProfile",
+      "description": "Registered basketball club or team with roster and visual identity",
+      "type": "object",
+      "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "category": { "type": "string" },
@@ -11,11 +13,14 @@
         "logo": { "type": "string" },
         "roster": { "type": "array" },
         "updatedAt": { "type": "string" }
-      }
+      },
+      "required": ["id", "name"]
     },
-    "matches": {
-      "description": "Recorded games, play-by-play events and box scores",
-      "fields": {
+    "Game": {
+      "title": "Game",
+      "description": "Recorded match with box scores, play events and live state",
+      "type": "object",
+      "properties": {
         "id": { "type": "string" },
         "teamId": { "type": "string" },
         "title": { "type": "string" },
@@ -28,7 +33,35 @@
         "players": { "type": "array" },
         "status": { "type": "string" },
         "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "homeTeamName", "awayTeamName"]
+    },
+    "ActiveMatchMetadata": {
+      "title": "ActiveMatchMetadata",
+      "description": "Current active game pointer for multi-device synchronization",
+      "type": "object",
+      "properties": {
+        "activeGameId": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "homeTeamName": { "type": "string" },
+        "awayTeamName": { "type": "string" },
+        "homeScore": { "type": "number" },
+        "awayScore": { "type": "number" }
       }
+    }
+  },
+  "firestore": {
+    "/teams/{teamId}": {
+      "schema": "TeamProfile",
+      "description": "Teams and clubs collection"
+    },
+    "/matches/{matchId}": {
+      "schema": "Game",
+      "description": "Recorded and live matches collection"
+    },
+    "/metadata/{docId}": {
+      "schema": "ActiveMatchMetadata",
+      "description": "System and sync metadata documents"
     }
   }
 }

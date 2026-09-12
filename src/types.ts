@@ -158,6 +158,7 @@ export interface Game {
   shotClockSeconds?: number; // 24 o 14 segundos
   isShotClockRunning?: boolean;
   status: 'setup' | 'live' | 'finished';
+  updatedAt?: string;
   settings: GameSettings;
   players: Player[];
   events: PlayEvent[];

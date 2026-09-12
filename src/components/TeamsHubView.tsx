@@ -4,6 +4,7 @@ import { playSound } from '../utils/soundHaptics';
 import { getTeamMatches } from '../utils/teamStorage';
 import { formatGameTime } from '../utils/statsCalculator';
 import { TeamLogoDisplay } from './TeamLogoPicker';
+import { ActiveMatchMetadata } from '../lib/firebase';
 import {
   Shield,
   Plus,
@@ -15,17 +16,21 @@ import {
   Search,
   ArrowRight,
   Filter,
+  Cloud,
+  RefreshCw,
 } from 'lucide-react';
 
 interface TeamsHubViewProps {
   teams: TeamProfile[];
   activeTeamId: string;
   currentGame: Game;
+  activeCloudMatch?: ActiveMatchMetadata | null;
   onSelectTeam: (teamId: string) => void;
   onSaveTeam: (team: TeamProfile) => void;
   onDeleteTeam: (teamId: string) => void;
   onCreateMatchForTeam: (team: TeamProfile) => void;
   onResumeGame: () => void;
+  onLoadCloudGame?: (gameId: string) => void;
   onOpenCourtMode: () => void;
   onOpenRosterModal: (team: TeamProfile) => void;
   onOpenStatsForCategory: (category: string, teamId?: string) => void;
@@ -33,6 +38,8 @@ interface TeamsHubViewProps {
   onOpenLibrary: () => void;
   onOpenCloudBackup: () => void;
   onOpenTeamEditor: (team: TeamProfile | null) => void;
+  cloudSyncStatus?: { status: 'connected' | 'syncing' | 'offline' | 'error'; lastSyncTime?: Date; errorMessage?: string };
+  onForceCloudSync?: () => void;
   soundEnabled?: boolean;
 }
 
@@ -40,13 +47,17 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   teams,
   activeTeamId,
   currentGame,
+  activeCloudMatch,
   onSelectTeam,
   onDeleteTeam,
   onCreateMatchForTeam,
   onResumeGame,
+  onLoadCloudGame,
   onOpenRosterModal,
   onOpenTeamStatsReport,
   onOpenTeamEditor,
+  cloudSyncStatus,
+  onForceCloudSync,
   soundEnabled = true,
 }) => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
@@ -133,20 +144,91 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
           </p>
         </div>
 
-        {/* Primary Action Button */}
-        <button
-          id="hub-create-team-btn"
-          type="button"
-          onClick={() => {
-            playSound('click', soundEnabled);
-            onOpenTeamEditor(null);
-          }}
-          className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-orange-600/20 transition active:scale-95 shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nuevo Equipo / Categoría</span>
-        </button>
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
+          {cloudSyncStatus && (
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', soundEnabled);
+                onForceCloudSync?.();
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 border transition active:scale-95 ${
+                cloudSyncStatus.status === 'connected'
+                  ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/50'
+                  : cloudSyncStatus.status === 'syncing'
+                  ? 'bg-amber-950/40 border-amber-500/30 text-amber-300 animate-pulse'
+                  : cloudSyncStatus.status === 'error'
+                  ? 'bg-rose-950/40 border-rose-500/30 text-rose-300 hover:bg-rose-900/50'
+                  : 'bg-neutral-900 border-gray-800 text-gray-400'
+              }`}
+              title="Sincronización en la nube (Firestore). Toca para forzar sincronización ahora."
+            >
+              <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus.status === 'syncing' ? 'animate-spin' : ''}`} />
+              <span>
+                {cloudSyncStatus.status === 'connected'
+                  ? 'Nube Sincronizada'
+                  : cloudSyncStatus.status === 'syncing'
+                  ? 'Sincronizando...'
+                  : cloudSyncStatus.status === 'error'
+                  ? 'Reintentar Nube'
+                  : 'Nube'}
+              </span>
+            </button>
+          )}
+
+          <button
+            id="hub-create-team-btn"
+            type="button"
+            onClick={() => {
+              playSound('click', soundEnabled);
+              onOpenTeamEditor(null);
+            }}
+            className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-orange-600/20 transition active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nuevo Equipo</span>
+          </button>
+        </div>
       </div>
+
+      {/* Cross-Device Live Match Banner (Detected from Tablet or other device) */}
+      {activeCloudMatch && activeCloudMatch.activeGameId !== currentGame.id && activeCloudMatch.status === 'live' && (
+        <div className="bg-gradient-to-r from-blue-950/80 via-[#131A29] to-[#0e1420] border border-blue-500/60 rounded-xl px-4 py-3.5 shadow-xl flex items-center justify-between gap-3 flex-wrap animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-mono font-bold bg-blue-600/30 text-blue-300 border border-blue-500/40 px-2 py-0.5 rounded">
+                  PARTIDO EN TABLET / NUBE DETECTADO
+                </span>
+                <span className="text-xs font-bold text-white">
+                  {activeCloudMatch.homeTeamName} {activeCloudMatch.homeScore} - {activeCloudMatch.awayScore} {activeCloudMatch.awayTeamName}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-gray-300">
+                Cuarto {activeCloudMatch.currentQuarter} • {formatGameTime(activeCloudMatch.currentSecondsRemaining)}
+                {activeCloudMatch.category ? ` • ${activeCloudMatch.category}` : ''}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click', soundEnabled);
+              onLoadCloudGame?.(activeCloudMatch.activeGameId);
+            }}
+            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95"
+          >
+            <Cloud className="w-3.5 h-3.5" />
+            <span>Cargar y Sincronizar en Móvil</span>
+          </button>
+        </div>
+      )}
 
       {/* 2. Compact Match In Progress Banner (if active) */}
       {isMatchInProgress && (
