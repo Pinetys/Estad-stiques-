@@ -27,6 +27,9 @@ import {
   Moon,
   Target,
   Zap,
+  Edit,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
 import { StartingFiveModal } from './StartingFiveModal';
@@ -103,7 +106,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [matchClosedSuccess, setMatchClosedSuccess] = useState(false);
   const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
+  const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
   const isLandscapeTablet = useIsLandscapeTablet();
+
+  const isGameFinished = game.status === 'finished';
+  const isActionsLocked = isGameFinished && !isEditingFinishedGame;
 
   // Bonus Situations Assistant (FIBA 5+ fouls rule)
   const [bonusFreeThrowPrompt, setBonusFreeThrowPrompt] = useState<{
@@ -122,6 +129,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const shotClockSecs = game.shotClockSeconds !== undefined ? game.shotClockSeconds : 24;
 
   const handleResetShotClock = (secs: 24 | 14) => {
+    if (isGameFinished) return;
     triggerHaptic('medium', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
     onUpdateGame(prev => ({
@@ -132,6 +140,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   };
 
   const handleToggleShotClock = () => {
+    if (isGameFinished) return;
     triggerHaptic('light', game.settings.vibrationEnabled);
     onUpdateGame(prev => ({
       ...prev,
@@ -189,6 +198,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   // Toggle clock play/pause
   const toggleClock = () => {
+    if (isGameFinished) return;
     triggerHaptic('medium', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
     onUpdateGame(prev => ({
@@ -200,6 +210,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   // Adjust game seconds
   const adjustSeconds = (delta: number) => {
+    if (isGameFinished) return;
     triggerHaptic('light', game.settings.vibrationEnabled);
     onUpdateGame(prev => {
       const maxSecs = prev.settings.quarterDurationMinutes * 60;
@@ -213,6 +224,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   // Quarter navigation
   const handleChangeQuarter = (delta: number) => {
+    if (isGameFinished) return;
     triggerHaptic('medium', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
     onUpdateGame(prev => {
