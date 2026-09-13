@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Game, GameSettings, PlayEvent, Player, StatActionType, TeamProfile, PendingShot } from './types';
 import {
   DEFAULT_ROSTER,
@@ -229,6 +229,9 @@ export default function App() {
   }, [game.isClockRunning, game.status]);
 
   // Cloud Firestore Sync State (real-time sync between Tablet and Mobile)
+  const isRemoteSyncInProgressRef = useRef(false);
+  const lastSyncedHashRef = useRef('');
+
   const [cloudSyncState, setCloudSyncState] = useState<{
     status: 'connected' | 'syncing' | 'offline' | 'error';
     lastSyncTime?: Date;
@@ -266,7 +269,34 @@ export default function App() {
           syncMatchesFromCloud(),
         ]);
         if (cloudTeams.length > 0) setTeams(cloudTeams);
-        if (cloudMatches.length > 0) setLibraryGames(cloudMatches);
+        if (cloudMatches.length > 0) {
+          setLibraryGames(cloudMatches);
+
+          // If current local game on mobile is empty/unplayed (0 points, 0 events, setup),
+          // auto-load the active or most recent match recorded from the tablet!
+          setGame(currentGame => {
+            const isUntouchedLocal =
+              currentGame.events.length === 0 &&
+              currentGame.homeScore === 0 &&
+              currentGame.awayScore === 0 &&
+              !currentGame.isClockRunning &&
+              currentGame.status === 'setup';
+
+            if (isUntouchedLocal) {
+              const activeMatch = cloudMatches.find(
+                m => m.status === 'live' && (m.events.length > 0 || m.homeScore > 0 || m.awayScore > 0)
+              ) || cloudMatches.find(
+                m => m.events && m.events.length > 0
+              );
+
+              if (activeMatch) {
+                isRemoteSyncInProgressRef.current = true;
+                return activeMatch;
+              }
+            }
+            return currentGame;
+          });
+        }
 
         // Sanitize any previously contaminated matches in storage
         const currentMatches = getSavedGamesFromStorage();
@@ -296,6 +326,7 @@ export default function App() {
                   (remoteGame.events?.length || 0) > (currentGame.events?.length || 0) ||
                   remoteUpdated > localUpdated
                 ) {
+                  isRemoteSyncInProgressRef.current = true;
                   return remoteGame;
                 }
               }
@@ -379,6 +410,7 @@ export default function App() {
       target = synced.find(g => g.id === gameId);
     }
     if (target) {
+      isRemoteSyncInProgressRef.current = true;
       setGame(target);
       setActiveTab('live');
       playSound('score', game.settings.soundEnabled);
@@ -410,12 +442,23 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
+
+      // Skip pushing back to cloud if this update originated from remote cloud listener
+      if (isRemoteSyncInProgressRef.current) {
+        isRemoteSyncInProgressRef.current = false;
+        return;
+      }
+
       // Persist to library and sync if match is live or has events
       if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
         saveGameToLibrary(game);
         setLibraryGames(getSavedGamesFromStorage());
-        if (game.status === 'live') {
-          updateActiveMatchMetadata(game).catch(() => {});
+
+        // Create fingerprint to avoid spamming Firestore every 1 second of clock countdown
+        const currentDataHash = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events.length}_${game.currentQuarter}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.status}_${game.isClockRunning}`;
+        if (currentDataHash !== lastSyncedHashRef.current) {
+          lastSyncedHashRef.current = currentDataHash;
+          syncMatchToCloud(game).catch(() => {});
         }
       }
     } catch {

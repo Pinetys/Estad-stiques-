@@ -42,7 +42,6 @@ export function saveGamesToStorage(games: Game[]): void {
     const cleanGames = games.filter(g => !isDemoGame(g));
     localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(cleanGames));
     localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
-    cleanGames.forEach(g => syncMatchToCloud(g));
   } catch (e) {
     console.error('Error saving games library to storage:', e);
   }

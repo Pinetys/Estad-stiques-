@@ -11,15 +11,11 @@ import {
 const TEAMS_STORAGE_KEY = 'basketstats_registered_teams_v2';
 const ACTIVE_TEAM_ID_KEY = 'basketstats_active_team_id_v2';
 
-export const DEMO_TEAM_IDS = new Set(['team-cb-triunfo', 'team-cb-cadete', 'team-basket-fem']);
-export const DEMO_TEAM_NAMES = new Set(['cb triunfo', 'cb triunfo cadete', 'cb triunfo femenino']);
+export const DEMO_TEAM_IDS = new Set(['demo-sample-team-99']);
 
 export function isDemoTeam(team: Partial<TeamProfile>): boolean {
-  if (!team) return false;
-  if (team.id && DEMO_TEAM_IDS.has(team.id)) return true;
-  const name = team.name?.toLowerCase().trim();
-  if (name && DEMO_TEAM_NAMES.has(name)) return true;
-  return false;
+  if (!team || !team.id) return false;
+  return DEMO_TEAM_IDS.has(team.id);
 }
 
 export const DEFAULT_INITIAL_TEAMS: TeamProfile[] = [];

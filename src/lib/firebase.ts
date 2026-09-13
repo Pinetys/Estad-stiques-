@@ -78,16 +78,25 @@ export async function testFirebaseConnection(): Promise<{ connected: boolean; er
 }
 
 /**
+ * Utility to strip undefined values so Firestore never rejects the write
+ */
+function cleanForFirestore<T>(data: T): any {
+  if (data === undefined) return null;
+  return JSON.parse(JSON.stringify(data));
+}
+
+/**
  * Cloud Firestore Team operations
  */
 export async function syncTeamToCloud(team: TeamProfile): Promise<boolean> {
   if (!isFirebaseConfigured || !team || !team.id) return false;
   try {
     const docRef = doc(db, 'teams', team.id);
-    await setDoc(docRef, {
+    const sanitized = cleanForFirestore({
       ...team,
       updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitized, { merge: true });
     return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `teams/${team.id}`);
@@ -164,10 +173,11 @@ export async function syncMatchToCloud(game: Game): Promise<boolean> {
   if (!isFirebaseConfigured || !game || !game.id) return false;
   try {
     const docRef = doc(db, 'matches', game.id);
-    await setDoc(docRef, {
+    const sanitized = cleanForFirestore({
       ...game,
       updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitized, { merge: true });
 
     // Also update active match pointer in cloud if game is currently in session
     if (game.status === 'live') {
@@ -197,14 +207,19 @@ export async function fetchAllMatchesFromCloud(): Promise<Game[]> {
   if (!isFirebaseConfigured) return [];
   try {
     const colRef = collection(db, 'matches');
-    const q = query(colRef, orderBy('date', 'desc'));
-    const snap = await getDocs(q);
+    const snap = await getDocs(colRef);
     const matches: Game[] = [];
     snap.forEach(docSnap => {
       const data = docSnap.data() as Game;
       if (data && data.id) {
         matches.push(data);
       }
+    });
+    // Sort in memory safely by updatedAt or date
+    matches.sort((a, b) => {
+      const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return timeB - timeA;
     });
     return matches;
   } catch (err) {
@@ -267,18 +282,19 @@ export async function updateActiveMatchMetadata(game: Game): Promise<void> {
     const docRef = doc(db, 'metadata', 'active_match');
     const meta: ActiveMatchMetadata = {
       activeGameId: game.id,
-      title: game.title,
-      category: game.category,
-      homeTeamName: game.homeTeamName,
-      awayTeamName: game.awayTeamName,
-      homeScore: game.homeScore,
-      awayScore: game.awayScore,
-      currentQuarter: game.currentQuarter,
-      currentSecondsRemaining: game.currentSecondsRemaining,
-      status: game.status,
+      title: game.title || 'Partido en Directo',
+      category: game.category || '',
+      homeTeamName: game.homeTeamName || 'Local',
+      awayTeamName: game.awayTeamName || 'Visitante',
+      homeScore: game.homeScore ?? 0,
+      awayScore: game.awayScore ?? 0,
+      currentQuarter: game.currentQuarter ?? 1,
+      currentSecondsRemaining: game.currentSecondsRemaining ?? 600,
+      status: game.status || 'live',
       updatedAt: new Date().toISOString(),
     };
-    await setDoc(docRef, meta, { merge: true });
+    const sanitized = cleanForFirestore(meta);
+    await setDoc(docRef, sanitized, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, 'metadata/active_match');
   }
