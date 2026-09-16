@@ -113,12 +113,32 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
   localMatches.forEach(m => mergedMap.set(m.id, m));
   cleanCloudMatches.forEach(m => {
     const existing = mergedMap.get(m.id);
-    // If existing local game exists, choose the one with later updatedAt or more events/score
+    // Protect games against data regression: Never replace a game that has more events/data with an empty or fewer-events game!
     if (existing) {
-      const cloudUpdated = m.updatedAt ? new Date(m.updatedAt).getTime() : 0;
-      const localUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
-      if (cloudUpdated >= localUpdated || (m.events?.length || 0) >= (existing.events?.length || 0)) {
+      const localEvents = existing.events?.length || 0;
+      const cloudEvents = m.events?.length || 0;
+      if (localEvents > cloudEvents) {
+        // Keep local version with richer events
+        mergedMap.set(m.id, existing);
+      } else if (cloudEvents > localEvents) {
         mergedMap.set(m.id, m);
+      } else {
+        // Equal event count: pick one with higher score or later timestamp
+        const localScore = (existing.homeScore || 0) + (existing.awayScore || 0);
+        const cloudScore = (m.homeScore || 0) + (m.awayScore || 0);
+        if (cloudScore > localScore) {
+          mergedMap.set(m.id, m);
+        } else if (localScore > cloudScore) {
+          mergedMap.set(m.id, existing);
+        } else {
+          const cloudUpdated = m.updatedAt ? new Date(m.updatedAt).getTime() : 0;
+          const localUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+          if (cloudUpdated >= localUpdated) {
+            mergedMap.set(m.id, m);
+          } else {
+            mergedMap.set(m.id, existing);
+          }
+        }
       }
     } else {
       mergedMap.set(m.id, m);

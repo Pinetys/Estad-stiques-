@@ -193,13 +193,13 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </div>
           </button>
 
-          {/* Shot Clock Controls (24s / 14s & countdown) */}
-          <div className={`flex items-center gap-1 bg-[#171922] border border-neutral-800 rounded-xl p-1 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+          {/* Shot Clock Controls (24s / 14s & high-visibility display) */}
+          <div className={`flex items-center gap-1.5 bg-[#171922] border border-neutral-800 rounded-xl p-1 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               onClick={() => handleResetShotClock(24)}
               disabled={isActionsLocked}
-              className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-sm disabled:opacity-40"
+              className="px-2.5 py-1 bg-amber-950/90 hover:bg-amber-800 text-amber-200 border border-amber-500/70 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-md disabled:opacity-40"
               title="Reiniciar posesión a 24s"
             >
               24s
@@ -208,7 +208,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={() => handleResetShotClock(14)}
               disabled={isActionsLocked}
-              className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-sm disabled:opacity-40"
+              className="px-2.5 py-1 bg-amber-950/90 hover:bg-amber-800 text-amber-200 border border-amber-500/70 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-md disabled:opacity-40"
               title="Reiniciar posesión a 14s (Rebote ofensivo / Falta pista delantera)"
             >
               14s
@@ -217,16 +217,17 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={handleToggleShotClock}
               disabled={isActionsLocked}
-              className={`px-2 py-1 rounded-lg text-xs font-black font-mono border transition active:scale-95 shadow-sm disabled:opacity-40 ${
+              className={`px-3 py-1 rounded-lg font-scoreboard font-black text-sm lg:text-base border transition active:scale-95 shadow-md flex items-center gap-1 disabled:opacity-40 ${
                 shotClockSecs <= 5
-                  ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
+                  ? 'bg-red-950 text-red-200 border-red-500 animate-pulse ring-1 ring-red-500'
                   : (game.isShotClockRunning ?? true)
-                  ? 'bg-black text-amber-400 border-amber-500/60'
+                  ? 'bg-black text-amber-300 border-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
                   : 'bg-neutral-900 text-neutral-400 border-neutral-700'
               }`}
               title="Pausar o Reanudar posesión"
             >
-              {game.status === 'finished' ? 0 : shotClockSecs}s
+              <span className="text-[9px] font-mono text-neutral-400 font-bold">POS</span>
+              <span>{game.status === 'finished' ? 0 : shotClockSecs}″</span>
             </button>
           </div>
 
@@ -278,13 +279,13 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </div>
           </div>
 
-          {/* Opponent Quick Scoring Buttons */}
-          <div className={`flex items-center gap-1 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+          {/* Opponent Quick Scoring Buttons (Thumb-Friendly, Highly Clickable) */}
+          <div className={`flex items-center gap-1.5 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_1P')}
               disabled={isActionsLocked}
-              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
+              className="min-h-[36px] px-2.5 py-1.5 bg-sky-950/90 hover:bg-sky-900 active:bg-sky-800 text-sky-100 border border-sky-600/70 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
               title="+1 Tiro Libre Rival"
             >
               +1 TL
@@ -293,19 +294,19 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={() => onLogOpponentAction('OPP_2P')}
               disabled={isActionsLocked}
-              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
+              className="min-h-[36px] px-3 py-1.5 bg-sky-900 hover:bg-sky-800 active:bg-sky-700 text-white border border-sky-400/80 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
               title="+2 Canasta Rival"
             >
-              +2 2P
+              +2 Canasta
             </button>
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_3P')}
               disabled={isActionsLocked}
-              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
+              className="min-h-[36px] px-3 py-1.5 bg-blue-900 hover:bg-blue-800 active:bg-blue-700 text-white border border-blue-400/80 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
               title="+3 Triple Rival"
             >
-              +3 3P
+              +3 Triple
             </button>
             <button
               type="button"
@@ -317,7 +318,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 }
               }}
               disabled={isActionsLocked}
-              className="px-1.5 py-1 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
+              className="min-h-[36px] px-3 py-1.5 bg-rose-950/90 hover:bg-rose-900 active:bg-rose-800 text-rose-100 border border-rose-500/80 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
               title="+Falta cometida por el Rival"
             >
               +Falta
@@ -326,10 +327,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={onOpenScoutingDorsal}
               disabled={isActionsLocked}
-              className="px-1.5 py-1 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded-lg text-[10px] font-bold disabled:opacity-40"
+              className="min-h-[36px] px-2 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 rounded-xl text-xs font-mono font-bold disabled:opacity-40"
               title="Anotar rival indicando dorsal"
             >
-              #
+              # Dorsal
             </button>
           </div>
 

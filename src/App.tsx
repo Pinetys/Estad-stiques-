@@ -30,6 +30,9 @@ import { OfficialMatchSheetModal } from './components/OfficialMatchSheetModal';
 import { GeneralAccumulatedStatsView } from './components/GeneralAccumulatedStatsView';
 import { TeamsHubView } from './components/TeamsHubView';
 import { TeamStatsReportModal } from './components/TeamStatsReportModal';
+import { AccessManagementModal } from './components/AccessManagementModal';
+import { EmergencyRecoveryModal } from './components/EmergencyRecoveryModal';
+import { detectAndInitUserRole, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
   saveOrUpdateGameInLibrary,
@@ -84,6 +87,7 @@ import {
   ArrowLeft,
   Play,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -178,6 +182,10 @@ export default function App() {
   const [activeTeamId, setActiveTeamIdState] = useState<string>(() => getActiveTeamId());
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showCloudBackupModal, setShowCloudBackupModal] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [showAccessModal, setShowAccessModal] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => detectAndInitUserRole());
+  const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
 
   // Central Game Clock & Automatic Player Minutes on Court Tracking Engine
   useEffect(() => {
@@ -531,6 +539,12 @@ export default function App() {
     actionType: StatActionType,
     assistedByPlayerId?: string
   ) => {
+    // When match is finished and not in edit mode, registration is locked
+    if (game.status === 'finished' && !isEditingFinishedGame) {
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      return;
+    }
+
     const actionDef = ACTION_DEFINITIONS[actionType];
     const pointsToAdd = actionDef ? actionDef.points : 0;
     const isFoul = actionDef?.category === 'fouls';
@@ -607,6 +621,7 @@ export default function App() {
 
   // Attach Assist to the Most Recent Scoring Event
   const handleAttachAssistToLastEvent = (assistantId: string) => {
+    if (game.status === 'finished' && !isEditingFinishedGame) return;
     setGame(prev => {
       if (prev.events.length === 0) return prev;
       const lastEvent = prev.events[0];
@@ -632,6 +647,12 @@ export default function App() {
 
   // Direct manual score adjustment (+1, +2, +3, -1) synced with player stats
   const handleAdjustScore = (team: 'home' | 'away', delta: number, customPlayerId?: string) => {
+    // When match is finished and not in edit mode, registration is locked
+    if (game.status === 'finished' && !isEditingFinishedGame) {
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      return;
+    }
+
     playSound('click', game.settings.soundEnabled);
     triggerHaptic('light', game.settings.vibrationEnabled);
 
@@ -775,6 +796,12 @@ export default function App() {
     actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL',
     opponentPlayerNumber?: number
   ) => {
+    // When match is finished and not in edit mode, registration is locked
+    if (game.status === 'finished' && !isEditingFinishedGame) {
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      return;
+    }
+
     playSound('click', game.settings.soundEnabled);
     triggerHaptic('light', game.settings.vibrationEnabled);
 
@@ -1439,6 +1466,23 @@ export default function App() {
                 </span>
               </button>
 
+              {/* Multi-Device Access Management Button */}
+              <button
+                id="access-control-btn"
+                onClick={() => setShowAccessModal(true)}
+                className={`px-2 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shrink-0 ${
+                  currentUserRole === 'admin'
+                    ? 'bg-amber-950/60 border-amber-500/60 text-amber-300 hover:bg-amber-900/80'
+                    : 'bg-blue-950/60 border-blue-500/60 text-blue-300 hover:bg-blue-900/80'
+                }`}
+                title="Gestión de Acceso a otros dispositivos (PIN y roles: Administrador o Mesa)"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">
+                  {currentUserRole === 'admin' ? 'Admin' : 'Mesa'}
+                </span>
+              </button>
+
               <button
                 id="toggle-court-mode-btn"
                 onClick={toggleCourtMode}
@@ -1509,6 +1553,28 @@ export default function App() {
                       >
                         <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />
                         <span>Sincronizar en la Nube</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowAccessModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-amber-300 text-xs font-semibold text-left transition"
+                      >
+                        <Shield className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>Acceso Otros Dispositivos (PIN)</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowRecoveryModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-rose-300 text-xs font-semibold text-left transition"
+                      >
+                        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                        <span>Recuperar Partido (Brafa / Bóveda)</span>
                       </button>
 
                       <button
@@ -1603,6 +1669,8 @@ export default function App() {
               onSelectPlayer={setSelectedPlayerId}
               onOpenShotChart={() => setShowShotChart(true)}
               onOpenOfficialSheet={() => setShowOfficialSheet(true)}
+              isEditingFinishedGame={isEditingFinishedGame}
+              onToggleEditFinishedGame={() => setIsEditingFinishedGame(prev => !prev)}
             />
           )}
 
@@ -1981,6 +2049,7 @@ export default function App() {
           activeTeamId={activeTeamId}
           onSelectTeam={handleSelectTeam}
           onClose={() => setShowLibraryModal(false)}
+          onOpenRecoveryModal={() => setShowRecoveryModal(true)}
           onLoadGame={loadedGame => {
             setGame(loadedGame);
             setShowLibraryModal(false);
@@ -2055,6 +2124,32 @@ export default function App() {
             return isCurrentInStorage ? storageGames : [game, ...storageGames];
           })()}
           soundEnabled={game.settings.soundEnabled}
+        />
+      )}
+
+      {/* Access Management Modal (Multi-Device & Roles: Admin vs Mesa) */}
+      {showAccessModal && (
+        <AccessManagementModal
+          currentRole={currentUserRole}
+          onRoleChange={role => {
+            setCurrentUserRole(role);
+          }}
+          onClose={() => setShowAccessModal(false)}
+        />
+      )}
+
+      {/* Emergency Match Recovery Modal (e.g. Brafa vs Horta / Vault scan) */}
+      {showRecoveryModal && (
+        <EmergencyRecoveryModal
+          currentGame={game}
+          onClose={() => setShowRecoveryModal(false)}
+          onRestoreGame={restoredGame => {
+            setGame(restoredGame);
+            saveGameToLibrary(restoredGame);
+            setLibraryGames(getSavedGamesFromStorage());
+            setActiveTab('live');
+            setShowRecoveryModal(false);
+          }}
         />
       )}
     </div>

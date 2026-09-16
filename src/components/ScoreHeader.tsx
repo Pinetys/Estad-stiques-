@@ -20,6 +20,10 @@ import {
   Crosshair,
   FileText,
   Timer,
+  Edit3,
+  Lock,
+  CheckCircle2,
+  Save,
 } from 'lucide-react';
 
 interface ScoreHeaderProps {
@@ -33,6 +37,8 @@ interface ScoreHeaderProps {
   onSelectPlayer?: (playerId: string) => void;
   onOpenShotChart?: () => void;
   onOpenOfficialSheet?: () => void;
+  isEditingFinishedGame?: boolean;
+  onToggleEditFinishedGame?: () => void;
 }
 
 export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
@@ -46,18 +52,24 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onSelectPlayer,
   onOpenShotChart,
   onOpenOfficialSheet,
+  isEditingFinishedGame = false,
+  onToggleEditFinishedGame,
 }) => {
   const [showClockAdjust, setShowClockAdjust] = useState(false);
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
   const [editingLogoTeam, setEditingLogoTeam] = useState<'home' | 'away' | null>(null);
+  const [showCloseMatchModal, setShowCloseMatchModal] = useState(false);
 
   // Opponent player number scouting modal
   const [scoutingOppAction, setScoutingOppAction] = useState<'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL' | null>(null);
   const [opponentNumberInput, setOpponentNumberInput] = useState<string>('');
 
-  const shotClockSecs = game.shotClockSeconds !== undefined ? game.shotClockSeconds : 24;
+  const isGameFinished = game.status === 'finished';
+  const isActionsLocked = isGameFinished && !isEditingFinishedGame;
+  const shotClockSecs = isGameFinished ? 0 : (game.shotClockSeconds !== undefined ? game.shotClockSeconds : 24);
 
   const handleResetShotClock = (secs: 24 | 14) => {
+    if (isActionsLocked) return;
     triggerHaptic('medium', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
     onUpdateGame(prev => ({
@@ -68,6 +80,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   };
 
   const handleToggleShotClock = () => {
+    if (isActionsLocked) return;
     triggerHaptic('light', game.settings.vibrationEnabled);
     onUpdateGame(prev => ({
       ...prev,
@@ -76,6 +89,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   };
 
   const handleConfirmOpponentScout = (numberVal?: number) => {
+    if (isActionsLocked) return;
     if (scoutingOppAction && onLogOpponentAction) {
       onLogOpponentAction(scoutingOppAction, numberVal);
     }
@@ -84,6 +98,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   };
 
   const toggleClock = () => {
+    if (isActionsLocked) return;
     triggerHaptic('light', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
     onUpdateGame(prev => ({
@@ -91,6 +106,21 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
       isClockRunning: !prev.isClockRunning,
       status: prev.status === 'setup' ? 'live' : prev.status,
     }));
+  };
+
+  const handleCloseMatch = () => {
+    playSound('buzzer', game.settings.soundEnabled);
+    triggerHaptic('heavy', game.settings.vibrationEnabled);
+    onUpdateGame(prev => ({
+      ...prev,
+      status: 'finished',
+      isClockRunning: false,
+      isShotClockRunning: false,
+      currentSecondsRemaining: 0,
+      shotClockSeconds: 0,
+      updatedAt: new Date().toISOString(),
+    }));
+    setShowCloseMatchModal(false);
   };
 
   const adjustSeconds = (delta: number) => {
@@ -245,12 +275,15 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
           {/* Clock & Shot Clock controls */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-wrap">
-            {/* Game Clock */}
+            {/* Game Clock (Total Game Clock) */}
             <button
               id="toggle-clock-btn"
               onClick={toggleClock}
+              disabled={isActionsLocked}
               className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg font-mono font-black text-sm sm:text-lg md:text-xl border transition active:scale-95 shadow-md ${
-                game.isClockRunning
+                isGameFinished
+                  ? 'bg-black border-neutral-700 text-neutral-400'
+                  : game.isClockRunning
                   ? isCourtMode
                     ? 'bg-neutral-900 border-emerald-500/80 text-emerald-300 ring-1 ring-emerald-500/30'
                     : 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-sm'
@@ -258,21 +291,27 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                   ? 'bg-black border-amber-500/60 text-amber-300'
                   : 'bg-black/60 border-orange-500/50 text-orange-400'
               }`}
+              title={isActionsLocked ? 'Partido cerrado (00:00). Pulsa Editar para retocar datos' : 'Pausar o Reanudar tiempo'}
             >
-              {game.isClockRunning ? (
+              {isGameFinished ? (
+                <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-500" />
+              ) : game.isClockRunning ? (
                 <Pause className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 fill-emerald-400 ${isCourtMode ? '' : 'animate-pulse'}`} />
               ) : (
                 <Play className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-orange-400 fill-orange-400'}`} />
               )}
-              <span className="tracking-widest">{formatGameTime(game.currentSecondsRemaining)}</span>
+              <span className="tracking-widest">
+                {isGameFinished ? '00:00' : formatGameTime(game.currentSecondsRemaining)}
+              </span>
             </button>
 
-            {/* Shot Clock (24s / 14s) Widget */}
-            <div className="flex items-center gap-0.5 bg-[#0C0E12] border border-gray-800 rounded p-0.5 font-mono">
+            {/* Shot Clock (24s / 14s) Widget (Optimized & High Visibility) */}
+            <div className={`flex items-center gap-0.5 bg-[#0C0E12] border border-gray-800 rounded p-0.5 font-mono ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
               <button
                 type="button"
                 onClick={() => handleResetShotClock(24)}
-                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                disabled={isActionsLocked}
+                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95 disabled:opacity-40"
                 title="Reiniciar a 24s"
               >
                 24s
@@ -280,7 +319,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               <button
                 type="button"
                 onClick={() => handleResetShotClock(14)}
-                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95"
+                disabled={isActionsLocked}
+                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95 disabled:opacity-40"
                 title="Reiniciar a 14s (Rebote Ofensivo / Falta pista delantera)"
               >
                 14s
@@ -288,27 +328,68 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               <button
                 type="button"
                 onClick={handleToggleShotClock}
-                className={`px-1.5 py-0.5 rounded text-[11px] font-black border transition ${
-                  shotClockSecs <= 5
-                    ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
-                    : game.isShotClockRunning ?? true
-                    ? 'bg-black text-amber-400 border-amber-500/40'
+                disabled={isActionsLocked}
+                className={`px-2 py-0.5 rounded text-xs font-black border transition font-scoreboard ${
+                  shotClockSecs <= 5 && !isGameFinished
+                    ? 'bg-red-950 text-red-200 border-red-500 animate-pulse'
+                    : (game.isShotClockRunning ?? true) && !isGameFinished
+                    ? 'bg-black text-amber-300 border-amber-500/60 shadow-[0_0_8px_rgba(245,158,11,0.25)]'
                     : 'bg-neutral-800 text-neutral-400 border-neutral-700'
                 }`}
                 title="Pausar / Reanudar 24s"
               >
-                {shotClockSecs}s
+                {isGameFinished ? 0 : shotClockSecs}″
               </button>
             </div>
 
-            <button
-              id="clock-adjust-toggle"
-              onClick={() => setShowClockAdjust(!showClockAdjust)}
-              className="p-1 rounded bg-[#14161B] hover:bg-gray-800 text-gray-400 hover:text-gray-200 text-xs border border-gray-700 font-mono font-bold"
-              title="Ajustar tiempo exacto"
-            >
-              ±
-            </button>
+            {/* Fine adjustment button */}
+            {!isGameFinished && (
+              <button
+                id="clock-adjust-toggle"
+                onClick={() => setShowClockAdjust(!showClockAdjust)}
+                className="p-1 rounded bg-[#14161B] hover:bg-gray-800 text-gray-400 hover:text-gray-200 text-xs border border-gray-700 font-mono font-bold"
+                title="Ajustar tiempo exacto"
+              >
+                ±
+              </button>
+            )}
+
+            {/* Match Close & Edit Buttons */}
+            {isGameFinished ? (
+              <button
+                type="button"
+                onClick={onToggleEditFinishedGame}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-mono font-black flex items-center gap-1.5 shadow-md active:scale-95 transition ${
+                  isEditingFinishedGame
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white'
+                }`}
+                title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar y retocar datos del partido'}
+              >
+                {isEditingFinishedGame ? (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Bloquear Partido</span>
+                  </>
+                ) : (
+                  <>
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar Datos</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowCloseMatchModal(true)}
+                className="px-2 py-1 bg-neutral-900 hover:bg-rose-950 text-neutral-300 hover:text-rose-200 border border-neutral-700 hover:border-rose-700 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+                title="Cerrar partido: pone el reloj a cero y bloquea el registro"
+              >
+                <CheckCircle2 className="w-3 h-3 text-rose-400" />
+                <span className="hidden sm:inline">Cerrar Partido</span>
+                <span className="sm:hidden">Cerrar</span>
+              </button>
+            )}
           </div>
 
           {/* Quick Tools & Bonus Alert Badges */}
@@ -559,6 +640,102 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Closed Match Locked Banner */}
+        {isGameFinished && !isEditingFinishedGame && (
+          <div className="mt-2 bg-neutral-900/95 border border-neutral-700/80 rounded-xl px-3 py-2 text-xs text-neutral-300 flex items-center justify-between gap-2 shadow-lg">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                <strong>Partido cerrado (00:00).</strong> El marcador y el reloj están congelados a cero y el registro está bloqueado.
+              </span>
+            </div>
+            {onToggleEditFinishedGame && (
+              <button
+                type="button"
+                onClick={onToggleEditFinishedGame}
+                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold font-mono text-xs flex items-center gap-1.5 shrink-0 shadow transition active:scale-95"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Editar Datos</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Closed Match In Edit Mode Alert Banner */}
+        {isGameFinished && isEditingFinishedGame && (
+          <div className="mt-2 bg-amber-950/90 border border-amber-500/80 rounded-xl px-3 py-2 text-xs text-amber-200 flex items-center justify-between gap-2 shadow-lg animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Edit3 className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                <strong>Modo Edición Activado:</strong> Puedes retocar puntos, faltas y estadísticas del partido cerrado. Pulsa Bloquear al terminar.
+              </span>
+            </div>
+            {onToggleEditFinishedGame && (
+              <button
+                type="button"
+                onClick={onToggleEditFinishedGame}
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold font-mono text-xs flex items-center gap-1.5 shrink-0 shadow transition active:scale-95"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Bloquear Partido</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Close Match Confirmation Modal */}
+        {showCloseMatchModal && (
+          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-[#14161B] border border-red-500/60 rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
+              <div className="flex items-center gap-3 border-b border-gray-800 pb-3">
+                <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-500/60 flex items-center justify-center text-red-400 font-bold shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-wide">
+                    ¿Cerrar y Finalizar Partido?
+                  </h3>
+                  <p className="text-xs text-gray-400">
+                    El reloj se pondrá a 00:00 y los datos quedarán protegidos
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-black/60 rounded-xl p-3 border border-gray-800 text-xs text-gray-300 space-y-2">
+                <p>
+                  Al cerrar el partido:
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-gray-400">
+                  <li>El marcador de tiempo se congelará a <strong className="text-amber-400 font-mono">00:00</strong>.</li>
+                  <li>El reloj de posesión se pondrá a <strong className="text-amber-400 font-mono">0s</strong>.</li>
+                  <li>No se podrán registrar nuevos datos por error.</li>
+                  <li>Podrás pulsar el botón <strong className="text-amber-400 font-mono">Editar</strong> en cualquier momento para retocar cualquier dato.</li>
+                </ul>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCloseMatchModal(false)}
+                  className="py-2.5 px-3 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold rounded-xl text-xs uppercase tracking-wider transition active:scale-95"
+                >
+                  Seguir Jugando
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCloseMatch}
+                  className="py-2.5 px-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-red-950"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Cerrar y Congelar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Logo Picker Modal */}
         {editingLogoTeam && (

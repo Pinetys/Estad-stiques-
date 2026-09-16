@@ -55,6 +55,7 @@ interface MatchLibraryModalProps {
   onLoadGame: (game: Game) => void;
   onClose: () => void;
   onDeleteGame?: (deletedGameId: string) => void;
+  onOpenRecoveryModal?: () => void;
 }
 
 export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
@@ -65,6 +66,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   onLoadGame,
   onClose,
   onDeleteGame,
+  onOpenRecoveryModal,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'matches' | 'seasonStats' | 'aiPlan'>('matches');
   const [library, setLibrary] = useState<Game[]>([]);
@@ -465,6 +467,19 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                     <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isCloudRefreshing ? 'animate-spin' : ''}`} />
                     <span>{isCloudRefreshing ? 'Sincronizando...' : 'Sincronizar Nube'}</span>
                   </button>
+
+                  {/* Recuperación de Emergencia / Bóveda */}
+                  {onOpenRecoveryModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenRecoveryModal}
+                      className="p-1.5 px-2.5 bg-amber-950/60 hover:bg-amber-900 text-amber-300 border border-amber-600/70 rounded flex items-center gap-1 font-semibold transition shadow-sm active:scale-95"
+                      title="Escanear y recuperar partidos guardados localmente o en la bóveda (ej. Brafa vs Horta)"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Recuperar Partido (Bóveda)</span>
+                    </button>
+                  )}
 
                   {/* Vaciar Biblioteca */}
                   {library.length > 0 && (
