@@ -85,6 +85,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 }) => {
   // Direct In-Game Substitution handler
   const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
+    if (isActionsLocked) return;
     if (onPerformSubstitution) {
       onPerformSubstitution(playerOutId, playerInId);
     } else {
@@ -148,7 +149,23 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     }));
   };
 
+  const handleLogOpponentActionGuarded = (
+    actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL',
+    opponentPlayerNumber?: number
+  ) => {
+    if (isActionsLocked) {
+      playSound('error', game.settings.soundEnabled);
+      return;
+    }
+    onLogOpponentAction(actionType, opponentPlayerNumber);
+  };
+
   const handleConfirmOpponentScout = (dorsal?: number) => {
+    if (isActionsLocked) {
+      setScoutingOppAction(null);
+      setOpponentNumberInput('');
+      return;
+    }
     if (scoutingOppAction) {
       onLogOpponentAction(scoutingOppAction, dorsal);
     }
@@ -242,6 +259,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   // Unified Action Execution with differentiated audio and tactile feedback
   const executeActionForPlayer = (player: Player, actionType: StatActionType) => {
+    if (isActionsLocked) return;
     const actionDef = ACTION_DEFINITIONS[actionType];
     if (!actionDef) return;
 
@@ -343,6 +361,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   // 1. STEP 1: USER PRESSES ACTION BUTTON -> PROMPT FOR PLAYER
   const handleInitiateAction = (actionType: StatActionType) => {
+    if (isActionsLocked) {
+      playSound('error', game.settings.soundEnabled);
+      return;
+    }
     playSound('click', game.settings.soundEnabled);
     triggerHaptic('light', game.settings.vibrationEnabled);
     setPendingAction(actionType);
@@ -638,12 +660,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           {/* BIG UNDO BUTTON */}
           <button
             onClick={() => {
+              if (isActionsLocked) return;
               playSound('click', game.settings.soundEnabled);
               triggerHaptic('undo', game.settings.vibrationEnabled);
               onUndoLastAction();
             }}
-            disabled={!recentEvent}
+            disabled={isActionsLocked || !recentEvent}
             className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
+            title={isActionsLocked ? 'Partido bloqueado (Activa Modo Edición para retocar)' : 'Deshacer última acción'}
           >
             <Undo2 className="w-4 h-4" />
             <span>DESHACER</span>
@@ -680,14 +704,16 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   </span>
                   <button
                     onClick={() => {
+                      if (isActionsLocked) return;
                       if (onDeleteEvent) {
                         onDeleteEvent(event.id);
                         playSound('click', game.settings.soundEnabled);
                         triggerHaptic('medium', game.settings.vibrationEnabled);
                       }
                     }}
-                    className="p-1 bg-rose-950 text-rose-300 rounded border border-rose-800"
-                    title="Eliminar jugada"
+                    disabled={isActionsLocked}
+                    className="p-1 bg-rose-950 text-rose-300 rounded border border-rose-800 disabled:opacity-30 disabled:pointer-events-none"
+                    title={isActionsLocked ? 'Desbloquea en modo edición para borrar' : 'Eliminar jugada'}
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -712,13 +738,24 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           bonusLimit={bonusLimit}
           isWakeLockActive={isWakeLockActive}
           currentShotMode={currentShotMode}
+          isActionsLocked={isActionsLocked}
+          isEditingFinishedGame={isEditingFinishedGame}
+          onToggleEditFinishedGame={() => {
+            playSound('click', game.settings.soundEnabled);
+            triggerHaptic('medium', game.settings.vibrationEnabled);
+            setIsEditingFinishedGame(prev => !prev);
+          }}
           toggleClock={toggleClock}
           adjustSeconds={adjustSeconds}
           handleResetShotClock={handleResetShotClock}
           handleToggleShotClock={handleToggleShotClock}
-          onLogOpponentAction={onLogOpponentAction}
-          onOpenScoutingDorsal={() => setScoutingOppAction('OPP_2P')}
+          onLogOpponentAction={handleLogOpponentActionGuarded}
+          onOpenScoutingDorsal={() => {
+            if (isActionsLocked) return;
+            setScoutingOppAction('OPP_2P');
+          }}
           onTriggerOpponentFoulBonus={(count) => {
+            if (isActionsLocked) return;
             triggerHaptic('bonus', game.settings.vibrationEnabled);
             setBonusFreeThrowPrompt({ team: 'away', count });
           }}
@@ -733,6 +770,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           }}
           onCycleShotMode={handleCycleShotMode}
           onSelectQuarter={(quarter) => {
+            if (isActionsLocked) return;
             triggerHaptic('medium', game.settings.vibrationEnabled);
             playSound('click', game.settings.soundEnabled);
             onUpdateGame(prev => ({
@@ -762,7 +800,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           <div className="flex items-center bg-[#14161d] rounded border border-neutral-800 p-0.5 font-mono text-[11px] font-bold">
             <button
               onClick={() => handleChangeQuarter(-1)}
-              disabled={game.currentQuarter <= 1}
+              disabled={isActionsLocked || game.currentQuarter <= 1}
               className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20"
               title="Cuarto anterior"
             >
@@ -773,7 +811,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </span>
             <button
               onClick={() => handleChangeQuarter(1)}
-              disabled={game.currentQuarter >= 6}
+              disabled={isActionsLocked || game.currentQuarter >= 6}
               className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20"
               title="Siguiente cuarto"
             >
@@ -813,7 +851,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </button>
         </div>
 
-        {/* Quick Tools: Carta de Tiro, Acta PDF & Cerrar Partido */}
+        {/* Quick Tools: Carta de Tiro, Acta PDF & Cerrar Partido / Editar */}
         <div className="flex items-center gap-1">
           {onOpenShotChart && (
             <div className="flex items-center gap-0.5">
@@ -853,19 +891,50 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <span>Acta</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('medium', game.settings.vibrationEnabled);
-              setShowCloseConfirmModal(true);
-            }}
-            className="p-1 px-2 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-            title="Finalizar y cerrar el partido ahora (guardar en biblioteca)"
-          >
-            <Flag className="w-3 h-3 text-red-400" />
-            <span className="uppercase">Cerrar Partido</span>
-          </button>
+
+          {/* Close Match / Edit button in portrait */}
+          {game.status === 'finished' ? (
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('medium', game.settings.vibrationEnabled);
+                setIsEditingFinishedGame(prev => !prev);
+              }}
+              className={`p-1 px-2.5 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm ${
+                isEditingFinishedGame
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
+                  : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
+              }`}
+              title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
+            >
+              {isEditingFinishedGame ? (
+                <>
+                  <Lock className="w-3 h-3 text-white" />
+                  <span className="uppercase">Finalizar Edición</span>
+                </>
+              ) : (
+                <>
+                  <Edit className="w-3 h-3 text-black" />
+                  <span className="uppercase">Editar</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('medium', game.settings.vibrationEnabled);
+                setShowCloseConfirmModal(true);
+              }}
+              className="p-1 px-2 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+              title="Finalizar y cerrar el partido ahora (guardar en biblioteca)"
+            >
+              <Flag className="w-3 h-3 text-red-400" />
+              <span className="uppercase">Cerrar Partido</span>
+            </button>
+          )}
         </div>
       </div>
       )}
@@ -879,17 +948,73 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           shotClockSecs={shotClockSecs}
           bonusLimit={bonusLimit}
           compact={false}
+          isActionsLocked={isActionsLocked}
+          isEditingFinishedGame={isEditingFinishedGame}
           toggleClock={toggleClock}
           adjustSeconds={adjustSeconds}
           handleResetShotClock={handleResetShotClock}
           handleToggleShotClock={handleToggleShotClock}
-          onLogOpponentAction={onLogOpponentAction}
-          onOpenScoutingDorsal={() => setScoutingOppAction('OPP_2P')}
+          onLogOpponentAction={handleLogOpponentActionGuarded}
+          onOpenScoutingDorsal={() => {
+            if (isActionsLocked) return;
+            setScoutingOppAction('OPP_2P');
+          }}
           onTriggerOpponentFoulBonus={(count) => {
+            if (isActionsLocked) return;
             triggerHaptic('bonus', game.settings.vibrationEnabled);
             setBonusFreeThrowPrompt({ team: 'away', count });
           }}
         />
+      )}
+
+      {/* LOCKED OR EDITING BANNER NOTIFICATION (PORTRAIT) */}
+      {!isLandscapeTablet && isActionsLocked && (
+        <div className="bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-y border-amber-600/60 text-amber-200 px-3 py-1.5 flex items-center justify-between text-xs font-mono shrink-0 shadow-lg animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="flex flex-col">
+              <span className="font-black text-amber-300">PARTIDO CERRADO · RELOJ 00:00</span>
+              <span className="text-[10px] text-amber-200/80 font-sans">Registro de datos bloqueado</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('medium', game.settings.vibrationEnabled);
+              setIsEditingFinishedGame(true);
+            }}
+            className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-black font-black rounded-lg text-xs flex items-center gap-1.5 shadow active:scale-95 transition"
+          >
+            <Edit className="w-3.5 h-3.5" />
+            <span>EDITAR</span>
+          </button>
+        </div>
+      )}
+
+      {!isLandscapeTablet && isGameFinished && isEditingFinishedGame && (
+        <div className="bg-gradient-to-r from-emerald-950/95 via-emerald-900/90 to-emerald-950/95 border-y border-emerald-500/60 text-emerald-200 px-3 py-1.5 flex items-center justify-between text-xs font-mono shrink-0 shadow-lg animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Unlock className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
+            <div className="flex flex-col">
+              <span className="font-black text-emerald-300">MODO EDICIÓN ACTIVO</span>
+              <span className="text-[10px] text-emerald-200/80 font-sans">Puedes retocar acciones o deshacer eventos</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('medium', game.settings.vibrationEnabled);
+              setIsEditingFinishedGame(false);
+              saveGameToLibrary(game);
+            }}
+            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-black font-black rounded-lg text-xs flex items-center gap-1.5 shadow active:scale-95 transition"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>BLOQUEAR</span>
+          </button>
+        </div>
       )}
 
       {/* 3. TOAST FEEDBACK */}
@@ -921,7 +1046,9 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 5. MAIN ACTION BUTTONS CONSOLE (PORTRAIT ONLY) */}
       {!isLandscapeTablet && (
-        <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 sm:px-4 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly gap-1.5 sm:gap-2 py-1">
+        <div className={`max-w-3xl md:max-w-4xl mx-auto w-full px-2 sm:px-4 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly gap-1.5 sm:gap-2 py-1 transition-opacity duration-200 ${
+          isActionsLocked ? 'opacity-35 pointer-events-none' : ''
+        }`}>
           <CourtActionConsole
             onInitiateAction={handleInitiateAction}
             isLandscape={false}
@@ -943,10 +1070,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               benchPlayers={benchPlayers}
               selectedPlayerId={selectedPlayerId}
               isPreGame={isPreGame}
-              onSelectPlayer={onSelectPlayer}
+              onSelectPlayer={(id) => {
+                if (isActionsLocked) return;
+                onSelectPlayer(id);
+              }}
               onPerformSubstitution={handlePerformDirectSub}
-              onOpenSubstitutionModal={onOpenSubstitutionModal}
-              onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
+              onOpenSubstitutionModal={() => {
+                if (isActionsLocked) return;
+                onOpenSubstitutionModal();
+              }}
+              onOpenStartingFiveModal={() => {
+                if (isActionsLocked) return;
+                setShowStartingFiveModal(true);
+              }}
             />
           </div>
 
@@ -982,7 +1118,9 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </div>
 
             {/* Centered Large Tactile Action Console */}
-            <div className="flex-1 min-h-0 flex flex-col justify-center my-auto overflow-y-auto overscroll-contain py-1">
+            <div className={`flex-1 min-h-0 flex flex-col justify-center my-auto overflow-y-auto overscroll-contain py-1 transition-opacity duration-200 ${
+              isActionsLocked ? 'opacity-35 pointer-events-none' : ''
+            }`}>
               <CourtActionConsole
                 onInitiateAction={handleInitiateAction}
                 isLandscape={true}
@@ -1256,12 +1394,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   playSound('buzzer', game.settings.soundEnabled);
                   triggerHaptic('heavy', game.settings.vibrationEnabled);
 
-                  // Update game state to finished
+                  // Update game state to finished with clock at zero
                   const finishedGame: Game = {
                     ...game,
                     status: 'finished',
                     isClockRunning: false,
                     isShotClockRunning: false,
+                    currentSecondsRemaining: 0,
+                    shotClockSeconds: 0,
                   };
 
                   onUpdateGame(() => finishedGame);
@@ -1269,15 +1409,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   saveGameToLibrary(finishedGame);
 
                   setShowCloseConfirmModal(false);
+                  setIsEditingFinishedGame(false);
                   setMatchClosedSuccess(true);
                   setTimeout(() => {
                     setMatchClosedSuccess(false);
-                    if (onCloseMatch) {
-                      onCloseMatch();
-                    } else {
-                      onToggleCourtMode();
-                    }
-                  }, 1200);
+                  }, 3500);
                 }}
                 className="py-3 px-3 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-red-950"
               >
@@ -1291,9 +1427,12 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* MATCH CLOSED SUCCESS TOAST */}
       {matchClosedSuccess && (
-        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-mono font-black text-sm px-5 py-3 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-5 h-5 text-white" />
-          <span>¡Partido finalizado y guardado en la Biblioteca!</span>
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-emerald-700 text-white font-mono font-bold text-xs sm:text-sm px-5 py-3 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-center gap-2.5 animate-in fade-in max-w-[90vw]">
+          <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
+          <div className="flex flex-col text-left">
+            <span className="font-black text-white">¡Partido cerrado con éxito! Marcador a 00:00 y datos bloqueados.</span>
+            <span className="text-[11px] text-emerald-100 font-sans">Pulsa el botón "EDITAR" en cualquier momento para retocar las estadísticas.</span>
+          </div>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Game } from '../types';
 import { formatGameTime } from '../utils/statsCalculator';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Lock } from 'lucide-react';
 
 interface CourtScoreboardProps {
   game: Game;
@@ -10,6 +10,8 @@ interface CourtScoreboardProps {
   shotClockSecs: number;
   bonusLimit: number;
   compact?: boolean;
+  isActionsLocked?: boolean;
+  isEditingFinishedGame?: boolean;
   toggleClock: () => void;
   adjustSeconds: (delta: number) => void;
   handleResetShotClock: (seconds: 24 | 14) => void;
@@ -26,6 +28,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
   shotClockSecs,
   bonusLimit,
   compact = false,
+  isActionsLocked = false,
+  isEditingFinishedGame = false,
   toggleClock,
   adjustSeconds,
   handleResetShotClock,
@@ -73,17 +77,22 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           {/* Big Clock Play/Pause Button */}
           <button
             onClick={toggleClock}
+            disabled={isActionsLocked}
             className={`w-full ${
               compact ? 'py-1 px-1.5 rounded-xl' : 'py-1 sm:py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl'
             } border flex flex-col items-center justify-center transition active:scale-95 shadow-xl ${
-              game.isClockRunning
+              isActionsLocked
+                ? 'bg-[#121318] border-neutral-800 text-neutral-400 cursor-not-allowed opacity-90'
+                : game.isClockRunning
                 ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
                 : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
             }`}
-            title="Iniciar / Pausar tiempo de partido"
+            title={game.status === 'finished' ? 'Partido finalizado (00:00)' : 'Iniciar / Pausar tiempo de partido'}
           >
             <div className="flex items-center justify-center gap-1 sm:gap-2">
-              {game.isClockRunning ? (
+              {game.status === 'finished' ? (
+                <Lock className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+              ) : game.isClockRunning ? (
                 <Pause className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
               ) : (
                 <Play className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-400 fill-amber-400 shrink-0" />
@@ -93,11 +102,21 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
                   compact ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-4xl md:text-5xl'
                 } tracking-widest leading-none drop-shadow-md`}
               >
-                {formatGameTime(game.currentSecondsRemaining)}
+                {formatGameTime(game.status === 'finished' ? 0 : game.currentSecondsRemaining)}
               </span>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
-              {game.isClockRunning ? (
+              {game.status === 'finished' ? (
+                isEditingFinishedGame ? (
+                  <span className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-mono font-black text-amber-400 uppercase tracking-widest">
+                    MODO EDICIÓN
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-mono font-black text-red-400 uppercase tracking-widest">
+                    FINALIZADO (00:00)
+                  </span>
+                )
+              ) : game.isClockRunning ? (
                 <span className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-mono font-black text-emerald-400 uppercase tracking-widest">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                   EN JUEGO
@@ -111,11 +130,12 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           </button>
 
           {/* 24s / 14s Shot Clock Controls */}
-          <div className="flex items-center justify-center gap-1 mt-1 w-full flex-wrap">
+          <div className={`flex items-center justify-center gap-1 mt-1 w-full flex-wrap ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               onClick={() => handleResetShotClock(24)}
-              className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95 shadow-sm disabled:opacity-40"
               title="Reiniciar a 24s"
             >
               24s
@@ -123,7 +143,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
             <button
               type="button"
               onClick={() => handleResetShotClock(14)}
-              className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[9px] font-black font-mono transition active:scale-95 shadow-sm disabled:opacity-40"
               title="Reiniciar a 14s (Rebote ofensivo / Falta pista delantera)"
             >
               14s
@@ -131,7 +152,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
             <button
               type="button"
               onClick={handleToggleShotClock}
-              className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-black font-mono border transition active:scale-95 shadow-sm ${
+              disabled={isActionsLocked}
+              className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-black font-mono border transition active:scale-95 shadow-sm disabled:opacity-40 ${
                 shotClockSecs <= 5
                   ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
                   : (game.isShotClockRunning ?? true)
@@ -140,20 +162,22 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
               }`}
               title="Pausar / Reanudar 24s"
             >
-              {shotClockSecs}s
+              {game.status === 'finished' ? 0 : shotClockSecs}s
             </button>
 
             {/* Quick +-10s micro-adjust */}
             <button
               onClick={() => adjustSeconds(10)}
-              className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold active:scale-95 transition"
+              disabled={isActionsLocked}
+              className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
               title="+10 segundos"
             >
               +10s
             </button>
             <button
               onClick={() => adjustSeconds(-10)}
-              className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold active:scale-95 transition"
+              disabled={isActionsLocked}
+              className="px-1 py-0.5 bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800 rounded text-[8px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
               title="-10 segundos"
             >
               -10s
@@ -190,7 +214,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
       </div>
 
       {/* Rival Quick Score Bar (1-touch immediate point/foul logging) */}
-      <div className="max-w-md mx-auto mt-1 pt-1 border-t border-neutral-800/70 flex items-center justify-between gap-1 text-[10px] font-mono">
+      <div className={`max-w-md mx-auto mt-1 pt-1 border-t border-neutral-800/70 flex items-center justify-between gap-1 text-[10px] font-mono ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
         <span className="text-sky-400 font-bold text-[9px] shrink-0">
           Rival:
         </span>
@@ -198,7 +222,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           <button
             type="button"
             onClick={() => onLogOpponentAction('OPP_1P')}
-            className="px-1.5 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] transition active:scale-95"
+            disabled={isActionsLocked}
+            className="px-1.5 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] transition active:scale-95 disabled:opacity-40"
             title="Sumar +1 TL Rival al instante"
           >
             +1 TL
@@ -206,7 +231,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           <button
             type="button"
             onClick={() => onLogOpponentAction('OPP_2P')}
-            className="px-1.5 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] transition active:scale-95"
+            disabled={isActionsLocked}
+            className="px-1.5 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] transition active:scale-95 disabled:opacity-40"
             title="Sumar +2 Canasta Rival al instante"
           >
             +2 Canasta
@@ -214,7 +240,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           <button
             type="button"
             onClick={() => onLogOpponentAction('OPP_3P')}
-            className="px-1.5 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] transition active:scale-95"
+            disabled={isActionsLocked}
+            className="px-1.5 py-0.5 bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-800/60 rounded font-bold text-[9px] transition active:scale-95 disabled:opacity-40"
             title="Sumar +3 Triple Rival al instante"
           >
             +3 Triple
@@ -228,7 +255,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
                 onTriggerOpponentFoulBonus(nextAwayFouls);
               }
             }}
-            className="px-1.5 py-0.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-800/60 rounded font-bold text-[9px] transition active:scale-95"
+            disabled={isActionsLocked}
+            className="px-1.5 py-0.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-800/60 rounded font-bold text-[9px] transition active:scale-95 disabled:opacity-40"
             title="Sumar Falta Rival al instante"
           >
             +Falta
@@ -236,7 +264,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           <button
             type="button"
             onClick={onOpenScoutingDorsal}
-            className="px-1 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded text-[9px] font-bold"
+            disabled={isActionsLocked}
+            className="px-1 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded text-[9px] font-bold disabled:opacity-40"
             title="Anotar rival indicando dorsal"
           >
             #

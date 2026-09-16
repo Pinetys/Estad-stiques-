@@ -16,7 +16,7 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-export const playSound = (type: 'score' | 'three' | 'foul' | 'buzzer' | 'click' | 'sub', enabled = true) => {
+export const playSound = (type: 'score' | 'three' | 'foul' | 'buzzer' | 'click' | 'sub' | 'error', enabled = true) => {
   if (!enabled) return;
   try {
     const ctx = getAudioContext();
@@ -37,6 +37,14 @@ export const playSound = (type: 'score' | 'three' | 'foul' | 'buzzer' | 'click' 
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
       osc.start(now);
       osc.stop(now + 0.05);
+    } else if (type === 'error') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.setValueAtTime(160, now + 0.08);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.18);
     } else if (type === 'score') {
       // Swish/ding pleasant chord
       osc.type = 'triangle';

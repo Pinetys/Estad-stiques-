@@ -12,6 +12,8 @@ import {
   FileText,
   Flag,
   RotateCcw,
+  Edit,
+  Lock,
 } from 'lucide-react';
 
 interface CourtLandscapeHeaderProps {
@@ -22,6 +24,9 @@ interface CourtLandscapeHeaderProps {
   bonusLimit: number;
   isWakeLockActive: boolean;
   currentShotMode?: 'baskets' | 'all' | 'off';
+  isActionsLocked?: boolean;
+  isEditingFinishedGame?: boolean;
+  onToggleEditFinishedGame?: () => void;
   toggleClock: () => void;
   adjustSeconds: (delta: number) => void;
   handleResetShotClock: (seconds: 24 | 14) => void;
@@ -46,6 +51,9 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   bonusLimit,
   isWakeLockActive,
   currentShotMode = 'baskets',
+  isActionsLocked = false,
+  isEditingFinishedGame = false,
+  onToggleEditFinishedGame,
   toggleClock,
   adjustSeconds,
   handleResetShotClock,
@@ -126,7 +134,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           <div className="flex items-center bg-[#171922] border border-neutral-800 rounded-xl px-1 py-0.5 text-xs font-mono shrink-0">
             <button
               onClick={handlePrevQuarter}
-              disabled={game.currentQuarter <= 1}
+              disabled={isActionsLocked || game.currentQuarter <= 1}
               className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-bold transition"
               title="Cuarto anterior"
             >
@@ -137,7 +145,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </span>
             <button
               onClick={handleNextQuarter}
-              disabled={game.currentQuarter >= 6}
+              disabled={isActionsLocked || game.currentQuarter >= 6}
               className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-bold transition"
               title="Siguiente cuarto"
             >
@@ -148,24 +156,35 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           {/* Big Master Clock + Play/Pause Button */}
           <button
             onClick={toggleClock}
+            disabled={isActionsLocked}
             className={`px-3 py-1 rounded-xl border flex items-center gap-2 transition active:scale-95 shadow-lg shrink-0 ${
-              game.isClockRunning
+              isActionsLocked
+                ? 'bg-[#121318] border-neutral-800 text-neutral-400 cursor-not-allowed opacity-90'
+                : game.isClockRunning
                 ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
                 : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
             }`}
-            title="Iniciar / Pausar tiempo de partido"
+            title={game.status === 'finished' ? 'Partido finalizado (00:00)' : 'Iniciar / Pausar tiempo de partido'}
           >
-            {game.isClockRunning ? (
+            {game.status === 'finished' ? (
+              <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+            ) : game.isClockRunning ? (
               <Pause className="w-4 h-4 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
             ) : (
               <Play className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
             )}
             <div className="flex flex-col items-center">
               <span className="font-scoreboard font-black text-2xl lg:text-3xl tracking-widest leading-none drop-shadow-md">
-                {formatGameTime(game.currentSecondsRemaining)}
+                {formatGameTime(game.status === 'finished' ? 0 : game.currentSecondsRemaining)}
               </span>
               <span className="text-[8px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
-                {game.isClockRunning ? (
+                {game.status === 'finished' ? (
+                  isEditingFinishedGame ? (
+                    <span className="text-amber-400 font-black">MODO EDICIÓN</span>
+                  ) : (
+                    <span className="text-red-400 font-black">FINALIZADO (00:00)</span>
+                  )
+                ) : game.isClockRunning ? (
                   <span className="text-emerald-400">EN JUEGO</span>
                 ) : (
                   <span className="text-amber-400/90">PAUSA · TOCAR</span>
@@ -175,11 +194,12 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </button>
 
           {/* Shot Clock Controls (24s / 14s & countdown) */}
-          <div className="flex items-center gap-1 bg-[#171922] border border-neutral-800 rounded-xl p-1 shrink-0">
+          <div className={`flex items-center gap-1 bg-[#171922] border border-neutral-800 rounded-xl p-1 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               onClick={() => handleResetShotClock(24)}
-              className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-sm disabled:opacity-40"
               title="Reiniciar posesión a 24s"
             >
               24s
@@ -187,7 +207,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={() => handleResetShotClock(14)}
-              className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-sm disabled:opacity-40"
               title="Reiniciar posesión a 14s (Rebote ofensivo / Falta pista delantera)"
             >
               14s
@@ -195,7 +216,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={handleToggleShotClock}
-              className={`px-2 py-1 rounded-lg text-xs font-black font-mono border transition active:scale-95 shadow-sm ${
+              disabled={isActionsLocked}
+              className={`px-2 py-1 rounded-lg text-xs font-black font-mono border transition active:scale-95 shadow-sm disabled:opacity-40 ${
                 shotClockSecs <= 5
                   ? 'bg-red-950 text-red-300 border-red-500 animate-pulse'
                   : (game.isShotClockRunning ?? true)
@@ -204,22 +226,24 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               }`}
               title="Pausar o Reanudar posesión"
             >
-              {shotClockSecs}s
+              {game.status === 'finished' ? 0 : shotClockSecs}s
             </button>
           </div>
 
           {/* Quick Time Micro-Adjust (+10s / -10s) */}
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className={`flex items-center gap-0.5 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               onClick={() => adjustSeconds(10)}
-              className="px-1.5 py-1 bg-[#171922] text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-700 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition"
+              disabled={isActionsLocked}
+              className="px-1.5 py-1 bg-[#171922] text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-700 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
               title="+10 segundos"
             >
               +10s
             </button>
             <button
               onClick={() => adjustSeconds(-10)}
-              className="px-1.5 py-1 bg-[#171922] text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-700 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition"
+              disabled={isActionsLocked}
+              className="px-1.5 py-1 bg-[#171922] text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-700 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
               title="-10 segundos"
             >
               -10s
@@ -255,11 +279,12 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </div>
 
           {/* Opponent Quick Scoring Buttons */}
-          <div className="flex items-center gap-1">
+          <div className={`flex items-center gap-1 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_1P')}
-              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
               title="+1 Tiro Libre Rival"
             >
               +1 TL
@@ -267,7 +292,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_2P')}
-              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
               title="+2 Canasta Rival"
             >
               +2 2P
@@ -275,7 +301,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_3P')}
-              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-1.5 py-1 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
               title="+3 Triple Rival"
             >
               +3 3P
@@ -289,7 +316,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                   onTriggerOpponentFoulBonus(nextAwayFouls);
                 }
               }}
-              className="px-1.5 py-1 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm"
+              disabled={isActionsLocked}
+              className="px-1.5 py-1 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800/70 rounded-lg font-mono font-bold text-[10px] transition active:scale-95 shadow-sm disabled:opacity-40"
               title="+Falta cometida por el Rival"
             >
               +Falta
@@ -297,7 +325,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenScoutingDorsal}
-              className="px-1.5 py-1 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded-lg text-[10px] font-bold"
+              disabled={isActionsLocked}
+              className="px-1.5 py-1 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 border border-neutral-800 rounded-lg text-[10px] font-bold disabled:opacity-40"
               title="Anotar rival indicando dorsal"
             >
               #
@@ -344,8 +373,34 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               </button>
             )}
 
-            {/* Close Match */}
-            {onCloseMatch && (
+            {/* Edit / Finish Edit button when match is finished */}
+            {game.status === 'finished' && onToggleEditFinishedGame && (
+              <button
+                type="button"
+                onClick={onToggleEditFinishedGame}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-black flex items-center gap-1.5 transition active:scale-95 shadow-md ${
+                  isEditingFinishedGame
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
+                    : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
+                }`}
+                title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
+              >
+                {isEditingFinishedGame ? (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>FINALIZAR EDICIÓN</span>
+                  </>
+                ) : (
+                  <>
+                    <Edit className="w-3.5 h-3.5" />
+                    <span>EDITAR</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Close Match when match is not finished */}
+            {game.status !== 'finished' && onCloseMatch && (
               <button
                 type="button"
                 onClick={onCloseMatch}
