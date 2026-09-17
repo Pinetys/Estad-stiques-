@@ -630,13 +630,13 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   const renderBottomBar = (compact = false) => {
     return (
-      <div className={`bg-[#0c0d11] ${compact ? 'p-1' : 'border-t border-neutral-800 px-2 sm:px-4 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))]'} z-40 shrink-0 select-none`}>
+      <div className={`bg-[#0c0d11] ${compact ? 'p-1' : 'border-t border-neutral-800 px-2 sm:px-4 py-0.5 sm:py-1 pb-[max(0.3rem,env(safe-area-inset-bottom))]'} z-40 shrink-0 select-none`}>
         <div className="max-w-3xl md:max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Recent Action Tag & Drawer Toggle */}
           <div className="flex items-center gap-1.5 grow overflow-hidden">
             <button
               onClick={() => setShowHistoryDrawer(!showHistoryDrawer)}
-              className="p-1.5 bg-[#161820] text-neutral-300 border border-neutral-700/80 rounded-lg text-xs font-mono flex items-center gap-1 shrink-0 active:scale-95"
+              className="p-1 bg-[#161820] text-neutral-300 border border-neutral-700/80 rounded-lg text-xs font-mono flex items-center gap-1 shrink-0 active:scale-95"
               title="Ver o borrar últimas jugadas"
             >
               <History className="w-3.5 h-3.5 text-amber-400" />
@@ -644,8 +644,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </button>
 
             {recentEvent ? (
-              <div className="truncate text-xs font-mono text-neutral-300">
-                <span className="text-neutral-500 text-[10px]">Última:</span>{' '}
+              <div className="truncate text-[11px] sm:text-xs font-mono text-neutral-300">
+                <span className="text-neutral-500 text-[9px] sm:text-[10px]">Última:</span>{' '}
                 <strong className="text-amber-300 font-bold">
                   {recentEvent.isOpponentAction
                     ? recentEvent.actionLabel
@@ -653,7 +653,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 </strong>
               </div>
             ) : (
-              <div className="text-xs text-neutral-500 italic">Esperando jugada...</div>
+              <div className="text-[11px] sm:text-xs text-neutral-500 italic">Esperando jugada...</div>
             )}
           </div>
 
@@ -666,11 +666,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               onUndoLastAction();
             }}
             disabled={isActionsLocked || !recentEvent}
-            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
+            className="px-2.5 sm:px-3.5 py-1 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-lg flex items-center gap-1.5 shrink-0 shadow-md disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
             title={isActionsLocked ? 'Partido bloqueado (Activa Modo Edición para retocar)' : 'Deshacer última acción'}
           >
-            <Undo2 className="w-4 h-4" />
-            <span>DESHACER</span>
+            <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="text-xs sm:text-sm">DESHACER</span>
           </button>
         </div>
 
@@ -947,7 +947,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           awayIsBonus={awayIsBonus}
           shotClockSecs={shotClockSecs}
           bonusLimit={bonusLimit}
-          compact={false}
+          compact={true}
           isActionsLocked={isActionsLocked}
           isEditingFinishedGame={isEditingFinishedGame}
           toggleClock={toggleClock}
@@ -1046,7 +1046,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 5. MAIN ACTION BUTTONS CONSOLE (PORTRAIT ONLY) */}
       {!isLandscapeTablet && (
-        <div className={`max-w-3xl md:max-w-4xl mx-auto w-full px-2 sm:px-4 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly gap-1.5 sm:gap-2 py-1 transition-opacity duration-200 ${
+        <div className={`max-w-3xl md:max-w-4xl mx-auto w-full px-1.5 sm:px-3 flex-1 min-h-0 overflow-hidden flex flex-col justify-evenly py-0.5 sm:py-1 transition-opacity duration-200 ${
           isActionsLocked ? 'opacity-35 pointer-events-none' : ''
         }`}>
           <CourtActionConsole

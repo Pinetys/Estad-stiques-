@@ -77,7 +77,11 @@ export interface PlayerAccumulatedRow {
 /**
  * Calculates aggregated statistics for a team across a list of included games
  */
-export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): {
+export function calculateTeamAggregatedStats(
+  team: TeamProfile,
+  games: Game[],
+  allRegisteredTeams: TeamProfile[] = []
+): {
   teamMetrics: TeamAggregatedMetrics;
   playerRows: PlayerAccumulatedRow[];
   teamShots: PlayEvent[];
@@ -141,7 +145,7 @@ export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): 
 
   games.forEach(g => {
     // Check match ownership: strictly verify game belongs to this team
-    if (!isGameForTeam(g, team)) {
+    if (!isGameForTeam(g, team, allRegisteredTeams)) {
       return;
     }
 
@@ -191,6 +195,23 @@ export function calculateTeamAggregatedStats(team: TeamProfile, games: Game[]): 
         pRow = Array.from(playerStatsMap.values()).find(
           r => r.playerNumber === e.playerNumber && (!e.playerName || r.playerName.toLowerCase().trim() === e.playerName.toLowerCase().trim())
         );
+      }
+
+      // If team has a defined roster, check if this event belongs to an alien player from another team
+      if (!pRow && (e.playerId || e.playerNumber !== undefined) && team.roster.length > 0) {
+        const isFromAnotherTeam = allRegisteredTeams.some(otherTeam => {
+          if (otherTeam.id === team.id) return false;
+          return (otherTeam.roster || []).some(
+            op =>
+              op.id === e.playerId ||
+              (e.playerNumber !== undefined &&
+                op.number === e.playerNumber &&
+                op.name.toLowerCase().trim() === (e.playerName || '').toLowerCase().trim())
+          );
+        });
+        if (isFromAnotherTeam) {
+          return; // Skip event from alien team!
+        }
       }
 
       if (pRow) {

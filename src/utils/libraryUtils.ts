@@ -181,8 +181,23 @@ export function getGameCategory(game: Game): string {
           if (t?.category && t.category.trim()) return t.category.trim();
         }
         if (game.homeTeamName) {
-          const tByName = teams.find(team => team.name?.toLowerCase().trim() === game.homeTeamName?.toLowerCase().trim());
-          if (tByName?.category && tByName.category.trim()) return tByName.category.trim();
+          const matchingTeams = teams.filter(
+            team => team.name?.toLowerCase().trim() === game.homeTeamName?.toLowerCase().trim()
+          );
+          if (matchingTeams.length === 1) {
+            if (matchingTeams[0].category && matchingTeams[0].category.trim()) {
+              return matchingTeams[0].category.trim();
+            }
+          } else if (matchingTeams.length > 1) {
+            const gameText = `${game.title || ''} ${game.homeTeamName || ''} ${game.category || ''}`.toLowerCase();
+            const byFamily = matchingTeams.find(t => {
+              const catLower = (t.category || '').toLowerCase();
+              return catLower && gameText.includes(catLower);
+            });
+            if (byFamily?.category && byFamily.category.trim()) {
+              return byFamily.category.trim();
+            }
+          }
         }
       }
     }

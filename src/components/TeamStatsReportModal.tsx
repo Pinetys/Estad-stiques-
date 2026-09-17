@@ -161,8 +161,8 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
         teamShots: [],
       };
     }
-    return calculateTeamAggregatedStats(currentTeam, includedGames);
-  }, [currentTeam, includedGames]);
+    return calculateTeamAggregatedStats(currentTeam, includedGames, teams);
+  }, [currentTeam, includedGames, teams]);
 
   // Filtered shot events for the embedded court map
   const filteredTeamShots = useMemo(() => {

@@ -9,7 +9,7 @@ import {
   PlayerAccumulatedRow,
 } from '../utils/teamStatsPdfGenerator';
 import { generateOfficialActaPdf } from '../utils/actaPdfGenerator';
-import { getMatchesForTeam } from '../utils/teamIsolation';
+import { getMatchesForTeam, isGameForTeam } from '../utils/teamIsolation';
 import { PlayerShotMap } from './PlayerShotMap';
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -154,8 +154,8 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
         teamShots: [] as PlayEvent[],
       };
     }
-    return calculateTeamAggregatedStats(currentTeam, includedGames);
-  }, [currentTeam, includedGames]);
+    return calculateTeamAggregatedStats(currentTeam, includedGames, recordedTeams);
+  }, [currentTeam, includedGames, recordedTeams]);
 
   // 5. Sorted players for accumulated table
   const sortedAccumulatedPlayers = useMemo(() => {
@@ -169,13 +169,21 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
     });
   }, [playerRows, playerSortKey, playerSortAsc]);
 
+  // 5b. Match to display in the 'match' tab: MUST strictly belong to currentTeam!
+  const activeMatch = useMemo(() => {
+    if (currentGame && isGameForTeam(currentGame, currentTeam, recordedTeams)) {
+      return currentGame;
+    }
+    return includedGames[0] || teamAllMatches[0] || null;
+  }, [currentGame, currentTeam, recordedTeams, includedGames, teamAllMatches]);
+
   // 6. Match Box Score (for 'match' tab)
   const matchPlayerStats: PlayerBoxScore[] = useMemo(() => {
-    if (!currentGame) return [];
-    return currentGame.players.map(p =>
-      calculatePlayerStats(p, currentGame.events, matchQuarterFilter)
+    if (!activeMatch) return [];
+    return activeMatch.players.map(p =>
+      calculatePlayerStats(p, activeMatch.events, matchQuarterFilter)
     );
-  }, [currentGame, matchQuarterFilter]);
+  }, [activeMatch, matchQuarterFilter]);
 
   const sortedMatchPlayers = useMemo(() => {
     return [...matchPlayerStats].sort((a, b) => {
@@ -189,22 +197,22 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
   }, [matchPlayerStats, matchSortKey, matchSortAsc]);
 
   const matchTeamStats = useMemo(() => {
-    if (!currentGame) return null;
-    return calculateTeamStats(currentGame.players, currentGame.events, currentGame.homeTeamName, matchQuarterFilter);
-  }, [currentGame, matchQuarterFilter]);
+    if (!activeMatch) return null;
+    return calculateTeamStats(activeMatch.players, activeMatch.events, activeMatch.homeTeamName, matchQuarterFilter);
+  }, [activeMatch, matchQuarterFilter]);
 
   // Match highlights
   const matchMVP = useMemo(() => {
-    if (!currentGame) return null;
-    const all = currentGame.players.map(p => calculatePlayerStats(p, currentGame.events));
+    if (!activeMatch) return null;
+    const all = activeMatch.players.map(p => calculatePlayerStats(p, activeMatch.events));
     return [...all].sort((a, b) => b.efficiency - a.efficiency)[0] || null;
-  }, [currentGame]);
+  }, [activeMatch]);
 
   const matchTopScorer = useMemo(() => {
-    if (!currentGame) return null;
-    const all = currentGame.players.map(p => calculatePlayerStats(p, currentGame.events));
+    if (!activeMatch) return null;
+    const all = activeMatch.players.map(p => calculatePlayerStats(p, activeMatch.events));
     return [...all].sort((a, b) => b.points - a.points)[0] || null;
-  }, [currentGame]);
+  }, [activeMatch]);
 
   // Handlers for Match Discard Filter
   const toggleDiscardGame = (gameId: string) => {
@@ -292,23 +300,23 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
   // PDF & Sharing Actions for Current Match
   const handleDownloadMatchPdf = () => {
-    if (!currentGame) return;
+    if (!activeMatch) return;
     triggerHaptic('medium');
     playSound('score', soundEnabled);
-    const doc = generateOfficialActaPdf(currentGame);
-    const safeName = (currentGame.homeTeamName || 'Partido').replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`Acta_${safeName}_${currentGame.date || 'Hoy'}.pdf`);
+    const doc = generateOfficialActaPdf(activeMatch);
+    const safeName = (activeMatch.homeTeamName || 'Partido').replace(/[^a-zA-Z0-9]/g, '_');
+    doc.save(`Acta_${safeName}_${activeMatch.date || 'Hoy'}.pdf`);
     setShareFeedbackMsg('¡Acta oficial del partido descargada en PDF!');
     setTimeout(() => setShareFeedbackMsg(null), 3500);
   };
 
   const handleShareMatchWhatsApp = () => {
-    if (!currentGame) return;
+    if (!activeMatch) return;
     triggerHaptic('medium');
     playSound('click', soundEnabled);
     const topScorerText = matchTopScorer ? `🏀 Máx. Anotador: #${matchTopScorer.player.number} ${matchTopScorer.player.name} (${matchTopScorer.points} pts)` : '';
     const mvpText = matchMVP ? `⭐ MVP: #${matchMVP.player.number} ${matchMVP.player.name} (${matchMVP.efficiency} VAL)` : '';
-    const message = `📊 *ESTADÍSTICAS DEL PARTIDO*\n🏀 ${currentGame.homeTeamName} ${currentGame.homeScore} - ${currentGame.awayScore} ${currentGame.awayTeamName}\n📅 ${currentGame.date || 'Fecha'} | ${currentGame.category || 'Baloncesto'}\n\n${topScorerText}\n${mvpText}\n\nGenerado con BasketStats Pro`;
+    const message = `📊 *ESTADÍSTICAS DEL PARTIDO*\n🏀 ${activeMatch.homeTeamName} ${activeMatch.homeScore} - ${activeMatch.awayScore} ${activeMatch.awayTeamName}\n📅 ${activeMatch.date || 'Fecha'} | ${activeMatch.category || 'Baloncesto'}\n\n${topScorerText}\n${mvpText}\n\nGenerado con BasketStats Pro`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
     setShareFeedbackMsg('Abriendo WhatsApp...');
     setTimeout(() => setShareFeedbackMsg(null), 3500);
@@ -861,9 +869,11 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
       ) : (
         /* CURRENT MATCH BOX SCORE & SHOT CHART VIEW */
         <div className="space-y-4">
-          {!currentGame ? (
+          {!activeMatch ? (
             <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-6 text-center font-mono">
-              <p className="text-gray-400 text-sm">No hay un partido en curso en este momento.</p>
+              <p className="text-gray-400 text-sm">
+                No hay partidos registrados para {currentTeam.name} ({currentTeam.category}).
+              </p>
             </div>
           ) : (
             <>
@@ -946,7 +956,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                   <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-orange-400" />
                     <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
-                      Box Score del Partido · {currentGame.homeTeamName}
+                      Box Score del Partido · {activeMatch.homeTeamName} ({activeMatch.category || 'Categoría'})
                     </h3>
                   </div>
 
@@ -1049,8 +1059,8 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
                 <div className="max-w-2xl mx-auto py-2">
                   <PlayerShotMap
-                    shots={currentGame.events.filter(e => !e.isOpponentAction && (e.actionType === '2PM' || e.actionType === '2PA' || e.actionType === '3PM' || e.actionType === '3PA'))}
-                    playerName={currentGame.homeTeamName || 'Mi Equipo'}
+                    shots={activeMatch.events.filter(e => !e.isOpponentAction && (e.actionType === '2PM' || e.actionType === '2PA' || e.actionType === '3PM' || e.actionType === '3PA'))}
+                    playerName={activeMatch.homeTeamName || 'Mi Equipo'}
                     title="Carta de Tiro del Partido Actual"
                   />
                 </div>
@@ -1061,7 +1071,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
       )}
 
       {/* Selected Match Player Detail Modal */}
-      {selectedMatchPlayer && currentGame && (
+      {selectedMatchPlayer && activeMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-[#14161B] border border-orange-500/50 rounded-2xl p-4 max-w-md w-full shadow-2xl space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-gray-800">
@@ -1086,7 +1096,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
             <div className="max-h-[50vh] overflow-y-auto">
               <PlayerShotMap
-                shots={currentGame.events.filter(e => e.playerId === selectedMatchPlayer.player.id)}
+                shots={activeMatch.events.filter(e => e.playerId === selectedMatchPlayer.player.id)}
                 playerName={selectedMatchPlayer.player.name}
                 playerNumber={selectedMatchPlayer.player.number}
                 title="Tiros Metidos y Fallados en este Partido"

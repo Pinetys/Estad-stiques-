@@ -1,9 +1,72 @@
 import { Game, TeamProfile, Player } from '../types';
 
+export type AgeCategoryFamily =
+  | 'infantil'
+  | 'junior'
+  | 'cadete'
+  | 'mini'
+  | 'premini'
+  | 'sub21'
+  | 'senior'
+  | 'escuela'
+  | 'unknown';
+
+/**
+ * Normalizes text and classifies basketball age categories into canonical families.
+ * Crucial: Prevents cross-contamination between Junior, Infantil, Cadete, Mini, etc.
+ */
+export function classifyAgeCategory(catOrText?: string): AgeCategoryFamily {
+  if (!catOrText) return 'unknown';
+  const text = catOrText
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Strict priority order: specific youth categories first
+  if (/\b(infantil|infant|sub[- ]?14|u[- ]?14|sub[- ]?13|u[- ]?13|pre[- ]?infantil)\b/.test(text)) {
+    return 'infantil';
+  }
+  if (/\b(junior|júnior|sub[- ]?18|u[- ]?18|sub[- ]?17|u[- ]?17|pre[- ]?junior|\bjr\b)\b/.test(text)) {
+    return 'junior';
+  }
+  if (/\b(cadete|cadet|sub[- ]?16|u[- ]?16|sub[- ]?15|u[- ]?15|pre[- ]?cadete)\b/.test(text)) {
+    return 'cadete';
+  }
+  if (/\b(mini|alevin|alevi|minibasket|sub[- ]?12|u[- ]?12|sub[- ]?11|u[- ]?11)\b/.test(text)) {
+    return 'mini';
+  }
+  if (/\b(pre[- ]?mini|premini|benjamin|benjami|sub[- ]?10|u[- ]?10|sub[- ]?9|u[- ]?9)\b/.test(text)) {
+    return 'premini';
+  }
+  if (/\b(sub[- ]?21|u[- ]?21|sub[- ]?20|u[- ]?20)\b/.test(text)) {
+    return 'sub21';
+  }
+  if (/\b(senior|sènior|veteran|veteranos|primera|segunda|tercera|copa|eBA|liga)\b/.test(text)) {
+    return 'senior';
+  }
+  if (/\b(escuela|baby|babi)\b/.test(text)) {
+    return 'escuela';
+  }
+
+  return 'unknown';
+}
+
+/**
+ * Checks if two categories belong to the same canonical age category family.
+ */
+export function areCategoriesCompatible(catA?: string, catB?: string): boolean {
+  const familyA = classifyAgeCategory(catA);
+  const familyB = classifyAgeCategory(catB);
+  if (familyA !== 'unknown' && familyB !== 'unknown') {
+    return familyA === familyB;
+  }
+  return true;
+}
+
 /**
  * Strict check to determine if a match belongs to a specific team.
  * Protects against cross-contamination caused by team switching, shared club names,
- * missing teamIds, or dorsal collisions.
+ * missing teamIds, or dorsal collisions between Junior and Infantil.
  */
 export function isGameForTeam(
   game: Game,
@@ -14,9 +77,27 @@ export function isGameForTeam(
 
   const tId = team.id;
   const tName = (team.name || '').toLowerCase().trim();
-  const tCat = (team.category || '').toLowerCase().trim();
+  const teamFamily = classifyAgeCategory(`${team.category || ''} ${team.name || ''}`);
+  
+  // Extract game family from game fields + look up owning team if teamId exists
+  let gameFamily = classifyAgeCategory(
+    `${game.category || ''} ${game.title || ''} ${game.homeTeamName || ''} ${game.awayTeamName || ''}`
+  );
+  if (gameFamily === 'unknown' && game.teamId && allRegisteredTeams.length > 0) {
+    const owningTeam = allRegisteredTeams.find(t => t.id === game.teamId);
+    if (owningTeam) {
+      gameFamily = classifyAgeCategory(`${owningTeam.category || ''} ${owningTeam.name || ''}`);
+    }
+  }
 
-  // 1. Roster matching helper
+  // 1. HARD CATEGORY BARRIER:
+  // If the game is clearly Infantil and the team is Junior (or vice-versa),
+  // they CANNOT be the same team under any circumstance.
+  if (teamFamily !== 'unknown' && gameFamily !== 'unknown' && teamFamily !== gameFamily) {
+    return false;
+  }
+
+  // 2. Roster matching helper
   const teamRosterIds = new Set((team.roster || []).map(p => p.id));
   const teamRosterKeys = new Set(
     (team.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
@@ -24,21 +105,29 @@ export function isGameForTeam(
 
   const gamePlayers = game.players || [];
   let matchingPlayersCount = 0;
-  let nonMatchingPlayersCount = 0;
 
   gamePlayers.forEach(p => {
     const key = `${p.number}_${(p.name || '').toLowerCase().trim()}`;
     if ((p.id && teamRosterIds.has(p.id)) || teamRosterKeys.has(key)) {
       matchingPlayersCount++;
-    } else {
-      nonMatchingPlayersCount++;
     }
   });
 
-  // 2. Check if game explicitly has this team's ID
+  // 3. Check if game explicitly has this team's ID
   if (game.teamId === tId) {
+    // If another registered team matches the game's category family AND this team doesn't,
+    // this game was erroneously tagged during an active team switch.
+    if (allRegisteredTeams.length > 1 && gameFamily !== 'unknown') {
+      const otherTeamWithMatchingFamily = allRegisteredTeams.find(
+        other => other.id !== tId && classifyAgeCategory(`${other.category || ''} ${other.name || ''}`) === gameFamily
+      );
+      if (otherTeamWithMatchingFamily && teamFamily !== 'unknown' && teamFamily !== gameFamily) {
+        return false;
+      }
+    }
+
     // If this team has a defined roster (>= 2 players), make sure the match wasn't
-    // a corrupted clone where all players actually belong to a DIFFERENT team
+    // a corrupted clone where players actually belong to a DIFFERENT registered team
     if (team.roster && team.roster.length >= 2 && gamePlayers.length >= 2) {
       if (matchingPlayersCount === 0 && allRegisteredTeams.length > 1) {
         // Check if another team has a high match for these players
@@ -55,7 +144,6 @@ export function isGameForTeam(
         });
 
         if (otherMatchingTeam) {
-          // This match was accidentally tagged with tId, but its players belong to another team!
           return false;
         }
       }
@@ -63,11 +151,18 @@ export function isGameForTeam(
     return true;
   }
 
-  // 3. If game has a DIFFERENT teamId:
+  // 4. If game has a DIFFERENT teamId:
   if (game.teamId && game.teamId !== tId) {
-    // Check if it was falsely tagged with the other team's id during an active team switch
-    // It only belongs to THIS team if this team has >= 2 matching players AND the tagged team has 0
-    if (team.roster && team.roster.length >= 2 && matchingPlayersCount >= 2) {
+    // Check if it was falsely tagged with the other team's id during an active team switch.
+    // It ONLY belongs to this team if:
+    // a) Categories are strictly compatible
+    // b) This team has >= 2 matching players, AND the tagged team has 0
+    if (
+      (teamFamily === 'unknown' || gameFamily === 'unknown' || teamFamily === gameFamily) &&
+      team.roster &&
+      team.roster.length >= 2 &&
+      matchingPlayersCount >= 2
+    ) {
       const taggedTeam = allRegisteredTeams.find(ot => ot.id === game.teamId);
       if (taggedTeam) {
         const taggedKeys = new Set(
@@ -85,15 +180,20 @@ export function isGameForTeam(
     return false;
   }
 
-  // 4. Legacy game without teamId
+  // 5. Legacy game without teamId
   const gameHome = (game.homeTeamName || '').toLowerCase().trim();
   if (gameHome !== tName) {
     return false;
   }
 
-  // If both have category, they MUST match
+  // Categories must match / be compatible
+  if (teamFamily !== 'unknown' && gameFamily !== 'unknown' && teamFamily !== gameFamily) {
+    return false;
+  }
+
+  const tCat = (team.category || '').toLowerCase().trim();
   const gameCat = (game.category || '').toLowerCase().trim();
-  if (tCat && gameCat && tCat !== gameCat) {
+  if (tCat && gameCat && tCat !== gameCat && !areCategoriesCompatible(tCat, gameCat)) {
     return false;
   }
 
@@ -160,13 +260,21 @@ export function sanitizeAndIsolateLibraryGames(
   const seenSignatures = new Set<string>();
 
   games.forEach(game => {
-    let current = { ...game };
+    const current = { ...game };
+    const gameFamily = classifyAgeCategory(`${current.category || ''} ${current.title || ''}`);
 
     // Find the true owning team
     let bestTeam: TeamProfile | null = null;
     let bestMatchScore = 0;
 
     teams.forEach(team => {
+      const teamFamily = classifyAgeCategory(`${team.category || ''} ${team.name || ''}`);
+
+      // HARD BARRIER: An Infantil game can NEVER be assigned to a Junior team!
+      if (gameFamily !== 'unknown' && teamFamily !== 'unknown' && gameFamily !== teamFamily) {
+        return;
+      }
+
       const rosterIds = new Set((team.roster || []).map(p => p.id));
       const rosterKeys = new Set(
         (team.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
@@ -179,6 +287,11 @@ export function sanitizeAndIsolateLibraryGames(
         }
       });
 
+      // Bonus if exact teamId matches
+      if (current.teamId === team.id) {
+        matchCount += 3;
+      }
+
       // Bonus if team name matches
       if (
         current.homeTeamName &&
@@ -186,13 +299,10 @@ export function sanitizeAndIsolateLibraryGames(
       ) {
         matchCount += 1;
       }
-      // Bonus if category matches
-      if (
-        current.category &&
-        team.category &&
-        current.category.toLowerCase().trim() === team.category.toLowerCase().trim()
-      ) {
-        matchCount += 1;
+
+      // Bonus if category family matches
+      if (gameFamily !== 'unknown' && teamFamily === gameFamily) {
+        matchCount += 3;
       }
 
       if (matchCount > bestMatchScore) {
@@ -211,28 +321,30 @@ export function sanitizeAndIsolateLibraryGames(
         current.homeTeamName = targetTeam.name;
         changed = true;
       }
-      if (targetTeam.category && current.category !== targetTeam.category) {
-        current.category = targetTeam.category;
-        changed = true;
+      // Only align category if target team has a category and it's compatible
+      if (targetTeam.category && areCategoriesCompatible(current.category, targetTeam.category)) {
+        if (current.category !== targetTeam.category) {
+          current.category = targetTeam.category;
+          changed = true;
+        }
       }
     } else if (!current.teamId && teams.length > 0) {
-      // Fallback by name & category
+      // Fallback by name & category compatibility
       const matchByName = teams.find(
         t =>
           t.name.toLowerCase().trim() === (current.homeTeamName || '').toLowerCase().trim() &&
-          (!t.category ||
-            !current.category ||
-            t.category.toLowerCase().trim() === current.category.toLowerCase().trim())
+          areCategoriesCompatible(t.category, current.category)
       );
       if (matchByName) {
         current.teamId = matchByName.id;
-        current.category = matchByName.category || current.category;
+        if (!current.category) {
+          current.category = matchByName.category;
+        }
         changed = true;
       }
     }
 
-    // Deduplicate exact clones created by the old team switch bug
-    // Signature: date + homeScore + awayScore + event count + first 3 player numbers
+    // Deduplicate exact clones created by any previous team switch bug
     const pSig = (current.players || [])
       .slice(0, 3)
       .map(p => p.number)
