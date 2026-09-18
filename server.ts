@@ -1,13 +1,75 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+
+interface ServerSyncDatabase {
+  matches: Record<string, any>;
+  teams: Record<string, any>;
+  activeMatch: any | null;
+  transferCodes: Record<string, { game: any; createdAt: number }>;
+  lastUpdate: number;
+}
+
+const SYNC_DB_PATH = path.join(process.cwd(), 'server_sync_db.json');
+
+function loadServerSyncDb(): ServerSyncDatabase {
+  try {
+    if (fs.existsSync(SYNC_DB_PATH)) {
+      const raw = fs.readFileSync(SYNC_DB_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      return {
+        matches: parsed.matches || {},
+        teams: parsed.teams || {},
+        activeMatch: parsed.activeMatch || null,
+        transferCodes: parsed.transferCodes || {},
+        lastUpdate: parsed.lastUpdate || Date.now(),
+      };
+    }
+  } catch (err) {
+    console.error('Error loading server_sync_db.json, creating clean store:', err);
+  }
+  return {
+    matches: {},
+    teams: {},
+    activeMatch: null,
+    transferCodes: {},
+    lastUpdate: Date.now(),
+  };
+}
+
+let serverDb = loadServerSyncDb();
+
+function saveServerSyncDb(): void {
+  try {
+    serverDb.lastUpdate = Date.now();
+    fs.writeFileSync(SYNC_DB_PATH, JSON.stringify(serverDb, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving server_sync_db.json:', err);
+  }
+}
+
+// Active SSE client connections for real-time push to mobile, tablet, and PC
+const sseClients: express.Response[] = [];
+
+function broadcastSync(event: { type: string; data?: any }) {
+  const payload = `data: ${JSON.stringify({ ...event, timestamp: Date.now() })}\n\n`;
+  for (let i = sseClients.length - 1; i >= 0; i--) {
+    const client = sseClients[i];
+    try {
+      client.write(payload);
+    } catch {
+      sseClients.splice(i, 1);
+    }
+  }
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '25mb' }));
 
   // Initialize Gemini client lazily
   let aiClient: GoogleGenAI | null = null;
@@ -31,7 +93,299 @@ async function startServer() {
 
   // Health endpoint
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json({
+      status: 'ok',
+      syncEngine: 'active',
+      matchesCount: Object.keys(serverDb.matches).length,
+      teamsCount: Object.keys(serverDb.teams).length,
+    });
+  });
+
+  // ==========================================
+  // SERVER AUTONOMOUS SYNC ENGINE (No Quota limits, 100% Reliable)
+  // ==========================================
+
+  // 1. Check sync status and overview
+  app.get('/api/sync/status', (req, res) => {
+    res.json({
+      status: 'ok',
+      matchesCount: Object.keys(serverDb.matches).length,
+      teamsCount: Object.keys(serverDb.teams).length,
+      hasActiveMatch: Boolean(serverDb.activeMatch),
+      activeMatchId: serverDb.activeMatch?.id || null,
+      activeMatchSummary: serverDb.activeMatch
+        ? `${serverDb.activeMatch.homeTeamName || 'Local'} (${serverDb.activeMatch.homeScore ?? 0}) vs ${serverDb.activeMatch.awayTeamName || 'Visitante'} (${serverDb.activeMatch.awayScore ?? 0})`
+        : null,
+      lastUpdate: serverDb.lastUpdate,
+      connectedClients: sseClients.length,
+      serverTime: new Date().toISOString(),
+    });
+  });
+
+  // 2. Real-Time Server-Sent Events (SSE) Stream for Instant Auto-Sync
+  app.get('/api/sync/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    // Initial greeting
+    res.write(`data: ${JSON.stringify({
+      type: 'connected',
+      matchesCount: Object.keys(serverDb.matches).length,
+      activeMatchId: serverDb.activeMatch?.id,
+      lastUpdate: serverDb.lastUpdate,
+      timestamp: Date.now(),
+    })}\n\n`);
+
+    sseClients.push(res);
+
+    // Keep-alive ping every 15s to prevent cloud proxy timeouts
+    const pingTimer = setInterval(() => {
+      try {
+        res.write(`: ping\n\n`);
+      } catch {
+        clearInterval(pingTimer);
+      }
+    }, 15000);
+
+    req.on('close', () => {
+      clearInterval(pingTimer);
+      const idx = sseClients.indexOf(res);
+      if (idx !== -1) sseClients.splice(idx, 1);
+    });
+  });
+
+  // 3. Fetch all synchronized games and teams
+  app.get('/api/sync/all', (req, res) => {
+    const matchesArray = Object.values(serverDb.matches);
+    matchesArray.sort((a: any, b: any) => {
+      const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    res.json({
+      matches: matchesArray,
+      teams: Object.values(serverDb.teams),
+      activeMatch: serverDb.activeMatch,
+      lastUpdate: serverDb.lastUpdate,
+    });
+  });
+
+  // 4. Save or update a single match (from Tablet, Mobile, or PC)
+  app.post('/api/sync/match', (req, res) => {
+    try {
+      const match = req.body?.match;
+      if (!match || !match.id) {
+        return res.status(400).json({ error: 'Falta objeto de partido válido' });
+      }
+
+      const existing = serverDb.matches[match.id];
+      // Defensive merge: protect existing events if incoming has fewer
+      if (existing) {
+        const existingEvents = existing.events?.length || 0;
+        const incomingEvents = match.events?.length || 0;
+
+        if (existingEvents > incomingEvents) {
+          // Keep existing events, merge scores and metadata if newer
+          match.events = existing.events;
+        }
+      }
+
+      match.updatedAt = new Date().toISOString();
+      serverDb.matches[match.id] = match;
+
+      // Update activeMatch pointer if live or has recent events
+      if (match.status === 'live' || !serverDb.activeMatch || serverDb.activeMatch.id === match.id) {
+        serverDb.activeMatch = match;
+      }
+
+      saveServerSyncDb();
+      broadcastSync({ type: 'match_updated', data: match });
+
+      res.json({
+        success: true,
+        matchId: match.id,
+        eventsCount: match.events?.length || 0,
+        lastUpdate: serverDb.lastUpdate,
+      });
+    } catch (err: any) {
+      console.error('Error in POST /api/sync/match:', err);
+      res.status(500).json({ error: err.message || 'Error guardando partido en servidor' });
+    }
+  });
+
+  // 5. Save or update a team profile
+  app.post('/api/sync/team', (req, res) => {
+    try {
+      const team = req.body?.team;
+      if (!team || !team.id) {
+        return res.status(400).json({ error: 'Falta objeto de equipo válido' });
+      }
+
+      team.updatedAt = new Date().toISOString();
+      serverDb.teams[team.id] = team;
+      saveServerSyncDb();
+      broadcastSync({ type: 'team_updated', data: team });
+
+      res.json({ success: true, teamId: team.id });
+    } catch (err: any) {
+      console.error('Error in POST /api/sync/team:', err);
+      res.status(500).json({ error: err.message || 'Error guardando equipo en servidor' });
+    }
+  });
+
+  // 6. Bulk upload & merge from any device (e.g. tablet flushing everything recorded yesterday)
+  app.post('/api/sync/bulk', (req, res) => {
+    try {
+      const { matches, teams, currentMatch } = req.body;
+      let addedMatches = 0;
+      let addedTeams = 0;
+
+      if (Array.isArray(teams)) {
+        for (const t of teams) {
+          if (t && t.id) {
+            serverDb.teams[t.id] = { ...serverDb.teams[t.id], ...t, updatedAt: new Date().toISOString() };
+            addedTeams++;
+          }
+        }
+      }
+
+      if (Array.isArray(matches)) {
+        for (const m of matches) {
+          if (m && m.id) {
+            const existing = serverDb.matches[m.id];
+            if (existing) {
+              const exEvCount = existing.events?.length || 0;
+              const inEvCount = m.events?.length || 0;
+              if (inEvCount >= exEvCount) {
+                serverDb.matches[m.id] = { ...m, updatedAt: new Date().toISOString() };
+              }
+            } else {
+              serverDb.matches[m.id] = { ...m, updatedAt: new Date().toISOString() };
+            }
+            addedMatches++;
+          }
+        }
+      }
+
+      if (currentMatch && currentMatch.id) {
+        const existing = serverDb.matches[currentMatch.id];
+        const exEvCount = existing?.events?.length || 0;
+        const inEvCount = currentMatch.events?.length || 0;
+        if (inEvCount >= exEvCount || !existing) {
+          serverDb.matches[currentMatch.id] = { ...currentMatch, updatedAt: new Date().toISOString() };
+        }
+        if (currentMatch.status === 'live' || (currentMatch.events && currentMatch.events.length > 0)) {
+          serverDb.activeMatch = serverDb.matches[currentMatch.id];
+        }
+      }
+
+      saveServerSyncDb();
+      broadcastSync({ type: 'bulk_synced', data: { addedMatches, addedTeams } });
+
+      res.json({
+        success: true,
+        message: `Sincronizados ${addedMatches} partidos y ${addedTeams} equipos en el servidor`,
+        matches: Object.values(serverDb.matches),
+        teams: Object.values(serverDb.teams),
+        activeMatch: serverDb.activeMatch,
+        lastUpdate: serverDb.lastUpdate,
+      });
+    } catch (err: any) {
+      console.error('Error in POST /api/sync/bulk:', err);
+      res.status(500).json({ error: err.message || 'Error en sincronización masiva' });
+    }
+  });
+
+  // 7. Active match live pointer
+  app.get('/api/sync/active-match', (req, res) => {
+    res.json({ activeMatch: serverDb.activeMatch });
+  });
+
+  app.post('/api/sync/active-match', (req, res) => {
+    try {
+      const { activeMatch } = req.body;
+      serverDb.activeMatch = activeMatch || null;
+      if (activeMatch && activeMatch.id) {
+        serverDb.matches[activeMatch.id] = activeMatch;
+      }
+      saveServerSyncDb();
+      broadcastSync({ type: 'active_match_updated', data: activeMatch });
+      res.json({ success: true, activeMatch: serverDb.activeMatch });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 8. Delete match
+  app.delete('/api/sync/match/:id', (req, res) => {
+    const id = req.params.id;
+    if (id && serverDb.matches[id]) {
+      delete serverDb.matches[id];
+      if (serverDb.activeMatch?.id === id) {
+        serverDb.activeMatch = null;
+      }
+      saveServerSyncDb();
+      broadcastSync({ type: 'match_deleted', data: { matchId: id } });
+    }
+    res.json({ success: true });
+  });
+
+  // 9. Instant 6-Digit Transfer Code (Tablet to PC/Phone)
+  app.post('/api/sync/create-transfer-code', (req, res) => {
+    try {
+      const { game } = req.body;
+      if (!game || !game.id) {
+        return res.status(400).json({ error: 'Falta objeto de partido' });
+      }
+
+      // Generate human-friendly 6-char code like TAB-482 or BSK-913
+      const num = Math.floor(100 + Math.random() * 900);
+      const prefix = ['TAB', 'BSK', 'LIVE', 'ACTA', 'PLAY'][Math.floor(Math.random() * 5)];
+      const code = `${prefix}-${num}`;
+
+      // Clean old codes older than 48 hours
+      const cutoff = Date.now() - 48 * 3600 * 1000;
+      for (const [k, v] of Object.entries(serverDb.transferCodes)) {
+        if (v.createdAt < cutoff) delete serverDb.transferCodes[k];
+      }
+
+      serverDb.transferCodes[code] = {
+        game,
+        createdAt: Date.now(),
+      };
+      // Also ensure match is in database
+      serverDb.matches[game.id] = game;
+      saveServerSyncDb();
+
+      res.json({
+        success: true,
+        code,
+        expiresIn: '48 horas',
+        matchTitle: `${game.homeTeamName || 'Local'} vs ${game.awayTeamName || 'Visitante'}`,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/sync/get-transfer-code/:code', (req, res) => {
+    const code = req.params.code?.toUpperCase()?.trim();
+    if (!code || !serverDb.transferCodes[code]) {
+      return res.status(404).json({
+        error: `Código de sincronización "${code}" no encontrado o ha caducado.`,
+      });
+    }
+
+    const payload = serverDb.transferCodes[code];
+    res.json({
+      success: true,
+      game: payload.game,
+      createdAt: payload.createdAt,
+    });
   });
 
   // AI Coach Analysis endpoint

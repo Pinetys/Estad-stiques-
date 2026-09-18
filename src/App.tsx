@@ -61,6 +61,7 @@ import {
   updateActiveMatchMetadata,
   ActiveMatchMetadata,
 } from './lib/firebase';
+import { syncEngine, SyncEngineStatus } from './lib/syncEngine';
 import { useScreenWakeLock } from './utils/screenWakeLock';
 
 // Icons
@@ -236,7 +237,7 @@ export default function App() {
     };
   }, [game.isClockRunning, game.status]);
 
-  // Cloud Firestore Sync State (real-time sync between Tablet and Mobile)
+  // Cloud & Autonomous Server Sync State (real-time sync between Tablet, Mobile and PC)
   const isRemoteSyncInProgressRef = useRef(false);
   const lastSyncedHashRef = useRef('');
 
@@ -245,154 +246,142 @@ export default function App() {
     lastSyncTime?: Date;
     errorMessage?: string;
   }>({
-    status: isFirebaseConfigured ? 'syncing' : 'offline',
+    status: 'syncing',
   });
   const [activeCloudMatchNotice, setActiveCloudMatchNotice] = useState<ActiveMatchMetadata | null>(null);
 
-  // Sync teams and matches from Firebase Cloud Firestore and subscribe to real-time changes
+  // Initialize and run the Unified Sync Engine (SSE streaming + server sync + firestore fallback)
   useEffect(() => {
-    let unsubMatches: (() => void) | undefined;
-    let unsubTeams: (() => void) | undefined;
-    let unsubActiveMatch: (() => void) | undefined;
+    // 1. Start engine
+    syncEngine.start();
 
-    async function initCloudSync() {
-      if (!isFirebaseConfigured) {
-        setCloudSyncState({ status: 'offline' });
-        return;
-      }
+    // 2. Subscribe to sync status
+    const unsubStatus = syncEngine.subscribeStatus(st => {
+      setCloudSyncState({
+        status: st.status,
+        lastSyncTime: st.lastSyncTime || undefined,
+        errorMessage: st.errorMessage,
+      });
+    });
 
-      setCloudSyncState({ status: 'syncing' });
-      try {
-        const testRes = await testFirebaseConnection();
-        if (!testRes.connected) {
-          console.warn('Firebase test connection failed:', testRes.error);
-          setCloudSyncState({ status: 'error', errorMessage: testRes.error });
-        } else {
-          setCloudSyncState({ status: 'connected', lastSyncTime: new Date() });
+    // 3. Listen to remote match real-time events (from tablet to phone/PC)
+    const unsubMatchUpdate = syncEngine.onRemoteMatchUpdate(remoteGame => {
+      setLibraryGames(getSavedGamesFromStorage());
+
+      setGame(currentGame => {
+        if (remoteGame.id === currentGame.id) {
+          const remoteUpdated = remoteGame.updatedAt ? new Date(remoteGame.updatedAt).getTime() : 0;
+          const localUpdated = currentGame.updatedAt ? new Date(currentGame.updatedAt).getTime() : 0;
+          if (
+            (remoteGame.events?.length || 0) > (currentGame.events?.length || 0) ||
+            remoteUpdated > localUpdated
+          ) {
+            isRemoteSyncInProgressRef.current = true;
+            return remoteGame;
+          }
         }
+        return currentGame;
+      });
+    });
 
-        // 1. Initial fetch & merge from cloud
-        const [cloudTeams, cloudMatches] = await Promise.all([
-          syncTeamsFromCloud(),
-          syncMatchesFromCloud(),
-        ]);
-        if (cloudTeams.length > 0) setTeams(cloudTeams);
-        if (cloudMatches.length > 0) {
-          setLibraryGames(cloudMatches);
+    // 4. Listen to newly detected remote match sessions (e.g. tablet was recording yesterday or is live)
+    const unsubMatchDetected = syncEngine.onRemoteMatchDetected((remoteGame) => {
+      setLibraryGames(getSavedGamesFromStorage());
 
-          // If current local game on mobile is empty/unplayed (0 points, 0 events, setup),
-          // auto-load the active or most recent match recorded from the tablet!
-          setGame(currentGame => {
-            const isUntouchedLocal =
-              currentGame.events.length === 0 &&
-              currentGame.homeScore === 0 &&
-              currentGame.awayScore === 0 &&
-              !currentGame.isClockRunning &&
-              currentGame.status === 'setup';
+      // If current local game on mobile/PC is empty/unplayed (0 points, 0 events, setup),
+      // auto-load the active or most recent match recorded from the tablet!
+      setGame(currentGame => {
+        const isUntouchedLocal =
+          currentGame.events.length === 0 &&
+          currentGame.homeScore === 0 &&
+          currentGame.awayScore === 0 &&
+          !currentGame.isClockRunning &&
+          currentGame.status === 'setup';
 
-            if (isUntouchedLocal) {
-              const activeMatch = cloudMatches.find(
-                m => m.status === 'live' && (m.events.length > 0 || m.homeScore > 0 || m.awayScore > 0)
-              ) || cloudMatches.find(
-                m => m.events && m.events.length > 0
-              );
+        if (isUntouchedLocal && (remoteGame.events?.length > 0 || remoteGame.homeScore > 0 || remoteGame.awayScore > 0)) {
+          isRemoteSyncInProgressRef.current = true;
+          return remoteGame;
+        }
+        return currentGame;
+      });
 
-              if (activeMatch) {
-                isRemoteSyncInProgressRef.current = true;
-                return activeMatch;
-              }
-            }
-            return currentGame;
+      // Show notice banner if it's a different game with active content
+      setGame(currentGame => {
+        if (remoteGame.id !== currentGame.id && (remoteGame.events?.length > 0 || remoteGame.status === 'live')) {
+          setActiveCloudMatchNotice({
+            activeGameId: remoteGame.id,
+            homeTeamName: remoteGame.homeTeamName || 'Local',
+            awayTeamName: remoteGame.awayTeamName || 'Visitante',
+            homeScore: remoteGame.homeScore || 0,
+            awayScore: remoteGame.awayScore || 0,
+            currentQuarter: remoteGame.currentQuarter || 1,
+            currentSecondsRemaining: remoteGame.currentSecondsRemaining || 600,
+            status: remoteGame.status,
+            updatedAt: remoteGame.updatedAt || new Date().toISOString(),
           });
         }
+        return currentGame;
+      });
+    });
 
-        // Sanitize any previously contaminated matches in storage
-        const currentMatches = getSavedGamesFromStorage();
-        const currentTeams = getRegisteredTeams();
-        if (currentMatches.length > 0 && currentTeams.length > 0) {
-          const { sanitized, changed } = sanitizeAndIsolateLibraryGames(currentMatches, currentTeams);
-          if (changed) {
-            saveGamesToStorage(sanitized);
-            setLibraryGames(sanitized);
+    // Initial sync fetch
+    syncEngine.syncAll({ force: true }).then(res => {
+      if (res.teams.length > 0) setTeams(res.teams);
+      if (res.matches.length > 0) {
+        setLibraryGames(res.matches);
+
+        setGame(currentGame => {
+          const isUntouchedLocal =
+            currentGame.events.length === 0 &&
+            currentGame.homeScore === 0 &&
+            currentGame.awayScore === 0 &&
+            !currentGame.isClockRunning &&
+            currentGame.status === 'setup';
+
+          if (isUntouchedLocal) {
+            const candidate = res.matches.find(m => m.status === 'live' && (m.events.length > 0 || m.homeScore > 0)) ||
+              res.matches.find(m => m.events && m.events.length > 0);
+            if (candidate) {
+              isRemoteSyncInProgressRef.current = true;
+              return candidate;
+            }
           }
-        }
-
-        // 2. Real-time listener for matches: instantly synchronizes actions recorded on tablet onto mobile
-        unsubMatches = subscribeToMatches(matches => {
-          if (matches && matches.length > 0) {
-            const merged = mergeCloudMatches(matches);
-            setLibraryGames(merged);
-            setCloudSyncState({ status: 'connected', lastSyncTime: new Date() });
-
-            // If the match currently being viewed has new events or scores from tablet, update state
-            setGame(currentGame => {
-              const remoteGame = matches.find(m => m.id === currentGame.id);
-              if (remoteGame) {
-                const remoteUpdated = remoteGame.updatedAt ? new Date(remoteGame.updatedAt).getTime() : 0;
-                const localUpdated = currentGame.updatedAt ? new Date(currentGame.updatedAt).getTime() : 0;
-                if (
-                  (remoteGame.events?.length || 0) > (currentGame.events?.length || 0) ||
-                  remoteUpdated > localUpdated
-                ) {
-                  isRemoteSyncInProgressRef.current = true;
-                  return remoteGame;
-                }
-              }
-              return currentGame;
-            });
-          }
+          return currentGame;
         });
-
-        // 3. Real-time listener for teams: keeps roster and team metadata synchronized
-        unsubTeams = subscribeToTeams(teams => {
-          if (teams && teams.length > 0) {
-            const merged = mergeCloudTeams(teams);
-            setTeams(merged);
-          }
-        });
-
-        // 4. Real-time listener for active live match metadata: alerts mobile user when a game is in progress on tablet
-        unsubActiveMatch = subscribeToActiveMatchMetadata(meta => {
-          if (meta && meta.activeGameId && meta.status === 'live') {
-            setActiveCloudMatchNotice(meta);
-          } else {
-            setActiveCloudMatchNotice(null);
-          }
-        });
-      } catch (err: any) {
-        console.warn('Initial cloud sync notice:', err);
-        setCloudSyncState({ status: 'error', errorMessage: err?.message || 'Error en conexión' });
       }
-    }
 
-    initCloudSync();
+      // Sanitize any previously contaminated matches in storage
+      const currentMatches = getSavedGamesFromStorage();
+      const currentTeams = getRegisteredTeams();
+      if (currentMatches.length > 0 && currentTeams.length > 0) {
+        const { sanitized, changed } = sanitizeAndIsolateLibraryGames(currentMatches, currentTeams);
+        if (changed) {
+          saveGamesToStorage(sanitized);
+          setLibraryGames(sanitized);
+        }
+      }
+    }).catch(() => {});
 
     return () => {
-      if (unsubMatches) unsubMatches();
-      if (unsubTeams) unsubTeams();
-      if (unsubActiveMatch) unsubActiveMatch();
+      unsubStatus();
+      unsubMatchUpdate();
+      unsubMatchDetected();
     };
   }, []);
 
   const handleForceSyncCloud = async () => {
     setCloudSyncState(prev => ({ ...prev, status: 'syncing' }));
     try {
-      const conn = await testFirebaseConnection();
-      if (!conn.connected) {
-        setCloudSyncState({ status: 'error', errorMessage: conn.error || 'Sin conexión a Firebase' });
-        return;
-      }
-      const [cloudTeams, cloudMatches] = await Promise.all([
-        syncTeamsFromCloud(),
-        syncMatchesFromCloud(),
-      ]);
-      if (cloudTeams.length > 0) setTeams(cloudTeams);
-      if (cloudMatches.length > 0) setLibraryGames(cloudMatches);
+      // 1. Push any local matches to server
+      await syncEngine.pushAllLocalDataToServer();
+      // 2. Full bidirectional sync
+      const res = await syncEngine.syncAll({ force: true });
+      if (res.teams.length > 0) setTeams(res.teams);
+      if (res.matches.length > 0) setLibraryGames(res.matches);
 
-      // Also ensure current active game is pushed to cloud
+      // 3. Sync current game
       if (game && game.id && (game.status === 'live' || game.events.length > 0)) {
-        await syncMatchToCloud(game);
-        await updateActiveMatchMetadata(game);
+        syncEngine.saveAndSyncMatch(game, { immediate: true });
       }
 
       setCloudSyncState({
@@ -462,12 +451,8 @@ export default function App() {
         saveGameToLibrary(game);
         setLibraryGames(getSavedGamesFromStorage());
 
-        // Create fingerprint to avoid spamming Firestore every 1 second of clock countdown
-        const currentDataHash = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events.length}_${game.currentQuarter}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.status}_${game.isClockRunning}`;
-        if (currentDataHash !== lastSyncedHashRef.current) {
-          lastSyncedHashRef.current = currentDataHash;
-          syncMatchToCloud(game).catch(() => {});
-        }
+        // Broadcast to server & cloud via Unified SyncEngine
+        syncEngine.saveAndSyncMatch(game, { immediate: game.status === 'finished' });
       }
     } catch {
       // Storage quota or private mode
@@ -1433,7 +1418,7 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   playSound('click', game.settings.soundEnabled);
-                  handleForceSyncCloud();
+                  setShowCloudBackupModal(true);
                 }}
                 className={`px-2 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 ${
                   cloudSyncState.status === 'connected'
@@ -1446,23 +1431,23 @@ export default function App() {
                 }`}
                 title={
                   cloudSyncState.status === 'connected'
-                    ? '🟢 Sincronizado en tiempo real con Firestore (Toca para refrescar)'
+                    ? '🟢 Sincronizado en tiempo real (Toca para ver opciones de tablet, PC y móvil)'
                     : cloudSyncState.status === 'syncing'
-                    ? '🟡 Sincronizando con la nube...'
+                    ? '🟡 Sincronizando con el servidor y la nube...'
                     : cloudSyncState.status === 'error'
-                    ? `🔴 Error de sincronización: ${cloudSyncState.errorMessage || 'Sin conexión'}. Toca para reintentar.`
-                    : '⚪ Sincronización en la nube'
+                    ? `🔴 ${cloudSyncState.errorMessage || 'Sin conexión'}. Toca para abrir sincronización.`
+                    : '⚪ Sincronización Automática'
                 }
               >
                 <Cloud className={`w-3.5 h-3.5 ${cloudSyncState.status === 'syncing' ? 'animate-spin' : ''}`} />
                 <span className="hidden md:inline text-[11px]">
                   {cloudSyncState.status === 'connected'
-                    ? 'Nube OK'
+                    ? 'Sincronizado'
                     : cloudSyncState.status === 'syncing'
                     ? 'Sincronizando'
                     : cloudSyncState.status === 'error'
-                    ? 'Reintentar'
-                    : 'Nube'}
+                    ? 'Revisar Sync'
+                    : 'Sync'}
                 </span>
               </button>
 
@@ -1552,7 +1537,7 @@ export default function App() {
                         className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
                       >
                         <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />
-                        <span>Sincronizar en la Nube</span>
+                        <span>Sincronización Automática (Tablet / PC / Móvil)</span>
                       </button>
 
                       <button
@@ -2083,7 +2068,14 @@ export default function App() {
           onClose={() => setShowCloudBackupModal(false)}
           onRestoreCompleted={() => {
             setTeams(getRegisteredTeams());
+            setLibraryGames(getSavedGamesFromStorage());
             setShowCloudBackupModal(false);
+          }}
+          onLoadGame={loadedGame => {
+            setGame(loadedGame);
+            saveGameToLibrary(loadedGame);
+            setLibraryGames(getSavedGamesFromStorage());
+            setActiveTab('live');
           }}
         />
       )}

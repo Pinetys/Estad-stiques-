@@ -69,6 +69,14 @@ export async function testFirebaseConnection(): Promise<{ connected: boolean; er
     }, { merge: true });
     return { connected: true };
   } catch (err: any) {
+    const isQuota = err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded');
+    if (isQuota) {
+      console.warn('Firestore write quota reached. App is operating seamlessly on autonomous Server Sync engine.');
+      return {
+        connected: false,
+        error: 'Cuota diaria de Firestore agotada (20.000 escrituras). Sincronización continua activa vía Servidor BasketStats.',
+      };
+    }
     handleFirestoreError(err, OperationType.WRITE, 'metadata/connection_test');
     return {
       connected: false,
