@@ -271,6 +271,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   courtMode: false,
   shotChartAutoOpen: 'baskets',
   keepScreenAwake: true,
+  timingMode: 'fiba_stop',
+  autoPauseOnFouls: true,
+  autoResetShotClockOnOreb: true,
 };
 
 export const DEFAULT_ROSTER: Player[] = [

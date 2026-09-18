@@ -32,6 +32,7 @@ import { TeamsHubView } from './components/TeamsHubView';
 import { TeamStatsReportModal } from './components/TeamStatsReportModal';
 import { AccessManagementModal } from './components/AccessManagementModal';
 import { EmergencyRecoveryModal } from './components/EmergencyRecoveryModal';
+import { TutorialModal } from './components/TutorialModal';
 import { detectAndInitUserRole, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
@@ -89,6 +90,7 @@ import {
   Play,
   X,
   AlertTriangle,
+  HelpCircle,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -185,6 +187,14 @@ export default function App() {
   const [showCloudBackupModal, setShowCloudBackupModal] = useState(false);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
+  const [showTutorialModal, setShowTutorialModal] = useState<boolean>(() => {
+    try {
+      const seen = localStorage.getItem('basketstats_has_seen_tutorial');
+      return !seen;
+    } catch {
+      return false;
+    }
+  });
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => detectAndInitUserRole());
   const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
 
@@ -533,6 +543,8 @@ export default function App() {
     const actionDef = ACTION_DEFINITIONS[actionType];
     const pointsToAdd = actionDef ? actionDef.points : 0;
     const isFoul = actionDef?.category === 'fouls';
+    const isOreb = actionType === 'OREB';
+    const isDreb = actionType === 'DREB';
 
     setGame(prev => {
       const player = prev.players.find(p => p.id === playerId);
@@ -540,6 +552,24 @@ export default function App() {
 
       const newHomeScore = prev.homeScore + pointsToAdd;
       const newQuarterFouls = isFoul ? prev.homeQuarterFouls + 1 : prev.homeQuarterFouls;
+
+      // Auto-pause clock on fouls in FIBA stop-clock mode
+      const shouldAutoPause =
+        isFoul &&
+        prev.settings.autoPauseOnFouls !== false &&
+        (prev.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
+
+      // Auto-reset shot clock on rebounds
+      let nextShotClock = prev.shotClockSeconds;
+      let nextShotClockRunning = prev.isShotClockRunning;
+
+      if (isOreb && prev.settings.autoResetShotClockOnOreb !== false) {
+        nextShotClock = 14;
+        nextShotClockRunning = true;
+      } else if (isDreb) {
+        nextShotClock = 24;
+        nextShotClockRunning = true;
+      }
 
       const assistant = assistedByPlayerId
         ? prev.players.find(p => p.id === assistedByPlayerId)
@@ -595,6 +625,9 @@ export default function App() {
 
       return {
         ...prev,
+        isClockRunning: shouldAutoPause ? false : prev.isClockRunning,
+        shotClockSeconds: nextShotClock !== undefined ? nextShotClock : prev.shotClockSeconds,
+        isShotClockRunning: nextShotClockRunning !== undefined ? nextShotClockRunning : prev.isShotClockRunning,
         homeScore: newHomeScore,
         homeQuarterFouls: newQuarterFouls,
         players: updatedPlayers,
@@ -834,6 +867,12 @@ export default function App() {
         },
       };
 
+      // Auto-pause clock on fouls in FIBA stop-clock mode
+      const shouldAutoPause =
+        isFoul &&
+        prev.settings.autoPauseOnFouls !== false &&
+        (prev.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
+
       const updatedQuarterScores = prev.quarterScores.map(qs => {
         if (qs.quarter === prev.currentQuarter) {
           return {
@@ -846,6 +885,7 @@ export default function App() {
 
       return {
         ...prev,
+        isClockRunning: shouldAutoPause ? false : prev.isClockRunning,
         awayScore: newAwayScore,
         awayQuarterFouls: newAwayQuarterFouls,
         events: [newEvent, ...prev.events],
@@ -1294,6 +1334,7 @@ export default function App() {
           }}
           onOpenOfficialSheet={() => setShowOfficialSheet(true)}
           onOpenShotChartForBasket={handleOpenShotChartForBasket}
+          onOpenTutorial={() => setShowTutorialModal(true)}
         />
       ) : (
         <>
@@ -1573,6 +1614,17 @@ export default function App() {
                         <span>Scout Táctico con IA</span>
                       </button>
 
+                      <button
+                        onClick={() => {
+                          setShowMobileHeaderMenu(false);
+                          setShowTutorialModal(true);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-amber-300 text-xs font-semibold text-left transition"
+                      >
+                        <HelpCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>Tutorial y Guía de Uso</span>
+                      </button>
+
                       <div className="h-px bg-gray-800 my-1" />
 
                       <button
@@ -1754,6 +1806,7 @@ export default function App() {
                   }
                   setShowTeamModal(true);
                 }}
+                onOpenTutorial={() => setShowTutorialModal(true)}
                 soundEnabled={game.settings.soundEnabled}
               />
             )}
@@ -2144,6 +2197,13 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Interactive App Walkthrough Tutorial Modal */}
+      <TutorialModal
+        isOpen={showTutorialModal}
+        onClose={() => setShowTutorialModal(false)}
+        soundEnabled={game.settings.soundEnabled}
+      />
     </div>
   );
 }

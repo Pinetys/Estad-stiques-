@@ -30,6 +30,7 @@ import {
   Edit,
   Lock,
   Unlock,
+  HelpCircle,
 } from 'lucide-react';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
 import { StartingFiveModal } from './StartingFiveModal';
@@ -39,6 +40,9 @@ import { CourtActionConsole } from './CourtActionConsole';
 import { CourtPlayersBar } from './CourtPlayersBar';
 import { CourtLandscapeHeader } from './CourtLandscapeHeader';
 import { CourtRosterPanel } from './CourtRosterPanel';
+import { QuickTimeAdjustModal } from './QuickTimeAdjustModal';
+import { TimeoutCountdownModal } from './TimeoutCountdownModal';
+import { ProSubscriptionBenefitsModal } from './ProSubscriptionBenefitsModal';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -62,6 +66,7 @@ interface CourtBenchModeProps {
   onOpenOfficialSheet?: () => void;
   onOpenShotChartForBasket?: (shot: PendingShot) => void;
   onCloseMatch?: () => void;
+  onOpenTutorial?: () => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -82,6 +87,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onOpenOfficialSheet,
   onOpenShotChartForBasket,
   onCloseMatch,
+  onOpenTutorial,
 }) => {
   // Direct In-Game Substitution handler
   const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
@@ -109,6 +115,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
   const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
   const isLandscapeTablet = useIsLandscapeTablet();
+
+  // Pro Timing & Commercial Modals State
+  const [showQuickTimeAdjustModal, setShowQuickTimeAdjustModal] = useState(false);
+  const [timeoutModalTeam, setTimeoutModalTeam] = useState<'home' | 'away' | null>(null);
+  const [showProBenefitsModal, setShowProBenefitsModal] = useState(false);
 
   const isGameFinished = game.status === 'finished';
   const isActionsLocked = isGameFinished && !isEditingFinishedGame;
@@ -666,11 +677,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               onUndoLastAction();
             }}
             disabled={isActionsLocked || !recentEvent}
-            className="px-2.5 sm:px-3.5 py-1 bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-lg flex items-center gap-1.5 shrink-0 shadow-md disabled:opacity-25 disabled:pointer-events-none transition active:scale-95"
+            className="px-3.5 sm:px-5 py-2 min-h-[46px] sm:min-h-[50px] bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-2 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95 border border-rose-500/50"
             title={isActionsLocked ? 'Partido bloqueado (Activa Modo Edición para retocar)' : 'Deshacer última acción'}
           >
-            <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="text-xs sm:text-sm">DESHACER</span>
+            <Undo2 className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-xs sm:text-sm font-black tracking-wider">DESHACER</span>
           </button>
         </div>
 
@@ -763,6 +774,16 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onToggleWakeLock={handleToggleWakeLock}
           onOpenShotChart={onOpenShotChart}
           onOpenOfficialSheet={onOpenOfficialSheet}
+          onOpenQuickTimeAdjust={() => {
+            if (isActionsLocked) return;
+            setShowQuickTimeAdjustModal(true);
+          }}
+          onTriggerTimeout={(team) => {
+            if (isActionsLocked) return;
+            setTimeoutModalTeam(team);
+          }}
+          onOpenProBenefits={() => setShowProBenefitsModal(true)}
+          onOpenTutorial={onOpenTutorial}
           onCloseMatch={() => {
             playSound('click', game.settings.soundEnabled);
             triggerHaptic('medium', game.settings.vibrationEnabled);
@@ -892,6 +913,18 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </button>
           )}
 
+          {onOpenTutorial && (
+            <button
+              type="button"
+              onClick={onOpenTutorial}
+              className="p-1 px-1.5 bg-neutral-900 hover:bg-neutral-800 text-amber-300 border border-neutral-700/80 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+              title="Ver Tutorial y Guía de Uso de la Aplicación"
+            >
+              <HelpCircle className="w-3 h-3 text-amber-400" />
+              <span className="hidden xs:inline">Ayuda</span>
+            </button>
+          )}
+
           {/* Close Match / Edit button in portrait */}
           {game.status === 'finished' ? (
             <button
@@ -964,6 +997,15 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             triggerHaptic('bonus', game.settings.vibrationEnabled);
             setBonusFreeThrowPrompt({ team: 'away', count });
           }}
+          onOpenQuickTimeAdjust={() => {
+            if (isActionsLocked) return;
+            setShowQuickTimeAdjustModal(true);
+          }}
+          onTriggerTimeout={(team) => {
+            if (isActionsLocked) return;
+            setTimeoutModalTeam(team);
+          }}
+          onOpenProBenefits={() => setShowProBenefitsModal(true)}
         />
       )}
 
@@ -1046,7 +1088,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 5. MAIN ACTION BUTTONS CONSOLE (PORTRAIT ONLY) */}
       {!isLandscapeTablet && (
-        <div className={`max-w-3xl md:max-w-4xl mx-auto w-full px-1.5 sm:px-3 flex-1 min-h-0 overflow-hidden flex flex-col justify-evenly py-0.5 sm:py-1 transition-opacity duration-200 ${
+        <div className={`max-w-3xl md:max-w-4xl mx-auto w-full px-1.5 sm:px-3 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly py-0.5 sm:py-1 transition-opacity duration-200 ${
           isActionsLocked ? 'opacity-35 pointer-events-none' : ''
         }`}>
           <CourtActionConsole
@@ -1458,6 +1500,40 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           }}
           onClose={() => setShowStartingFiveModal(false)}
           title={`Quinteto Inicial · ${game.homeTeamName}`}
+        />
+      )}
+
+      {/* MODAL AJUSTE RÁPIDO DE TIEMPO Y RÉGIMEN FIBA / CORRIDO */}
+      {showQuickTimeAdjustModal && (
+        <QuickTimeAdjustModal
+          game={game}
+          onClose={() => setShowQuickTimeAdjustModal(false)}
+          onUpdateGame={onUpdateGame}
+        />
+      )}
+
+      {/* MODAL CUENTA ATRÁS TIEMPO MUERTO (60 SEGUNDOS REGLAMENTARIOS) */}
+      {timeoutModalTeam && (
+        <TimeoutCountdownModal
+          game={game}
+          callingTeam={timeoutModalTeam}
+          onClose={(resumeClock) => {
+            if (resumeClock) {
+              onUpdateGame(prev => ({ ...prev, isClockRunning: true }));
+            }
+            setTimeoutModalTeam(null);
+          }}
+          onUpdateGame={onUpdateGame}
+        />
+      )}
+
+      {/* MODAL VENTAJAS SUSCRIPCIÓN PRO CLUB (STREAMING, ACTAS, SYNC) */}
+      {showProBenefitsModal && (
+        <ProSubscriptionBenefitsModal
+          game={game}
+          onClose={() => setShowProBenefitsModal(false)}
+          onOpenOfficialSheet={onOpenOfficialSheet}
+          onOpenShotChart={onOpenShotChart}
         />
       )}
     </div>

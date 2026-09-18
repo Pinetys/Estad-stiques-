@@ -14,6 +14,10 @@ import {
   RotateCcw,
   Edit,
   Lock,
+  SlidersHorizontal,
+  Timer,
+  Crown,
+  HelpCircle,
 } from 'lucide-react';
 
 interface CourtLandscapeHeaderProps {
@@ -41,6 +45,10 @@ interface CourtLandscapeHeaderProps {
   onCloseMatch?: () => void;
   onCycleShotMode?: () => void;
   onSelectQuarter?: (quarter: number) => void;
+  onOpenQuickTimeAdjust?: () => void;
+  onTriggerTimeout?: (team: 'home' | 'away') => void;
+  onOpenProBenefits?: () => void;
+  onOpenTutorial?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -68,8 +76,13 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onCloseMatch,
   onCycleShotMode,
   onSelectQuarter,
+  onOpenQuickTimeAdjust,
+  onTriggerTimeout,
+  onOpenProBenefits,
+  onOpenTutorial,
 }) => {
   const currentQuarterLabel = formatQuarterShort(game.currentQuarter);
+  const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
 
   const handlePrevQuarter = () => {
     if (game.currentQuarter > 1 && onSelectQuarter) {
@@ -125,11 +138,24 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <div className="font-scoreboard font-black text-2xl lg:text-3xl text-white tracking-tight leading-none ml-auto drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
               {game.homeScore}
             </div>
+            {/* Home Timeouts */}
+            {onTriggerTimeout && (
+              <button
+                type="button"
+                onClick={() => onTriggerTimeout('home')}
+                disabled={isActionsLocked || (game.homeTimeouts !== undefined && game.homeTimeouts <= 0)}
+                className="px-1.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 active:bg-amber-800 border border-amber-500/60 text-[9px] font-mono font-bold text-amber-300 flex items-center gap-0.5 transition active:scale-95 disabled:opacity-30 shadow-sm ml-1.5"
+                title="Pedir Tiempo Muerto (60 segundos)"
+              >
+                <Timer className="w-3 h-3 text-amber-400" />
+                <span>TM: {game.homeTimeouts ?? 3}</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* CENTER SECTION: QUARTER TIME & ALL CLOCK BUTTONS (EL CENTRO ARRIBA) */}
-        <div className="flex items-center justify-center gap-2.5 grow max-w-2xl px-1">
+        <div className="flex items-center justify-center gap-2 grow max-w-2xl px-1">
           {/* Quarter Selector Pill */}
           <div className="flex items-center bg-[#171922] border border-neutral-800 rounded-xl px-1 py-0.5 text-xs font-mono shrink-0">
             <button
@@ -154,44 +180,61 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </div>
 
           {/* Big Master Clock + Play/Pause Button */}
-          <button
-            onClick={toggleClock}
-            disabled={isActionsLocked}
-            className={`px-3 py-1 rounded-xl border flex items-center gap-2 transition active:scale-95 shadow-lg shrink-0 ${
-              isActionsLocked
-                ? 'bg-[#121318] border-neutral-800 text-neutral-400 cursor-not-allowed opacity-90'
-                : game.isClockRunning
-                ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
-                : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-            }`}
-            title={game.status === 'finished' ? 'Partido finalizado (00:00)' : 'Iniciar / Pausar tiempo de partido'}
-          >
-            {game.status === 'finished' ? (
-              <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-            ) : game.isClockRunning ? (
-              <Pause className="w-4 h-4 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
-            ) : (
-              <Play className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
-            )}
-            <div className="flex flex-col items-center">
-              <span className="font-scoreboard font-black text-2xl lg:text-3xl tracking-widest leading-none drop-shadow-md">
-                {formatGameTime(game.status === 'finished' ? 0 : game.currentSecondsRemaining)}
-              </span>
-              <span className="text-[8px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
-                {game.status === 'finished' ? (
-                  isEditingFinishedGame ? (
-                    <span className="text-amber-400 font-black">MODO EDICIÓN</span>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={toggleClock}
+              disabled={isActionsLocked}
+              className={`px-3 py-1 rounded-xl border flex items-center gap-2 transition active:scale-95 shadow-lg shrink-0 ${
+                isActionsLocked
+                  ? 'bg-[#121318] border-neutral-800 text-neutral-400 cursor-not-allowed opacity-90'
+                  : game.isClockRunning
+                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
+                  : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+              }`}
+              title={game.status === 'finished' ? 'Partido finalizado (00:00)' : 'Iniciar / Pausar tiempo de partido'}
+            >
+              {game.status === 'finished' ? (
+                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : game.isClockRunning ? (
+                <Pause className="w-4 h-4 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
+              ) : (
+                <Play className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
+              )}
+              <div className="flex flex-col items-center">
+                <span className="font-scoreboard font-black text-2xl lg:text-3xl tracking-widest leading-none drop-shadow-md">
+                  {formatGameTime(game.status === 'finished' ? 0 : game.currentSecondsRemaining)}
+                </span>
+                <span className="text-[8px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
+                  {game.status === 'finished' ? (
+                    isEditingFinishedGame ? (
+                      <span className="text-amber-400 font-black">MODO EDICIÓN</span>
+                    ) : (
+                      <span className="text-red-400 font-black">FINALIZADO (00:00)</span>
+                    )
+                  ) : game.isClockRunning ? (
+                    <span className="text-emerald-400">EN JUEGO</span>
                   ) : (
-                    <span className="text-red-400 font-black">FINALIZADO (00:00)</span>
-                  )
-                ) : game.isClockRunning ? (
-                  <span className="text-emerald-400">EN JUEGO</span>
-                ) : (
-                  <span className="text-amber-400/90">PAUSA · TOCAR</span>
-                )}
-              </span>
-            </div>
-          </button>
+                    <span className="text-amber-400/90">PAUSA · TOCAR</span>
+                  )}
+                </span>
+              </div>
+            </button>
+
+            {/* Quick Time Adjust Button */}
+            {onOpenQuickTimeAdjust && (
+              <button
+                type="button"
+                onClick={onOpenQuickTimeAdjust}
+                className="p-2 bg-[#171922] hover:bg-[#202330] text-amber-400 hover:text-amber-300 border border-neutral-700 hover:border-amber-500/60 rounded-xl transition active:scale-95 shadow-md flex flex-col items-center justify-center gap-0.5"
+                title="Ajuste rápido de minutos, segundos y régimen del reloj"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="text-[7.5px] font-mono font-bold uppercase">
+                  {isFibaTiming ? 'FIBA' : 'CORRIDO'}
+                </span>
+              </button>
+            )}
+          </div>
 
           {/* Shot Clock Controls (24s / 14s & high-visibility display) */}
           <div className={`flex items-center gap-1.5 bg-[#171922] border border-neutral-800 rounded-xl p-1 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
@@ -259,6 +302,19 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <div className="font-scoreboard font-black text-2xl lg:text-3xl text-white tracking-tight leading-none drop-shadow-[0_2px_8px_rgba(56,189,248,0.35)]">
               {game.awayScore}
             </div>
+            {/* Away Timeouts */}
+            {onTriggerTimeout && (
+              <button
+                type="button"
+                onClick={() => onTriggerTimeout('away')}
+                disabled={isActionsLocked || (game.awayTimeouts !== undefined && game.awayTimeouts <= 0)}
+                className="px-1.5 py-1 rounded bg-sky-950/80 hover:bg-sky-900 active:bg-sky-800 border border-sky-500/60 text-[9px] font-mono font-bold text-sky-300 flex items-center gap-0.5 transition active:scale-95 disabled:opacity-30 shadow-sm ml-1"
+                title="Tiempo Muerto Rival (60 segundos)"
+              >
+                <Timer className="w-3 h-3 text-sky-400" />
+                <span>TM: {game.awayTimeouts ?? 3}</span>
+              </button>
+            )}
             <div className="flex flex-col text-right ml-auto">
               <span className="text-[10px] font-black text-sky-400 uppercase tracking-wider truncate max-w-[90px] leading-tight">
                 {game.awayTeamName || 'RIVAL'}
@@ -279,13 +335,13 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </div>
           </div>
 
-          {/* Opponent Quick Scoring Buttons (Thumb-Friendly, Highly Clickable) */}
+          {/* Opponent Quick Scoring Buttons (Thumb-Friendly, Highly Clickable, Large) */}
           <div className={`flex items-center gap-1.5 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_1P')}
               disabled={isActionsLocked}
-              className="min-h-[36px] px-2.5 py-1.5 bg-sky-950/90 hover:bg-sky-900 active:bg-sky-800 text-sky-100 border border-sky-600/70 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
+              className="min-h-[44px] sm:min-h-[48px] px-3 sm:px-3.5 py-2 bg-sky-950/90 hover:bg-sky-900 active:bg-sky-800 text-sky-100 border border-sky-600/70 rounded-xl font-mono font-black text-xs sm:text-sm transition active:scale-95 shadow-md disabled:opacity-40"
               title="+1 Tiro Libre Rival"
             >
               +1 TL
@@ -294,7 +350,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={() => onLogOpponentAction('OPP_2P')}
               disabled={isActionsLocked}
-              className="min-h-[36px] px-3 py-1.5 bg-sky-900 hover:bg-sky-800 active:bg-sky-700 text-white border border-sky-400/80 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
+              className="min-h-[44px] sm:min-h-[48px] px-3.5 sm:px-4 py-2 bg-sky-900 hover:bg-sky-800 active:bg-sky-700 text-white border border-sky-400/80 rounded-xl font-mono font-black text-xs sm:text-sm transition active:scale-95 shadow-md disabled:opacity-40"
               title="+2 Canasta Rival"
             >
               +2 Canasta
@@ -303,7 +359,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={() => onLogOpponentAction('OPP_3P')}
               disabled={isActionsLocked}
-              className="min-h-[36px] px-3 py-1.5 bg-blue-900 hover:bg-blue-800 active:bg-blue-700 text-white border border-blue-400/80 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
+              className="min-h-[44px] sm:min-h-[48px] px-3.5 sm:px-4 py-2 bg-blue-900 hover:bg-blue-800 active:bg-blue-700 text-white border border-blue-400/80 rounded-xl font-mono font-black text-xs sm:text-sm transition active:scale-95 shadow-md disabled:opacity-40"
               title="+3 Triple Rival"
             >
               +3 Triple
@@ -318,7 +374,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 }
               }}
               disabled={isActionsLocked}
-              className="min-h-[36px] px-3 py-1.5 bg-rose-950/90 hover:bg-rose-900 active:bg-rose-800 text-rose-100 border border-rose-500/80 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40"
+              className="min-h-[44px] sm:min-h-[48px] px-3.5 sm:px-4 py-2 bg-rose-950/90 hover:bg-rose-900 active:bg-rose-800 text-rose-100 border border-rose-500/80 rounded-xl font-mono font-black text-xs sm:text-sm transition active:scale-95 shadow-md disabled:opacity-40"
               title="+Falta cometida por el Rival"
             >
               +Falta
@@ -327,7 +383,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={onOpenScoutingDorsal}
               disabled={isActionsLocked}
-              className="min-h-[36px] px-2 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 rounded-xl text-xs font-mono font-bold disabled:opacity-40"
+              className="min-h-[44px] sm:min-h-[48px] px-2.5 sm:px-3 py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 rounded-xl text-xs sm:text-sm font-mono font-bold disabled:opacity-40"
               title="Anotar rival indicando dorsal"
             >
               # Dorsal
@@ -371,6 +427,32 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 title="Abrir acta oficial"
               >
                 <FileText className="w-3.5 h-3.5 text-blue-400" />
+              </button>
+            )}
+
+            {/* Pro Subscription Benefits & Live Streaming */}
+            {onOpenProBenefits && (
+              <button
+                type="button"
+                onClick={onOpenProBenefits}
+                className="px-2 py-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/50 rounded-lg text-xs font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-sm"
+                title="Suscripción PRO Club: Retransmisión en Vivo para Familias y Actas Oficiales"
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden xl:inline">PRO CLUB</span>
+              </button>
+            )}
+
+            {/* Interactive App Tutorial */}
+            {onOpenTutorial && (
+              <button
+                type="button"
+                onClick={onOpenTutorial}
+                className="px-2 py-1 bg-neutral-900 hover:bg-neutral-800 text-amber-300 border border-neutral-700/80 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                title="Ver Tutorial y Guía de Funcionamiento"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden xl:inline">TUTORIAL</span>
               </button>
             )}
 

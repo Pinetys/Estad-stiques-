@@ -87,7 +87,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
 
       {/* Players Cards Strip - Clean 5-column grid across full width */}
       <div className="w-full bg-[#111317] border border-neutral-800 rounded-xl px-1 py-1 text-xs">
-        <div className="grid grid-cols-5 gap-1 w-full">
+        <div className="grid grid-cols-5 gap-1.5 w-full">
           {playersOnCourt.map(player => {
             const stats = calculatePlayerStats(player, game.events);
             const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
@@ -101,25 +101,25 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                   triggerHaptic('light', game.settings.vibrationEnabled);
                   onSelectPlayer(selectedPlayerId === player.id ? '' : player.id);
                 }}
-                className={`flex flex-col items-center justify-center py-1 px-0.5 rounded-lg border font-mono transition active:scale-95 text-center ${
+                className={`flex flex-col items-center justify-between py-2 px-1 rounded-xl border-2 font-mono transition active:scale-95 text-center min-h-[58px] sm:min-h-[66px] shadow-sm ${
                   selectedPlayerId === player.id
-                    ? 'bg-amber-500/20 border-amber-500 text-white shadow-sm ring-1 ring-amber-400/60'
+                    ? 'bg-amber-500/25 border-amber-400 text-white shadow-md ring-2 ring-amber-400/70'
                     : isFouledOut
-                    ? 'bg-red-950/40 border-red-800 text-red-300'
+                    ? 'bg-red-950/50 border-red-800 text-red-300'
                     : isFoulDanger
-                    ? 'bg-amber-950/40 border-amber-700 text-amber-200'
-                    : 'bg-[#181a24] border-neutral-800 text-neutral-200 hover:border-neutral-700'
+                    ? 'bg-amber-950/50 border-amber-700 text-amber-200'
+                    : 'bg-[#181a24] border-neutral-700/80 text-neutral-200 hover:border-neutral-600'
                 }`}
               >
                 <div className="flex items-center justify-center">
-                  <span className="font-scoreboard font-black text-xs sm:text-sm text-amber-400 leading-none">
+                  <span className="font-scoreboard font-black text-base sm:text-lg text-amber-400 leading-none drop-shadow">
                     #{player.number}
                   </span>
                 </div>
-                <div className="text-[9px] sm:text-[11px] font-bold text-neutral-300 truncate w-full mt-0.5">
+                <div className="text-[10px] sm:text-xs font-bold text-neutral-100 truncate w-full mt-0.5">
                   {player.name.split(' ')[0]}
                 </div>
-                <div className="text-[8px] sm:text-[9.5px] font-mono flex items-center justify-center gap-0.5 sm:gap-1 mt-0.5 font-bold leading-none">
+                <div className="text-[9px] sm:text-[10.5px] font-mono flex items-center justify-center gap-1 mt-0.5 font-black leading-none">
                   <span className="text-orange-400">{stats.points}p</span>
                   <span
                     className={

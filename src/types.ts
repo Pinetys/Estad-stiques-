@@ -111,6 +111,9 @@ export interface GameSettings {
   courtMode: boolean; // Modo Pista: reduce intensidad de color y desactiva animaciones para ahorrar batería
   shotChartAutoOpen?: 'baskets' | 'all' | 'off'; // Abrir carta de tiro al anotar canasta (default: 'baskets')
   keepScreenAwake?: boolean; // Anti-bloqueo: mantener pantalla encendida en pista para no bloquear el móvil
+  timingMode?: 'fiba_stop' | 'running_clock'; // 'fiba_stop' = Tiempo Parado (FIBA), 'running_clock' = Tiempo Corrido
+  autoPauseOnFouls?: boolean; // Pausar reloj automáticamente en faltas (Regla FIBA)
+  autoResetShotClockOnOreb?: boolean; // Reiniciar posesión a 14s automáticamente en rebote ofensivo
 }
 
 export interface PendingShot {

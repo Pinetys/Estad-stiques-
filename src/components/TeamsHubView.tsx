@@ -18,6 +18,7 @@ import {
   Filter,
   Cloud,
   RefreshCw,
+  HelpCircle,
 } from 'lucide-react';
 
 interface TeamsHubViewProps {
@@ -38,6 +39,7 @@ interface TeamsHubViewProps {
   onOpenLibrary: () => void;
   onOpenCloudBackup: () => void;
   onOpenTeamEditor: (team: TeamProfile | null) => void;
+  onOpenTutorial?: () => void;
   cloudSyncStatus?: { status: 'connected' | 'syncing' | 'offline' | 'error'; lastSyncTime?: Date; errorMessage?: string };
   onForceCloudSync?: () => void;
   soundEnabled?: boolean;
@@ -56,6 +58,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   onOpenRosterModal,
   onOpenTeamStatsReport,
   onOpenTeamEditor,
+  onOpenTutorial,
   cloudSyncStatus,
   onForceCloudSync,
   soundEnabled = true,
@@ -174,6 +177,22 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                   ? 'Reintentar Nube'
                   : 'Nube'}
               </span>
+            </button>
+          )}
+
+          {onOpenTutorial && (
+            <button
+              id="hub-tutorial-btn"
+              type="button"
+              onClick={() => {
+                playSound('click', soundEnabled);
+                onOpenTutorial();
+              }}
+              className="px-3.5 py-2 rounded-xl bg-[#181a24] hover:bg-[#202330] text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95"
+              title="Ver tutorial de funcionamiento y guía interactiva"
+            >
+              <HelpCircle className="w-4 h-4 text-amber-400" />
+              <span>Tutorial</span>
             </button>
           )}
 
