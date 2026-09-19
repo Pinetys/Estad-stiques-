@@ -226,6 +226,25 @@ export default function App() {
           const nextClockRunning = isQuarterEnding ? false : true;
           const currentQ = prev.currentQuarter;
 
+          // Shot clock synchronization: countdown in sync with quarter clock
+          const currentShotSecs = prev.shotClockSeconds !== undefined ? prev.shotClockSeconds : 24;
+          const isShotActive = (prev.isShotClockRunning ?? true) && nextClockRunning;
+          let nextShotSecs = currentShotSecs;
+          let nextShotRunning = prev.isShotClockRunning ?? true;
+
+          if (isShotActive && currentShotSecs > 0) {
+            if (currentShotSecs <= 1) {
+              nextShotSecs = 0;
+              nextShotRunning = false;
+              playSound('buzzer', prev.settings.soundEnabled);
+              triggerHaptic('warning', prev.settings.vibrationEnabled);
+            } else {
+              nextShotSecs = currentShotSecs - 1;
+            }
+          } else if (!nextClockRunning) {
+            nextShotRunning = false;
+          }
+
           // Automatically increment minutes played for all players currently on court
           const updatedPlayers = prev.players.map(player => {
             if (player.onCourt) {
@@ -247,6 +266,8 @@ export default function App() {
             ...prev,
             currentSecondsRemaining: nextSeconds,
             isClockRunning: nextClockRunning,
+            shotClockSeconds: nextShotSecs,
+            isShotClockRunning: nextClockRunning ? nextShotRunning : false,
             players: updatedPlayers,
           };
         });
@@ -473,6 +494,7 @@ export default function App() {
     setGame(prev => ({
       ...prev,
       isClockRunning: true,
+      isShotClockRunning: true,
       status: prev.status === 'setup' ? 'live' : prev.status,
     }));
   };
@@ -605,11 +627,15 @@ export default function App() {
       // Auto-pause clock on fouls in FIBA stop-clock mode or on any foul event
       const shouldAutoPause = isFoul;
 
-      // Auto-reset shot clock on rebounds
+      // Auto-reset shot clock on fouls or rebounds
       let nextShotClock = prev.shotClockSeconds;
       let nextShotClockRunning = prev.isShotClockRunning;
 
-      if (isOreb && prev.settings.autoResetShotClockOnOreb !== false) {
+      if (isFoul) {
+        // Reset to 24s and stop clock on foul
+        nextShotClock = 24;
+        nextShotClockRunning = false;
+      } else if (isOreb && prev.settings.autoResetShotClockOnOreb !== false) {
         nextShotClock = 14;
         nextShotClockRunning = true;
       } else if (isDreb) {
