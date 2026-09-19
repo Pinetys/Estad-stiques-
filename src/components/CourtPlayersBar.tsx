@@ -3,6 +3,7 @@ import { Game, Player } from '../types';
 import { calculatePlayerStats } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { ArrowRightLeft, Users } from 'lucide-react';
+import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 
 interface CourtPlayersBarProps {
   game: Game;
@@ -119,19 +120,16 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                 <div className="text-[10px] sm:text-xs font-bold text-neutral-100 truncate w-full mt-0.5">
                   {player.name.split(' ')[0]}
                 </div>
-                <div className="text-[9px] sm:text-[10.5px] font-mono flex items-center justify-center gap-1 mt-0.5 font-black leading-none">
-                  <span className="text-orange-400">{stats.points}p</span>
-                  <span
-                    className={
-                      isFouledOut
-                        ? 'text-red-400 font-black'
-                        : isFoulDanger
-                        ? 'text-amber-400 font-black'
-                        : 'text-neutral-400'
-                    }
-                  >
-                    {stats.foulsPersonal}F
+                <div className="flex flex-col items-center justify-center gap-0.5 mt-1 w-full">
+                  <span className="text-[9px] sm:text-[10px] font-mono text-orange-400 font-bold leading-none">
+                    {stats.points}p
                   </span>
+                  <PlayerFoulsIndicator
+                    fouls={stats.foulsPersonal}
+                    limit={game.settings.foulOutLimit || 5}
+                    compact={true}
+                    showDots={true}
+                  />
                 </div>
               </button>
             );

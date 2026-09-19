@@ -38,6 +38,7 @@ import { useIsLandscapeTablet } from '../hooks/useIsLandscapeTablet';
 import { CourtScoreboard } from './CourtScoreboard';
 import { CourtActionConsole } from './CourtActionConsole';
 import { CourtPlayersBar } from './CourtPlayersBar';
+import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 import { CourtLandscapeHeader } from './CourtLandscapeHeader';
 import { CourtRosterPanel } from './CourtRosterPanel';
 import { QuickTimeAdjustModal } from './QuickTimeAdjustModal';
@@ -1270,19 +1271,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                       </div>
 
                       {/* Stats */}
-                      <div className="text-[9px] font-mono text-neutral-400 mt-1 pt-0.5 border-t border-neutral-800 flex justify-between w-full font-bold">
-                        <span className="text-orange-400">{stats.points}p</span>
-                        <span
-                          className={
-                            isFouledOut
-                              ? 'text-red-400'
-                              : isFoulDanger
-                              ? 'text-amber-400'
-                              : 'text-neutral-400'
-                          }
-                        >
-                          {stats.foulsPersonal}F
-                        </span>
+                      <div className="w-full mt-1 pt-1 border-t border-neutral-800/80 flex flex-col items-center gap-0.5">
+                        <span className="text-[10px] font-mono text-orange-400 font-bold leading-none">{stats.points}p</span>
+                        <PlayerFoulsIndicator
+                          fouls={stats.foulsPersonal}
+                          limit={game.settings.foulOutLimit || 5}
+                          compact={true}
+                          showDots={true}
+                        />
                       </div>
                     </button>
                   );
@@ -1304,17 +1300,26 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               </button>
 
               {showBenchInModal && (
-                <div className="grid grid-cols-4 gap-1 mt-1.5 max-h-28 overflow-y-auto p-0.5">
-                  {benchPlayers.map(player => (
-                    <button
-                      key={player.id}
-                      onClick={() => handleConfirmPlayerForAction(player)}
-                      className="bg-[#181a24] hover:bg-neutral-800 p-1.5 rounded-lg border border-neutral-700 text-center active:scale-95 font-mono"
-                    >
-                      <div className="text-sm font-bold text-neutral-300">#{player.number}</div>
-                      <div className="text-[9px] truncate text-neutral-400">{player.name.split(' ')[0]}</div>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1.5 max-h-36 overflow-y-auto p-0.5">
+                  {benchPlayers.map(player => {
+                    const benchStats = calculatePlayerStats(player, game.events);
+                    return (
+                      <button
+                        key={player.id}
+                        onClick={() => handleConfirmPlayerForAction(player)}
+                        className="bg-[#181a24] hover:bg-neutral-800 p-1.5 rounded-lg border border-neutral-700 text-center active:scale-95 font-mono flex flex-col items-center gap-0.5"
+                      >
+                        <div className="text-sm font-bold text-amber-300">#{player.number}</div>
+                        <div className="text-[9px] truncate text-neutral-300 w-full">{player.name.split(' ')[0]}</div>
+                        <PlayerFoulsIndicator
+                          fouls={benchStats.foulsPersonal}
+                          limit={game.settings.foulOutLimit || 5}
+                          compact={true}
+                          showDots={false}
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

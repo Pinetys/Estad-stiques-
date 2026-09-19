@@ -3,6 +3,7 @@ import { Game, Player } from '../types';
 import { calculatePlayerStats } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { ArrowRightLeft, Users, AlertCircle, Check, X, UserCheck } from 'lucide-react';
+import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 
 interface CourtRosterPanelProps {
   game: Game;
@@ -267,22 +268,16 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                   {/* Right: Stats & Swap Action Button */}
                   <div className="flex items-center gap-1.5 shrink-0 ml-1">
                     {/* Points & Fouls */}
-                    <div className="flex items-center gap-1 text-[10px] font-bold">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold">
                       <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-700/50">
                         {stats.points}p
                       </span>
-                      <span
-                        className={`px-1.5 py-0.5 rounded border ${
-                          isFouledOut
-                            ? 'bg-red-950 text-red-300 border-red-600 font-black'
-                            : isFoulDanger
-                            ? 'bg-amber-950 text-amber-300 border-amber-600 font-black'
-                            : 'bg-neutral-900 text-neutral-400 border-neutral-800'
-                        }`}
-                        title="Faltas personales"
-                      >
-                        {stats.foulsPersonal}F
-                      </span>
+                      <PlayerFoulsIndicator
+                        fouls={stats.foulsPersonal}
+                        limit={game.settings.foulOutLimit || 5}
+                        compact={false}
+                        showDots={true}
+                      />
                     </div>
 
                     {/* Instant Swap Button */}
@@ -359,21 +354,16 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                   </div>
 
                   {/* Right: Stats & Enter Badge */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-[9px] font-bold text-neutral-400">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-bold text-neutral-300 bg-neutral-900/80 px-1 py-0.5 rounded border border-neutral-800">
                       {stats.points}p
                     </span>
-                    <span
-                      className={`text-[8px] px-1 py-0.5 rounded font-mono ${
-                        isFouledOut
-                          ? 'bg-red-950 text-red-300 border border-red-700 font-bold'
-                          : isFoulDanger
-                          ? 'bg-amber-950 text-amber-300'
-                          : 'text-neutral-500'
-                      }`}
-                    >
-                      {stats.foulsPersonal}F
-                    </span>
+                    <PlayerFoulsIndicator
+                      fouls={stats.foulsPersonal}
+                      limit={game.settings.foulOutLimit || 5}
+                      compact={true}
+                      showDots={true}
+                    />
 
                     {/* Quick Enter Indicator when swap is pending */}
                     {pendingOutId && !isFouledOut && (
@@ -383,7 +373,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                     )}
 
                     {isFouledOut && (
-                      <span className="px-1 py-0.5 bg-red-950 text-red-400 border border-red-800 font-black text-[7px] rounded uppercase">
+                      <span className="px-1.5 py-0.5 bg-red-950 text-red-300 border border-red-700 font-black text-[8px] rounded uppercase">
                         ELIM
                       </span>
                     )}
