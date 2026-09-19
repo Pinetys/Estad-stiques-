@@ -202,6 +202,10 @@ export default function App() {
     }
   });
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => detectAndInitUserRole());
+  const currentUser = {
+    role: currentUserRole,
+    isMasterAdmin: isMasterAdmin(currentUserRole),
+  };
   const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
 
   // Central Game Clock & Automatic Player Minutes on Court Tracking Engine
@@ -1763,22 +1767,25 @@ export default function App() {
                             <span>Directorio de Equipos</span>
                           </button>
 
-                          {/* Subscriptores y Clientes (Master Admin Access) */}
-                          <button
-                            onClick={() => {
-                              setShowMobileHeaderMenu(false);
-                              setShowSubscribersModal(true);
-                            }}
-                            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-amber-950/40 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs font-bold text-left transition"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                              <span>Subscriptores y Licencias</span>
-                            </div>
-                            <span className="text-[9px] font-mono font-bold bg-amber-500 text-black px-1.5 py-0.5 rounded shadow-xs">
-                              MASTER
-                            </span>
-                          </button>
+                          {/* Subscriptores y Clientes (Exclusivo Perfil Master con isMasterAdmin) */}
+                          {currentUser.isMasterAdmin && (
+                            <button
+                              id="menu-subscribers-btn"
+                              onClick={() => {
+                                setShowMobileHeaderMenu(false);
+                                setShowSubscribersModal(true);
+                              }}
+                              className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-amber-950/40 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs font-bold text-left transition"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span>Subscriptores y Licencias</span>
+                              </div>
+                              <span className="text-[9px] font-mono font-bold bg-amber-500 text-black px-1.5 py-0.5 rounded shadow-xs">
+                                MASTER
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -2416,8 +2423,8 @@ export default function App() {
         />
       )}
 
-      {/* Master Subscribers Management Modal */}
-      {showSubscribersModal && (
+      {/* Master Subscribers Management Modal - Protected by isMasterAdmin */}
+      {showSubscribersModal && currentUser.isMasterAdmin && (
         <SubscribersModal
           onClose={() => setShowSubscribersModal(false)}
           soundEnabled={game.settings.soundEnabled}

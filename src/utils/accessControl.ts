@@ -307,15 +307,28 @@ export function detectAndInitUserRole(): UserRole {
   return 'admin';
 }
 
-export function isMasterAdmin(): boolean {
+export function isMasterAdmin(role?: UserRole): boolean {
   if (typeof window === 'undefined') return true;
   try {
-    const saved = localStorage.getItem(USER_ROLE_KEY);
-    // If not explicitly set to scorer/viewer/client, or set to admin, default is master on dpinogay@gmail.com device
-    if (!saved || saved === 'admin') return true;
-    return false;
-  } catch {
+    const effectiveRole = role !== undefined ? role : getSavedUserRole();
+    // Only 'admin' profile can be Master Admin (scorers and viewers are strictly restricted)
+    if (effectiveRole !== 'admin') return false;
+
+    // Devices registered with a client/guest license are non-master subscribers
+    const activeLicense = getActiveDeviceLicense();
+    if (
+      activeLicense &&
+      activeLicense.status === 'active' &&
+      activeLicense.clientEmail &&
+      activeLicense.clientEmail !== 'dpinogay@gmail.com' &&
+      !activeLicense.key?.includes('MASTER')
+    ) {
+      return false;
+    }
+
     return true;
+  } catch {
+    return false;
   }
 }
 
