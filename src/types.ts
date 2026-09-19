@@ -84,6 +84,7 @@ export interface PlayEvent {
     made: boolean;
     points: number; // 2 o 3
   };
+  basketOrigin?: BasketOriginType; // Origen táctico de la canasta (rebote ofensivo, jugada, contraataque, etc.)
   opponentPlayerNumber?: number; // Dorsal del rival (para scouting individual de anotadores oponentes)
   foulType?: 'P' | 'PFT' | 'U' | 'T' | 'B' | 'OF'; // Tipo específico de falta oficial FIBA
   scoreSnapshot: {
@@ -92,6 +93,67 @@ export interface PlayEvent {
   };
   note?: string;
 }
+
+export type BasketOriginType =
+  | 'rebote_ofensivo' // 2ª Oportunidad tras rebote ofensivo
+  | 'jugada'           // Jugada / Ataque estático 5x5
+  | 'recuperacion'     // Recuperación / Robo / Contraataque rápido
+  | 'transicion'       // Transición rápida tras rebote defensivo rival
+  | 'penetracion'      // Penetración 1x1 a la pintura
+  | 'pick_and_roll'    // Tiro tras bloqueo directo (Pick & Roll / Pop)
+  | 'tras_perdida'     // Puntos encajados directamente tras pérdida de balón
+  | 'tiros_libres';    // Tiros Libres
+
+export const BASKET_ORIGIN_LABELS: Record<BasketOriginType, { label: string; shortLabel: string; icon: string; description: string }> = {
+  rebote_ofensivo: {
+    label: 'Rebote Ofensivo (2ª Oportunidad)',
+    shortLabel: 'Reb. Ofensivo',
+    icon: '🔄',
+    description: 'Canasta tras rebote bajo nuestro aro (mide déficit en rebote defensivo)',
+  },
+  jugada: {
+    label: 'Jugada / Ataque Estático (5x5)',
+    shortLabel: 'Jugada / 5x5',
+    icon: '📋',
+    description: 'Circulación en estático (evalúa la defensa colectiva a media pista)',
+  },
+  recuperacion: {
+    label: 'Recuperación / Contraataque',
+    shortLabel: 'Contraataque',
+    icon: '⚡',
+    description: 'Canasta rápida tras robo (evalúa el balance defensivo)',
+  },
+  transicion: {
+    label: 'Transición Rápida',
+    shortLabel: 'Transición',
+    icon: '🏃',
+    description: 'Ataque rápido antes de que la defensa esté colocada',
+  },
+  penetracion: {
+    label: 'Pintura / Penetración Directa',
+    shortLabel: 'Penetración',
+    icon: '🎯',
+    description: 'Canasta penetrando hacia el aro (mide el 1x1 y las ayudas interiores)',
+  },
+  pick_and_roll: {
+    label: 'Tiro tras Bloqueo (Pick & Roll)',
+    shortLabel: 'Pick & Roll',
+    icon: '🧱',
+    description: 'Canasta tras bloqueo directo/indirecto (mide defensa de bloqueos)',
+  },
+  tras_perdida: {
+    label: 'Tras Pérdida de Balón',
+    shortLabel: 'Tras Pérdida',
+    icon: '⚠️',
+    description: 'Puntos encajados tras pérdida de balón no forzada',
+  },
+  tiros_libres: {
+    label: 'Tiros Libres',
+    shortLabel: 'Tiros Libres',
+    icon: '🎯',
+    description: 'Puntos anotados desde la línea de tiros libres',
+  },
+};
 
 export interface QuarterScore {
   quarter: number;
@@ -120,9 +182,12 @@ export interface PendingShot {
   playerId: string;
   playerName: string;
   playerNumber: number;
-  actionType: '2PM' | '3PM' | '2PA' | '3PA';
+  actionType: '2PM' | '3PM' | '2PA' | '3PA' | 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | string;
   points: number;
   isMade: boolean;
+  isOpponentShot?: boolean;
+  opponentPlayerNumber?: number;
+  basketOrigin?: BasketOriginType;
 }
 
 export interface TeamProfile {

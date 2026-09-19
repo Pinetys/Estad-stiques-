@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Game, GameSettings, PlayEvent, Player, StatActionType, TeamProfile, PendingShot } from './types';
+import { Game, GameSettings, PlayEvent, Player, StatActionType, TeamProfile, PendingShot, BasketOriginType } from './types';
 import {
   DEFAULT_ROSTER,
   DEFAULT_SETTINGS,
@@ -33,7 +33,9 @@ import { TeamStatsReportModal } from './components/TeamStatsReportModal';
 import { AccessManagementModal } from './components/AccessManagementModal';
 import { EmergencyRecoveryModal } from './components/EmergencyRecoveryModal';
 import { TutorialModal } from './components/TutorialModal';
-import { detectAndInitUserRole, UserRole } from './utils/accessControl';
+import { FoulResolutionModal, FoulModalData } from './components/FoulResolutionModal';
+import { SubscribersModal } from './components/SubscribersModal';
+import { detectAndInitUserRole, isMasterAdmin, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
   saveOrUpdateGameInLibrary,
@@ -91,6 +93,10 @@ import {
   X,
   AlertTriangle,
   HelpCircle,
+  Crosshair,
+  Crown,
+  FolderKanban,
+  FileText,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -438,6 +444,34 @@ export default function App() {
   const [showOfficialSheet, setShowOfficialSheet] = useState(false);
   const [showTeamStatsReportModal, setShowTeamStatsReportModal] = useState(false);
   const [reportTargetTeamId, setReportTargetTeamId] = useState<string | undefined>(undefined);
+  const [foulResolutionData, setFoulResolutionData] = useState<FoulModalData | null>(null);
+  const [showSubscribersModal, setShowSubscribersModal] = useState(false);
+
+  const handleRecordFreeThrowFromFoul = ({
+    isOpponent,
+    playerId,
+    made,
+  }: {
+    isOpponent: boolean;
+    playerId?: string;
+    made: boolean;
+  }) => {
+    if (isOpponent) {
+      if (made) {
+        handleLogOpponentAction('OPP_1P');
+      }
+    } else if (playerId) {
+      handleLogPlayerAction(playerId, made ? 'FTM' : 'FTA');
+    }
+  };
+
+  const handleResumeClockFromFoul = () => {
+    setGame(prev => ({
+      ...prev,
+      isClockRunning: true,
+      status: prev.status === 'setup' ? 'live' : prev.status,
+    }));
+  };
 
   const handleOpenTeamStatsReport = (team: TeamProfile) => {
     setReportTargetTeamId(team.id);
@@ -546,6 +580,17 @@ export default function App() {
     const isOreb = actionType === 'OREB';
     const isDreb = actionType === 'DREB';
 
+    if (isFoul) {
+      const targetPlayer = game.players.find(p => p.id === playerId);
+      setTimeout(() => {
+        setFoulResolutionData({
+          isOpponentFoul: false,
+          player: targetPlayer,
+          foulType: actionType as any,
+        });
+      }, 100);
+    }
+
     setGame(prev => {
       const player = prev.players.find(p => p.id === playerId);
       if (!player) return prev;
@@ -553,11 +598,8 @@ export default function App() {
       const newHomeScore = prev.homeScore + pointsToAdd;
       const newQuarterFouls = isFoul ? prev.homeQuarterFouls + 1 : prev.homeQuarterFouls;
 
-      // Auto-pause clock on fouls in FIBA stop-clock mode
-      const shouldAutoPause =
-        isFoul &&
-        prev.settings.autoPauseOnFouls !== false &&
-        (prev.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
+      // Auto-pause clock on fouls in FIBA stop-clock mode or on any foul event
+      const shouldAutoPause = isFoul;
 
       // Auto-reset shot clock on rebounds
       let nextShotClock = prev.shotClockSeconds;
@@ -841,6 +883,12 @@ export default function App() {
     } else if (actionType === 'OPP_FOUL') {
       isFoul = true;
       label = `Falta Rival${dorsalSuffix}`;
+      setTimeout(() => {
+        setFoulResolutionData({
+          isOpponentFoul: true,
+          foulType: 'OPP_FOUL',
+        });
+      }, 100);
     }
 
     setGame(prev => {
@@ -867,11 +915,8 @@ export default function App() {
         },
       };
 
-      // Auto-pause clock on fouls in FIBA stop-clock mode
-      const shouldAutoPause =
-        isFoul &&
-        prev.settings.autoPauseOnFouls !== false &&
-        (prev.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
+      // Auto-pause clock on fouls
+      const shouldAutoPause = isFoul;
 
       const updatedQuarterScores = prev.quarterScores.map(qs => {
         if (qs.quarter === prev.currentQuarter) {
@@ -903,7 +948,14 @@ export default function App() {
   // Skip placing on court and log basket immediately
   const handleSkipShotLocation = () => {
     if (pendingShotPlacement) {
-      handleLogPlayerAction(pendingShotPlacement.playerId, pendingShotPlacement.actionType);
+      if (pendingShotPlacement.isOpponentShot) {
+        handleLogOpponentAction(
+          pendingShotPlacement.actionType as any,
+          pendingShotPlacement.playerNumber || undefined
+        );
+      } else {
+        handleLogPlayerAction(pendingShotPlacement.playerId, pendingShotPlacement.actionType as StatActionType);
+      }
       setPendingShotPlacement(null);
       setShowShotChart(false);
     }
@@ -920,18 +972,65 @@ export default function App() {
       made: boolean;
       points: number;
     },
-    assistedByPlayerId?: string
+    assistedByPlayerId?: string,
+    basketOrigin?: BasketOriginType
   ) => {
+    const isOpponent = playerId === 'opponent' || pendingShotPlacement?.isOpponentShot;
     const actionDef = ACTION_DEFINITIONS[actionType];
     const pointsToAdd = location.made ? location.points : 0;
 
     setGame(prev => {
+      const onCourtIds = prev.players.filter(p => p.onCourt).map(p => p.id);
+
+      if (isOpponent) {
+        const isThree = actionType === 'OPP_3P' || location.points === 3;
+        const newAwayScore = prev.awayScore + pointsToAdd;
+        const oppNumber = pendingShotPlacement?.playerNumber;
+        const oppSuffix = oppNumber ? ` (#${oppNumber})` : '';
+
+        const newEvent: PlayEvent = {
+          id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          gameId: prev.id,
+          timestamp: Date.now(),
+          quarter: prev.currentQuarter,
+          gameSeconds: prev.currentSecondsRemaining,
+          gameTimeFormatted: formatGameTime(prev.currentSecondsRemaining),
+          actionType: (isThree ? 'OPP_3P' : 'OPP_2P') as StatActionType,
+          actionLabel: isThree ? `+3 Triple Rival${oppSuffix}` : `+2 Canasta Rival${oppSuffix}`,
+          pointsAdded: pointsToAdd,
+          isOpponentAction: true,
+          opponentPlayerNumber: oppNumber,
+          basketOrigin: basketOrigin || 'jugada',
+          playersOnCourtIds: onCourtIds,
+          shotLocation: location,
+          scoreSnapshot: {
+            home: prev.homeScore,
+            away: newAwayScore,
+          },
+        };
+
+        const updatedQuarterScores = prev.quarterScores.map(qs => {
+          if (qs.quarter === prev.currentQuarter) {
+            return {
+              ...qs,
+              away: qs.away + pointsToAdd,
+            };
+          }
+          return qs;
+        });
+
+        return {
+          ...prev,
+          awayScore: newAwayScore,
+          events: [newEvent, ...prev.events],
+          quarterScores: updatedQuarterScores,
+        };
+      }
+
       const player = prev.players.find(p => p.id === playerId);
       if (!player) return prev;
 
       const newHomeScore = prev.homeScore + pointsToAdd;
-      const onCourtIds = prev.players.filter(p => p.onCourt).map(p => p.id);
-
       const assistant = assistedByPlayerId
         ? prev.players.find(p => p.id === assistedByPlayerId)
         : undefined;
@@ -953,6 +1052,7 @@ export default function App() {
         assistedByPlayerName: assistant?.name,
         assistedByPlayerNumber: assistant?.number,
         isOpponentAction: false,
+        basketOrigin: basketOrigin || 'jugada',
         playersOnCourtIds: onCourtIds,
         shotLocation: location,
         scoreSnapshot: {
@@ -1533,124 +1633,224 @@ export default function App() {
                 {showMobileHeaderMenu && (
                   <>
                     <div
-                      className="fixed inset-0 z-40 bg-black/40"
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs transition-opacity"
                       onClick={() => setShowMobileHeaderMenu(false)}
                     />
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-[#14161B] border border-gray-700 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95">
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowNewGameModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-orange-400 text-xs font-bold text-left transition"
-                      >
-                        <PlusCircle className="w-4 h-4 text-orange-500 shrink-0" />
-                        <span>Nuevo Partido</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowRosterModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
-                      >
-                        <Users className="w-4 h-4 text-orange-400 shrink-0" />
-                        <span>Gestionar Plantilla</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowShareModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
-                      >
-                        <Share2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>Compartir Acta Oficial</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowCloudBackupModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
-                      >
-                        <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />
-                        <span>Sincronización Automática (Tablet / PC / Móvil)</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowAccessModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-amber-300 text-xs font-semibold text-left transition"
-                      >
-                        <Shield className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>Acceso Otros Dispositivos (PIN)</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowRecoveryModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-rose-300 text-xs font-semibold text-left transition"
-                      >
-                        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                        <span>Recuperar Partido (Brafa / Bóveda)</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowAICoachModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
-                      >
-                        <Brain className="w-4 h-4 text-orange-400 shrink-0" />
-                        <span>Scout Táctico con IA</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMobileHeaderMenu(false);
-                          setShowTutorialModal(true);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-800 text-amber-300 text-xs font-semibold text-left transition"
-                      >
-                        <HelpCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>Tutorial y Guía de Uso</span>
-                      </button>
-
-                      <div className="h-px bg-gray-800 my-1" />
-
-                      <button
-                        onClick={() => {
-                          setGame(prev => ({
-                            ...prev,
-                            settings: {
-                              ...prev.settings,
-                              soundEnabled: !prev.settings.soundEnabled,
-                            },
-                          }));
-                        }}
-                        className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-200 text-xs font-semibold text-left transition"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          {game.settings.soundEnabled ? (
-                            <Volume2 className="w-4 h-4 text-orange-400 shrink-0" />
-                          ) : (
-                            <VolumeX className="w-4 h-4 text-gray-500 shrink-0" />
-                          )}
-                          <span>Audio y Silbato</span>
+                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#121419]/95 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[85vh] overflow-y-auto">
+                      {/* Prominent Accessible Close Header */}
+                      <div className="flex items-center justify-between px-2 py-1 pb-2 border-b border-gray-800">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                          <span className="text-xs font-black uppercase tracking-wider text-gray-200 font-mono">
+                            Menú de Opciones
+                          </span>
                         </div>
-                        <span className="text-[10px] font-mono text-gray-400 font-bold">
-                          {game.settings.soundEnabled ? 'ON' : 'OFF'}
-                        </span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowMobileHeaderMenu(false)}
+                          aria-label="Cerrar menú"
+                          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-gray-200 hover:text-white border border-gray-600 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
+                        >
+                          <X className="w-4 h-4 text-orange-400" />
+                          <span>Cerrar</span>
+                        </button>
+                      </div>
+
+                      {/* CATEGORÍA 1: ACCIONES DE PARTIDO */}
+                      <div className="space-y-1">
+                        <div className="px-2 text-[10px] font-mono font-bold uppercase tracking-wider text-orange-400/90 flex items-center gap-1.5">
+                          <Play className="w-3 h-3 fill-orange-400" />
+                          <span>Acciones de Partido</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-0.5">
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowNewGameModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-orange-400 text-xs font-bold text-left transition"
+                          >
+                            <PlusCircle className="w-4 h-4 text-orange-500 shrink-0" />
+                            <span>Nuevo Partido</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowShareModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <Share2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>Compartir Acta Oficial</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowShotChart(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <Crosshair className="w-4 h-4 text-orange-400 shrink-0" />
+                            <span>Carta de Tiro Interactiva</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              toggleCourtMode();
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span>Modo Pista y Banquillo</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowAICoachModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <Brain className="w-4 h-4 text-purple-400 shrink-0" />
+                            <span>Scout Táctico con IA</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowRecoveryModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-rose-300 text-xs font-semibold text-left transition"
+                          >
+                            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                            <span>Recuperar Partido (Brafa / Bóveda)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* SEPARADOR VISUAL */}
+                      <div className="h-px bg-gray-800 my-0.5" />
+
+                      {/* CATEGORÍA 2: GESTIÓN DE EQUIPO */}
+                      <div className="space-y-1">
+                        <div className="px-2 text-[10px] font-mono font-bold uppercase tracking-wider text-blue-400/90 flex items-center gap-1.5">
+                          <Users className="w-3 h-3 text-blue-400" />
+                          <span>Gestión de Equipo</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-0.5">
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowRosterModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <Users className="w-4 h-4 text-blue-400 shrink-0" />
+                            <span>Gestionar Plantilla</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setActiveTab('teams');
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <FolderKanban className="w-4 h-4 text-indigo-400 shrink-0" />
+                            <span>Directorio de Equipos</span>
+                          </button>
+
+                          {/* Subscriptores y Clientes (Master Admin Access) */}
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowSubscribersModal(true);
+                            }}
+                            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-amber-950/40 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs font-bold text-left transition"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                              <span>Subscriptores y Licencias</span>
+                            </div>
+                            <span className="text-[9px] font-mono font-bold bg-amber-500 text-black px-1.5 py-0.5 rounded shadow-xs">
+                              MASTER
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* SEPARADOR VISUAL */}
+                      <div className="h-px bg-gray-800 my-0.5" />
+
+                      {/* CATEGORÍA 3: SINCRONIZACIÓN Y AJUSTES */}
+                      <div className="space-y-1">
+                        <div className="px-2 text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400/90 flex items-center gap-1.5">
+                          <Cloud className="w-3 h-3 text-cyan-400" />
+                          <span>Sincronización y Ajustes</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-0.5">
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowCloudBackupModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>Sincronización en la Nube</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowAccessModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <Shield className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>Acceso Otros Dispositivos (PIN)</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowTutorialModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <HelpCircle className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>Tutorial y Guía de Uso</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setGame(prev => ({
+                                ...prev,
+                                settings: {
+                                  ...prev.settings,
+                                  soundEnabled: !prev.settings.soundEnabled,
+                                },
+                              }));
+                            }}
+                            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              {game.settings.soundEnabled ? (
+                                <Volume2 className="w-4 h-4 text-orange-400 shrink-0" />
+                              ) : (
+                                <VolumeX className="w-4 h-4 text-gray-500 shrink-0" />
+                              )}
+                              <span>Audio y Silbato</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-gray-400 font-bold">
+                              {game.settings.soundEnabled ? 'ON' : 'OFF'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
@@ -2204,6 +2404,25 @@ export default function App() {
         onClose={() => setShowTutorialModal(false)}
         soundEnabled={game.settings.soundEnabled}
       />
+
+      {/* Foul Resolution Modal (Clock Pause & Free Throw Prompt) */}
+      {foulResolutionData && (
+        <FoulResolutionModal
+          game={game}
+          foulData={foulResolutionData}
+          onClose={() => setFoulResolutionData(null)}
+          onResumeClock={handleResumeClockFromFoul}
+          onRecordFreeThrow={handleRecordFreeThrowFromFoul}
+        />
+      )}
+
+      {/* Master Subscribers Management Modal */}
+      {showSubscribersModal && (
+        <SubscribersModal
+          onClose={() => setShowSubscribersModal(false)}
+          soundEnabled={game.settings.soundEnabled}
+        />
+      )}
     </div>
   );
 }

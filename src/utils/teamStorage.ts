@@ -24,6 +24,13 @@ export const DEFAULT_INITIAL_TEAMS: TeamProfile[] = [];
  * Get all registered clubs / teams created by the user
  */
 export function getRegisteredTeams(): TeamProfile[] {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fresh') === '1' || params.get('clean') === '1') {
+      return [];
+    }
+  }
+
   try {
     const raw = localStorage.getItem(TEAMS_STORAGE_KEY);
     if (!raw) {

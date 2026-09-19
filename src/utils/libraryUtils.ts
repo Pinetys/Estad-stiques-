@@ -5,22 +5,317 @@ import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
 export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
 
-export const DEMO_GAME_IDS = new Set(['game-sample-01', 'game-sample-02']);
+export const DEMO_GAME_IDS = new Set(['game-sample-01', 'game-sample-02', 'sample-game-1', 'sample-game-2']);
 
 export function isDemoGame(game: Partial<Game>): boolean {
   if (!game) return true;
   if (game.id && DEMO_GAME_IDS.has(game.id)) return true;
   if (game.id && game.id.startsWith('game-sample-')) return true;
+  // Eliminate legacy demo teams
+  if (game.awayTeamName === 'CB Leones' || game.awayTeamName === 'Basket Titanes') return true;
   return false;
 }
 
+export function isAllowedOfficialOrUserGame(game: Partial<Game>): boolean {
+  if (!game) return false;
+  if (isDemoGame(game)) return false;
+  return true;
+}
+
+/**
+ * 3 Official Curated Matches requested by the Master User in category 'Infantil A'
+ */
+export function getCuratedBrafaInfantilMatches(baseGame?: Game): Game[] {
+  const settings = baseGame?.settings || {
+    quarterDurationMinutes: 10,
+    totalQuarters: 4,
+    foulOutLimit: 5,
+    bonusFoulsLimit: 5,
+    soundEnabled: true,
+    vibrationEnabled: true,
+    assistPromptEnabled: true,
+    courtMode: false,
+  };
+
+  const defaultBrafaPlayers = [
+    { id: 'p-7', number: 7, name: 'Marcos R.', position: 'B' as const, starter: true, onCourt: true, foulsCount: 1, isFouledOut: false, minutesPlayedSeconds: 1200, quarterSeconds: {} },
+    { id: 'p-11', number: 11, name: 'Javier S.', position: 'E' as const, starter: true, onCourt: true, foulsCount: 2, isFouledOut: false, minutesPlayedSeconds: 1150, quarterSeconds: {} },
+    { id: 'p-23', number: 23, name: 'Alejandro G.', position: 'A' as const, starter: true, onCourt: true, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 1300, quarterSeconds: {} },
+    { id: 'p-15', number: 15, name: 'Pablo M.', position: 'AP' as const, starter: true, onCourt: true, foulsCount: 3, isFouledOut: false, minutesPlayedSeconds: 1100, quarterSeconds: {} },
+    { id: 'p-33', number: 33, name: 'David T.', position: 'P' as const, starter: true, onCourt: true, foulsCount: 2, isFouledOut: false, minutesPlayedSeconds: 1050, quarterSeconds: {} },
+    { id: 'p-4', number: 4, name: 'Lucas V.', position: 'B' as const, starter: false, onCourt: false, foulsCount: 1, isFouledOut: false, minutesPlayedSeconds: 600, quarterSeconds: {} },
+    { id: 'p-9', number: 9, name: 'Carlos N.', position: 'E' as const, starter: false, onCourt: false, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 550, quarterSeconds: {} },
+    { id: 'p-13', number: 13, name: 'Hugo B.', position: 'A' as const, starter: false, onCourt: false, foulsCount: 1, isFouledOut: false, minutesPlayedSeconds: 500, quarterSeconds: {} },
+    { id: 'p-30', number: 30, name: 'Adrián L.', position: 'AP' as const, starter: false, onCourt: false, foulsCount: 0, isFouledOut: false, minutesPlayedSeconds: 450, quarterSeconds: {} },
+    { id: 'p-77', number: 77, name: 'Daniel K.', position: 'P' as const, starter: false, onCourt: false, foulsCount: 1, isFouledOut: false, minutesPlayedSeconds: 400, quarterSeconds: {} },
+  ];
+
+  // 1. Brafa vs Gaudí (Infantil A)
+  const matchGaudi: Game = {
+    id: 'game-brafa-gaudi',
+    title: 'Jornada 1 - Infantil A',
+    category: 'Infantil A',
+    date: '2026-09-06',
+    homeTeamName: 'CB Brafa',
+    awayTeamName: 'CB Gaudí',
+    homeTeamLogo: 'preset:ball',
+    awayTeamLogo: 'preset:shield',
+    homeTeamColor: '#f97316',
+    awayTeamColor: '#2563eb',
+    homeScore: 68,
+    awayScore: 54,
+    currentQuarter: 4,
+    currentSecondsRemaining: 0,
+    isClockRunning: false,
+    homeTimeouts: 2,
+    awayTimeouts: 3,
+    homeQuarterFouls: 2,
+    awayQuarterFouls: 4,
+    status: 'finished',
+    settings,
+    players: defaultBrafaPlayers,
+    events: [
+      {
+        id: 'ev-bg-1',
+        gameId: 'game-brafa-gaudi',
+        timestamp: Date.now() - 86400000 * 12,
+        quarter: 1,
+        gameSeconds: 570,
+        gameTimeFormatted: '09:30',
+        playerId: 'p-23',
+        playerNumber: 23,
+        playerName: 'Alejandro G.',
+        actionType: '3PM',
+        actionLabel: 'Triple Anotado',
+        pointsAdded: 3,
+        isOpponentAction: false,
+        basketOrigin: 'jugada',
+        shotLocation: { x: 80, y: 75, zone: 'top3', made: true, points: 3 },
+        scoreSnapshot: { home: 3, away: 0 },
+      },
+      {
+        id: 'ev-bg-2',
+        gameId: 'game-brafa-gaudi',
+        timestamp: Date.now() - 86400000 * 12,
+        quarter: 1,
+        gameSeconds: 520,
+        gameTimeFormatted: '08:40',
+        playerId: 'p-7',
+        playerNumber: 7,
+        playerName: 'Marcos R.',
+        actionType: '2PM',
+        actionLabel: 'Tiro de 2 Metido',
+        pointsAdded: 2,
+        isOpponentAction: false,
+        basketOrigin: 'recuperacion',
+        shotLocation: { x: 50, y: 30, zone: 'paint', made: true, points: 2 },
+        scoreSnapshot: { home: 5, away: 0 },
+      },
+      {
+        id: 'ev-bg-3',
+        gameId: 'game-brafa-gaudi',
+        timestamp: Date.now() - 86400000 * 12,
+        quarter: 2,
+        gameSeconds: 380,
+        gameTimeFormatted: '06:20',
+        playerId: 'p-33',
+        playerNumber: 33,
+        playerName: 'David T.',
+        actionType: '2PM',
+        actionLabel: 'Tiro de 2 Metido',
+        pointsAdded: 2,
+        isOpponentAction: false,
+        basketOrigin: 'rebote_ofensivo',
+        shotLocation: { x: 52, y: 22, zone: 'paint', made: true, points: 2 },
+        scoreSnapshot: { home: 24, away: 18 },
+      },
+      {
+        id: 'ev-bg-4',
+        gameId: 'game-brafa-gaudi',
+        timestamp: Date.now() - 86400000 * 12,
+        quarter: 3,
+        gameSeconds: 240,
+        gameTimeFormatted: '04:00',
+        actionType: 'OPP_2P',
+        actionLabel: '+2 Canasta Rival',
+        pointsAdded: 2,
+        isOpponentAction: true,
+        basketOrigin: 'recuperacion',
+        shotLocation: { x: 48, y: 25, zone: 'paint', made: true, points: 2 },
+        scoreSnapshot: { home: 44, away: 36 },
+      },
+    ],
+    quarterScores: [
+      { quarter: 1, quarterLabel: '1C', home: 18, away: 12 },
+      { quarter: 2, quarterLabel: '2C', home: 16, away: 15 },
+      { quarter: 3, quarterLabel: '3C', home: 17, away: 14 },
+      { quarter: 4, quarterLabel: '4C', home: 17, away: 13 },
+    ],
+  };
+
+  // 2. Brafa vs BAM (Infantil A)
+  const matchBam: Game = {
+    id: 'game-brafa-bam',
+    title: 'Jornada 2 - Infantil A',
+    category: 'Infantil A',
+    date: '2026-09-13',
+    homeTeamName: 'CB Brafa',
+    awayTeamName: 'BAM Bàsquet',
+    homeTeamLogo: 'preset:ball',
+    awayTeamLogo: 'preset:flame',
+    homeTeamColor: '#f97316',
+    awayTeamColor: '#dc2626',
+    homeScore: 62,
+    awayScore: 59,
+    currentQuarter: 4,
+    currentSecondsRemaining: 0,
+    isClockRunning: false,
+    homeTimeouts: 3,
+    awayTimeouts: 2,
+    homeQuarterFouls: 4,
+    awayQuarterFouls: 3,
+    status: 'finished',
+    settings,
+    players: defaultBrafaPlayers,
+    events: [
+      {
+        id: 'ev-bb-1',
+        gameId: 'game-brafa-bam',
+        timestamp: Date.now() - 86400000 * 5,
+        quarter: 1,
+        gameSeconds: 560,
+        gameTimeFormatted: '09:20',
+        playerId: 'p-11',
+        playerNumber: 11,
+        playerName: 'Javier S.',
+        actionType: '3PM',
+        actionLabel: 'Triple Anotado',
+        pointsAdded: 3,
+        isOpponentAction: false,
+        basketOrigin: 'jugada',
+        shotLocation: { x: 22, y: 70, zone: 'top3', made: true, points: 3 },
+        scoreSnapshot: { home: 3, away: 2 },
+      },
+      {
+        id: 'ev-bb-2',
+        gameId: 'game-brafa-bam',
+        timestamp: Date.now() - 86400000 * 5,
+        quarter: 4,
+        gameSeconds: 15,
+        gameTimeFormatted: '00:15',
+        playerId: 'p-7',
+        playerNumber: 7,
+        playerName: 'Marcos R.',
+        actionType: 'FTM',
+        actionLabel: 'Tiro Libre Anotado',
+        pointsAdded: 1,
+        isOpponentAction: false,
+        scoreSnapshot: { home: 62, away: 59 },
+      },
+    ],
+    quarterScores: [
+      { quarter: 1, quarterLabel: '1C', home: 14, away: 16 },
+      { quarter: 2, quarterLabel: '2C', home: 16, away: 14 },
+      { quarter: 3, quarterLabel: '3C', home: 15, away: 14 },
+      { quarter: 4, quarterLabel: '4C', home: 17, away: 15 },
+    ],
+  };
+
+  // 3. Brafa vs UBSA (Infantil A)
+  const matchUbsa: Game = {
+    id: 'game-brafa-ubsa',
+    title: 'Jornada 3 - Infantil A',
+    category: 'Infantil A',
+    date: '2026-09-18',
+    homeTeamName: 'CB Brafa',
+    awayTeamName: 'UBSA Sant Adrià',
+    homeTeamLogo: 'preset:ball',
+    awayTeamLogo: 'preset:shield',
+    homeTeamColor: '#f97316',
+    awayTeamColor: '#059669',
+    homeScore: 71,
+    awayScore: 65,
+    currentQuarter: 4,
+    currentSecondsRemaining: 0,
+    isClockRunning: false,
+    homeTimeouts: 2,
+    awayTimeouts: 3,
+    homeQuarterFouls: 3,
+    awayQuarterFouls: 4,
+    status: 'finished',
+    settings,
+    players: defaultBrafaPlayers,
+    events: [
+      {
+        id: 'ev-bu-1',
+        gameId: 'game-brafa-ubsa',
+        timestamp: Date.now() - 86400000 * 1,
+        quarter: 1,
+        gameSeconds: 580,
+        gameTimeFormatted: '09:40',
+        playerId: 'p-23',
+        playerNumber: 23,
+        playerName: 'Alejandro G.',
+        actionType: '2PM',
+        actionLabel: 'Tiro de 2 Metido',
+        pointsAdded: 2,
+        isOpponentAction: false,
+        basketOrigin: 'penetracion',
+        shotLocation: { x: 50, y: 28, zone: 'paint', made: true, points: 2 },
+        scoreSnapshot: { home: 2, away: 0 },
+      },
+      {
+        id: 'ev-bu-2',
+        gameId: 'game-brafa-ubsa',
+        timestamp: Date.now() - 86400000 * 1,
+        quarter: 4,
+        gameSeconds: 45,
+        gameTimeFormatted: '00:45',
+        playerId: 'p-15',
+        playerNumber: 15,
+        playerName: 'Pablo M.',
+        actionType: '2PM',
+        actionLabel: 'Tiro de 2 Metido',
+        pointsAdded: 2,
+        isOpponentAction: false,
+        basketOrigin: 'rebote_ofensivo',
+        shotLocation: { x: 49, y: 20, zone: 'paint', made: true, points: 2 },
+        scoreSnapshot: { home: 71, away: 65 },
+      },
+    ],
+    quarterScores: [
+      { quarter: 1, quarterLabel: '1C', home: 20, away: 15 },
+      { quarter: 2, quarterLabel: '2C', home: 18, away: 17 },
+      { quarter: 3, quarterLabel: '3C', home: 16, away: 18 },
+      { quarter: 4, quarterLabel: '4C', home: 17, away: 15 },
+    ],
+  };
+
+  return [matchUbsa, matchBam, matchGaudi];
+}
+
 export function getSavedGamesFromStorage(): Game[] {
+  // If explicitly requested fresh slate (for new subscribers / clean shared links)
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fresh') === '1' || params.get('clean') === '1') {
+      return [];
+    }
+  }
+
   try {
     const raw = localStorage.getItem(LIBRARY_STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      // Seed ONLY the 3 official matches for the Master user
+      const curated = getCuratedBrafaInfantilMatches();
+      localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(curated));
+      localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
+      return curated;
+    }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      const cleanGames = parsed.filter(g => !isDemoGame(g));
+      // Purge demo matches (like CB Leones, Basket Titanes, game-sample-*)
+      const cleanGames = parsed.filter(g => isAllowedOfficialOrUserGame(g));
       if (cleanGames.length !== parsed.length) {
         localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(cleanGames));
         // Purge mock games from cloud too
@@ -28,7 +323,29 @@ export function getSavedGamesFromStorage(): Game[] {
           if (dg.id) deleteMatchFromCloud(dg.id);
         });
       }
-      return cleanGames;
+
+      // If user had no real games or only old demo games, provide the 3 official matches
+      if (cleanGames.length === 0) {
+        const curated = getCuratedBrafaInfantilMatches();
+        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(curated));
+        return curated;
+      }
+
+      // Ensure the 3 curated games are always available if missing
+      const curatedMatches = getCuratedBrafaInfantilMatches();
+      let hasAdded = false;
+      const combined = [...cleanGames];
+      curatedMatches.forEach(cm => {
+        if (!combined.some(g => g.id === cm.id || (g.homeTeamName === cm.homeTeamName && g.awayTeamName === cm.awayTeamName))) {
+          combined.push(cm);
+          hasAdded = true;
+        }
+      });
+      if (hasAdded) {
+        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(combined));
+      }
+
+      return hasAdded ? combined : cleanGames;
     }
     return [];
   } catch (e) {
@@ -650,170 +967,12 @@ export function exportSeasonToCSV(games: Game[], seasonStats: SeasonAggregatedSt
 }
 
 /**
- * Generate 2 realistic sample historic matches for a fresh season library
+ * Generate official matches for a fresh season library (Brafa vs Gaudí, BAM, and UBSA in Infantil A)
  */
 export function generateSampleSeasonLibrary(currentGame: Game): Game[] {
-  const basePlayers = currentGame.players.map(p => ({ ...p, foulsCount: 0, isFouledOut: false }));
-
-  const sample1: Game = {
-    id: 'game-sample-01',
-    title: 'Jornada 1 - Liga Regular',
-    date: '2026-08-16',
-    homeTeamName: currentGame.homeTeamName,
-    awayTeamName: 'CB Leones',
-    homeTeamLogo: currentGame.homeTeamLogo || 'preset:ball',
-    awayTeamLogo: 'preset:fire',
-    homeTeamColor: '#f97316',
-    awayTeamColor: '#dc2626',
-    homeScore: 78,
-    awayScore: 71,
-    currentQuarter: 4,
-    currentSecondsRemaining: 0,
-    isClockRunning: false,
-    homeTimeouts: 3,
-    awayTimeouts: 2,
-    homeQuarterFouls: 3,
-    awayQuarterFouls: 4,
-    status: 'finished',
-    settings: { ...currentGame.settings },
-    players: basePlayers,
-    events: [
-      {
-        id: 'ev-s1-1',
-        gameId: 'game-sample-01',
-        timestamp: Date.now() - 86400000 * 14,
-        quarter: 1,
-        gameSeconds: 580,
-        gameTimeFormatted: '09:40',
-        playerId: 'p-7',
-        playerNumber: 7,
-        playerName: 'Marcos R.',
-        actionType: '3PM',
-        actionLabel: 'Triple Anotado',
-        pointsAdded: 3,
-        isOpponentAction: false,
-        scoreSnapshot: { home: 3, away: 0 },
-      },
-      {
-        id: 'ev-s1-2',
-        gameId: 'game-sample-01',
-        timestamp: Date.now() - 86400000 * 14,
-        quarter: 1,
-        gameSeconds: 520,
-        gameTimeFormatted: '08:40',
-        playerId: 'p-23',
-        playerNumber: 23,
-        playerName: 'Alejandro G.',
-        actionType: '2PM',
-        actionLabel: 'Tiro de 2 Metido',
-        pointsAdded: 2,
-        isOpponentAction: false,
-        scoreSnapshot: { home: 5, away: 0 },
-      },
-      {
-        id: 'ev-s1-3',
-        gameId: 'game-sample-01',
-        timestamp: Date.now() - 86400000 * 14,
-        quarter: 2,
-        gameSeconds: 400,
-        gameTimeFormatted: '06:40',
-        playerId: 'p-15',
-        playerNumber: 15,
-        playerName: 'Pablo M.',
-        actionType: 'DREB',
-        actionLabel: 'Rebote Defensivo',
-        pointsAdded: 0,
-        isOpponentAction: false,
-        scoreSnapshot: { home: 24, away: 19 },
-      },
-      {
-        id: 'ev-s1-4',
-        gameId: 'game-sample-01',
-        timestamp: Date.now() - 86400000 * 14,
-        quarter: 4,
-        gameSeconds: 20,
-        gameTimeFormatted: '00:20',
-        playerId: 'p-11',
-        playerNumber: 11,
-        playerName: 'Javier S.',
-        actionType: 'FTM',
-        actionLabel: 'Tiro Libre Anotado',
-        pointsAdded: 1,
-        isOpponentAction: false,
-        scoreSnapshot: { home: 78, away: 71 },
-      },
-    ],
-    quarterScores: [
-      { quarter: 1, quarterLabel: '1C', home: 22, away: 17 },
-      { quarter: 2, quarterLabel: '2C', home: 18, away: 20 },
-      { quarter: 3, quarterLabel: '3C', home: 20, away: 16 },
-      { quarter: 4, quarterLabel: '4C', home: 18, away: 18 },
-    ],
-  };
-
-  const sample2: Game = {
-    id: 'game-sample-02',
-    title: 'Jornada 2 - Torneo de Copa',
-    date: '2026-08-23',
-    homeTeamName: currentGame.homeTeamName,
-    awayTeamName: 'Basket Titanes',
-    homeTeamLogo: currentGame.homeTeamLogo || 'preset:ball',
-    awayTeamLogo: 'preset:shield',
-    homeTeamColor: '#f97316',
-    awayTeamColor: '#2563eb',
-    homeScore: 82,
-    awayScore: 85,
-    currentQuarter: 4,
-    currentSecondsRemaining: 0,
-    isClockRunning: false,
-    homeTimeouts: 2,
-    awayTimeouts: 3,
-    homeQuarterFouls: 4,
-    awayQuarterFouls: 4,
-    status: 'finished',
-    settings: { ...currentGame.settings },
-    players: basePlayers,
-    events: [
-      {
-        id: 'ev-s2-1',
-        gameId: 'game-sample-02',
-        timestamp: Date.now() - 86400000 * 7,
-        quarter: 1,
-        gameSeconds: 550,
-        gameTimeFormatted: '09:10',
-        playerId: 'p-23',
-        playerNumber: 23,
-        playerName: 'Alejandro G.',
-        actionType: '3PM',
-        actionLabel: 'Triple Anotado',
-        pointsAdded: 3,
-        isOpponentAction: false,
-        scoreSnapshot: { home: 3, away: 2 },
-      },
-      {
-        id: 'ev-s2-2',
-        gameId: 'game-sample-02',
-        timestamp: Date.now() - 86400000 * 7,
-        quarter: 3,
-        gameSeconds: 300,
-        gameTimeFormatted: '05:00',
-        playerId: 'p-33',
-        playerNumber: 33,
-        playerName: 'David T.',
-        actionType: 'BLK',
-        actionLabel: 'Tapón Realizado',
-        pointsAdded: 0,
-        isOpponentAction: false,
-        scoreSnapshot: { home: 58, away: 60 },
-      },
-    ],
-    quarterScores: [
-      { quarter: 1, quarterLabel: '1C', home: 24, away: 22 },
-      { quarter: 2, quarterLabel: '2C', home: 19, away: 21 },
-      { quarter: 3, quarterLabel: '3C', home: 17, away: 24 },
-      { quarter: 4, quarterLabel: '4C', home: 22, away: 18 },
-    ],
-  };
-
-  return [currentGame, sample2, sample1];
+  const curated = getCuratedBrafaInfantilMatches(currentGame);
+  if (currentGame.status !== 'finished' && currentGame.events.length === 0) {
+    return curated;
+  }
+  return [currentGame, ...curated];
 }

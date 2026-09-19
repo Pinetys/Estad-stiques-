@@ -246,11 +246,19 @@ export function isDeviceLicensed(): boolean {
   return role === 'admin';
 }
 
-function getSavedUserRole(): UserRole {
+export function getSavedUserRole(): UserRole {
   try {
     return (localStorage.getItem(USER_ROLE_KEY) as UserRole) || 'admin';
   } catch {
     return 'admin';
+  }
+}
+
+export function setUserRole(role: UserRole): void {
+  try {
+    localStorage.setItem(USER_ROLE_KEY, role);
+  } catch (e) {
+    console.warn('Error setting user role:', e);
   }
 }
 
@@ -299,12 +307,154 @@ export function detectAndInitUserRole(): UserRole {
   return 'admin';
 }
 
-export function setUserRole(role: UserRole): void {
+export function isMasterAdmin(): boolean {
+  if (typeof window === 'undefined') return true;
   try {
-    localStorage.setItem(USER_ROLE_KEY, role);
-  } catch (e) {
-    console.warn('Could not set user role:', e);
+    const saved = localStorage.getItem(USER_ROLE_KEY);
+    // If not explicitly set to scorer/viewer/client, or set to admin, default is master on dpinogay@gmail.com device
+    if (!saved || saved === 'admin') return true;
+    return false;
+  } catch {
+    return true;
   }
+}
+
+export interface Subscriber {
+  id: string;
+  name: string;
+  club: string;
+  email: string;
+  phone?: string;
+  licenseKey: string;
+  tier: LicenseTier;
+  tierLabel: string;
+  status: 'active' | 'pending' | 'expired';
+  subscribedAt: string;
+  expiresAt: string;
+  activeTeamsCount: number;
+}
+
+const SUBSCRIBERS_STORAGE_KEY = 'basketstats_subscribers_v1';
+
+export const DEFAULT_SUBSCRIBERS: Subscriber[] = [
+  {
+    id: 'sub-01',
+    name: 'Jordi Soler',
+    club: 'CB Prat',
+    email: 'j.soler@cbprat.cat',
+    phone: '+34 611 223 344',
+    licenseKey: 'PRO-PRAT-4892-2026',
+    tier: 'club_pro',
+    tierLabel: 'Plan Club PRO Multi-Equipo',
+    status: 'active',
+    subscribedAt: '2026-08-20',
+    expiresAt: '2027-08-31',
+    activeTeamsCount: 4,
+  },
+  {
+    id: 'sub-02',
+    name: 'Carles Miró',
+    club: 'SE Sant Medir',
+    email: 'c.miro@santmedir.org',
+    phone: '+34 622 334 455',
+    licenseKey: 'PRO-MEDI-7721-2026',
+    tier: 'club_pro',
+    tierLabel: 'Plan Club PRO Multi-Equipo',
+    status: 'active',
+    subscribedAt: '2026-09-01',
+    expiresAt: '2027-08-31',
+    activeTeamsCount: 2,
+  },
+  {
+    id: 'sub-03',
+    name: 'Marc Torrent',
+    club: 'Basket Sarrià',
+    email: 'marctorrent@basketsarria.es',
+    phone: '+34 633 445 566',
+    licenseKey: 'COACH-SARR-3310-2026',
+    tier: 'coach',
+    tierLabel: 'Plan Entrenador (1 Equipo)',
+    status: 'active',
+    subscribedAt: '2026-09-10',
+    expiresAt: '2027-08-31',
+    activeTeamsCount: 1,
+  },
+  {
+    id: 'sub-04',
+    name: 'David Rovira',
+    club: 'Escola Pia Sarrià',
+    email: 'd.rovira@escolapia.cat',
+    phone: '+34 644 556 677',
+    licenseKey: 'DEMO-EPIA-1204-2026',
+    tier: 'trial',
+    tierLabel: 'Pase Prueba (14 Días)',
+    status: 'active',
+    subscribedAt: '2026-09-15',
+    expiresAt: '2026-09-29',
+    activeTeamsCount: 1,
+  },
+];
+
+export function getSubscribersList(): Subscriber[] {
+  try {
+    const raw = localStorage.getItem(SUBSCRIBERS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return DEFAULT_SUBSCRIBERS;
+}
+
+export function saveSubscribersList(list: Subscriber[]): void {
+  try {
+    localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('Error saving subscribers list:', e);
+  }
+}
+
+export function addSubscriber(sub: Omit<Subscriber, 'id' | 'subscribedAt' | 'licenseKey'>): Subscriber {
+  const current = getSubscribersList();
+  const licenseKey = generateLicenseKey(sub.tier, sub.club || sub.name);
+  const newSub: Subscriber = {
+    ...sub,
+    id: `sub-${Date.now()}`,
+    subscribedAt: new Date().toISOString().split('T')[0],
+    licenseKey,
+  };
+  const updated = [newSub, ...current];
+  saveSubscribersList(updated);
+
+  // Also register in commercial licenses
+  saveCommercialLicense({
+    id: newSub.id,
+    key: licenseKey,
+    clientName: newSub.club || newSub.name,
+    clientEmail: newSub.email,
+    tier: newSub.tier,
+    tierLabel: newSub.tierLabel,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    expiresAt: newSub.expiresAt,
+    maxTeams: newSub.tier === 'club_pro' ? 99 : 1,
+    issuedBy: 'dpinogay@gmail.com',
+  });
+
+  return newSub;
+}
+
+/**
+ * Clean invite link for new subscribers / clients that starts with blank teams & matches
+ */
+export function getCleanSubscriberShareLink(licenseKey?: string): string {
+  if (typeof window === 'undefined') return '';
+  const url = new URL(window.location.origin + window.location.pathname);
+  if (licenseKey) {
+    url.searchParams.set('license', licenseKey);
+  }
+  url.searchParams.set('fresh', '1');
+  return url.toString();
 }
 
 export function verifyAdminPin(pin: string): boolean {

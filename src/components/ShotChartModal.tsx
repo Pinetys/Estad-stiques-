@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Game, PlayEvent, StatActionType, PendingShot } from '../types';
+import { Game, PlayEvent, StatActionType, PendingShot, BasketOriginType, BASKET_ORIGIN_LABELS } from '../types';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import {
   Crosshair,
@@ -17,6 +17,8 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
+  ShieldAlert,
+  Users,
 } from 'lucide-react';
 
 interface ShotChartModalProps {
@@ -24,7 +26,7 @@ interface ShotChartModalProps {
   onClose: () => void;
   onLogShotWithLocation?: (
     playerId: string,
-    actionType: StatActionType,
+    actionType: StatActionType | string,
     location: {
       x: number;
       y: number;
@@ -32,7 +34,8 @@ interface ShotChartModalProps {
       made: boolean;
       points: number;
     },
-    assistedByPlayerId?: string
+    assistedByPlayerId?: string,
+    basketOrigin?: BasketOriginType
   ) => void;
   selectedPlayerId?: string | null;
   pendingShot?: PendingShot | null;
@@ -50,11 +53,19 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
   const isPendingMode = Boolean(pendingShot);
 
   // Filters for analytics mode
+  const [filterTeam, setFilterTeam] = useState<'all' | 'local' | 'away'>(
+    pendingShot?.isOpponentShot ? 'away' : 'local'
+  );
   const [filterPlayerId, setFilterPlayerId] = useState<string | 'all'>(
     pendingShot?.playerId || initialPlayerId || 'all'
   );
   const [filterQuarter, setFilterQuarter] = useState<number | 'all'>('all');
   const [filterResult, setFilterResult] = useState<'all' | 'made' | 'missed'>('all');
+
+  // Origin selector for shot (especially opponent baskets)
+  const [selectedOrigin, setSelectedOrigin] = useState<BasketOriginType>(
+    pendingShot?.basketOrigin || 'jugada'
+  );
 
   // Shot recording from clicking on court (manual browsing mode)
   const [pendingClick, setPendingClick] = useState<{ x: number; y: number } | null>(null);
@@ -78,16 +89,18 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
     p => p.onCourt && p.id !== (pendingShot ? pendingShot.playerId : recordingPlayerId)
   );
 
-  // Extract all shot events
+  // Extract all shot events (both home and opponent shots)
   const shotEvents = game.events.filter(e =>
-    ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType)
+    ['2PM', '2PA', '3PM', '3PA', 'OPP_2P', 'OPP_3P'].includes(e.actionType)
   );
 
   // Filter shots
   const filteredShots = shotEvents.filter(e => {
+    if (filterTeam === 'local' && e.isOpponentAction) return false;
+    if (filterTeam === 'away' && !e.isOpponentAction) return false;
     if (filterPlayerId !== 'all' && e.playerId !== filterPlayerId) return false;
     if (filterQuarter !== 'all' && e.quarter !== filterQuarter) return false;
-    if (filterResult === 'made' && !['2PM', '3PM'].includes(e.actionType)) return false;
+    if (filterResult === 'made' && !['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(e.actionType)) return false;
     if (filterResult === 'missed' && !['2PA', '3PA'].includes(e.actionType)) return false;
     return true;
   });
@@ -97,7 +110,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
 
   const calculateZoneStats = (zone: 'paint' | 'mid' | 'corner3_left' | 'corner3_right' | 'top3') => {
     const zoneShots = shotsWithLocation.filter(s => s.shotLocation?.zone === zone);
-    const made = zoneShots.filter(s => ['2PM', '3PM'].includes(s.actionType)).length;
+    const made = zoneShots.filter(s => ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(s.actionType)).length;
     const attempted = zoneShots.length;
     const pct = attempted > 0 ? Math.round((made / attempted) * 100) : 0;
     return { made, attempted, pct };
@@ -111,8 +124,17 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
 
   // Overall shooting stats
   const totalShotsCount = filteredShots.length;
-  const madeShotsCount = filteredShots.filter(s => ['2PM', '3PM'].includes(s.actionType)).length;
+  const madeShotsCount = filteredShots.filter(s => ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(s.actionType)).length;
   const totalPct = totalShotsCount > 0 ? Math.round((madeShotsCount / totalShotsCount) * 100) : 0;
+
+  // Conceded points by origin analysis for rival baskets
+  const localShots = shotEvents.filter(s => !s.isOpponentAction);
+  const opponentShots = game.events.filter(e => e.isOpponentAction && ['OPP_2P', 'OPP_3P'].includes(e.actionType));
+  const originBreakdown = opponentShots.reduce((acc, ev) => {
+    const origin = ev.basketOrigin || 'jugada';
+    acc[origin] = (acc[origin] || 0) + (ev.pointsAdded || 0);
+    return acc;
+  }, {} as Record<BasketOriginType, number>);
 
   // Determine shot zone & whether it is a 3pt based on court coordinates (x, y)
   const getZoneFromCoordinates = (x: number, y: number): {
@@ -157,12 +179,36 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
     if (isPendingMode && pendingShot && onLogShotWithLocation) {
       triggerHaptic('heavy', game.settings.vibrationEnabled);
       playSound(
-        pendingShot.actionType === '3PM' ? 'three' : pendingShot.isMade ? 'score' : 'click',
+        pendingShot.actionType === '3PM' || pendingShot.actionType === 'OPP_3P'
+          ? 'three'
+          : pendingShot.isMade
+          ? 'score'
+          : 'click',
         game.settings.soundEnabled
       );
 
       const { zone } = getZoneFromCoordinates(clickX, clickY);
       setJustPlacedLocation({ x: clickX, y: clickY });
+
+      // If rival shot: save directly with selected origin in 1 single step!
+      if (pendingShot.isOpponentShot) {
+        setTimeout(() => {
+          onLogShotWithLocation(
+            'opponent',
+            pendingShot.actionType,
+            {
+              x: clickX,
+              y: clickY,
+              zone,
+              made: true,
+              points: pendingShot.points,
+            },
+            undefined,
+            selectedOrigin
+          );
+        }, 180);
+        return;
+      }
 
       // If made basket and assist prompt is enabled and teammates are on court:
       if (pendingShot.isMade && game.settings.assistPromptEnabled && teammatesOnCourt.length > 0) {
@@ -170,13 +216,19 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
       } else {
         // Direct finish in 1 single step!
         setTimeout(() => {
-          onLogShotWithLocation(pendingShot.playerId, pendingShot.actionType, {
-            x: clickX,
-            y: clickY,
-            zone,
-            made: pendingShot.isMade,
-            points: pendingShot.points,
-          });
+          onLogShotWithLocation(
+            pendingShot.playerId,
+            pendingShot.actionType,
+            {
+              x: clickX,
+              y: clickY,
+              zone,
+              made: pendingShot.isMade,
+              points: pendingShot.points,
+            },
+            undefined,
+            selectedOrigin
+          );
         }, 180);
       }
       return;
@@ -203,7 +255,8 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
         made: pendingShot.isMade,
         points: pendingShot.points,
       },
-      assistantId
+      assistantId,
+      selectedOrigin
     );
   };
 
@@ -217,13 +270,19 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
       : (made ? '2PM' : '2PA');
     const points = isThree ? (made ? 3 : 0) : (made ? 2 : 0);
 
-    onLogShotWithLocation(recordingPlayerId, actionType, {
-      x: pendingClick.x,
-      y: pendingClick.y,
-      zone,
-      made,
-      points,
-    });
+    onLogShotWithLocation(
+      recordingPlayerId,
+      actionType,
+      {
+        x: pendingClick.x,
+        y: pendingClick.y,
+        zone,
+        made,
+        points,
+      },
+      undefined,
+      selectedOrigin
+    );
 
     playSound(isThree && made ? 'three' : made ? 'score' : 'click', game.settings.soundEnabled);
     triggerHaptic('medium', game.settings.vibrationEnabled);
@@ -245,64 +304,123 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
         {/* HEADER */}
         {isPendingMode && pendingShot ? (
           /* QUICK 1-STEP PLACEMENT HEADER */
-          <div className={`bg-gradient-to-r ${
-            pendingShot.isMade
-              ? 'from-orange-950/80 via-neutral-900 to-amber-950/70 border-orange-500/50'
-              : 'from-rose-950/85 via-neutral-900 to-zinc-950 border-rose-600/70'
-          } border rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-md`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-11 h-11 rounded-xl ${
-                pendingShot.isMade ? 'bg-orange-500 text-black' : 'bg-rose-600 text-white'
-              } font-black flex items-center justify-center text-xl font-mono shadow shrink-0`}>
-                #{pendingShot.playerNumber}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base font-black text-white">
-                    {pendingShot.isMade ? `Canasta de ${pendingShot.playerName}` : `Tiro Fallado por ${pendingShot.playerName}`}
-                  </h3>
-                  <span className={`text-xs font-mono font-black px-2 py-0.5 rounded-full ${
-                    pendingShot.isMade
-                      ? pendingShot.points === 3
-                        ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                        : 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
-                      : 'bg-rose-950/80 text-rose-300 border border-rose-600'
-                  }`}>
-                    {pendingShot.isMade
-                      ? `+${pendingShot.points} PUNTOS (${pendingShot.actionType === '3PM' ? 'Triple' : 'Tiro de 2'})`
-                      : `FALLO (${pendingShot.actionType === '3PA' ? 'Triple 3P' : 'Tiro 2P'})`}
-                  </span>
+          <div className="space-y-2">
+            <div className={`bg-gradient-to-r ${
+              pendingShot.isOpponentShot
+                ? 'from-red-950/90 via-neutral-900 to-rose-950/80 border-red-500/70'
+                : pendingShot.isMade
+                ? 'from-orange-950/80 via-neutral-900 to-amber-950/70 border-orange-500/50'
+                : 'from-rose-950/85 via-neutral-900 to-zinc-950 border-rose-600/70'
+            } border rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-md`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl ${
+                  pendingShot.isOpponentShot
+                    ? 'bg-red-600 text-white'
+                    : pendingShot.isMade
+                    ? 'bg-orange-500 text-black'
+                    : 'bg-rose-600 text-white'
+                } font-black flex items-center justify-center text-xl font-mono shadow shrink-0`}>
+                  {pendingShot.isOpponentShot ? '🏀' : `#${pendingShot.playerNumber}`}
                 </div>
-                <p className={`text-xs ${pendingShot.isMade ? 'text-orange-200/90' : 'text-rose-200/90'} font-mono mt-0.5 flex items-center gap-1.5`}>
-                  <Crosshair className={`w-3.5 h-3.5 ${pendingShot.isMade ? 'text-orange-400' : 'text-rose-400'} animate-spin-slow`} />
-                  <span>
-                    {pendingShot.isMade
-                      ? 'Toca en la pista dónde lanzó para registrarlo en 1 solo paso'
-                      : 'Toca en la pista desde dónde falló el tiro para registrar la posición'}
-                  </span>
-                </p>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-black text-white">
+                      {pendingShot.isOpponentShot
+                        ? `Canasta del Rival • ${game.awayTeamName || 'Equipo Rival'}`
+                        : pendingShot.isMade
+                        ? `Canasta de ${pendingShot.playerName}`
+                        : `Tiro Fallado por ${pendingShot.playerName}`}
+                    </h3>
+                    <span className={`text-xs font-mono font-black px-2 py-0.5 rounded-full ${
+                      pendingShot.isOpponentShot
+                        ? 'bg-red-500/30 text-red-300 border border-red-500/50'
+                        : pendingShot.isMade
+                        ? pendingShot.points === 3
+                          ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                          : 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                        : 'bg-rose-950/80 text-rose-300 border border-rose-600'
+                    }`}>
+                      {pendingShot.isOpponentShot
+                        ? `+${pendingShot.points} PUNTOS RIVAL (${pendingShot.actionType === 'OPP_3P' ? 'Triple' : 'Tiro de 2'})`
+                        : pendingShot.isMade
+                        ? `+${pendingShot.points} PUNTOS (${pendingShot.actionType === '3PM' ? 'Triple' : 'Tiro de 2'})`
+                        : `FALLO (${pendingShot.actionType === '3PA' ? 'Triple 3P' : 'Tiro 2P'})`}
+                    </span>
+                  </div>
+                  <p className={`text-xs ${pendingShot.isOpponentShot ? 'text-red-200/90' : pendingShot.isMade ? 'text-orange-200/90' : 'text-rose-200/90'} font-mono mt-0.5 flex items-center gap-1.5`}>
+                    <Crosshair className={`w-3.5 h-3.5 ${pendingShot.isOpponentShot ? 'text-red-400' : pendingShot.isMade ? 'text-orange-400' : 'text-rose-400'} animate-spin-slow`} />
+                    <span>
+                      {pendingShot.isOpponentShot
+                        ? 'Selecciona el tipo de jugada abajo y toca en la pista dónde anotó'
+                        : pendingShot.isMade
+                        ? 'Toca en la pista dónde lanzó para registrarlo en 1 solo paso'
+                        : 'Toca en la pista desde dónde falló el tiro para registrar la posición'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+                {onSkipLocation && (
+                  <button
+                    type="button"
+                    onClick={onSkipLocation}
+                    className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-600 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 active:scale-95 shadow"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{pendingShot.isMade ? 'Anotar sin ubicar' : 'Registrar fallo sin ubicar'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition shrink-0"
+                  title="Cancelar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-              {onSkipLocation && (
-                <button
-                  type="button"
-                  onClick={onSkipLocation}
-                  className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-600 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 active:scale-95 shadow"
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{pendingShot.isMade ? 'Anotar sin ubicar' : 'Registrar fallo sin ubicar'}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition shrink-0"
-                title="Cancelar"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            {/* Origin Selector Strip (Opponent or Home Basket) */}
+            <div className="p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-700/80 space-y-1.5 animate-in fade-in">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-neutral-200 flex items-center gap-1.5">
+                  <span className="text-amber-400">⚡</span>
+                  <span>¿Cómo se generó la canasta?</span>
+                  <span className="text-[11px] text-neutral-400 font-normal">
+                    (Mide la eficacia de balance defensivo y rebote)
+                  </span>
+                </span>
+                <span className="text-amber-400 font-bold text-[11px]">
+                  {BASKET_ORIGIN_LABELS[selectedOrigin]?.description}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5 text-xs">
+                {(Object.keys(BASKET_ORIGIN_LABELS) as BasketOriginType[]).map(originKey => {
+                  const item = BASKET_ORIGIN_LABELS[originKey];
+                  const isSelected = selectedOrigin === originKey;
+                  return (
+                    <button
+                      key={originKey}
+                      type="button"
+                      onClick={() => {
+                        setSelectedOrigin(originKey);
+                        playSound('click', game.settings.soundEnabled);
+                      }}
+                      className={`px-2 py-1.5 rounded-lg border text-left flex items-center gap-1.5 transition active:scale-95 text-xs ${
+                        isSelected
+                          ? 'bg-amber-500 text-black border-amber-400 font-bold shadow'
+                          : 'bg-neutral-800 hover:bg-neutral-750 text-neutral-300 border-neutral-700'
+                      }`}
+                    >
+                      <span>{item.icon}</span>
+                      <span className="truncate">{item.shortLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (
@@ -381,19 +499,52 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
               <span>Filtros:</span>
             </div>
 
-            {/* Player Selector */}
-            <select
-              value={filterPlayerId}
-              onChange={e => setFilterPlayerId(e.target.value)}
-              className="bg-[#1A1D24] text-gray-200 border border-gray-700 rounded px-2 py-1 font-mono focus:outline-none focus:border-orange-500"
-            >
-              <option value="all">🏀 Todo el equipo ({game.homeTeamName})</option>
-              {game.players.map(p => (
-                <option key={p.id} value={p.id}>
-                  #{p.number} {p.name}
-                </option>
-              ))}
-            </select>
+            {/* Team Filter */}
+            <div className="flex items-center bg-[#1A1D24] border border-gray-700 rounded p-0.5">
+              <button
+                type="button"
+                onClick={() => setFilterTeam('local')}
+                className={`px-2 py-0.5 rounded font-bold transition flex items-center gap-1 ${
+                  filterTeam === 'local' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <span>🏀 Local ({localShots.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTeam('away')}
+                className={`px-2 py-0.5 rounded font-bold transition flex items-center gap-1 ${
+                  filterTeam === 'away' ? 'bg-red-600 text-white' : 'text-red-400 hover:text-red-300'
+                }`}
+              >
+                <span>🔴 Rival ({opponentShots.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTeam('all')}
+                className={`px-2 py-0.5 rounded font-bold transition ${
+                  filterTeam === 'all' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                Todos
+              </button>
+            </div>
+
+            {/* Player Selector (for local team) */}
+            {filterTeam !== 'away' && (
+              <select
+                value={filterPlayerId}
+                onChange={e => setFilterPlayerId(e.target.value)}
+                className="bg-[#1A1D24] text-gray-200 border border-gray-700 rounded px-2 py-1 font-mono focus:outline-none focus:border-orange-500"
+              >
+                <option value="all">🏀 Todo el equipo ({game.homeTeamName})</option>
+                {game.players.map(p => (
+                  <option key={p.id} value={p.id}>
+                    #{p.number} {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
 
             {/* Quarter Selector */}
             <select
@@ -561,7 +712,8 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                 {/* Render Recorded Shot Markers */}
                 {shotsWithLocation.map((shot, idx) => {
                   const loc = shot.shotLocation!;
-                  const isMade = ['2PM', '3PM'].includes(shot.actionType);
+                  const isOpponent = Boolean(shot.isOpponentAction);
+                  const isMade = isOpponent || ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(shot.actionType);
                   const posX = loc.x;
                   const posY = (loc.y / 100) * 93.3;
                   const isHovered = hoveredEvent?.id ? hoveredEvent.id === shot.id : hoveredEvent === shot;
@@ -595,14 +747,37 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                             cx={posX}
                             cy={posY}
                             r="5.5"
-                            fill={isMade ? '#10b981' : '#f43f5e'}
+                            fill={isOpponent ? '#ef4444' : isMade ? '#10b981' : '#f43f5e'}
                             fillOpacity="0.4"
-                            stroke={isMade ? '#34d399' : '#fb7185'}
+                            stroke={isOpponent ? '#f87171' : isMade ? '#34d399' : '#fb7185'}
                             strokeWidth="0.8"
                           />
                         )}
 
-                        {isMade ? (
+                        {isOpponent ? (
+                          <>
+                            <circle
+                              cx={posX}
+                              cy={posY}
+                              r={isHovered ? 3.6 : 2.7}
+                              fill="#ef4444"
+                              stroke="#7f1d1d"
+                              strokeWidth="0.7"
+                              className="shadow-md"
+                            />
+                            <text
+                              x={posX}
+                              y={posY + 0.9}
+                              textAnchor="middle"
+                              fill="#ffffff"
+                              fontSize={isHovered ? '2.7' : '2.3'}
+                              fontWeight="black"
+                              fontFamily="monospace"
+                            >
+                              R
+                            </text>
+                          </>
+                        ) : isMade ? (
                           <>
                             <circle
                               cx={posX}
@@ -732,27 +907,37 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                 >
                   <div
                     className={`px-2.5 py-1.5 rounded-lg border shadow-2xl backdrop-blur-md text-xs font-mono whitespace-nowrap flex items-center gap-2 ${
-                      ['2PM', '3PM'].includes(hoveredEvent.actionType)
+                      hoveredEvent.isOpponentAction
+                        ? 'bg-red-950/95 border-red-500 text-red-100 shadow-red-950/80'
+                        : ['2PM', '3PM'].includes(hoveredEvent.actionType)
                         ? 'bg-emerald-950/95 border-emerald-500 text-emerald-100 shadow-emerald-950/80'
                         : 'bg-rose-950/95 border-rose-500 text-rose-100 shadow-rose-950/80'
                     }`}
                   >
                     <div className="flex items-center gap-1.5">
-                      {['2PM', '3PM'].includes(hoveredEvent.actionType) ? (
+                      {hoveredEvent.isOpponentAction ? (
+                        <span className="text-red-400 font-bold">🔴</span>
+                      ) : ['2PM', '3PM'].includes(hoveredEvent.actionType) ? (
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       ) : (
                         <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                       )}
                       <div>
                         <div className="flex items-center gap-1.5 font-bold text-[11px]">
-                          {hoveredEvent.playerName && (
+                          {hoveredEvent.isOpponentAction ? (
+                            <span className="text-red-300 font-black">
+                              Rival (+{hoveredEvent.pointsAdded} pts)
+                            </span>
+                          ) : hoveredEvent.playerName ? (
                             <span className="text-white font-black">
                               #{hoveredEvent.playerNumber} {hoveredEvent.playerName}
                             </span>
-                          )}
+                          ) : null}
                           <span
                             className={
-                              ['2PM', '3PM'].includes(hoveredEvent.actionType)
+                              hoveredEvent.isOpponentAction
+                                ? 'text-red-200'
+                                : ['2PM', '3PM'].includes(hoveredEvent.actionType)
                                 ? 'text-emerald-300'
                                 : 'text-rose-300'
                             }
@@ -764,6 +949,11 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                           <span>Q{hoveredEvent.quarter}</span>
                           {hoveredEvent.gameTimeFormatted && (
                             <span>• {hoveredEvent.gameTimeFormatted}</span>
+                          )}
+                          {hoveredEvent.basketOrigin && (
+                            <span className="text-amber-300 font-semibold">
+                              • {BASKET_ORIGIN_LABELS[hoveredEvent.basketOrigin]?.icon} {BASKET_ORIGIN_LABELS[hoveredEvent.basketOrigin]?.shortLabel}
+                            </span>
                           )}
                           {hoveredEvent.assistedByPlayerName && (
                             <span className="text-amber-300">
@@ -958,12 +1148,51 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                 </div>
               </div>
 
+              {/* Opponent Conceded Points by Origin Panel */}
+              {filterTeam !== 'local' && opponentShots.length > 0 && (
+                <div className="bg-[#140D0F] border border-red-900/60 rounded-xl p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-red-300 font-mono flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                      <span>Puntos Encajados por Origen</span>
+                    </span>
+                    <span className="text-xs font-black font-mono text-red-400">
+                      {opponentShots.reduce((sum, s) => sum + (s.pointsAdded || 0), 0)} pts rivales
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs font-mono">
+                    {(Object.keys(BASKET_ORIGIN_LABELS) as BasketOriginType[]).map(originKey => {
+                      const pts = originBreakdown[originKey] || 0;
+                      if (pts === 0 && filterTeam === 'all') return null;
+                      const info = BASKET_ORIGIN_LABELS[originKey];
+                      const count = opponentShots.filter(s => (s.basketOrigin || 'jugada') === originKey).length;
+                      return (
+                        <div key={originKey} className="bg-[#1D1214] p-1.5 px-2 rounded border border-red-900/40 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-neutral-300 text-[11px]">
+                            <span>{info.icon}</span>
+                            <span>{info.shortLabel}</span>
+                            <span className="text-neutral-500">({count} can.)</span>
+                          </span>
+                          <span className={`font-bold font-mono ${pts > 0 ? 'text-red-400 font-black' : 'text-neutral-500'}`}>
+                            {pts} pts
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Legend & Guide */}
               <div className="bg-[#0D0F13] border border-gray-800 rounded-xl p-2.5 text-[11px] font-mono text-gray-400 space-y-1">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                    <span>Canasta Anotada</span>
+                    <span>Canasta Local</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+                    <span>Canasta Rival</span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="text-rose-400 font-bold">✕</span>
@@ -971,7 +1200,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                   </span>
                 </div>
                 <div className="text-gray-500 text-[10px] pt-1">
-                  💡 Al anotar una canasta, la carta se abre para registrar el punto de tiro en 1 paso.
+                  💡 Registra tanto tiros propios como canastas rivales para diagnosticar la defensa (rebote, transición, 5x5).
                 </div>
               </div>
             </div>

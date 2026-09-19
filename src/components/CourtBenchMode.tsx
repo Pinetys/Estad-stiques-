@@ -168,6 +168,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       playSound('error', game.settings.soundEnabled);
       return;
     }
+    const isOppBasket = actionType === 'OPP_2P' || actionType === 'OPP_3P';
+    if (isOppBasket && onOpenShotChartForBasket && game.settings.shotChartAutoOpen !== 'off') {
+      onOpenShotChartForBasket({
+        playerId: 'opponent',
+        playerName: game.awayTeamName || 'Equipo Rival',
+        playerNumber: opponentPlayerNumber || 0,
+        actionType,
+        points: actionType === 'OPP_3P' ? 3 : 2,
+        isMade: true,
+        isOpponentShot: true,
+      });
+      return;
+    }
     onLogOpponentAction(actionType, opponentPlayerNumber);
   };
 
@@ -178,6 +191,21 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       return;
     }
     if (scoutingOppAction) {
+      const isOppBasket = scoutingOppAction === 'OPP_2P' || scoutingOppAction === 'OPP_3P';
+      if (isOppBasket && onOpenShotChartForBasket && game.settings.shotChartAutoOpen !== 'off') {
+        onOpenShotChartForBasket({
+          playerId: 'opponent',
+          playerName: game.awayTeamName || 'Equipo Rival',
+          playerNumber: dorsal || 0,
+          actionType: scoutingOppAction,
+          points: scoutingOppAction === 'OPP_3P' ? 3 : 2,
+          isMade: true,
+          isOpponentShot: true,
+        });
+        setScoutingOppAction(null);
+        setOpponentNumberInput('');
+        return;
+      }
       onLogOpponentAction(scoutingOppAction, dorsal);
     }
     setScoutingOppAction(null);
