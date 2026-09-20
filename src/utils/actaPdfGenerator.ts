@@ -183,14 +183,22 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
     doc.text(String(p.turnovers), 156, y + 1, { align: 'center' });
     doc.text(String(p.blocks), 166, y + 1, { align: 'center' });
 
-    // Fouls representation
-    let foulStr = '';
+    // Fouls representation: discreet vector circles (no encoding error, not oversized)
+    const foulsCount = Math.min(5, Math.max(0, p.foulsPersonal || 0));
+    const startX = 173.2;
+    const dotSpacing = 2.4;
     for (let f = 1; f <= 5; f++) {
-      foulStr += f <= p.foulsPersonal ? '● ' : '○ ';
+      const cx = startX + (f - 1) * dotSpacing;
+      const cy = y - 0.2;
+      if (f <= foulsCount) {
+        doc.setFillColor(p.foulsPersonal >= 5 ? 220 : 185, p.foulsPersonal >= 5 ? 38 : 28, 28);
+        doc.circle(cx, cy, 0.55, 'F');
+      } else {
+        doc.setDrawColor(200, 205, 215);
+        doc.setLineWidth(0.15);
+        doc.circle(cx, cy, 0.55, 'S');
+      }
     }
-    doc.setFontSize(5.5);
-    doc.setTextColor(p.foulsPersonal >= 5 ? 220 : 70, 30, 30);
-    doc.text(foulStr.trim(), 178, y + 1, { align: 'center' });
 
     // Valuation
     doc.setFontSize(7);
@@ -218,7 +226,7 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
   doc.text(String(teamStats.steals), 146, y + 1.2, { align: 'center' });
   doc.text(String(teamStats.turnovers), 156, y + 1.2, { align: 'center' });
   doc.text(String(teamStats.blocks), 166, y + 1.2, { align: 'center' });
-  doc.text(`${teamStats.foulsPersonal}F`, 178, y + 1.2, { align: 'center' });
+  doc.text(`${teamStats.foulsPersonal || 0}F`, 178, y + 1.2, { align: 'center' });
   doc.text(String(teamStats.efficiency), 194, y + 1.2, { align: 'center' });
 
   y += 10;

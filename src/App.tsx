@@ -35,6 +35,7 @@ import { EmergencyRecoveryModal } from './components/EmergencyRecoveryModal';
 import { TutorialModal } from './components/TutorialModal';
 import { FoulResolutionModal, FoulModalData } from './components/FoulResolutionModal';
 import { SubscribersModal } from './components/SubscribersModal';
+import { AdminLiveMatchesModal } from './components/AdminLiveMatchesModal';
 import { detectAndInitUserRole, isMasterAdmin, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
@@ -97,6 +98,7 @@ import {
   Crown,
   FolderKanban,
   FileText,
+  Tv,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
@@ -471,6 +473,7 @@ export default function App() {
   const [reportTargetTeamId, setReportTargetTeamId] = useState<string | undefined>(undefined);
   const [foulResolutionData, setFoulResolutionData] = useState<FoulModalData | null>(null);
   const [showSubscribersModal, setShowSubscribersModal] = useState(false);
+  const [showLiveMatchesModal, setShowLiveMatchesModal] = useState(false);
 
   const handleRecordFreeThrowFromFoul = ({
     isOpponent,
@@ -1579,6 +1582,25 @@ export default function App() {
                 <Library className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                 <span className="hidden sm:inline">Biblioteca</span>
               </button>
+
+              {(currentUser.isMasterAdmin || currentUser.role === 'admin') && (
+                <button
+                  id="nav-tab-live-matches"
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    setShowLiveMatchesModal(true);
+                  }}
+                  className="px-2 sm:px-2.5 py-1.5 rounded-lg text-red-300 hover:text-white bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 transition flex items-center gap-1.5 font-bold shadow-xs"
+                  title="Supervisar partidos en directo tomados por las diferentes mesas"
+                >
+                  <Tv className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                    <span className="hidden md:inline">En Directo</span>
+                  </span>
+                </button>
+              )}
             </nav>
 
             {/* Right: Cloud Sync, Court Mode Button & Quick Actions Menu */}
@@ -1812,6 +1834,27 @@ export default function App() {
                               </span>
                             </button>
                           )}
+
+                          {/* Partidos en Directo de Mesas (Exclusivo Admin / Master) */}
+                          {(currentUser.isMasterAdmin || currentUser.role === 'admin') && (
+                            <button
+                              id="menu-live-matches-btn"
+                              onClick={() => {
+                                setShowMobileHeaderMenu(false);
+                                setShowLiveMatchesModal(true);
+                              }}
+                              className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-red-950/50 bg-red-950/25 border border-red-500/40 text-red-200 text-xs font-bold text-left transition"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <Tv className="w-4 h-4 text-red-400 shrink-0" />
+                                <span>Partidos en Directo (Mesas)</span>
+                              </div>
+                              <span className="text-[9px] font-mono font-bold bg-red-600 text-white px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                EN VIVO
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -2018,6 +2061,10 @@ export default function App() {
                   setShowNewGameModal(true);
                 }}
                 onResumeGame={() => setActiveTab('live')}
+                onLoadGame={loadedGame => {
+                  setGame(loadedGame);
+                  setActiveTab('live');
+                }}
                 onOpenCourtMode={toggleCourtMode}
                 onOpenRosterModal={team => {
                   handleSelectTeam(team.id, team);
@@ -2454,6 +2501,20 @@ export default function App() {
         <SubscribersModal
           onClose={() => setShowSubscribersModal(false)}
           soundEnabled={game.settings.soundEnabled}
+        />
+      )}
+
+      {/* Admin Live Matches Monitor (Supervisión Multimesa en Vivo) */}
+      {showLiveMatchesModal && (currentUser.isMasterAdmin || currentUser.role === 'admin') && (
+        <AdminLiveMatchesModal
+          currentGameId={game.id}
+          soundEnabled={game.settings.soundEnabled}
+          onClose={() => setShowLiveMatchesModal(false)}
+          onLoadGame={loadedGame => {
+            setGame(loadedGame);
+            saveGameToLibrary(loadedGame);
+            setActiveTab('live');
+          }}
         />
       )}
     </div>

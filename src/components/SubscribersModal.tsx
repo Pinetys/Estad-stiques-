@@ -39,11 +39,13 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
 
   // New subscriber form state
   const [name, setName] = useState('');
+  const [userName, setUserName] = useState('');
   const [club, setClub] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [tier, setTier] = useState<LicenseTier>('club_pro');
   const [months, setMonths] = useState(12);
+  const [viewingSubscriberProfile, setViewingSubscriberProfile] = useState<Subscriber | null>(null);
 
   const handleCopy = (text: string, id: string, isLink = false) => {
     navigator.clipboard.writeText(text);
@@ -72,6 +74,7 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
 
     const newSub = addSubscriber({
       name: name.trim(),
+      userName: userName.trim() || undefined,
       club: club.trim(),
       email: email.trim() || 'cliente@basketstats.es',
       phone: phone.trim() || undefined,
@@ -85,6 +88,7 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
     setSubscribers(getSubscribersList());
     setShowAddForm(false);
     setName('');
+    setUserName('');
     setClub('');
     setEmail('');
     setPhone('');
@@ -178,6 +182,16 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="Ej: Jordi Soler"
+                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-300 mb-1 font-medium">Nombre de Usuario (Login / Identificador):</label>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={e => setUserName(e.target.value)}
+                    placeholder="Ej: jsoler_cbprat, entrenadorsarria"
                     className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -281,6 +295,11 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                       <span className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5 text-neutral-500" /> Contacto: <strong className="text-neutral-300">{sub.name}</strong>
                       </span>
+                      {sub.userName && (
+                        <span className="flex items-center gap-1 text-amber-300 font-mono">
+                          Usuario: <strong>@{sub.userName}</strong>
+                        </span>
+                      )}
                       {sub.email && (
                         <span className="flex items-center gap-1">
                           <Mail className="w-3.5 h-3.5 text-neutral-500" /> {sub.email}
@@ -313,8 +332,21 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                     </div>
                   </div>
 
-                  {/* Actions / Share Button */}
-                  <div className="flex items-center gap-2 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-neutral-700/60">
+                  {/* Actions / Share Button & Profile Access */}
+                  <div className="flex items-center gap-2 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-neutral-700/60 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playSound('click', soundEnabled);
+                        setViewingSubscriberProfile(sub);
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 border border-neutral-700 hover:border-amber-500/50 transition active:scale-95 shadow"
+                      title="Acceder y revisar el perfil del enlace de este suscriptor"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Acceder al Perfil</span>
+                    </button>
+
                     <button
                       onClick={() => handleCopy(cleanLink, sub.id, true)}
                       className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow ${
@@ -325,11 +357,11 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                     >
                       {isLinkCopied ? (
                         <>
-                          <Check className="w-4 h-4" /> ¡Enlace Limpio Copiado!
+                          <Check className="w-4 h-4" /> ¡Enlace Copiado!
                         </>
                       ) : (
                         <>
-                          <Send className="w-4 h-4" /> Enviar Acceso a Suscriptor
+                          <Send className="w-4 h-4" /> Enviar Enlace
                         </>
                       )}
                     </button>
@@ -372,6 +404,148 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
           </button>
         </div>
       </div>
+
+      {/* MODAL DETALLADO DEL PERFIL DEL ENLACE DE SUSCRIPTOR (ACCESO ADMIN) */}
+      {viewingSubscriberProfile && (
+        <div
+          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in"
+          onClick={() => setViewingSubscriberProfile(null)}
+        >
+          <div
+            className="bg-[#181B22] border border-amber-500/40 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-neutral-100"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 bg-[#14161B] border-b border-gray-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <Building className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    Perfil del Suscriptor: {viewingSubscriberProfile.club}
+                  </h3>
+                  <p className="text-xs text-amber-400/90 font-mono">
+                    Acceso de supervisión administrativa del enlace
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingSubscriberProfile(null)}
+                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-neutral-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Profile Content */}
+            <div className="p-5 space-y-4 overflow-y-auto text-xs">
+              {/* Key Details Card */}
+              <div className="p-4 rounded-xl bg-neutral-900/90 border border-neutral-800 space-y-2.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Club / Entidad</span>
+                    <strong className="text-white text-sm">{viewingSubscriberProfile.club}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Entrenador / Contacto</span>
+                    <strong className="text-white text-sm">{viewingSubscriberProfile.name}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Nombre de Usuario</span>
+                    <span className="text-amber-300 font-mono font-bold text-sm">
+                      {viewingSubscriberProfile.userName ? `@${viewingSubscriberProfile.userName}` : 'No asignado'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Plan Contratado</span>
+                    <span className="text-blue-400 font-bold">{viewingSubscriberProfile.tierLabel}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Email</span>
+                    <span className="text-neutral-300">{viewingSubscriberProfile.email || 'No especificado'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Teléfono / WhatsApp</span>
+                    <span className="text-neutral-300">{viewingSubscriberProfile.phone || 'No especificado'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Fecha de Alta</span>
+                    <span className="text-neutral-300">{viewingSubscriberProfile.subscribedAt}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block font-mono">Vencimiento Licencia</span>
+                    <span className="text-emerald-400 font-bold">{viewingSubscriberProfile.expiresAt}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-neutral-800 flex items-center justify-between">
+                  <span className="text-neutral-400 font-mono">Clave de Licencia Comercial:</span>
+                  <code className="px-2.5 py-1 rounded bg-black/60 border border-neutral-700 text-amber-300 font-mono font-bold">
+                    {viewingSubscriberProfile.licenseKey}
+                  </code>
+                </div>
+              </div>
+
+              {/* Direct Access Link Box */}
+              {(() => {
+                const link = getCleanSubscriberShareLink(viewingSubscriberProfile.licenseKey);
+                return (
+                  <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-3">
+                    <div>
+                      <h4 className="font-bold text-amber-300 flex items-center gap-1.5 text-xs">
+                        <Send className="w-4 h-4" /> Enlace Directo Enviado al Suscriptor:
+                      </h4>
+                      <p className="text-[11px] text-neutral-400 mt-0.5">
+                        Este es el enlace personalizado que abre la app con la licencia activada del cliente y base de datos limpia:
+                      </p>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-black/60 border border-neutral-700 font-mono text-[11px] text-neutral-300 break-all select-all">
+                      {link}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.open(link, '_blank');
+                          playSound('click', soundEnabled);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition active:scale-95"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Abrir y Probar Enlace en Nueva Pestaña</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(link, viewingSubscriberProfile.id, true)}
+                        className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar Enlace</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-[#14161B] border-t border-gray-800 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setViewingSubscriberProfile(null)}
+                className="px-4 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold transition"
+              >
+                Cerrar Perfil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

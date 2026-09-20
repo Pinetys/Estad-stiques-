@@ -115,16 +115,6 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
             <span className="text-[8.5px] sm:text-[10px] uppercase text-indigo-300 font-bold mt-1">Ofensivo</span>
           </button>
 
-          {/* ASISTENCIA */}
-          <button
-            id="action-ast-btn"
-            onClick={() => onInitiateAction('AST')}
-            className="bg-sky-950/90 hover:bg-sky-900 active:bg-sky-950 text-sky-200 border-2 border-sky-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[64px] sm:min-h-[72px] lg:min-h-[78px]"
-            title="Asistencia"
-          >
-            <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none text-sky-100">ASIST</span>
-            <span className="text-[8.5px] sm:text-[10px] uppercase text-sky-300 font-bold mt-1">Pase Gol</span>
-          </button>
 
           {/* ROBO */}
           <button
@@ -327,15 +317,6 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <span className="text-[7px] xs:text-[8px] uppercase text-indigo-300 font-bold mt-1">Ataque</span>
         </button>
 
-        <button
-          id="action-ast-btn"
-          onClick={() => onInitiateAction('AST')}
-          className="bg-sky-950/90 hover:bg-sky-900 active:bg-sky-950 text-sky-200 border-2 border-sky-600/80 font-black rounded-xl xs:rounded-2xl py-2 px-0.5 sm:px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[52px] xs:min-h-[58px] sm:min-h-[64px]"
-          title="Asistencia"
-        >
-          <span className="text-[10px] xs:text-[11.5px] sm:text-xs font-black font-mono leading-none text-sky-100">ASIST</span>
-          <span className="text-[7px] xs:text-[8px] uppercase text-sky-300 font-bold mt-1">Pase</span>
-        </button>
 
         <button
           id="action-stl-btn"

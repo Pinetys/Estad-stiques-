@@ -328,3 +328,57 @@ export function saveRecordedOpponent(name: string, logo?: string): RecordedOppon
   return getRecordedOpponents();
 }
 
+/**
+ * Suggest a balanced basketball starting five based on positions (PG, SG, SF, PF, C)
+ * or historical starter status / roster order
+ */
+export function getSuggestedStarterIds(roster: Player[]): string[] {
+  if (!roster || roster.length === 0) return [];
+  if (roster.length <= 5) return roster.map(p => p.id);
+
+  const selectedIds: string[] = [];
+  const targetPositions: Array<Player['position']> = ['B', 'E', 'A', 'AP', 'P'];
+
+  // 1. Try to pick 1 player for each position
+  for (const pos of targetPositions) {
+    const candidate = roster.find(p => p.position === pos && !selectedIds.includes(p.id));
+    if (candidate) {
+      selectedIds.push(candidate.id);
+    }
+  }
+
+  // 2. If fewer than 5, pick players marked as starter
+  if (selectedIds.length < 5) {
+    for (const p of roster) {
+      if (selectedIds.length >= 5) break;
+      if (p.starter && !selectedIds.includes(p.id)) {
+        selectedIds.push(p.id);
+      }
+    }
+  }
+
+  // 3. If still fewer than 5, pick remaining available players in roster order
+  if (selectedIds.length < 5) {
+    for (const p of roster) {
+      if (selectedIds.length >= 5) break;
+      if (!selectedIds.includes(p.id)) {
+        selectedIds.push(p.id);
+      }
+    }
+  }
+
+  return selectedIds;
+}
+
+export function applySuggestedStarters(roster: Player[]): Player[] {
+  const starterIds = new Set(getSuggestedStarterIds(roster));
+  return roster.map(p => {
+    const isStarter = starterIds.has(p.id);
+    return {
+      ...p,
+      starter: isStarter,
+      onCourt: isStarter,
+    };
+  });
+}
+

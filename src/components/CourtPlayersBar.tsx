@@ -2,7 +2,7 @@ import React from 'react';
 import { Game, Player } from '../types';
 import { calculatePlayerStats } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { ArrowRightLeft, Users } from 'lucide-react';
+import { ArrowRightLeft, Users, Clock } from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 
 interface CourtPlayersBarProps {
@@ -120,6 +120,16 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                 <div className="text-[10px] sm:text-xs font-bold text-neutral-100 truncate w-full mt-0.5">
                   {player.name.split(' ')[0]}
                 </div>
+
+                {/* Live Minutes Played */}
+                <div
+                  className="flex items-center justify-center gap-0.5 text-[8.5px] sm:text-[9.5px] font-mono font-bold text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded border border-emerald-500/25 w-full mt-0.5"
+                  title={`Minutos en pista en vivo: ${stats.minutesPlayedFormatted}`}
+                >
+                  <Clock className="w-2.5 h-2.5 shrink-0 opacity-80" />
+                  <span>{stats.minutesPlayedFormatted}</span>
+                </div>
+
                 <div className="flex flex-col items-center justify-center gap-0.5 mt-1 w-full">
                   <span className="text-[9px] sm:text-[10px] font-mono text-orange-400 font-bold leading-none">
                     {stats.points}p

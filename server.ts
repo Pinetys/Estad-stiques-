@@ -9,6 +9,7 @@ interface ServerSyncDatabase {
   teams: Record<string, any>;
   activeMatch: any | null;
   transferCodes: Record<string, { game: any; createdAt: number }>;
+  deletedMatchIds?: string[];
   lastUpdate: number;
 }
 
@@ -24,6 +25,7 @@ function loadServerSyncDb(): ServerSyncDatabase {
         teams: parsed.teams || {},
         activeMatch: parsed.activeMatch || null,
         transferCodes: parsed.transferCodes || {},
+        deletedMatchIds: parsed.deletedMatchIds || [],
         lastUpdate: parsed.lastUpdate || Date.now(),
       };
     }
@@ -35,6 +37,7 @@ function loadServerSyncDb(): ServerSyncDatabase {
     teams: {},
     activeMatch: null,
     transferCodes: {},
+    deletedMatchIds: [],
     lastUpdate: Date.now(),
   };
 }
@@ -182,6 +185,10 @@ async function startServer() {
         return res.status(400).json({ error: 'Falta objeto de partido válido' });
       }
 
+      if (serverDb.deletedMatchIds && serverDb.deletedMatchIds.includes(match.id)) {
+        return res.json({ success: true, matchId: match.id, ignored: true, reason: 'deleted' });
+      }
+
       const existing = serverDb.matches[match.id];
       // Defensive merge: protect existing events if incoming has fewer
       if (existing) {
@@ -214,6 +221,35 @@ async function startServer() {
     } catch (err: any) {
       console.error('Error in POST /api/sync/match:', err);
       res.status(500).json({ error: err.message || 'Error guardando partido en servidor' });
+    }
+  });
+
+  // 4b. Delete / trash a match from server database
+  app.post('/api/sync/match/delete', (req, res) => {
+    try {
+      const matchId = req.body?.matchId;
+      if (!matchId) {
+        return res.status(400).json({ error: 'Falta matchId' });
+      }
+
+      delete serverDb.matches[matchId];
+      if (serverDb.activeMatch?.id === matchId) {
+        serverDb.activeMatch = null;
+      }
+      if (!serverDb.deletedMatchIds) {
+        serverDb.deletedMatchIds = [];
+      }
+      if (!serverDb.deletedMatchIds.includes(matchId)) {
+        serverDb.deletedMatchIds.push(matchId);
+      }
+
+      saveServerSyncDb();
+      broadcastSync({ type: 'match_deleted', data: { matchId } });
+
+      res.json({ success: true, matchId });
+    } catch (err: any) {
+      console.error('Error in POST /api/sync/match/delete:', err);
+      res.status(500).json({ error: err.message || 'Error eliminando partido' });
     }
   });
 

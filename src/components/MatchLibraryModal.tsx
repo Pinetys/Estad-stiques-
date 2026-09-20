@@ -11,6 +11,9 @@ import {
   saveGamesToStorage,
   saveOrUpdateGameInLibrary,
   syncMatchesFromCloud,
+  getTrashedGamesFromStorage,
+  restoreGameFromTrash,
+  permanentlyDeleteFromTrash,
 } from '../utils/libraryUtils';
 import { sanitizeAndIsolateLibraryGames } from '../utils/teamIsolation';
 import { TeamLogoDisplay } from './TeamLogoPicker';
@@ -45,6 +48,8 @@ import {
   PlusCircle,
   ExternalLink,
   AlertTriangle,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
 
 interface MatchLibraryModalProps {
@@ -68,8 +73,10 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   onDeleteGame,
   onOpenRecoveryModal,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'matches' | 'seasonStats' | 'aiPlan'>('matches');
+  const [activeSubTab, setActiveSubTab] = useState<'matches' | 'seasonStats' | 'aiPlan' | 'trash'>('matches');
   const [library, setLibrary] = useState<Game[]>([]);
+  const [trashedGames, setTrashedGames] = useState<Game[]>(() => getTrashedGamesFromStorage());
+  const [trashToast, setTrashToast] = useState<string | null>(null);
   const [seasonStats, setSeasonStats] = useState<SeasonAggregatedStats | null>(null);
 
   // Deletion modal states (replaces window.confirm for reliable mobile & iframe execution)
@@ -151,15 +158,38 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const handleConfirmDeleteSingle = (gameId: string) => {
     const updated = deleteGameFromLibrary(gameId);
     refreshLibrary(updated);
+    setTrashedGames(getTrashedGamesFromStorage());
     onDeleteGame?.(gameId);
     setGameToDelete(null);
+    setTrashToast('Partido movido a la papelera. Puedes recuperarlo en la pestaña "Papelera".');
+    setTimeout(() => setTrashToast(null), 4000);
     playSound('click', currentGame.settings.soundEnabled);
     triggerHaptic('medium', currentGame.settings.vibrationEnabled);
+  };
+
+  const handleRestoreGame = (gameId: string) => {
+    const { updatedLibrary, restoredGame } = restoreGameFromTrash(gameId);
+    refreshLibrary(updatedLibrary);
+    setTrashedGames(getTrashedGamesFromStorage());
+    setTrashToast(`¡Partido "${restoredGame?.homeTeamName || ''} vs ${restoredGame?.awayTeamName || ''}" recuperado con éxito!`);
+    setTimeout(() => setTrashToast(null), 4000);
+    playSound('score', currentGame.settings.soundEnabled);
+    triggerHaptic('medium', currentGame.settings.vibrationEnabled);
+  };
+
+  const handlePermanentDelete = (gameId: string) => {
+    const remaining = permanentlyDeleteFromTrash(gameId);
+    setTrashedGames(remaining);
+    setTrashToast('Partido eliminado definitivamente.');
+    setTimeout(() => setTrashToast(null), 3000);
+    playSound('buzzer', currentGame.settings.soundEnabled);
+    triggerHaptic('warning', currentGame.settings.vibrationEnabled);
   };
 
   const handleConfirmClearAll = () => {
     const updated = clearAllGamesFromLibrary();
     refreshLibrary(updated);
+    setTrashedGames(getTrashedGamesFromStorage());
     onDeleteGame?.(currentGame.id);
     setShowClearAllConfirm(false);
     playSound('buzzer', currentGame.settings.soundEnabled);
@@ -426,6 +456,19 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               <Brain className="w-3.5 h-3.5 text-orange-400" />
               <span>Plan de Temporada con IA</span>
             </button>
+
+            <button
+              onClick={() => setActiveSubTab('trash')}
+              className={`px-3 py-2 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 ${
+                activeSubTab === 'trash'
+                  ? 'bg-[#1A1D23] text-rose-400 border-t-2 border-rose-500'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+              title="Partidos archivados en papelera. Puedes recuperarlos en cualquier momento."
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span>Papelera ({trashedGames.length})</span>
+            </button>
           </div>
 
           {/* Quick Header Action */}
@@ -444,6 +487,18 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
         {/* Tab Body */}
         <div className="p-4 sm:p-6 overflow-y-auto grow space-y-6">
+          {trashToast && (
+            <div className="p-3 bg-neutral-900 border border-orange-500/50 rounded-xl text-xs font-mono text-orange-200 flex items-center justify-between animate-in fade-in">
+              <span>{trashToast}</span>
+              <button
+                type="button"
+                onClick={() => setTrashToast(null)}
+                className="text-gray-400 hover:text-white text-xs ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {/* TAB 1: MATCHES LIST */}
           {activeSubTab === 'matches' && (
             <div className="space-y-4">
@@ -841,6 +896,95 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       <Markdown>{aiPlan}</Markdown>
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: TRASH / PAPELERA DE PARTIDOS RECUPERABLES */}
+          {activeSubTab === 'trash' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 p-3 bg-[#14161B] border border-gray-800 rounded-xl">
+                <div>
+                  <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wide flex items-center gap-1.5">
+                    <Archive className="w-4 h-4 text-rose-400" />
+                    Papelera de Partidos Eliminados ({trashedGames.length})
+                  </h3>
+                  <p className="text-[11px] text-gray-400">
+                    Los partidos eliminados no vuelven a salir en la biblioteca activa, pero puedes recuperarlos en cualquier momento.
+                  </p>
+                </div>
+                {trashedGames.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trashedGames.forEach(g => permanentlyDeleteFromTrash(g.id));
+                      setTrashedGames([]);
+                      setTrashToast('Papelera vaciada.');
+                      setTimeout(() => setTrashToast(null), 3000);
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-rose-950/60 border border-gray-800 hover:border-rose-700/50 text-rose-400 text-xs font-mono font-bold transition flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Vaciar Papelera
+                  </button>
+                )}
+              </div>
+
+              {trashedGames.length === 0 ? (
+                <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-10 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-neutral-800/80 border border-gray-700 text-gray-400 flex items-center justify-center mx-auto">
+                    <Archive className="w-6 h-6" />
+                  </div>
+                  <p className="text-gray-300 font-bold text-xs">La papelera está vacía</p>
+                  <p className="text-gray-500 text-[11px] max-w-sm mx-auto">
+                    Cuando elimines un partido de la biblioteca, se guardará aquí de forma segura para que puedas restaurarlo con todos sus datos y acciones.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {trashedGames.map(game => (
+                    <div
+                      key={game.id}
+                      className="p-3.5 rounded-xl bg-[#14161B] border border-gray-800 hover:border-gray-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white">
+                            {game.homeTeamName} vs {game.awayTeamName}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-neutral-800 text-[10px] font-mono font-bold text-orange-400 border border-neutral-700">
+                            {game.homeScore} - {game.awayScore}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-gray-400 flex-wrap">
+                          <span>Fecha: {game.date}</span>
+                          <span>Acciones: {game.events?.length || 0}</span>
+                          {game.category && <span>Categoría: {game.category}</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleRestoreGame(game.id)}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/50 text-xs font-bold font-mono transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                          title="Recuperar este partido a la biblioteca activa"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Recuperar</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handlePermanentDelete(game.id)}
+                          className="p-1.5 rounded-lg bg-neutral-900 hover:bg-rose-950/60 text-gray-400 hover:text-rose-400 border border-gray-800 transition"
+                          title="Eliminar definitivamente sin posibilidad de recuperación"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -227,6 +227,7 @@ export interface Game {
   isShotClockRunning?: boolean;
   status: 'setup' | 'live' | 'finished';
   updatedAt?: string;
+  deletedAt?: string;
   settings: GameSettings;
   players: Player[];
   events: PlayEvent[];

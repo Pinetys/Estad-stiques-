@@ -19,6 +19,7 @@ import {
   Cloud,
   RefreshCw,
   HelpCircle,
+  Calendar,
 } from 'lucide-react';
 
 interface TeamsHubViewProps {
@@ -31,6 +32,7 @@ interface TeamsHubViewProps {
   onDeleteTeam: (teamId: string) => void;
   onCreateMatchForTeam: (team: TeamProfile) => void;
   onResumeGame: () => void;
+  onLoadGame?: (game: Game) => void;
   onLoadCloudGame?: (gameId: string) => void;
   onOpenCourtMode: () => void;
   onOpenRosterModal: (team: TeamProfile) => void;
@@ -54,6 +56,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   onDeleteTeam,
   onCreateMatchForTeam,
   onResumeGame,
+  onLoadGame,
   onLoadCloudGame,
   onOpenRosterModal,
   onOpenTeamStatsReport,
@@ -65,6 +68,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
 }) => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedTeamForMatches, setSelectedTeamForMatches] = useState<TeamProfile | null>(null);
 
   // Extract all distinct categories
   const availableCategories = useMemo(() => {
@@ -457,12 +461,20 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                         {team.roster.length} Jugadores
                       </span>
                     </div>
-                    <div>
-                      <span className="text-[9px] text-gray-500 uppercase block">Partidos</span>
-                      <span className="text-xs font-bold text-orange-400">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playSound('click', soundEnabled);
+                        setSelectedTeamForMatches(team);
+                      }}
+                      className="text-left rounded-lg hover:bg-neutral-800/80 p-1 transition group"
+                      title="Ver partidos jugados por este equipo"
+                    >
+                      <span className="text-[9px] text-gray-500 uppercase block group-hover:text-orange-400">Partidos →</span>
+                      <span className="text-xs font-bold text-orange-400 group-hover:underline">
                         {teamMatches.length > 0 ? `${wins}V - ${losses}D (${teamMatches.length})` : '0 jugados'}
                       </span>
-                    </div>
+                    </button>
                   </div>
 
                   {/* Roster Dorsals Preview */}
@@ -513,7 +525,21 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                     <span>Empezar Partido</span>
                   </button>
 
-                  {/* Actions 2 & 3: Roster and Stats */}
+                  {/* Action 2: Ver Partidos de este equipo */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playSound('click', soundEnabled);
+                      setSelectedTeamForMatches(team);
+                    }}
+                    className="w-full py-1.5 px-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-200 border border-gray-800 hover:border-orange-500/50 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                    title={`Ver historial de partidos de ${team.name}`}
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Ver Partidos ({teamMatches.length})</span>
+                  </button>
+
+                  {/* Actions 3 & 4: Roster and Stats */}
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
@@ -549,6 +575,184 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* APARTADO / MODAL DE PARTIDOS DEL EQUIPO */}
+      {selectedTeamForMatches && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in"
+          onClick={() => setSelectedTeamForMatches(null)}
+        >
+          <div
+            className="bg-[#181B22] border border-gray-800 rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 bg-[#14161B] border-b border-gray-800 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-xl bg-neutral-900 border border-gray-800 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                  <TeamLogoDisplay
+                    logo={selectedTeamForMatches.logo}
+                    teamName={selectedTeamForMatches.name}
+                    size="md"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base font-black text-white truncate">
+                      {selectedTeamForMatches.name}
+                    </h2>
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-orange-600/20 text-orange-400 border border-orange-500/30">
+                      {selectedTeamForMatches.category || 'General'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 font-mono">
+                    Historial de partidos y resultados de este equipo
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedTeamForMatches(null)}
+                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-neutral-800 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sub-header with quick actions and stats */}
+            {(() => {
+              const teamMatches = getTeamMatches(selectedTeamForMatches.id);
+              const wins = teamMatches.filter(m => m.homeScore > m.awayScore).length;
+              const losses = teamMatches.filter(m => m.homeScore < m.awayScore).length;
+
+              return (
+                <>
+                  <div className="px-4 py-2.5 bg-[#121418] border-b border-gray-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400">Total:</span>
+                      <strong className="text-white">{teamMatches.length} partidos</strong>
+                      <span className="text-gray-500">•</span>
+                      <span className="text-emerald-400 font-bold">{wins}V</span>
+                      <span className="text-rose-400 font-bold">{losses}D</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const team = selectedTeamForMatches;
+                        setSelectedTeamForMatches(null);
+                        onCreateMatchForTeam(team);
+                      }}
+                      className="px-3 py-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                    >
+                      <Play className="w-3 h-3 fill-white" />
+                      <span>Empezar Nuevo Partido</span>
+                    </button>
+                  </div>
+
+                  {/* Matches List */}
+                  <div className="p-4 overflow-y-auto grow space-y-2.5">
+                    {teamMatches.length === 0 ? (
+                      <div className="text-center py-12 space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-neutral-900 border border-gray-800 text-gray-500 flex items-center justify-center mx-auto">
+                          <Calendar className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm text-gray-300 font-bold">
+                          No hay partidos registrados aún para {selectedTeamForMatches.name}
+                        </p>
+                        <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                          Empieza un partido oficial o amistoso con este equipo para registrar estadísticas, faltas y minutos de juego en tiempo real.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const team = selectedTeamForMatches;
+                            setSelectedTeamForMatches(null);
+                            onCreateMatchForTeam(team);
+                          }}
+                          className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold inline-flex items-center gap-1.5 transition"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-white" />
+                          <span>Crear Primer Partido</span>
+                        </button>
+                      </div>
+                    ) : (
+                      teamMatches.map(match => {
+                        const isHome =
+                          match.homeTeamName.toLowerCase().trim() ===
+                          selectedTeamForMatches.name.toLowerCase().trim();
+                        const myScore = isHome ? match.homeScore : match.awayScore;
+                        const oppScore = isHome ? match.awayScore : match.homeScore;
+                        const oppName = isHome ? match.awayTeamName : match.homeTeamName;
+                        const isWin = myScore > oppScore;
+                        const isTie = myScore === oppScore;
+
+                        return (
+                          <div
+                            key={match.id}
+                            className="p-3.5 rounded-xl bg-[#14161B] border border-gray-800/80 hover:border-orange-500/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                                    isWin
+                                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/40'
+                                      : isTie
+                                      ? 'bg-neutral-800 text-gray-300 border border-neutral-700'
+                                      : 'bg-rose-950/80 text-rose-300 border border-rose-600/40'
+                                  }`}
+                                >
+                                  {isWin ? 'Victoria' : isTie ? 'Empate' : 'Derrota'}
+                                </span>
+                                <span className="text-xs font-bold text-white">
+                                  vs {oppName}
+                                </span>
+                                <span className="text-xs font-mono font-bold text-orange-400 bg-neutral-900 px-2 py-0.5 rounded border border-gray-800">
+                                  {match.homeScore} - {match.awayScore}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-3 text-[11px] font-mono text-gray-400 flex-wrap">
+                                <span>Fecha: {match.date}</span>
+                                <span>Cuarto {match.currentQuarter}</span>
+                                <span>{match.events?.length || 0} acciones registradas</span>
+                                {match.category && <span>Categoría: {match.category}</span>}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTeamForMatches(null);
+                                  if (onLoadGame) {
+                                    onLoadGame(match);
+                                  } else if (onLoadCloudGame) {
+                                    onLoadCloudGame(match.id);
+                                  } else {
+                                    onResumeGame();
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 border border-orange-500/40 text-xs font-bold font-mono transition flex items-center gap-1 active:scale-95"
+                                title="Abrir y visualizar este partido en modo marcador/pista"
+                              >
+                                <Play className="w-3 h-3 fill-orange-300" />
+                                <span>Ver / Abrir</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
     </div>

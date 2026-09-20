@@ -9,6 +9,8 @@ import {
   RecordedOpponent,
   getRegisteredTeams,
   upsertTeamProfile,
+  applySuggestedStarters,
+  getSuggestedStarterIds,
 } from '../utils/teamStorage';
 import {
   PlusCircle,
@@ -141,13 +143,19 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
   // Squad / Roster of the chosen home team with customized starters
   const [currentRoster, setCurrentRoster] = useState<Player[]>(() => {
+    let base: Player[];
     if (initialHomeTeam && initialHomeTeam.roster && initialHomeTeam.roster.length > 0) {
-      return JSON.parse(JSON.stringify(initialHomeTeam.roster));
+      base = JSON.parse(JSON.stringify(initialHomeTeam.roster));
+    } else if (currentGame.players && currentGame.players.length > 0) {
+      base = JSON.parse(JSON.stringify(currentGame.players));
+    } else {
+      base = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
     }
-    if (currentGame.players && currentGame.players.length > 0) {
-      return JSON.parse(JSON.stringify(currentGame.players));
+    const currentStarters = base.filter(p => p.starter || p.onCourt).length;
+    if (currentStarters !== 5) {
+      return applySuggestedStarters(base);
     }
-    return JSON.parse(JSON.stringify(DEFAULT_ROSTER));
+    return base;
   });
 
   const [showStartingFiveFullModal, setShowStartingFiveFullModal] = useState(false);
@@ -166,7 +174,9 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       setHomeLogo(target.logo || '🏀');
       if (target.primaryColor) setHomeColor(target.primaryColor);
       if (target.roster && target.roster.length > 0) {
-        setCurrentRoster(JSON.parse(JSON.stringify(target.roster)));
+        const cloned = JSON.parse(JSON.stringify(target.roster));
+        const numStarters = cloned.filter((p: Player) => p.starter || p.onCourt).length;
+        setCurrentRoster(numStarters === 5 ? cloned : applySuggestedStarters(cloned));
       }
       playSound('click', soundEnabled);
     }
@@ -249,6 +259,13 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         return p;
       });
     });
+    setStarterWarning(null);
+  };
+
+  const handleSuggestStartingFive = () => {
+    playSound('score', soundEnabled);
+    triggerHaptic('basket', vibrationEnabled);
+    setCurrentRoster(prev => applySuggestedStarters(prev));
     setStarterWarning(null);
   };
 
@@ -782,6 +799,15 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                 Plantilla: <span className="text-gray-200 font-bold">{homeTeam}</span>
               </span>
               <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleSuggestStartingFive}
+                  className="px-2.5 py-0.5 rounded bg-orange-600/30 hover:bg-orange-600/50 text-orange-200 border border-orange-500/50 font-bold transition flex items-center gap-1 active:scale-95 shadow-xs"
+                  title="Sugerir automáticamente el quinteto inicial equilibrado por posiciones"
+                >
+                  <Sparkles className="w-3 h-3 text-orange-400" />
+                  <span>Sugerir Quinteto</span>
+                </button>
                 {startersCount < 5 && (
                   <button
                     type="button"

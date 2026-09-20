@@ -11,6 +11,7 @@ export interface CommercialLicense {
   id: string;
   key: string; // e.g., 'PRO-BRAFA-78A9-2025'
   clientName: string; // e.g. 'Club Bàsquet Prat'
+  userName?: string; // Nombre de usuario asignado a la licencia
   clientEmail?: string;
   tier: LicenseTier;
   tierLabel: string;
@@ -335,6 +336,7 @@ export function isMasterAdmin(role?: UserRole): boolean {
 export interface Subscriber {
   id: string;
   name: string;
+  userName?: string; // Nombre de usuario asignado a la licencia
   club: string;
   email: string;
   phone?: string;
@@ -444,6 +446,7 @@ export function addSubscriber(sub: Omit<Subscriber, 'id' | 'subscribedAt' | 'lic
     id: newSub.id,
     key: licenseKey,
     clientName: newSub.club || newSub.name,
+    userName: newSub.userName,
     clientEmail: newSub.email,
     tier: newSub.tier,
     tierLabel: newSub.tierLabel,

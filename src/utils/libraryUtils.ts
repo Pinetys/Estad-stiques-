@@ -391,17 +391,125 @@ export function saveOrUpdateGameInLibrary(game: Game): Game[] {
 
 export const saveGameToLibrary = saveOrUpdateGameInLibrary;
 
+export const TRASH_STORAGE_KEY = 'basketstats_trash_games_v1';
+export const TOMBSTONES_STORAGE_KEY = 'basketstats_deleted_tombstones_v1';
+
+export function getTrashedGamesFromStorage(): Game[] {
+  try {
+    const raw = localStorage.getItem(TRASH_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Error reading trashed games from storage:', e);
+    return [];
+  }
+}
+
+export function saveTrashedGamesToStorage(trashed: Game[]): void {
+  try {
+    localStorage.setItem(TRASH_STORAGE_KEY, JSON.stringify(trashed));
+  } catch (e) {
+    console.error('Error saving trashed games to storage:', e);
+  }
+}
+
+export function getDeletedTombstones(): string[] {
+  try {
+    const raw = localStorage.getItem(TOMBSTONES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedTombstone(gameId: string): void {
+  try {
+    const current = getDeletedTombstones();
+    if (!current.includes(gameId)) {
+      localStorage.setItem(TOMBSTONES_STORAGE_KEY, JSON.stringify([...current, gameId]));
+    }
+  } catch {}
+}
+
+export function removeDeletedTombstone(gameId: string): void {
+  try {
+    const current = getDeletedTombstones().filter(id => id !== gameId);
+    localStorage.setItem(TOMBSTONES_STORAGE_KEY, JSON.stringify(current));
+  } catch {}
+}
+
 export function deleteGameFromLibrary(gameId: string): Game[] {
   const library = getSavedGamesFromStorage();
+  const gameToDelete = library.find(g => g.id === gameId);
   const updated = library.filter(g => g.id !== gameId);
+
   try {
     localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(updated));
     localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
   } catch (e) {
     console.error('Error saving games library to storage:', e);
   }
+
+  // Move to trash so it can be restored if needed
+  if (gameToDelete) {
+    const trashed = getTrashedGamesFromStorage().filter(g => g.id !== gameId);
+    saveTrashedGamesToStorage([{ ...gameToDelete, deletedAt: new Date().toISOString() as any }, ...trashed]);
+  }
+
+  // Add tombstone so it never resurrects from cloud / server sync
+  addDeletedTombstone(gameId);
+
+  // Notify server & cloud to remove
+  try {
+    fetch('/api/sync/match/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchId: gameId }),
+    }).catch(() => {});
+  } catch {}
+
   deleteMatchFromCloud(gameId);
   return updated;
+}
+
+export function restoreGameFromTrash(gameId: string): { updatedLibrary: Game[]; restoredGame: Game | null } {
+  const trashed = getTrashedGamesFromStorage();
+  const gameToRestore = trashed.find(g => g.id === gameId);
+  const remainingTrash = trashed.filter(g => g.id !== gameId);
+  saveTrashedGamesToStorage(remainingTrash);
+
+  // Remove from tombstones so it can sync again
+  removeDeletedTombstone(gameId);
+
+  if (!gameToRestore) {
+    return { updatedLibrary: getSavedGamesFromStorage(), restoredGame: null };
+  }
+
+  const cleanGame = { ...gameToRestore };
+  delete (cleanGame as any).deletedAt;
+
+  const library = getSavedGamesFromStorage();
+  const updatedLibrary = [cleanGame, ...library.filter(g => g.id !== gameId)];
+  saveGamesToStorage(updatedLibrary);
+
+  // Resync to cloud and server
+  syncMatchToCloud(cleanGame);
+  try {
+    fetch('/api/sync/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ match: cleanGame }),
+    }).catch(() => {});
+  } catch {}
+
+  return { updatedLibrary, restoredGame: cleanGame };
+}
+
+export function permanentlyDeleteFromTrash(gameId: string): Game[] {
+  const trashed = getTrashedGamesFromStorage().filter(g => g.id !== gameId);
+  saveTrashedGamesToStorage(trashed);
+  addDeletedTombstone(gameId);
+  deleteMatchFromCloud(gameId);
+  return trashed;
 }
 
 export function clearAllGamesFromLibrary(): Game[] {
@@ -412,12 +520,19 @@ export function clearAllGamesFromLibrary(): Game[] {
   } catch (e) {
     console.error('Error clearing library:', e);
   }
-  library.forEach(g => deleteMatchFromCloud(g.id));
+  library.forEach(g => {
+    addDeletedTombstone(g.id);
+    deleteMatchFromCloud(g.id);
+  });
   return [];
 }
 
 export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
+  const tombstones = getDeletedTombstones();
   const cleanCloudMatches = cloudMatches.filter(m => {
+    if (tombstones.includes(m.id)) {
+      return false;
+    }
     if (isDemoGame(m)) {
       deleteMatchFromCloud(m.id);
       return false;

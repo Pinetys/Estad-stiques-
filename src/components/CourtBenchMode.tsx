@@ -31,6 +31,7 @@ import {
   Lock,
   Unlock,
   HelpCircle,
+  Clock,
 } from 'lucide-react';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
 import { StartingFiveModal } from './StartingFiveModal';
@@ -1268,6 +1269,15 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                       {/* Name */}
                       <div className="text-[11px] font-bold text-neutral-200 truncate w-full mt-0.5">
                         {player.name.split(' ')[0]}
+                      </div>
+
+                      {/* Live Minutes Played */}
+                      <div
+                        className="flex items-center justify-center gap-0.5 text-[8.5px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-1 py-0.5 rounded border border-emerald-500/25 w-full mt-0.5"
+                        title={`Minutos de juego en directo: ${stats.minutesPlayedFormatted}`}
+                      >
+                        <Clock className="w-2.5 h-2.5 shrink-0 opacity-80" />
+                        <span>{stats.minutesPlayedFormatted}</span>
                       </div>
 
                       {/* Stats */}
