@@ -587,13 +587,33 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
 }
 
 export async function syncMatchesFromCloud(): Promise<Game[]> {
+  const incomingMatches: Game[] = [];
+
+  // 1. Fetch from Express Server database (/api/sync/all)
   try {
-    const cloudMatches = await fetchAllMatchesFromCloud();
-    if (cloudMatches.length > 0) {
-      return mergeCloudMatches(cloudMatches);
+    const res = await fetch('/api/sync/all');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.matches) && data.matches.length > 0) {
+        incomingMatches.push(...data.matches);
+      }
     }
   } catch (err) {
-    console.warn('Sync matches from cloud failed:', err);
+    console.warn('Sync matches from server failed:', err);
+  }
+
+  // 2. Fetch from Firebase Firestore
+  try {
+    const cloudMatches = await fetchAllMatchesFromCloud();
+    if (Array.isArray(cloudMatches) && cloudMatches.length > 0) {
+      incomingMatches.push(...cloudMatches);
+    }
+  } catch (err) {
+    console.warn('Sync matches from Firestore failed:', err);
+  }
+
+  if (incomingMatches.length > 0) {
+    return mergeCloudMatches(incomingMatches);
   }
   return getSavedGamesFromStorage();
 }

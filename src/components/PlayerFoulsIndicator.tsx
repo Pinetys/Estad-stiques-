@@ -33,7 +33,7 @@ export const PlayerFoulsIndicator: React.FC<PlayerFoulsIndicatorProps> = ({
       return 'bg-amber-950/90 text-amber-200 border-amber-500/70 font-bold';
     }
     if (fouls > 0) {
-      return 'bg-neutral-900 text-neutral-300 border-neutral-700 font-bold';
+      return 'bg-emerald-950 text-emerald-300 border-emerald-500/80 font-black shadow-[0_0_6px_rgba(16,185,129,0.3)]';
     }
     return 'bg-neutral-950/80 text-neutral-500 border-neutral-800/80 font-medium';
   };
@@ -51,7 +51,7 @@ export const PlayerFoulsIndicator: React.FC<PlayerFoulsIndicatorProps> = ({
     if (isWarning) {
       return 'bg-amber-400 border border-amber-300';
     }
-    return 'bg-amber-300/90 border border-amber-200/60';
+    return 'bg-emerald-400 border border-emerald-300 shadow-[0_0_3px_rgba(52,211,153,0.6)]';
   };
 
   return (

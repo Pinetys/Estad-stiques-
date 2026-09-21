@@ -1263,6 +1263,24 @@ export default function App() {
     setSelectedPlayerId(playerInId);
   };
 
+  // Perform Multiple Player Substitutions simultaneously
+  const handlePerformMultipleSubstitutions = (subs: Array<{ playerOutId: string; playerInId: string }>) => {
+    if (!subs || subs.length === 0) return;
+    setGame(prev => {
+      const outSet = new Set(subs.map(s => s.playerOutId));
+      const inSet = new Set(subs.map(s => s.playerInId));
+      const updated = prev.players.map(p => {
+        if (outSet.has(p.id)) return { ...p, onCourt: false };
+        if (inSet.has(p.id)) return { ...p, onCourt: true };
+        return p;
+      });
+      return { ...prev, players: updated };
+    });
+    if (subs.length > 0) {
+      setSelectedPlayerId(subs[subs.length - 1].playerInId);
+    }
+  };
+
   // Advance Quarter
   const handleNextQuarter = () => {
     playSound('buzzer', game.settings.soundEnabled);
@@ -2312,6 +2330,7 @@ export default function App() {
           game={game}
           onClose={() => setShowSubModal(false)}
           onPerformSubstitution={handlePerformSubstitution}
+          onPerformMultipleSubstitutions={handlePerformMultipleSubstitutions}
         />
       )}
 

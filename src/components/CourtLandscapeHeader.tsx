@@ -101,21 +101,22 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
 
   return (
     <header className="bg-gradient-to-b from-[#13151d] via-[#0d0f14] to-[#08090c] border-b border-neutral-800/90 shrink-0 select-none shadow-xl w-full z-20">
-      {/* 1. TOP UTILITY STRIP: Secondary tools kept out of live-game play area to prevent overlap */}
-      <div className="border-b border-neutral-800/60 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#090a0e]/80">
+      {/* 1. TOP UTILITY STRIP: Responsive compact layout preventing button overlap on horizontal tablets */}
+      <div className="border-b border-neutral-800/60 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#090a0e]/80 gap-1.5 overflow-x-auto no-scrollbar">
         {/* Left: Exit button & Mode title */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={onToggleCourtMode}
-            className="px-2 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700/80 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[11px]"
+            className="px-2 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700/80 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0"
             title="Volver a la vista completa estándar de mesa"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
-            <span>SALIR MODO PISTA</span>
+            <ArrowLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="hidden sm:inline">SALIR MODO PISTA</span>
+            <span className="sm:hidden">SALIR</span>
           </button>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-neutral-400 font-mono text-[10px]">
+          <div className="hidden md:flex items-center gap-1.5 text-neutral-400 font-mono text-[10px] shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-bold text-neutral-300">TABLET PISTA</span>
             {game.status === 'finished' ? (
@@ -135,12 +136,12 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
 
         {/* Right: Screen wake, shot chart, match sheet, tutorial, pro and finish match buttons */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Screen Wake Lock */}
           <button
             type="button"
             onClick={onToggleWakeLock}
-            className={`px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 ${
+            className={`px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
               isWakeLockActive
                 ? 'bg-emerald-950/90 border-emerald-500/70 text-emerald-300'
                 : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200'
@@ -148,7 +149,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             title={isWakeLockActive ? 'Anti-bloqueo activo (la pantalla no se apagará)' : 'Activar anti-bloqueo'}
           >
             {isWakeLockActive ? <Sun className="w-3 h-3 text-emerald-400" /> : <Moon className="w-3 h-3 text-neutral-500" />}
-            <span className="hidden md:inline">{isWakeLockActive ? 'Pantalla Activa' : 'Auto Bloqueo'}</span>
+            <span className="hidden xl:inline">{isWakeLockActive ? 'Pantalla Activa' : 'Auto Bloqueo'}</span>
           </button>
 
           {/* Shot Chart Modal */}
@@ -156,11 +157,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenShotChart}
-              className="px-1.5 py-0.5 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+              className="px-1.5 py-0.5 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
               title="Abrir mapa de tiro interactivo"
             >
               <Crosshair className="w-3 h-3 text-orange-400" />
-              <span className="hidden lg:inline">Mapa Tiro</span>
+              <span className="hidden xl:inline">Mapa Tiro</span>
             </button>
           )}
 
@@ -169,7 +170,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onCycleShotMode}
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border transition active:scale-95 hidden sm:inline-flex ${
+              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border transition active:scale-95 hidden md:inline-flex shrink-0 ${
                 currentShotMode === 'off'
                   ? 'bg-neutral-900 border-neutral-700 text-neutral-400'
                   : currentShotMode === 'all'
@@ -187,11 +188,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenOfficialSheet}
-              className="px-1.5 py-0.5 bg-blue-950/60 hover:bg-blue-900 text-blue-300 border border-blue-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+              className="px-1.5 py-0.5 bg-blue-950/60 hover:bg-blue-900 text-blue-300 border border-blue-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
               title="Abrir acta oficial de partido FIBA"
             >
               <FileText className="w-3 h-3 text-blue-400" />
-              <span className="hidden lg:inline">Acta PDF</span>
+              <span className="hidden xl:inline">Acta PDF</span>
             </button>
           )}
 
@@ -200,11 +201,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenTutorial}
-              className="px-1.5 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-amber-300 border border-neutral-700/80 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+              className="px-1.5 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-amber-300 border border-neutral-700/80 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
               title="Ver tutorial de uso"
             >
               <HelpCircle className="w-3 h-3 text-amber-400" />
-              <span className="hidden xl:inline">Ayuda</span>
+              <span className="hidden 2xl:inline">Ayuda</span>
             </button>
           )}
 
@@ -213,11 +214,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenProBenefits}
-              className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95"
+              className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shrink-0"
               title="Funciones PRO Club"
             >
               <Crown className="w-3 h-3 text-amber-400" />
-              <span className="hidden xl:inline">PRO CLUB</span>
+              <span className="hidden 2xl:inline">PRO CLUB</span>
             </button>
           )}
 
@@ -226,7 +227,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onToggleEditFinishedGame}
-              className={`px-2 py-0.5 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-sm ${
+              className={`px-2 py-0.5 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 ${
                 isEditingFinishedGame
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
                   : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
@@ -252,11 +253,12 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onCloseMatch}
-              className="px-2 py-0.5 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
+              className="px-2 py-0.5 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
               title="Cerrar partido y guardar en biblioteca"
             >
               <Flag className="w-3 h-3 text-red-400" />
-              <span>Cerrar Partido</span>
+              <span className="hidden sm:inline">Cerrar Partido</span>
+              <span className="sm:hidden">Cerrar</span>
             </button>
           )}
         </div>

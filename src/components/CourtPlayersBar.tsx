@@ -102,7 +102,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                   triggerHaptic('light', game.settings.vibrationEnabled);
                   onSelectPlayer(selectedPlayerId === player.id ? '' : player.id);
                 }}
-                className={`flex flex-col items-center justify-between py-2 px-1 rounded-xl border-2 font-mono transition active:scale-95 text-center min-h-[58px] sm:min-h-[66px] shadow-sm ${
+                className={`flex flex-col items-center justify-between py-1.5 px-1 rounded-xl border-2 font-mono transition active:scale-95 text-center min-h-[78px] sm:min-h-[88px] shadow-sm ${
                   selectedPlayerId === player.id
                     ? 'bg-amber-500/25 border-amber-400 text-white shadow-md ring-2 ring-amber-400/70'
                     : isFouledOut
@@ -112,28 +112,27 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                     : 'bg-[#181a24] border-neutral-700/80 text-neutral-200 hover:border-neutral-600'
                 }`}
               >
-                <div className="flex items-center justify-center">
-                  <span className="font-scoreboard font-black text-base sm:text-lg text-amber-400 leading-none drop-shadow">
+                {/* Micro-header: Información secundaria reducida (Puntos y Minutos de juego) */}
+                <div className="w-full flex items-center justify-between text-[8px] sm:text-[9px] font-mono px-0.5 leading-none text-neutral-400">
+                  <span className="font-bold text-orange-400/90">{stats.points}p</span>
+                  <span className="flex items-center gap-0.5 text-neutral-400" title={`Minutos en pista: ${stats.minutesPlayedFormatted}`}>
+                    <Clock className="w-2.5 h-2.5 opacity-60 shrink-0" />
+                    <span>{stats.minutesPlayedFormatted}</span>
+                  </span>
+                </div>
+
+                {/* Zona principal destacada: DORSAL GIGANTE Y NOMBRE CLARO */}
+                <div className="flex flex-col items-center justify-center my-0.5 w-full">
+                  <span className="font-scoreboard font-black text-2xl sm:text-3xl text-amber-400 leading-none drop-shadow-sm">
                     #{player.number}
                   </span>
-                </div>
-                <div className="text-[10px] sm:text-xs font-bold text-neutral-100 truncate w-full mt-0.5">
-                  {player.name.split(' ')[0]}
-                </div>
-
-                {/* Live Minutes Played */}
-                <div
-                  className="flex items-center justify-center gap-0.5 text-[8.5px] sm:text-[9.5px] font-mono font-bold text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded border border-emerald-500/25 w-full mt-0.5"
-                  title={`Minutos en pista en vivo: ${stats.minutesPlayedFormatted}`}
-                >
-                  <Clock className="w-2.5 h-2.5 shrink-0 opacity-80" />
-                  <span>{stats.minutesPlayedFormatted}</span>
-                </div>
-
-                <div className="flex flex-col items-center justify-center gap-0.5 mt-1 w-full">
-                  <span className="text-[9px] sm:text-[10px] font-mono text-orange-400 font-bold leading-none">
-                    {stats.points}p
+                  <span className="text-xs sm:text-sm font-black text-white uppercase tracking-tight truncate w-full mt-0.5 drop-shadow">
+                    {player.name.split(' ')[0]}
                   </span>
+                </div>
+
+                {/* Marcador de Faltas: En verde vibrante cuando tiene faltas activas */}
+                <div className="w-full flex items-center justify-center mt-0.5">
                   <PlayerFoulsIndicator
                     fouls={stats.foulsPersonal}
                     limit={game.settings.foulOutLimit || 5}

@@ -1208,142 +1208,194 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       )}
 
       {/* 8. MODAL / OVERLAY: ESCOGER JUGADOR TRAS MARCAR LA ACCIÓN */}
-      {pendingAction && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in">
-          <div className="bg-[#12141a] border border-amber-500/60 rounded-2xl p-3.5 pb-safe max-w-md w-full mx-auto shadow-2xl space-y-2.5 animate-in slide-in-from-bottom">
-            {/* Modal Header with Action badge */}
-            <div className="flex items-center justify-between pb-1.5 border-b border-neutral-800">
-              <div className="flex items-center gap-2">
-                <div className="px-2.5 py-1 bg-amber-500 text-black font-mono font-black text-xs uppercase rounded shadow">
-                  {pendingActionDef?.shortLabel}
+      {pendingAction && (() => {
+        const isFoulConfirmation =
+          pendingActionDef?.category === 'fouls' ||
+          pendingAction === 'PF' ||
+          pendingAction === 'TF' ||
+          pendingAction === 'OF' ||
+          pendingAction === 'UF' ||
+          pendingAction === 'BF';
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in">
+            <div className={`bg-[#12141a] border rounded-2xl p-3 pb-safe max-w-md w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
+              isFoulConfirmation ? 'border-red-500/70 space-y-2' : 'border-amber-500/60 space-y-2.5'
+            }`}>
+              {/* Modal Header with Action badge */}
+              <div className="flex items-center justify-between pb-1.5 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className={`px-2.5 py-1 text-black font-mono font-black text-xs uppercase rounded shadow ${
+                    isFoulConfirmation ? 'bg-red-500 text-white' : 'bg-amber-500'
+                  }`}>
+                    {pendingActionDef?.shortLabel}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wide">
+                      ¿Quién ha hecho {pendingActionDef?.shortLabel}?
+                    </h3>
+                    <p className="text-[10px] text-neutral-400">
+                      {pendingActionDef?.label}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wide">
-                    ¿Quién ha hecho {pendingActionDef?.shortLabel}?
-                  </h3>
-                  <p className="text-[10px] text-neutral-400">
-                    {pendingActionDef?.label}
-                  </p>
-                </div>
+
+                <button
+                  onClick={() => setPendingAction(null)}
+                  className="p-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full font-mono text-xs"
+                  title="Cancelar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <button
-                onClick={() => setPendingAction(null)}
-                className="p-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full font-mono text-xs"
-                title="Cancelar"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Quinteto en Pista (5 Big Buttons with Instant Synchronized Stats) */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-mono text-amber-400 font-bold uppercase">
-                <span>Jugadores en pista:</span>
-                <span className="text-neutral-500 text-[9px]">Toca un jugador</span>
-              </div>
-
-              <div className="grid grid-cols-5 gap-1.5">
-                {playersOnCourt.map(player => {
-                  const stats = calculatePlayerStats(player, game.events);
-                  const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
-                  const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
-
-                  return (
-                    <button
-                      key={player.id}
-                      onClick={() => handleConfirmPlayerForAction(player)}
-                      className={`rounded-xl p-1.5 text-center transition flex flex-col justify-between border active:scale-95 min-h-[76px] shadow-lg ${
-                        isFouledOut
-                          ? 'bg-red-950/50 border-red-800 text-red-400'
-                          : isFoulDanger
-                          ? 'bg-amber-950/50 border-amber-600 text-amber-200'
-                          : 'bg-[#181a24] hover:bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-amber-400'
-                      }`}
-                    >
-                      {/* Dorsal */}
-                      <div className="font-scoreboard text-2xl sm:text-3xl font-black text-amber-300 leading-none">
-                        #{player.number}
-                      </div>
-
-                      {/* Name */}
-                      <div className="text-[11px] font-bold text-neutral-200 truncate w-full mt-0.5">
-                        {player.name.split(' ')[0]}
-                      </div>
-
-                      {/* Live Minutes Played */}
-                      <div
-                        className="flex items-center justify-center gap-0.5 text-[8.5px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-1 py-0.5 rounded border border-emerald-500/25 w-full mt-0.5"
-                        title={`Minutos de juego en directo: ${stats.minutesPlayedFormatted}`}
-                      >
-                        <Clock className="w-2.5 h-2.5 shrink-0 opacity-80" />
-                        <span>{stats.minutesPlayedFormatted}</span>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="w-full mt-1 pt-1 border-t border-neutral-800/80 flex flex-col items-center gap-0.5">
-                        <span className="text-[10px] font-mono text-orange-400 font-bold leading-none">{stats.points}p</span>
-                        <PlayerFoulsIndicator
-                          fouls={stats.foulsPersonal}
-                          limit={game.settings.foulOutLimit || 5}
-                          compact={true}
-                          showDots={true}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Toggle Bench Players */}
-            <div className="pt-1.5 border-t border-neutral-800">
-              <button
-                onClick={() => setShowBenchInModal(!showBenchInModal)}
-                className="w-full py-1 px-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-[11px] font-mono font-bold rounded flex items-center justify-between"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Users className="w-3 h-3 text-neutral-400" />
-                  <span>Jugadores del banquillo ({benchPlayers.length})</span>
+              {/* Quinteto en Pista (5 Buttons with Instant Synchronized Stats) */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-mono text-amber-400 font-bold uppercase">
+                  <span>Jugadores en pista:</span>
+                  <span className="text-neutral-500 text-[9px]">Toca un jugador</span>
                 </div>
-                <span>{showBenchInModal ? '▲ Ocultar' : '▼ Mostrar'}</span>
-              </button>
 
-              {showBenchInModal && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1.5 max-h-36 overflow-y-auto p-0.5">
-                  {benchPlayers.map(player => {
-                    const benchStats = calculatePlayerStats(player, game.events);
+                <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
+                  {playersOnCourt.map(player => {
+                    const stats = calculatePlayerStats(player, game.events);
+                    const foulLimit = game.settings.foulOutLimit || 5;
+                    const isFouledOut = stats.foulsPersonal >= foulLimit;
+                    const isFoulDanger = stats.foulsPersonal === foulLimit - 1;
+
                     return (
                       <button
                         key={player.id}
                         onClick={() => handleConfirmPlayerForAction(player)}
-                        className="bg-[#181a24] hover:bg-neutral-800 p-1.5 rounded-lg border border-neutral-700 text-center active:scale-95 font-mono flex flex-col items-center gap-0.5"
+                        className={`rounded-xl text-center transition flex flex-col justify-between border active:scale-95 shadow-lg ${
+                          isFoulConfirmation
+                            ? 'p-1 min-h-[72px] sm:min-h-[78px]'
+                            : 'p-1.5 min-h-[82px] sm:min-h-[90px]'
+                        } ${
+                          isFouledOut
+                            ? 'bg-red-950/60 border-red-800 text-red-400'
+                            : isFoulDanger
+                            ? 'bg-amber-950/60 border-amber-600 text-amber-200'
+                            : 'bg-[#181a24] hover:bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-amber-400'
+                        }`}
                       >
-                        <div className="text-sm font-bold text-amber-300">#{player.number}</div>
-                        <div className="text-[9px] truncate text-neutral-300 w-full">{player.name.split(' ')[0]}</div>
-                        <PlayerFoulsIndicator
-                          fouls={benchStats.foulsPersonal}
-                          limit={game.settings.foulOutLimit || 5}
-                          compact={true}
-                          showDots={false}
-                        />
+                        {/* Micro-header: Puntos y Minutos */}
+                        <div className={`w-full flex items-center justify-between font-mono px-0.5 leading-none text-neutral-400 ${
+                          isFoulConfirmation ? 'text-[7.5px] sm:text-[8px]' : 'text-[8px] sm:text-[9px]'
+                        }`}>
+                          <span className="font-bold text-orange-400/90">{stats.points}p</span>
+                          <span className="flex items-center gap-0.5 text-neutral-400" title={`Minutos en pista: ${stats.minutesPlayedFormatted}`}>
+                            <Clock className={`${isFoulConfirmation ? 'w-2 h-2' : 'w-2.5 h-2.5'} opacity-60 shrink-0`} />
+                            <span>{stats.minutesPlayedFormatted}</span>
+                          </span>
+                        </div>
+
+                        {/* Dorsal y Nombre con reducción automática de fuente/espacio en confirmación de falta */}
+                        <div className={`flex flex-col items-center justify-center w-full ${
+                          isFoulConfirmation ? 'my-0 sm:my-0.5' : 'my-0.5'
+                        }`}>
+                          <span className={`font-scoreboard font-black text-amber-300 leading-none drop-shadow-sm ${
+                            isFoulConfirmation ? 'text-lg sm:text-xl' : 'text-2xl sm:text-3xl'
+                          }`}>
+                            #{player.number}
+                          </span>
+                          <span className={`font-black text-white uppercase tracking-tight truncate w-full drop-shadow ${
+                            isFoulConfirmation
+                              ? 'text-[9.5px] sm:text-[11px] font-bold mt-0'
+                              : 'text-xs sm:text-sm mt-0.5'
+                          }`}>
+                            {player.name.split(' ')[0]}
+                          </span>
+                        </div>
+
+                        {/* Marcador de Faltas - destacado y adaptativo */}
+                        <div className="w-full flex flex-col items-center justify-center mt-0.5">
+                          <PlayerFoulsIndicator
+                            fouls={stats.foulsPersonal}
+                            limit={foulLimit}
+                            compact={true}
+                            showDots={true}
+                          />
+                          {isFoulConfirmation && (
+                            <span className={`text-[8px] font-mono font-bold mt-0.5 leading-none ${
+                              isFouledOut ? 'text-red-400' : isFoulDanger ? 'text-amber-300' : 'text-neutral-400'
+                            }`}>
+                              {stats.foulsPersonal}/{foulLimit}F
+                            </span>
+                          )}
+                        </div>
                       </button>
                     );
                   })}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Cancel Button */}
-            <button
-              onClick={() => setPendingAction(null)}
-              className="w-full py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-mono font-bold text-[11px] uppercase rounded-lg transition"
-            >
-              Cancelar Acción ✕
-            </button>
+              {/* Toggle Bench Players */}
+              <div className="pt-1 border-t border-neutral-800">
+                <button
+                  onClick={() => setShowBenchInModal(!showBenchInModal)}
+                  className="w-full py-1 px-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-[11px] font-mono font-bold rounded flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3 h-3 text-neutral-400" />
+                    <span>Jugadores del banquillo ({benchPlayers.length})</span>
+                  </div>
+                  <span>{showBenchInModal ? '▲ Ocultar' : '▼ Mostrar'}</span>
+                </button>
+
+                {showBenchInModal && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1.5 max-h-36 overflow-y-auto p-0.5">
+                    {benchPlayers.map(player => {
+                      const benchStats = calculatePlayerStats(player, game.events);
+                      const benchLimit = game.settings.foulOutLimit || 5;
+                      const isBenchFouledOut = benchStats.foulsPersonal >= benchLimit;
+                      return (
+                        <button
+                          key={player.id}
+                          onClick={() => handleConfirmPlayerForAction(player)}
+                          className={`bg-[#181a24] hover:bg-neutral-800 rounded-lg border border-neutral-700 text-center active:scale-95 font-mono flex flex-col items-center gap-0.5 ${
+                            isFoulConfirmation ? 'p-1' : 'p-1.5'
+                          } ${isBenchFouledOut ? 'border-red-800 bg-red-950/30' : ''}`}
+                        >
+                          <div className={`font-bold text-amber-300 leading-none ${
+                            isFoulConfirmation ? 'text-xs' : 'text-sm'
+                          }`}>
+                            #{player.number}
+                          </div>
+                          <div className={`truncate text-neutral-300 w-full ${
+                            isFoulConfirmation ? 'text-[8px]' : 'text-[9px]'
+                          }`}>
+                            {player.name.split(' ')[0]}
+                          </div>
+                          <PlayerFoulsIndicator
+                            fouls={benchStats.foulsPersonal}
+                            limit={benchLimit}
+                            compact={true}
+                            showDots={false}
+                          />
+                          {isFoulConfirmation && (
+                            <span className="text-[7.5px] text-neutral-400 leading-none">
+                              {benchStats.foulsPersonal}/{benchLimit}F
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => setPendingAction(null)}
+                className="w-full py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-mono font-bold text-[11px] uppercase rounded-lg transition"
+              >
+                Cancelar Acción ✕
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 9. OPPONENT PLAYER SCOUTING MODAL */}
       {scoutingOppAction && (
