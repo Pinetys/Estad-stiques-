@@ -16,11 +16,15 @@ import {
   Phone,
   Mail,
   Building,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Subscriber,
   getSubscribersList,
   addSubscriber,
+  deleteSubscriber,
+  clearDemoSubscribers,
   getCleanSubscriberShareLink,
   LicenseTier,
 } from '../utils/accessControl';
@@ -36,6 +40,8 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [subToDelete, setSubToDelete] = useState<Subscriber | null>(null);
+  const [confirmClearDemo, setConfirmClearDemo] = useState(false);
 
   // New subscriber form state
   const [name, setName] = useState('');
@@ -140,13 +146,26 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
               <strong>Garantía de Privacidad Master:</strong> Al enviar el programa a un suscriptor mediante enlace limpio, sus equipos y partidos se abren <strong>100% en blanco</strong> para empezar desde cero, protegiendo tus datos privados.
             </span>
           </div>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs shadow transition active:scale-95"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            {showAddForm ? 'Cancelar' : 'Nuevo Suscriptor'}
-          </button>
+          <div className="flex items-center gap-2">
+            {subscribers.some(s => s.id === 'sub-1' || s.id === 'sub-2' || s.id === 'sub-3' || s.id === 'sub-4') && (
+              <button
+                type="button"
+                onClick={() => setConfirmClearDemo(true)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 font-medium text-xs shadow transition active:scale-95"
+                title="Eliminar los suscriptores de ejemplo cargados por defecto"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>Limpiar Suscriptores Demo</span>
+              </button>
+            )}
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs shadow transition active:scale-95"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              {showAddForm ? 'Cancelar' : 'Nuevo Suscriptor'}
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -263,8 +282,25 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
               <span>{subscribers.length} Suscriptores Registrados</span>
-              <span className="text-amber-400 font-medium">Todos activos con soporte técnico oficial</span>
+              <span className="text-amber-400 font-medium">Gestión de cuentas y licencias independientes</span>
             </div>
+
+            {subscribers.length === 0 && (
+              <div className="p-8 rounded-xl bg-neutral-800/40 border border-neutral-700/60 text-center space-y-3">
+                <Users className="w-10 h-10 text-neutral-500 mx-auto" />
+                <h4 className="text-sm font-bold text-neutral-200">No hay suscriptores en la lista</h4>
+                <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                  La lista está completamente limpia. Cuando quieras dar de alta a un entrenador o club, pulsa en "Nuevo Suscriptor" para generar su licencia y enlace sin partidos ni equipos precargados.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md transition active:scale-95 inline-flex items-center gap-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" /> Registrar Primer Suscriptor
+                </button>
+              </div>
+            )}
 
             {subscribers.map(sub => {
               const cleanLink = getCleanSubscriberShareLink(sub.licenseKey);
@@ -332,7 +368,7 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                     </div>
                   </div>
 
-                  {/* Actions / Share Button & Profile Access */}
+                  {/* Actions / Share Button, Profile Access & Delete */}
                   <div className="flex items-center gap-2 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-neutral-700/60 flex-wrap">
                     <button
                       type="button"
@@ -365,11 +401,96 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                         </>
                       )}
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playSound('click', soundEnabled);
+                        setSubToDelete(sub);
+                      }}
+                      className="p-2 rounded-xl text-xs font-bold flex items-center justify-center bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 transition active:scale-95 shadow"
+                      title={`Eliminar suscriptor ${sub.name}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-400" />
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Delete Single Subscriber Confirmation Modal */}
+          {subToDelete && (
+            <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-neutral-900 border border-rose-700/70 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl text-white">
+                <div className="flex items-center gap-3 text-rose-400">
+                  <AlertTriangle className="w-6 h-6 shrink-0" />
+                  <h3 className="font-bold text-base">¿Eliminar suscriptor?</h3>
+                </div>
+                <p className="text-xs text-neutral-300 font-mono leading-relaxed">
+                  ¿Estás seguro de que deseas eliminar al suscriptor <strong>{subToDelete.name}</strong> ({subToDelete.club || 'Sin club'})?
+                  Esta acción revocará su registro de la lista de clientes.
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubToDelete(null)}
+                    className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = deleteSubscriber(subToDelete.id);
+                      setSubscribers(updated);
+                      setSubToDelete(null);
+                      playSound('click', soundEnabled);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wide transition shadow-lg shadow-rose-600/30 flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4" /> Eliminar Definitivamente
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Clear All Demo Subscribers Confirmation Modal */}
+          {confirmClearDemo && (
+            <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-neutral-900 border border-amber-600/70 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl text-white">
+                <div className="flex items-center gap-3 text-amber-400">
+                  <AlertTriangle className="w-6 h-6 shrink-0" />
+                  <h3 className="font-bold text-base">¿Limpiar suscriptores de ejemplo?</h3>
+                </div>
+                <p className="text-xs text-neutral-300 font-mono leading-relaxed">
+                  Se eliminarán los suscriptores predeterminados cargados por defecto (Jordi Soler, Carles Miró, Marc Torrent, David Rovira). Solo se mantendrán los que hayas creado tú manualmente.
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClearDemo(false)}
+                    className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = clearDemoSubscribers();
+                      setSubscribers(updated);
+                      setConfirmClearDemo(false);
+                      playSound('click', soundEnabled);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black uppercase tracking-wide transition shadow-lg shadow-amber-600/30 flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4" /> Confirmar Limpieza
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Quick instructions for sending to coaches/clubs */}
           <div className="p-4 rounded-xl bg-neutral-950/60 border border-neutral-800 text-xs space-y-2 text-neutral-300">

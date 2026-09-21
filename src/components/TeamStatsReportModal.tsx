@@ -23,6 +23,8 @@ import {
   Users,
   Calendar,
   ChevronDown,
+  ChevronUp,
+  Clock,
   ArrowUpDown,
   Flame,
   Shield,
@@ -61,10 +63,13 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
     }
   }, [initialTeamId, teams]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'shots' | 'players' | 'filter'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'shots' | 'players' | 'filter'>('players');
   const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(new Set());
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [shareSuccessMsg, setShareSuccessMsg] = useState<string | null>(null);
+
+  // Expanded player IDs in player stats list (for shot map & minutes accordion)
+  const [expandedPlayerIds, setExpandedPlayerIds] = useState<Set<string>>(new Set());
 
   // Shot Map specific filters
   const [playerShotFilter, setPlayerShotFilter] = useState<string>('all'); // 'all' or player id

@@ -411,14 +411,15 @@ export const DEFAULT_SUBSCRIBERS: Subscriber[] = [
 ];
 
 export function getSubscribersList(): Subscriber[] {
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(SUBSCRIBERS_STORAGE_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch {}
-  return DEFAULT_SUBSCRIBERS;
+  return [];
 }
 
 export function saveSubscribersList(list: Subscriber[]): void {
@@ -427,6 +428,21 @@ export function saveSubscribersList(list: Subscriber[]): void {
   } catch (e) {
     console.warn('Error saving subscribers list:', e);
   }
+}
+
+export function deleteSubscriber(id: string): Subscriber[] {
+  const current = getSubscribersList();
+  const updated = current.filter(s => s.id !== id);
+  saveSubscribersList(updated);
+  return updated;
+}
+
+export function clearDemoSubscribers(): Subscriber[] {
+  const current = getSubscribersList();
+  const demoIds = new Set(['sub-1', 'sub-2', 'sub-3', 'sub-4']);
+  const updated = current.filter(s => !demoIds.has(s.id) && !s.id.startsWith('demo-'));
+  saveSubscribersList(updated);
+  return updated;
 }
 
 export function addSubscriber(sub: Omit<Subscriber, 'id' | 'subscribedAt' | 'licenseKey'>): Subscriber {

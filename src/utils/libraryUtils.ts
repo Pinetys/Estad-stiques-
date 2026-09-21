@@ -1,6 +1,7 @@
 import { Game, PlayerAccumulatedStats, SeasonAggregatedStats } from '../types';
 import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed } from './statsCalculator';
 import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from '../lib/firebase';
+import { isMasterAdmin } from './accessControl';
 
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
 export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
@@ -303,55 +304,70 @@ export function getSavedGamesFromStorage(): Game[] {
     }
   }
 
+  // Non-master users / subscribers always start with an empty match list until they play/record matches
+  if (!isMasterAdmin()) {
+    try {
+      const raw = localStorage.getItem(LIBRARY_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const tombstones = new Set(getDeletedTombstones());
+        return parsed.filter(g => isAllowedOfficialOrUserGame(g) && !tombstones.has(g.id));
+      }
+    } catch {
+      return [];
+    }
+    return [];
+  }
+
   try {
     const raw = localStorage.getItem(LIBRARY_STORAGE_KEY);
-    if (!raw) {
-      // Seed ONLY the 3 official matches for the Master user
-      const curated = getCuratedBrafaInfantilMatches();
-      localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(curated));
-      localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
-      return curated;
+    if (raw === null) {
+      // First time initialization for Master user only if not initialized before
+      const isInit = localStorage.getItem(LIBRARY_INITIALIZED_KEY);
+      if (!isInit) {
+        const curated = getCuratedBrafaInfantilMatches();
+        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(curated));
+        localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
+        return curated;
+      }
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      // Purge demo matches (like CB Leones, Basket Titanes, game-sample-*)
-      const cleanGames = parsed.filter(g => isAllowedOfficialOrUserGame(g));
+      // Filter out any deleted tombstones or demo mock games
+      const tombstones = new Set(getDeletedTombstones());
+      const cleanGames = parsed.filter(g => isAllowedOfficialOrUserGame(g) && !tombstones.has(g.id));
       if (cleanGames.length !== parsed.length) {
         localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(cleanGames));
-        // Purge mock games from cloud too
-        parsed.filter(g => isDemoGame(g)).forEach(dg => {
-          if (dg.id) deleteMatchFromCloud(dg.id);
-        });
       }
-
-      // If user had no real games or only old demo games, provide the 3 official matches
-      if (cleanGames.length === 0) {
-        const curated = getCuratedBrafaInfantilMatches();
-        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(curated));
-        return curated;
-      }
-
-      // Ensure the 3 curated games are always available if missing
-      const curatedMatches = getCuratedBrafaInfantilMatches();
-      let hasAdded = false;
-      const combined = [...cleanGames];
-      curatedMatches.forEach(cm => {
-        if (!combined.some(g => g.id === cm.id || (g.homeTeamName === cm.homeTeamName && g.awayTeamName === cm.awayTeamName))) {
-          combined.push(cm);
-          hasAdded = true;
-        }
-      });
-      if (hasAdded) {
-        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(combined));
-      }
-
-      return hasAdded ? combined : cleanGames;
+      return cleanGames;
     }
     return [];
   } catch (e) {
     console.error('Error loading games library from storage:', e);
     return [];
   }
+}
+
+export function purgeAllGamesFromLibrary(): Game[] {
+  const current = getSavedGamesFromStorage();
+  current.forEach(g => {
+    if (g.id) {
+      addDeletedTombstone(g.id);
+      deleteMatchFromCloud(g.id);
+      try {
+        fetch('/api/sync/match/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matchId: g.id }),
+        }).catch(() => {});
+      } catch {}
+    }
+  });
+  localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify([]));
+  localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
+  return [];
 }
 
 export function saveGamesToStorage(games: Game[]): void {
