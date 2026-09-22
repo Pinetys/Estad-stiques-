@@ -18,6 +18,7 @@ import {
   Building,
   Trash2,
   AlertTriangle,
+  User,
 } from 'lucide-react';
 import {
   Subscriber,
@@ -52,6 +53,17 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
   const [tier, setTier] = useState<LicenseTier>('club_pro');
   const [months, setMonths] = useState(12);
   const [viewingSubscriberProfile, setViewingSubscriberProfile] = useState<Subscriber | null>(null);
+
+  const handleShareWhatsApp = (sub: Subscriber) => {
+    const link = getCleanSubscriberShareLink(sub.licenseKey);
+    const message = `Hola ${sub.name},\n\nTe envío tu licencia oficial de activación de *BasketStats PRO*:\n🔑 Clave: *${sub.licenseKey}*\n📋 Plan: ${sub.tierLabel}\n\n👉 Para activar tu app inmediatamente con 1 solo toque, pulsa en este enlace:\n${link}\n\n¡Un saludo!`;
+    const cleanPhone = (sub.phone || '').replace(/[^0-9]/g, '');
+    const waUrl = cleanPhone 
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+    playSound('click', soundEnabled);
+  };
 
   const handleCopy = (text: string, id: string, isLink = false) => {
     navigator.clipboard.writeText(text);
@@ -183,24 +195,30 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-neutral-300 mb-1 font-medium">Club / Entidad:</label>
+                  <label className="block text-amber-300 mb-1 font-bold flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Nombre de la persona a la que le envío la licencia: *</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Ej: Jordi Soler, Marc Torrent, David..."
+                    className="w-full px-3 py-2 bg-neutral-900 border border-amber-500/50 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400 shadow-inner"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-300 mb-1 font-medium flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Club / Entidad / Equipo: *</span>
+                  </label>
                   <input
                     type="text"
                     required
                     value={club}
                     onChange={e => setClub(e.target.value)}
                     placeholder="Ej: CB Prat, SE Sant Medir..."
-                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-neutral-300 mb-1 font-medium">Nombre Entrenador / Contacto:</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="Ej: Jordi Soler"
                     className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -315,8 +333,17 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                   {/* Subscriber Details */}
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-base font-bold text-white flex items-center gap-1.5">
-                        <Building className="w-4 h-4 text-amber-400" />
+                      {/* Persona a la que se le envía la licencia */}
+                      <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/40 px-2.5 py-1 rounded-lg">
+                        <User className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="text-[10px] text-neutral-400 font-mono">Persona:</span>
+                        <strong className="text-sm font-bold text-amber-300 font-mono">
+                          {sub.name}
+                        </strong>
+                      </div>
+
+                      <span className="text-xs font-bold text-neutral-200 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-700">
+                        <Building className="w-3.5 h-3.5 text-neutral-400" />
                         {sub.club}
                       </span>
                       <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
@@ -328,9 +355,6 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-neutral-400 flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5 text-neutral-500" /> Contacto: <strong className="text-neutral-300">{sub.name}</strong>
-                      </span>
                       {sub.userName && (
                         <span className="flex items-center gap-1 text-amber-300 font-mono">
                           Usuario: <strong>@{sub.userName}</strong>
@@ -370,6 +394,16 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
 
                   {/* Actions / Share Button, Profile Access & Delete */}
                   <div className="flex items-center gap-2 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-neutral-700/60 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleShareWhatsApp(sub)}
+                      className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 transition active:scale-95 shadow"
+                      title={`Enviar licencia a ${sub.name} por WhatsApp`}
+                    >
+                      <Send className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>WhatsApp a {sub.name.split(' ')[0]}</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {

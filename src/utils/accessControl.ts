@@ -10,9 +10,11 @@ export type LicenseTier = 'club_pro' | 'coach' | 'trial';
 export interface CommercialLicense {
   id: string;
   key: string; // e.g., 'PRO-BRAFA-78A9-2025'
+  recipientName?: string; // Nombre de la persona a la que se le envía la licencia (ej: Jordi Soler)
   clientName: string; // e.g. 'Club Bàsquet Prat'
   userName?: string; // Nombre de usuario asignado a la licencia
   clientEmail?: string;
+  clientPhone?: string;
   tier: LicenseTier;
   tierLabel: string;
   status: 'active' | 'revoked' | 'expired';
@@ -461,9 +463,11 @@ export function addSubscriber(sub: Omit<Subscriber, 'id' | 'subscribedAt' | 'lic
   saveCommercialLicense({
     id: newSub.id,
     key: licenseKey,
+    recipientName: newSub.name,
     clientName: newSub.club || newSub.name,
     userName: newSub.userName,
     clientEmail: newSub.email,
+    clientPhone: newSub.phone,
     tier: newSub.tier,
     tierLabel: newSub.tierLabel,
     status: 'active',
@@ -532,10 +536,13 @@ export function getViewerInviteLink(): string {
 /**
  * Generates direct 1-click activation link for a commercial client
  */
-export function getLicenseActivationLink(licenseKey: string): string {
+export function getLicenseActivationLink(licenseKey: string, recipientName?: string): string {
   if (typeof window === 'undefined') return '';
   const url = new URL(window.location.href);
   url.searchParams.set('license', licenseKey);
+  if (recipientName && recipientName.trim()) {
+    url.searchParams.set('dest', recipientName.trim());
+  }
   url.searchParams.delete('role');
   url.searchParams.delete('pin');
   return url.toString();

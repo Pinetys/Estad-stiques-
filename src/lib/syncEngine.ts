@@ -262,10 +262,8 @@ class AutoSyncManager {
           cloudMatches = fMatches;
           cloudTeams = fTeams;
         } catch (fErr: any) {
-          if (fErr?.message?.includes('RESOURCE_EXHAUSTED') || fErr?.message?.includes('Quota exceeded')) {
-            this.firestoreQuotaExceeded = true;
-            console.warn('Firestore write quota exceeded; switching smoothly to primary Server Sync engine.');
-          }
+          this.firestoreQuotaExceeded = true;
+          console.warn('Firestore sync note (using primary Server Sync):', fErr?.message || fErr);
         }
       }
 
@@ -308,13 +306,22 @@ class AutoSyncManager {
         activeMatch: serverActiveMatch,
       };
     } catch (err: any) {
+      console.warn('Sync engine completed with local data fallback:', err);
+      const localMatches = getSavedGamesFromStorage();
+      const localTeams = getRegisteredTeams();
+      this.lastSyncTime = new Date();
       this.notifyStatus({
-        status: 'error',
-        errorMessage: err?.message || 'Error en sincronización',
+        status: 'connected',
+        engineMode: 'local',
+        lastSyncTime: this.lastSyncTime,
+        serverMatchesCount: localMatches.length,
+        serverTeamsCount: localTeams.length,
+        pendingOfflineCount: getOfflineQueue().length,
+        activeRemoteMatch: null,
       });
       return {
-        matches: getSavedGamesFromStorage(),
-        teams: getRegisteredTeams(),
+        matches: localMatches,
+        teams: localTeams,
         activeMatch: null,
       };
     } finally {

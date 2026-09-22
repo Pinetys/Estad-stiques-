@@ -20,7 +20,11 @@ import {
   Sparkles,
   ExternalLink,
   Trash2,
-  Tag
+  Tag,
+  User,
+  Mail,
+  Phone,
+  Send
 } from 'lucide-react';
 import {
   UserRole,
@@ -71,8 +75,10 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
   // Commercial Licensing State
   const [licenses, setLicenses] = useState<CommercialLicense[]>([]);
   const [activeDeviceLicense, setActiveDeviceLicense] = useState<CommercialLicense | null>(null);
+  const [recipientNameInput, setRecipientNameInput] = useState('');
   const [clientNameInput, setClientNameInput] = useState('');
   const [clientEmailInput, setClientEmailInput] = useState('');
+  const [clientPhoneInput, setClientPhoneInput] = useState('');
   const [tierInput, setTierInput] = useState<LicenseTier>('club_pro');
   const [durationInput, setDurationInput] = useState<'season' | 'month' | 'lifetime' | 'trial'>('season');
   const [activationKeyInput, setActivationKeyInput] = useState('');
@@ -89,11 +95,11 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
     setActiveDeviceLicense(getActiveDeviceLicense());
   };
 
-  const handleCopyLink = (type: 'scorer' | 'viewer' | string) => {
+  const handleCopyLink = (type: 'scorer' | 'viewer' | string, recipientName?: string) => {
     let link = '';
     if (type === 'scorer') link = getScorerInviteLink();
     else if (type === 'viewer') link = getViewerInviteLink();
-    else link = getLicenseActivationLink(type);
+    else link = getLicenseActivationLink(type, recipientName);
 
     if (link) {
       navigator.clipboard.writeText(link);
@@ -101,6 +107,18 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
       playSound('click', soundEnabled);
       setTimeout(() => setCopiedLink(null), 2500);
     }
+  };
+
+  const handleShareWhatsApp = (lic: CommercialLicense) => {
+    const personName = lic.recipientName || lic.userName || lic.clientName;
+    const link = getLicenseActivationLink(lic.key, personName);
+    const message = `Hola ${personName},\n\nTe envío tu licencia oficial de activación de *BasketStats PRO*:\n🔑 Clave: *${lic.key}*\n📋 Plan: ${lic.tierLabel}\n\n👉 Para activarla directamente en tu teléfono o tablet con 1 solo toque, pulsa en este enlace:\n${link}\n\n¡Un saludo!`;
+    const cleanPhone = (lic.clientPhone || '').replace(/[^0-9]/g, '');
+    const waUrl = cleanPhone 
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+    playSound('click', soundEnabled);
   };
 
   const handleCopyKey = (key: string) => {
@@ -122,9 +140,12 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
 
   const handleCreateLicense = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientNameInput.trim()) return;
+    const recipient = recipientNameInput.trim();
+    const club = clientNameInput.trim();
+    if (!recipient && !club) return;
 
-    const key = generateLicenseKey(tierInput, clientNameInput.trim());
+    const mainDisplayName = recipient || club;
+    const key = generateLicenseKey(tierInput, club || recipient);
     const now = new Date();
     let expiresAt = 'lifetime';
 
@@ -141,8 +162,11 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
     const newLic: CommercialLicense = {
       id: `lic-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       key,
-      clientName: clientNameInput.trim(),
+      recipientName: recipient || undefined,
+      clientName: club || recipient,
+      userName: recipient || undefined,
       clientEmail: clientEmailInput.trim() || undefined,
+      clientPhone: clientPhoneInput.trim() || undefined,
       tier: tierInput,
       tierLabel:
         tierInput === 'club_pro'
@@ -159,8 +183,10 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
 
     saveCommercialLicense(newLic);
     refreshLicenses();
+    setRecipientNameInput('');
     setClientNameInput('');
     setClientEmailInput('');
+    setClientPhoneInput('');
     setShowNewLicenseForm(false);
     playSound('score', soundEnabled);
   };
@@ -375,28 +401,60 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-mono text-gray-300 font-bold block mb-1">
-                          Nombre del Club / Entrenador Cliente: *
+                        <label className="text-[11px] font-mono text-amber-300 font-bold flex items-center gap-1.5 mb-1">
+                          <User className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Nombre de la persona a la que le envías la licencia: *</span>
                         </label>
                         <input
                           type="text"
                           required
-                          value={clientNameInput}
-                          onChange={e => setClientNameInput(e.target.value)}
-                          placeholder="Ej. Club Bàsquet Prat - Infantil"
-                          className="w-full bg-black border border-gray-700 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none"
+                          value={recipientNameInput}
+                          onChange={e => setRecipientNameInput(e.target.value)}
+                          placeholder="Ej. Jordi Soler, Marc Torrent, David..."
+                          className="w-full bg-black border border-amber-500/50 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none shadow-inner"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-mono text-gray-300 font-bold block mb-1">
-                          Email del Cliente (Opcional):
+                        <label className="text-[11px] font-mono text-gray-300 font-bold flex items-center gap-1.5 mb-1">
+                          <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                          <span>Club / Entidad o Equipo (Opcional):</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={clientNameInput}
+                          onChange={e => setClientNameInput(e.target.value)}
+                          placeholder="Ej. Club Bàsquet Prat, Infantil A..."
+                          className="w-full bg-black border border-gray-700 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-mono text-gray-300 font-bold flex items-center gap-1.5 mb-1">
+                          <Mail className="w-3.5 h-3.5 text-gray-400" />
+                          <span>Email del Destinatario (Opcional):</span>
                         </label>
                         <input
                           type="email"
                           value={clientEmailInput}
                           onChange={e => setClientEmailInput(e.target.value)}
-                          placeholder="cliente@cbprat.com"
+                          placeholder="entrenador@cbprat.com"
+                          className="w-full bg-black border border-gray-700 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-mono text-gray-300 font-bold flex items-center gap-1.5 mb-1">
+                          <Phone className="w-3.5 h-3.5 text-gray-400" />
+                          <span>Teléfono / WhatsApp (Opcional):</span>
+                        </label>
+                        <input
+                          type="tel"
+                          value={clientPhoneInput}
+                          onChange={e => setClientPhoneInput(e.target.value)}
+                          placeholder="+34 600 000 000"
                           className="w-full bg-black border border-gray-700 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none"
                         />
                       </div>
@@ -475,11 +533,12 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
                       const isExpired =
                         lic.expiresAt !== 'lifetime' && new Date(lic.expiresAt).getTime() < Date.now();
                       const isRevoked = lic.status === 'revoked';
+                      const personName = lic.recipientName || lic.userName || lic.clientName;
 
                       return (
                         <div
                           key={lic.id}
-                          className={`bg-[#12141a] border rounded-xl p-3 space-y-2 transition ${
+                          className={`bg-[#12141a] border rounded-xl p-3 space-y-2.5 transition ${
                             isRevoked
                               ? 'border-rose-950/80 opacity-75'
                               : isExpired
@@ -488,10 +547,37 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
                           }`}
                         >
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-black text-sm text-gray-100">
-                                {lic.clientName}
-                              </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* Nombre de la persona a quien se le envió la licencia */}
+                              <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/40 px-2.5 py-1 rounded-lg">
+                                <User className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span className="text-[10px] text-gray-400 font-mono">Persona:</span>
+                                <strong className="font-mono font-bold text-sm text-amber-300">
+                                  {personName}
+                                </strong>
+                              </div>
+
+                              {lic.clientName && lic.clientName !== personName && (
+                                <span className="text-xs font-mono text-gray-300 flex items-center gap-1 px-2 py-0.5 rounded bg-black/50 border border-gray-800">
+                                  <Building2 className="w-3 h-3 text-gray-400" />
+                                  <span>{lic.clientName}</span>
+                                </span>
+                              )}
+
+                              {lic.clientEmail && (
+                                <span className="text-[10px] font-mono text-gray-400 flex items-center gap-1">
+                                  <Mail className="w-3 h-3 text-gray-500" />
+                                  <span>{lic.clientEmail}</span>
+                                </span>
+                              )}
+
+                              {lic.clientPhone && (
+                                <span className="text-[10px] font-mono text-gray-400 flex items-center gap-1">
+                                  <Phone className="w-3 h-3 text-gray-500" />
+                                  <span>{lic.clientPhone}</span>
+                                </span>
+                              )}
+
                               <span
                                 className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                                   lic.tier === 'club_pro'
@@ -525,7 +611,17 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
                               <span className="text-amber-300 font-black tracking-wider">{lic.key}</span>
                             </div>
 
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => handleShareWhatsApp(lic)}
+                                className="px-2 py-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+                                title={`Enviar licencia a ${personName} por WhatsApp`}
+                              >
+                                <Send className="w-3 h-3 text-emerald-400" />
+                                <span>WhatsApp a {personName.split(' ')[0]}</span>
+                              </button>
+
                               <button
                                 type="button"
                                 onClick={() => handleCopyKey(lic.key)}
@@ -547,19 +643,19 @@ export const AccessManagementModal: React.FC<AccessManagementModalProps> = ({
 
                               <button
                                 type="button"
-                                onClick={() => handleCopyLink(lic.key)}
+                                onClick={() => handleCopyLink(lic.key, personName)}
                                 className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 border border-amber-600/50 text-amber-200 rounded text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
                                 title="Copiar enlace de 1-toque para WhatsApp"
                               >
                                 {copiedLink === lic.key ? (
                                   <>
                                     <Check className="w-3 h-3 text-emerald-400" />
-                                    <span className="text-emerald-300">¡Enlace WhatsApp Copiado!</span>
+                                    <span className="text-emerald-300">¡Enlace Copiado!</span>
                                   </>
                                 ) : (
                                   <>
                                     <Share2 className="w-3 h-3 text-amber-400" />
-                                    <span>Enlace 1-Toque WhatsApp</span>
+                                    <span>Enlace 1-Toque</span>
                                   </>
                                 )}
                               </button>

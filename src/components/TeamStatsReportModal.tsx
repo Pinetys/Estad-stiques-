@@ -256,6 +256,39 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
     setDiscardedGameIds(lossesSet);
   };
 
+  // Auto-expand all player stats cards by default so the shot map and minutes are immediately visible
+  useEffect(() => {
+    if (playerRows.length > 0) {
+      setExpandedPlayerIds(new Set(playerRows.map(p => p.playerId)));
+    }
+  }, [playerRows.length, selectedTeamId]);
+
+  const toggleExpandPlayer = (playerId: string) => {
+    playSound('click', soundEnabled);
+    setExpandedPlayerIds(prev => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+  };
+
+  const handleToggleExpandAll = () => {
+    playSound('click', soundEnabled);
+    if (expandedPlayerIds.size === playerRows.length) {
+      setExpandedPlayerIds(new Set());
+    } else {
+      setExpandedPlayerIds(new Set(playerRows.map(p => p.playerId)));
+    }
+  };
+
+  const formatAccumulatedMinutes = (totalSecs: number): string => {
+    if (!totalSecs || totalSecs <= 0) return '0:00 min';
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')} min`;
+  };
+
   // Export handlers
   const handleDownloadPdf = () => {
     if (!currentTeam) return;
@@ -891,11 +924,30 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
           {/* ========================================= */}
           {activeTab === 'players' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-gray-400 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-gray-400 text-xs">
                 <span>
                   Estadísticas acumuladas de los jugadores en los <strong className="text-white">{includedGames.length}</strong> partidos incluidos
                 </span>
-                <span className="text-[10px]">Haz clic en los encabezados para ordenar</span>
+
+                {/* Toggle Expand / Collapse All */}
+                <button
+                  type="button"
+                  onClick={handleToggleExpandAll}
+                  className="self-start sm:self-auto px-2.5 py-1 bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                  title="Desplegar o plegar todos los mapas de tiro y minutos"
+                >
+                  {expandedPlayerIds.size === sortedPlayers.length ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Plegar Todos</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Desplegar Todos ({expandedPlayerIds.size}/{sortedPlayers.length})</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               <div className="border border-gray-800 rounded-2xl overflow-hidden shadow-lg bg-[#0F1115]">
@@ -908,17 +960,8 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                           onClick={() => handleSort('playerNumber')}
                         >
                           <span className="flex items-center gap-1">
-                            <span>#</span>
+                            <span># Jugador</span>
                             {playerSortKey === 'playerNumber' && <ArrowUpDown className="w-3 h-3 text-orange-400" />}
-                          </span>
-                        </th>
-                        <th
-                          className="p-2.5 cursor-pointer hover:text-white"
-                          onClick={() => handleSort('playerName')}
-                        >
-                          <span className="flex items-center gap-1">
-                            <span>Jugador</span>
-                            {playerSortKey === 'playerName' && <ArrowUpDown className="w-3 h-3 text-orange-400" />}
                           </span>
                         </th>
                         <th
@@ -928,6 +971,16 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                           <span className="flex items-center justify-center gap-1">
                             <span>PJ</span>
                             {playerSortKey === 'gamesPlayed' && <ArrowUpDown className="w-3 h-3 text-orange-400" />}
+                          </span>
+                        </th>
+                        <th
+                          className="p-2.5 text-center cursor-pointer hover:text-cyan-300 text-cyan-400 font-bold"
+                          onClick={() => handleSort('totalSeconds')}
+                          title="Minutos totales acumulados"
+                        >
+                          <span className="flex items-center justify-center gap-0.5">
+                            <Clock className="w-3 h-3 text-cyan-400" />
+                            <span>MIN</span>
                           </span>
                         </th>
                         <th
@@ -999,32 +1052,189 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800/80">
-                      {sortedPlayers.map(p => (
-                        <tr key={p.playerId} className="hover:bg-gray-800/40 transition">
-                          <td className="p-2.5 font-bold text-orange-400">#{p.playerNumber}</td>
-                          <td className="p-2.5 font-bold text-gray-200">{p.playerName}</td>
-                          <td className="p-2.5 text-center text-gray-400">{p.gamesPlayed}</td>
-                          <td className="p-2.5 text-center font-bold text-orange-400">
-                            {p.points} <span className="text-[10px] text-gray-400 font-normal">({p.pointsAvg})</span>
-                          </td>
-                          <td className="p-2.5 text-center text-gray-300">
-                            {p.twoPointsMade}/{p.twoPointsAttempted} <span className="text-[9px] text-gray-500">({p.twoPointsPct}%)</span>
-                          </td>
-                          <td className="p-2.5 text-center text-gray-300">
-                            {p.threePointsMade}/{p.threePointsAttempted} <span className="text-[9px] text-gray-500">({p.threePointsPct}%)</span>
-                          </td>
-                          <td className="p-2.5 text-center text-gray-300">
-                            {p.freeThrowsMade}/{p.freeThrowsAttempted} <span className="text-[9px] text-gray-500">({p.freeThrowsPct}%)</span>
-                          </td>
-                          <td className="p-2.5 text-center font-bold text-sky-400">{p.rebounds}</td>
-                          <td className="p-2.5 text-center font-bold text-amber-400">{p.assists}</td>
-                          <td className="p-2.5 text-center text-gray-400">{p.steals}</td>
-                          <td className="p-2.5 text-center text-gray-400">{p.turnovers}</td>
-                          <td className="p-2.5 text-center font-bold text-emerald-400">
-                            {p.efficiency} <span className="text-[10px] text-gray-400 font-normal">({p.efficiencyAvg})</span>
-                          </td>
-                        </tr>
-                      ))}
+                      {sortedPlayers.map(p => {
+                        const isExpanded = expandedPlayerIds.has(p.playerId);
+                        const playerShots = teamShots.filter(
+                          s =>
+                            s.playerId === p.playerId ||
+                            (s.playerNumber === p.playerNumber && (!s.playerName || s.playerName.toLowerCase().trim() === p.playerName.toLowerCase().trim()))
+                        );
+
+                        return (
+                          <React.Fragment key={p.playerId}>
+                            <tr
+                              onClick={() => toggleExpandPlayer(p.playerId)}
+                              className={`cursor-pointer transition select-none ${
+                                isExpanded ? 'bg-neutral-800/60 border-l-2 border-orange-500' : 'hover:bg-gray-800/40'
+                              }`}
+                              title="Pulsa para desplegar o plegar el mapa de tiro y desglose de minutos"
+                            >
+                              <td className="p-2.5 font-bold text-gray-200 flex items-center gap-2">
+                                {isExpanded ? (
+                                  <ChevronUp className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                                )}
+                                <span className="w-6 h-6 rounded-full bg-neutral-900 border border-neutral-700 text-orange-400 font-mono text-xs flex items-center justify-center shrink-0">
+                                  #{p.playerNumber}
+                                </span>
+                                <span>{p.playerName}</span>
+                              </td>
+                              <td className="p-2.5 text-center text-gray-400">{p.gamesPlayed}</td>
+                              <td className="p-2.5 text-center text-cyan-300 font-bold font-mono">
+                                {formatAccumulatedMinutes(p.totalSeconds)}
+                              </td>
+                              <td className="p-2.5 text-center font-bold text-orange-400">
+                                {p.points} <span className="text-[10px] text-gray-400 font-normal">({p.pointsAvg})</span>
+                              </td>
+                              <td className="p-2.5 text-center text-gray-300">
+                                {p.twoPointsMade}/{p.twoPointsAttempted} <span className="text-[9px] text-gray-500">({p.twoPointsPct}%)</span>
+                              </td>
+                              <td className="p-2.5 text-center text-gray-300">
+                                {p.threePointsMade}/{p.threePointsAttempted} <span className="text-[9px] text-gray-500">({p.threePointsPct}%)</span>
+                              </td>
+                              <td className="p-2.5 text-center text-gray-300">
+                                {p.freeThrowsMade}/{p.freeThrowsAttempted} <span className="text-[9px] text-gray-500">({p.freeThrowsPct}%)</span>
+                              </td>
+                              <td className="p-2.5 text-center font-bold text-sky-400">{p.rebounds}</td>
+                              <td className="p-2.5 text-center font-bold text-amber-400">{p.assists}</td>
+                              <td className="p-2.5 text-center text-gray-400">{p.steals}</td>
+                              <td className="p-2.5 text-center text-gray-400">{p.turnovers}</td>
+                              <td className="p-2.5 text-center font-bold text-emerald-400">
+                                {p.efficiency} <span className="text-[10px] text-gray-400 font-normal">({p.efficiencyAvg})</span>
+                              </td>
+                            </tr>
+
+                            {/* ACCORDION EXPANDED: MAPA DE TIRO INDIVIDUAL Y MINUTOS ACUMULADOS */}
+                            {isExpanded && (
+                              <tr className="bg-[#0B0D11] border-b border-gray-800/80">
+                                <td colSpan={12} className="p-3 sm:p-4">
+                                  <div className="bg-[#12141A] rounded-xl border border-gray-800 p-3 sm:p-4 space-y-3">
+                                    {/* Player Info and Accumulated Minutes Header */}
+                                    <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-gray-800">
+                                      <div className="flex items-center gap-2.5">
+                                        <span className="w-8 h-8 rounded-full bg-orange-600 text-white font-bold font-scoreboard text-sm flex items-center justify-center shadow">
+                                          #{p.playerNumber}
+                                        </span>
+                                        <div>
+                                          <h4 className="font-bold text-sm sm:text-base text-white flex items-center gap-2">
+                                            <span>{p.playerName}</span>
+                                            <span className="text-xs text-orange-400 font-mono font-normal">
+                                              ({p.gamesPlayed} {p.gamesPlayed === 1 ? 'partido' : 'partidos'})
+                                            </span>
+                                          </h4>
+                                          <p className="text-[11px] text-gray-400 font-mono">
+                                            Estadísticas individuales acumuladas en los {includedGames.length} partidos computados
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      {/* Badges for Accumulated Minutes and Key Metrics */}
+                                      <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
+                                        <div className="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-700/60 px-2.5 py-1 rounded-lg text-cyan-300 shadow-sm">
+                                          <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                                          <span>Minutos Totales: <strong>{formatAccumulatedMinutes(p.totalSeconds)}</strong></span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-700 px-2.5 py-1 rounded-lg text-gray-300">
+                                          <span>Promedio/partido: <strong>{formatAccumulatedMinutes(Math.round(p.totalSeconds / (p.gamesPlayed || 1)))}</strong></span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 bg-orange-950/60 border border-orange-700/60 px-2.5 py-1 rounded-lg text-orange-300">
+                                          <span>PTS: <strong>{p.points}</strong> ({p.pointsAvg} p/p)</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-700/60 px-2.5 py-1 rounded-lg text-emerald-300">
+                                          <span>VAL: <strong>{p.efficiency}</strong> ({p.efficiencyAvg} p/p)</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Grid: Left = PlayerShotMap, Right = Efficiency breakdown */}
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                                      {/* Left: Shot Map */}
+                                      <div className="md:col-span-7 bg-[#090A0E] rounded-xl border border-gray-800 p-2 overflow-hidden shadow-inner">
+                                        <div className="flex items-center justify-between mb-1.5 px-1 font-mono">
+                                          <span className="text-[11px] font-bold text-gray-300 flex items-center gap-1">
+                                            <Target className="w-3.5 h-3.5 text-orange-400" />
+                                            Mapa de Tiro Individual (#{p.playerNumber} {p.playerName})
+                                          </span>
+                                          <span className="text-[10px] text-gray-400">
+                                            {playerShots.length} tiros registrados
+                                          </span>
+                                        </div>
+                                        <PlayerShotMap
+                                          shots={playerShots}
+                                          playerName={`#${p.playerNumber} ${p.playerName}`}
+                                          playerNumber={p.playerNumber}
+                                          title={`Mapa de Tiro · #${p.playerNumber} ${p.playerName}`}
+                                        />
+                                      </div>
+
+                                      {/* Right: Detailed breakdown */}
+                                      <div className="md:col-span-5 space-y-2 font-mono">
+                                        <div className="bg-[#161820] p-3 rounded-xl border border-gray-800/80 space-y-2 text-xs">
+                                          <h5 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider border-b border-gray-800 pb-1 flex items-center justify-between">
+                                            <span>Eficacia de Tiro</span>
+                                            <span className="text-orange-400">{p.points} PTS</span>
+                                          </h5>
+                                          <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center bg-black/40 px-2.5 py-1.5 rounded border border-gray-800">
+                                              <span className="text-gray-400">Tiros de 2 (T2):</span>
+                                              <span className="font-bold text-gray-200">
+                                                {p.twoPointsMade}/{p.twoPointsAttempted}{' '}
+                                                <span className="text-orange-400 font-black">({p.twoPointsPct}%)</span>
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-black/40 px-2.5 py-1.5 rounded border border-gray-800">
+                                              <span className="text-gray-400">Triples (T3):</span>
+                                              <span className="font-bold text-gray-200">
+                                                {p.threePointsMade}/{p.threePointsAttempted}{' '}
+                                                <span className="text-orange-400 font-black">({p.threePointsPct}%)</span>
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-black/40 px-2.5 py-1.5 rounded border border-gray-800">
+                                              <span className="text-gray-400">Tiros Libres (TL):</span>
+                                              <span className="font-bold text-gray-200">
+                                                {p.freeThrowsMade}/{p.freeThrowsAttempted}{' '}
+                                                <span className="text-orange-400 font-black">({p.freeThrowsPct}%)</span>
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="bg-[#161820] p-3 rounded-xl border border-gray-800/80 space-y-2 text-xs">
+                                          <h5 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider border-b border-gray-800 pb-1">
+                                            Rendimiento Global
+                                          </h5>
+                                          <div className="grid grid-cols-2 gap-1.5 text-center">
+                                            <div className="bg-black/40 p-2 rounded border border-gray-800">
+                                              <span className="text-[10px] text-gray-500 block">Rebotes:</span>
+                                              <span className="text-sky-400 font-bold text-sm">{p.rebounds}</span>
+                                              <span className="text-[9px] text-gray-400 block">({p.reboundsAvg} /p)</span>
+                                            </div>
+                                            <div className="bg-black/40 p-2 rounded border border-gray-800">
+                                              <span className="text-[10px] text-gray-500 block">Asistencias:</span>
+                                              <span className="text-cyan-400 font-bold text-sm">{p.assists}</span>
+                                              <span className="text-[9px] text-gray-400 block">({p.assistsAvg} /p)</span>
+                                            </div>
+                                            <div className="bg-black/40 p-2 rounded border border-gray-800">
+                                              <span className="text-[10px] text-gray-500 block">Robos / Pérdidas:</span>
+                                              <span className="text-gray-200 font-bold text-sm">{p.steals} / {p.turnovers}</span>
+                                            </div>
+                                            <div className="bg-black/40 p-2 rounded border border-gray-800">
+                                              <span className="text-[10px] text-gray-500 block">Valoración Media:</span>
+                                              <span className="text-emerald-400 font-bold text-sm">{p.efficiencyAvg}</span>
+                                              <span className="text-[9px] text-gray-400 block">({p.efficiency} tot)</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
 
                       {sortedPlayers.length === 0 && (
                         <tr>

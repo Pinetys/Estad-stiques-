@@ -3,6 +3,7 @@ import { Game, Player } from '../types';
 import { formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { TeamLogoDisplay, TeamLogoPickerModal } from './TeamLogoPicker';
+import { MatchTimeProgressBar } from './MatchTimeProgressBar';
 import {
   Play,
   Pause,
@@ -490,6 +491,20 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             </button>
           </div>
         )}
+
+        {/* Visual Match Time & Possession Shot Clock Progress Bar */}
+        <div className="mt-1.5">
+          <MatchTimeProgressBar
+            currentSecondsRemaining={game.currentSecondsRemaining}
+            quarterDurationMinutes={game.settings.quarterDurationMinutes}
+            currentQuarter={game.currentQuarter}
+            shotClockSeconds={shotClockSecs}
+            isClockRunning={game.isClockRunning}
+            isShotClockRunning={game.isShotClockRunning ?? true}
+            isGameFinished={isGameFinished}
+            onResetShotClock={handleResetShotClock}
+          />
+        </div>
 
         {/* Main Scoreboard: Home vs Away in High Density Layout */}
         <div className="grid grid-cols-2 gap-2 mt-1.5">

@@ -4,6 +4,7 @@ import {
   calculateSeasonStats,
   deleteGameFromLibrary,
   clearAllGamesFromLibrary,
+  purgeAllGamesFromLibrary,
   LIBRARY_INITIALIZED_KEY,
   exportSeasonToCSV,
   generateSampleSeasonLibrary,
@@ -187,11 +188,16 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   };
 
   const handleConfirmClearAll = () => {
-    const updated = clearAllGamesFromLibrary();
+    const updated = purgeAllGamesFromLibrary();
+    // Also clean trash permanently
+    const currentTrashed = getTrashedGamesFromStorage();
+    currentTrashed.forEach(g => permanentlyDeleteFromTrash(g.id));
+    setTrashedGames([]);
     refreshLibrary(updated);
-    setTrashedGames(getTrashedGamesFromStorage());
     onDeleteGame?.(currentGame.id);
     setShowClearAllConfirm(false);
+    setTrashToast('Toda la biblioteca y papelera han sido eliminadas definitivamente de este dispositivo y de la nube.');
+    setTimeout(() => setTrashToast(null), 4000);
     playSound('buzzer', currentGame.settings.soundEnabled);
     triggerHaptic('warning', currentGame.settings.vibrationEnabled);
   };
