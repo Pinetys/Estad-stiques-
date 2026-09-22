@@ -19,6 +19,9 @@ import {
   ChevronUp,
   ShieldAlert,
   Users,
+  Layers,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface ShotChartModalProps {
@@ -51,6 +54,11 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
   onSkipLocation,
 }) => {
   const isPendingMode = Boolean(pendingShot);
+
+  // Realistic Court & Layer Visualization Controls
+  const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('parquet');
+  const [displayLayer, setDisplayLayer] = useState<'shots' | 'zones' | 'both'>('shots');
+  const [showPercentagesOnCourt, setShowPercentagesOnCourt] = useState(false);
 
   // Filters for analytics mode
   const [filterTeam, setFilterTeam] = useState<'all' | 'local' | 'away'>(
@@ -598,294 +606,477 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 overflow-y-auto flex-1 p-0.5">
           {/* Left Column: Half Court SVG */}
           <div className={`${isPendingMode && !showFullStatsInPending ? 'md:col-span-12 max-w-xl mx-auto w-full' : 'md:col-span-7'} flex flex-col items-center justify-center bg-[#090A0D] border ${isPendingMode ? 'border-orange-500/40' : 'border-gray-800'} rounded-2xl p-2 relative shadow-inner`}>
-            <div className="w-full text-center pb-1 text-[11px] font-mono text-gray-300 flex items-center justify-center gap-1.5">
-              <Crosshair className="w-3.5 h-3.5 text-orange-400" />
-              <span>
-                {isPendingMode
-                  ? pendingShot?.isMade
-                    ? '🎯 Toca en la pista para marcar la posición de la canasta'
-                    : '❌ Toca en la pista para marcar la posición del tiro fallado'
-                  : 'Haz clic en la pista para situar un nuevo tiro'}
-              </span>
+            
+            {/* Court Top Bar: Mode Guidance + Realistic Court Style + Layer Toggles */}
+            <div className="w-full flex items-center justify-between gap-1 pb-1.5 flex-wrap">
+              <div className="text-[11px] font-mono text-gray-300 flex items-center gap-1.5">
+                <Crosshair className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                <span className="truncate">
+                  {isPendingMode
+                    ? pendingShot?.isMade
+                      ? '🎯 Toca en la pista para marcar la posición'
+                      : '❌ Toca en la pista para marcar el tiro fallado'
+                    : 'Haz clic en la pista para situar un nuevo tiro'}
+                </span>
+              </div>
+
+              {/* Court Controls: Theme & Layers */}
+              <div className="flex items-center gap-1 text-[10px] font-mono shrink-0 ml-auto">
+                {/* Court Style Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setCourtTheme(t => (t === 'parquet' ? 'dark' : 'parquet'))}
+                  className={`px-2 py-0.5 rounded border transition flex items-center gap-1 ${
+                    courtTheme === 'parquet'
+                      ? 'bg-amber-950/60 border-amber-600/50 text-amber-300'
+                      : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                  }`}
+                  title={courtTheme === 'parquet' ? 'Cambiar a pista oscura' : 'Cambiar a pista parquet real'}
+                >
+                  <span>{courtTheme === 'parquet' ? '🪵 Parquet' : '🏟️ Oscura'}</span>
+                </button>
+
+                {/* Layer Toggle: Tiros vs Porcentajes */}
+                {!isPendingMode && (
+                  <div className="flex items-center bg-[#151821] border border-gray-700/80 rounded p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDisplayLayer('shots');
+                        setShowPercentagesOnCourt(false);
+                      }}
+                      className={`px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 ${
+                        displayLayer === 'shots'
+                          ? 'bg-orange-600 text-white'
+                          : 'text-gray-400 hover:text-gray-200'
+                      }`}
+                      title="Ver solo las marcas finas de tiros individuales"
+                    >
+                      <Target className="w-2.5 h-2.5" />
+                      <span>Tiros</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDisplayLayer('percentages');
+                        setShowPercentagesOnCourt(true);
+                      }}
+                      className={`px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 ${
+                        displayLayer === 'percentages'
+                          ? 'bg-orange-600 text-white'
+                          : 'text-gray-400 hover:text-gray-200'
+                      }`}
+                      title="Ver mapa de porcentajes por zona sin marcas individuales"
+                    >
+                      <BarChart2 className="w-2.5 h-2.5" />
+                      <span>% Zonas</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDisplayLayer('both');
+                        setShowPercentagesOnCourt(true);
+                      }}
+                      className={`px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 ${
+                        displayLayer === 'both'
+                          ? 'bg-orange-600 text-white'
+                          : 'text-gray-400 hover:text-gray-200'
+                      }`}
+                      title="Ver marcas de tiro y porcentajes por zonas (posicionados sin solaparse)"
+                    >
+                      <Layers className="w-2.5 h-2.5" />
+                      <span>Ambos</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Basketball Half Court SVG */}
             <div className="relative w-full max-w-[440px] aspect-[15/14] select-none">
               <svg
                 viewBox="0 0 100 93.3"
-                className="w-full h-full cursor-crosshair rounded-xl border border-orange-500/40 bg-[#141720] shadow-lg active:scale-[0.99] transition-transform"
+                className="w-full h-full cursor-crosshair rounded-xl border border-neutral-700 shadow-2xl active:scale-[0.99] transition-transform overflow-hidden"
                 onClick={handleCourtClick}
               >
-                {/* Court Floor Background */}
-                <rect x="0" y="0" width="100" height="93.3" fill="#12151c" />
+                {/* SVG DEFINITIONS FOR REALISTIC PARQUET & GLOW */}
+                <defs>
+                  {/* Realistic Natural Maple Parquet Pattern */}
+                  <pattern
+                    id="court-parquet-floor"
+                    width="26"
+                    height="6.5"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <rect width="26" height="6.5" fill="#ca995d" />
+                    {/* Horizontal plank grooves */}
+                    <line x1="0" y1="0" x2="26" y2="0" stroke="#a4743b" strokeWidth="0.18" opacity="0.8" />
+                    <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#a4743b" strokeWidth="0.14" opacity="0.65" />
+                    <line x1="0" y1="6.5" x2="26" y2="6.5" stroke="#8d5f27" strokeWidth="0.2" opacity="0.9" />
+                    {/* Staggered vertical butt seams */}
+                    <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+                    <line x1="21.5" y1="0" x2="21.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+                    <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+                    <line x1="2.5" y1="3.25" x2="2.5" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+                    {/* Subtle wood plank natural variation */}
+                    <rect x="0" y="0.3" width="8.5" height="2.6" fill="#d9aa70" opacity="0.16" />
+                    <rect x="8.5" y="3.5" width="6.5" height="2.6" fill="#b98549" opacity="0.15" />
+                    <rect x="15" y="3.5" width="11" height="2.6" fill="#dfb37c" opacity="0.18" />
+                  </pattern>
 
-                {/* Court Boundary Lines */}
+                  {/* Dark Arena Parquet Pattern */}
+                  <pattern
+                    id="court-dark-arena"
+                    width="26"
+                    height="6.5"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <rect width="26" height="6.5" fill="#141720" />
+                    <line x1="0" y1="0" x2="26" y2="0" stroke="#0a0d13" strokeWidth="0.2" opacity="0.9" />
+                    <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#0a0d13" strokeWidth="0.16" opacity="0.8" />
+                    <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
+                    <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
+                    <rect x="0" y="0.4" width="8.5" height="2.5" fill="#1b202c" opacity="0.28" />
+                  </pattern>
+
+                  {/* Key / Paint Lane Gradient Stain (FIBA Blue over parquet) */}
+                  <linearGradient id="fiba-key-paint" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#1e3a8a" stopOpacity={courtTheme === 'parquet' ? '0.52' : '0.45'} />
+                    <stop offset="100%" stopColor="#172554" stopOpacity={courtTheme === 'parquet' ? '0.62' : '0.55'} />
+                  </linearGradient>
+
+                  {/* Arena Spotlight Overhead Glow */}
+                  <radialGradient id="arena-spotlight" cx="50%" cy="32%" r="68%">
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.12' : '0.06'} />
+                    <stop offset="65%" stopColor="#ffffff" stopOpacity="0" />
+                    <stop offset="100%" stopColor="#000000" stopOpacity="0.32" />
+                  </radialGradient>
+                </defs>
+
+                {/* 1. Out of Bounds Apron Perimeter */}
+                <rect x="0" y="0" width="100" height="93.3" fill="#0b0e14" />
+
+                {/* 2. Playing Court Hardwood Floor */}
                 <rect
-                  x="2"
+                  x="2.5"
                   y="2"
-                  width="96"
+                  width="95"
                   height="89.3"
-                  fill="none"
-                  stroke="#475569"
-                  strokeWidth="0.8"
+                  rx="0.5"
+                  fill={courtTheme === 'parquet' ? 'url(#court-parquet-floor)' : 'url(#court-dark-arena)'}
                 />
 
-                {/* Half Court Line and Center Circle */}
-                <line x1="2" y1="91.3" x2="98" y2="91.3" stroke="#475569" strokeWidth="0.8" />
-                <path
-                  d="M 38 91.3 A 12 12 0 0 1 62 91.3"
-                  fill="none"
-                  stroke="#475569"
-                  strokeWidth="0.8"
-                />
-
-                {/* 3-Point Lines: Straight Corners + Arc */}
-                <line x1="8" y1="2" x2="8" y2="28" stroke="#f97316" strokeWidth="1" opacity="0.85" />
-                <line x1="92" y1="2" x2="92" y2="28" stroke="#f97316" strokeWidth="1" opacity="0.85" />
-                <path
-                  d="M 8 28 A 43.5 43.5 0 0 0 92 28"
-                  fill="none"
-                  stroke="#f97316"
-                  strokeWidth="1"
-                  opacity="0.85"
-                />
-
-                {/* Key / Paint Lane */}
+                {/* 3. Key / Paint Lane Painted Area (FIBA Navy Stain) */}
                 <rect
                   x="33.7"
                   y="2"
                   width="32.6"
                   height="38.6"
-                  fill="#f97316"
-                  fillOpacity="0.06"
-                  stroke="#64748b"
-                  strokeWidth="0.8"
+                  fill="url(#fiba-key-paint)"
                 />
 
-                {/* Free Throw Circle */}
-                <circle
-                  cx="50"
-                  cy="40.6"
-                  r="12"
-                  fill="none"
-                  stroke="#64748b"
-                  strokeWidth="0.8"
-                />
+                {/* 4. Center Jump Circle Area (half-circle on court) */}
                 <path
-                  d="M 38 40.6 A 12 12 0 0 1 62 40.6"
-                  fill="none"
-                  stroke="#64748b"
-                  strokeWidth="0.8"
-                  strokeDasharray="1.5, 1.5"
+                  d="M 38 91.3 A 12 12 0 0 1 62 91.3 Z"
+                  fill="url(#fiba-key-paint)"
+                  fillOpacity="0.4"
                 />
 
-                {/* Restricted Area Arc */}
-                <path
-                  d="M 41.7 11 A 8.3 8.3 0 0 0 58.3 11"
-                  fill="none"
-                  stroke="#94a3b8"
-                  strokeWidth="0.8"
-                />
+                {/* 5. FIBA Regulation Court Lines (Crisp White with High Contrast) */}
+                <g stroke="#ffffff" strokeWidth="0.75" fill="none" opacity="0.95">
+                  {/* Outer Boundary Perimeter Line */}
+                  <rect x="2.5" y="2" width="95" height="89.3" />
 
-                {/* Backboard & Rim */}
-                <line x1="40" y1="8" x2="60" y2="8" stroke="#ffffff" strokeWidth="1.2" />
-                <line x1="50" y1="8" x2="50" y2="9.5" stroke="#f97316" strokeWidth="1.2" />
-                <circle cx="50" cy="11" r="3" fill="none" stroke="#f97316" strokeWidth="1.4" />
+                  {/* Half-Court Line */}
+                  <line x1="2.5" y1="91.3" x2="97.5" y2="91.3" />
 
-                {/* Zone Labels */}
-                <text x="50" y="24" textAnchor="middle" fill="#94a3b8" fontSize="3" fontFamily="monospace" opacity="0.6">
-                  PINTURA
-                </text>
-                <text x="50" y="58" textAnchor="middle" fill="#94a3b8" fontSize="3" fontFamily="monospace" opacity="0.6">
-                  MEDIA DISTANCIA
-                </text>
-                <text x="50" y="80" textAnchor="middle" fill="#f97316" fontSize="3" fontFamily="monospace" opacity="0.7">
-                  TRIPLE (6.75m)
-                </text>
-                <text x="5" y="20" textAnchor="middle" fill="#f97316" fontSize="2.5" fontFamily="monospace" opacity="0.7">
-                  ESQ.
-                </text>
-                <text x="95" y="20" textAnchor="middle" fill="#f97316" fontSize="2.5" fontFamily="monospace" opacity="0.7">
-                  ESQ.
-                </text>
+                  {/* Center Circle */}
+                  <path d="M 38 91.3 A 12 12 0 0 1 62 91.3" />
 
-                {/* Render Recorded Shot Markers */}
-                {shotsWithLocation.map((shot, idx) => {
-                  const loc = shot.shotLocation!;
-                  const isOpponent = Boolean(shot.isOpponentAction);
-                  const isMade = isOpponent || ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(shot.actionType);
-                  const posX = loc.x;
-                  const posY = (loc.y / 100) * 93.3;
-                  const isHovered = hoveredEvent?.id ? hoveredEvent.id === shot.id : hoveredEvent === shot;
+                  {/* 3-Point Straight Baseline Corners (FIBA 6.75m layout) */}
+                  <line x1="7.5" y1="2" x2="7.5" y2="28" strokeWidth="0.8" />
+                  <line x1="92.5" y1="2" x2="92.5" y2="28" strokeWidth="0.8" />
 
-                  return (
-                    <g
-                      key={shot.id || idx}
-                      className="cursor-pointer"
-                      onMouseEnter={() => {
-                        setHoveredEvent(shot);
-                        setHoveredEventPos({ x: posX, y: posY });
-                      }}
-                      onMouseLeave={() => {
-                        setHoveredEvent(null);
-                        setHoveredEventPos(null);
-                      }}
-                    >
-                      {/* Generous invisible hit-area circle for stable hover without jitter */}
-                      <circle
-                        cx={posX}
-                        cy={posY}
-                        r="6"
-                        fill="transparent"
-                        style={{ pointerEvents: 'all' }}
-                      />
+                  {/* 3-Point Arc */}
+                  <path d="M 7.5 28 A 43.5 43.5 0 0 0 92.5 28" strokeWidth="0.8" />
 
-                      {/* Visual Marker (pointerEvents: none prevents flickering) */}
-                      <g style={{ pointerEvents: 'none' }}>
-                        {isHovered && (
-                          <circle
-                            cx={posX}
-                            cy={posY}
-                            r="5.5"
-                            fill={isOpponent ? '#ef4444' : isMade ? '#10b981' : '#f43f5e'}
-                            fillOpacity="0.4"
-                            stroke={isOpponent ? '#f87171' : isMade ? '#34d399' : '#fb7185'}
-                            strokeWidth="0.8"
-                          />
-                        )}
+                  {/* Key / Paint Lane Border */}
+                  <rect x="33.7" y="2" width="32.6" height="38.6" />
 
-                        {isOpponent ? (
-                          <>
-                            <circle
-                              cx={posX}
-                              cy={posY}
-                              r={isHovered ? 3.6 : 2.7}
-                              fill="#ef4444"
-                              stroke="#7f1d1d"
-                              strokeWidth="0.7"
-                              className="shadow-md"
-                            />
-                            <text
-                              x={posX}
-                              y={posY + 0.9}
-                              textAnchor="middle"
-                              fill="#ffffff"
-                              fontSize={isHovered ? '2.7' : '2.3'}
-                              fontWeight="black"
-                              fontFamily="monospace"
-                            >
-                              R
-                            </text>
-                          </>
-                        ) : isMade ? (
-                          <>
-                            <circle
-                              cx={posX}
-                              cy={posY}
-                              r={isHovered ? 3.5 : 2.6}
-                              fill="#10b981"
-                              stroke="#064e3b"
-                              strokeWidth="0.6"
-                              className="shadow-md"
-                            />
-                            <text
-                              x={posX}
-                              y={posY + 0.9}
-                              textAnchor="middle"
-                              fill="#ffffff"
-                              fontSize={isHovered ? '2.7' : '2.4'}
-                              fontWeight="bold"
-                              fontFamily="monospace"
-                            >
-                              {shot.playerNumber ?? '✓'}
-                            </text>
-                          </>
-                        ) : (
-                          <g className="drop-shadow">
-                            <circle
-                              cx={posX}
-                              cy={posY}
-                              r={isHovered ? 3.2 : 2.5}
-                              fill="#4c0519"
-                              fillOpacity="0.85"
-                              stroke="#f43f5e"
-                              strokeWidth="0.5"
-                            />
-                            <line
-                              x1={posX - (isHovered ? 2.0 : 1.6)}
-                              y1={posY - (isHovered ? 2.0 : 1.6)}
-                              x2={posX + (isHovered ? 2.0 : 1.6)}
-                              y2={posY + (isHovered ? 2.0 : 1.6)}
-                              stroke="#f43f5e"
-                              strokeWidth={isHovered ? '1.3' : '1.0'}
-                              strokeLinecap="round"
-                            />
-                            <line
-                              x1={posX - (isHovered ? 2.0 : 1.6)}
-                              y1={posY + (isHovered ? 2.0 : 1.6)}
-                              x2={posX + (isHovered ? 2.0 : 1.6)}
-                              y2={posY - (isHovered ? 2.0 : 1.6)}
-                              stroke="#f43f5e"
-                              strokeWidth={isHovered ? '1.3' : '1.0'}
-                              strokeLinecap="round"
-                            />
-                          </g>
-                        )}
-                      </g>
+                  {/* Free Throw Line */}
+                  <line x1="33.7" y1="40.6" x2="66.3" y2="40.6" strokeWidth="0.8" />
+
+                  {/* Free Throw Circle: Solid half towards half-court */}
+                  <path d="M 33.7 40.6 A 16.3 16.3 0 0 0 66.3 40.6" />
+
+                  {/* Free Throw Circle: Dashed half inside the key */}
+                  <path
+                    d="M 33.7 40.6 A 16.3 16.3 0 0 1 66.3 40.6"
+                    strokeDasharray="1.6, 1.6"
+                    opacity="0.8"
+                  />
+
+                  {/* Key Rebound Hash Marks (Regulation FIBA Lane Spaces) */}
+                  {/* Left Side Hashes */}
+                  <line x1="32.3" y1="17.5" x2="33.7" y2="17.5" strokeWidth="0.6" />
+                  <rect x="31.8" y="22.7" width="1.9" height="1.6" fill="#ffffff" stroke="none" />
+                  <line x1="32.3" y1="29.5" x2="33.7" y2="29.5" strokeWidth="0.6" />
+                  <line x1="32.3" y1="35.5" x2="33.7" y2="35.5" strokeWidth="0.6" />
+
+                  {/* Right Side Hashes */}
+                  <line x1="66.3" y1="17.5" x2="67.7" y2="17.5" strokeWidth="0.6" />
+                  <rect x="66.3" y="22.7" width="1.9" height="1.6" fill="#ffffff" stroke="none" />
+                  <line x1="66.3" y1="29.5" x2="67.7" y2="29.5" strokeWidth="0.6" />
+                  <line x1="66.3" y1="35.5" x2="67.7" y2="35.5" strokeWidth="0.6" />
+
+                  {/* Restricted Area Arc (No-Charge Semi-Circle, 1.25m from basket) */}
+                  <path d="M 41.7 11 A 8.3 8.3 0 0 0 58.3 11" strokeWidth="0.75" />
+                  <line x1="41.7" y1="11" x2="41.7" y2="7.5" strokeWidth="0.75" />
+                  <line x1="58.3" y1="11" x2="58.3" y2="7.5" strokeWidth="0.75" />
+                </g>
+
+                {/* 6. Backboard, Orange Rim & Net */}
+                <g>
+                  {/* Glass Backboard & Target Rectangle */}
+                  <line x1="39" y1="7.5" x2="61" y2="7.5" stroke="#ffffff" strokeWidth="1.2" />
+                  <rect x="45.5" y="7.3" width="9" height="0.4" fill="none" stroke="#ffffff" strokeWidth="0.5" />
+
+                  {/* Rim Bracket */}
+                  <line x1="50" y1="7.5" x2="50" y2="9.2" stroke="#ea580c" strokeWidth="1.2" />
+
+                  {/* FIBA Orange Rim */}
+                  <circle cx="50" cy="11" r="2.8" fill="none" stroke="#ea580c" strokeWidth="1.3" />
+
+                  {/* Subtle Net Strands */}
+                  <path
+                    d="M 47.7 11 L 48.6 13.6 L 51.4 13.6 L 52.3 11"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="0.35"
+                    strokeDasharray="0.6, 0.6"
+                    opacity="0.6"
+                  />
+                </g>
+
+                {/* 7. Arena Spotlight Overlay */}
+                <rect x="2.5" y="2" width="95" height="89.3" fill="url(#arena-spotlight)" pointerEvents="none" />
+
+                {/* 8. NON-COLLIDING ZONE PERCENTAGE BADGES (Peripheral Anchors) */}
+                {(displayLayer === 'percentages' || showPercentagesOnCourt) && (
+                  <g className="pointer-events-none transition-opacity duration-200">
+                    {/* Paint % Badge (Top left corner of key, away from basket at 50, 11) */}
+                    <g transform="translate(35, 5)">
+                      <rect x="-6" y="-2.5" width="12" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#3b82f6" strokeWidth="0.4" />
+                      <text x="0" y="0.2" textAnchor="middle" fill="#60a5fa" fontSize="2.1" fontWeight="bold" fontFamily="monospace">
+                        PINTURA {paintStats.pct}%
+                      </text>
+                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                        {paintStats.made}/{paintStats.attempted}
+                      </text>
                     </g>
-                  );
-                })}
+
+                    {/* Mid-Range % Badge (Upper-right mid zone, clear of central lane) */}
+                    <g transform="translate(74, 48)">
+                      <rect x="-6" y="-2.5" width="12" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#8b5cf6" strokeWidth="0.4" />
+                      <text x="0" y="0.2" textAnchor="middle" fill="#c084fc" fontSize="2.1" fontWeight="bold" fontFamily="monospace">
+                        MEDIA {midStats.pct}%
+                      </text>
+                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                        {midStats.made}/{midStats.attempted}
+                      </text>
+                    </g>
+
+                    {/* Top 3 % Badge (Anchored near half court line, away from 3pt shooting arc) */}
+                    <g transform="translate(50, 86)">
+                      <rect x="-6.5" y="-2.5" width="13" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#f97316" strokeWidth="0.4" />
+                      <text x="0" y="0.2" textAnchor="middle" fill="#fb923c" fontSize="2.1" fontWeight="bold" fontFamily="monospace">
+                        T3 FRONTAL {top3Stats.pct}%
+                      </text>
+                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                        {top3Stats.made}/{top3Stats.attempted}
+                      </text>
+                    </g>
+
+                    {/* Corner 3 Left */}
+                    <g transform="translate(5, 34)">
+                      <rect x="-4" y="-2.5" width="8" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#f97316" strokeWidth="0.4" />
+                      <text x="0" y="0.2" textAnchor="middle" fill="#fb923c" fontSize="2.0" fontWeight="bold" fontFamily="monospace">
+                        {cornerLeftStats.pct}%
+                      </text>
+                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                        {cornerLeftStats.made}/{cornerLeftStats.attempted}
+                      </text>
+                    </g>
+
+                    {/* Corner 3 Right */}
+                    <g transform="translate(95, 34)">
+                      <rect x="-4" y="-2.5" width="8" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#f97316" strokeWidth="0.4" />
+                      <text x="0" y="0.2" textAnchor="middle" fill="#fb923c" fontSize="2.0" fontWeight="bold" fontFamily="monospace">
+                        {cornerRightStats.pct}%
+                      </text>
+                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                        {cornerRightStats.made}/{cornerRightStats.attempted}
+                      </text>
+                    </g>
+                  </g>
+                )}
+
+                {/* 9. SLEEK, ULTRA-REFINED SHOT MARKERS (Shown in 'shots' or 'both' mode) */}
+                {displayLayer !== 'percentages' &&
+                  shotsWithLocation.map((shot, idx) => {
+                    const loc = shot.shotLocation!;
+                    const isOpponent = Boolean(shot.isOpponentAction);
+                    const isMade = isOpponent || ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(shot.actionType);
+                    const posX = loc.x;
+                    const posY = (loc.y / 100) * 93.3;
+                    const isHovered = hoveredEvent?.id ? hoveredEvent.id === shot.id : hoveredEvent === shot;
+
+                    return (
+                      <g
+                        key={shot.id || idx}
+                        className="cursor-pointer"
+                        onMouseEnter={() => {
+                          setHoveredEvent(shot);
+                          setHoveredEventPos({ x: posX, y: posY });
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredEvent(null);
+                          setHoveredEventPos(null);
+                        }}
+                      >
+                        {/* Generous touch/hover hit area (transparent so clicking is effortless) */}
+                        <circle
+                          cx={posX}
+                          cy={posY}
+                          r="5.5"
+                          fill="transparent"
+                          style={{ pointerEvents: 'all' }}
+                        />
+
+                        {/* Refined Marker Visuals */}
+                        <g style={{ pointerEvents: 'none' }}>
+                          {/* Hover Halo Glow */}
+                          {isHovered && (
+                            <circle
+                              cx={posX}
+                              cy={posY}
+                              r="4.2"
+                              fill={isOpponent ? '#ef4444' : isMade ? '#10b981' : '#f43f5e'}
+                              fillOpacity="0.35"
+                              stroke={isOpponent ? '#f87171' : isMade ? '#34d399' : '#fb7185'}
+                              strokeWidth="0.6"
+                            />
+                          )}
+
+                          {isOpponent ? (
+                            /* Opponent Shot: Fine Red Circle */
+                            <circle
+                              cx={posX}
+                              cy={posY}
+                              r={isHovered ? 2.1 : 1.35}
+                              fill="#ef4444"
+                              stroke="#ffffff"
+                              strokeWidth="0.35"
+                              className="drop-shadow-sm"
+                            />
+                          ) : isMade ? (
+                            /* Made Shot: Fine Emerald Green Circle with White Ring */
+                            <circle
+                              cx={posX}
+                              cy={posY}
+                              r={isHovered ? 2.1 : 1.35}
+                              fill="#10b981"
+                              stroke="#ffffff"
+                              strokeWidth="0.35"
+                              className="drop-shadow-sm"
+                            />
+                          ) : (
+                            /* Missed Shot: Crisp, Fine Red/Rose Cross (X) */
+                            <g>
+                              {/* Dark shadow stroke behind for maximum contrast on wood floor */}
+                              <line
+                                x1={posX - (isHovered ? 1.4 : 1.05)}
+                                y1={posY - (isHovered ? 1.4 : 1.05)}
+                                x2={posX + (isHovered ? 1.4 : 1.05)}
+                                y2={posY + (isHovered ? 1.4 : 1.05)}
+                                stroke="#111827"
+                                strokeWidth={isHovered ? '1.2' : '0.9'}
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={posX - (isHovered ? 1.4 : 1.05)}
+                                y1={posY + (isHovered ? 1.4 : 1.05)}
+                                x2={posX + (isHovered ? 1.4 : 1.05)}
+                                y2={posY - (isHovered ? 1.4 : 1.05)}
+                                stroke="#111827"
+                                strokeWidth={isHovered ? '1.2' : '0.9'}
+                                strokeLinecap="round"
+                              />
+                              {/* Crisp colored foreground cross */}
+                              <line
+                                x1={posX - (isHovered ? 1.4 : 1.05)}
+                                y1={posY - (isHovered ? 1.4 : 1.05)}
+                                x2={posX + (isHovered ? 1.4 : 1.05)}
+                                y2={posY + (isHovered ? 1.4 : 1.05)}
+                                stroke="#ef4444"
+                                strokeWidth={isHovered ? '0.85' : '0.55'}
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={posX - (isHovered ? 1.4 : 1.05)}
+                                y1={posY + (isHovered ? 1.4 : 1.05)}
+                                x2={posX + (isHovered ? 1.4 : 1.05)}
+                                y2={posY - (isHovered ? 1.4 : 1.05)}
+                                stroke="#ef4444"
+                                strokeWidth={isHovered ? '0.85' : '0.55'}
+                                strokeLinecap="round"
+                              />
+                            </g>
+                          )}
+                        </g>
+                      </g>
+                    );
+                  })}
 
                 {/* Just Placed Shot Marker / Ripple */}
                 {justPlacedLocation && (
-                  <g className="animate-pulse">
+                  <g className="animate-pulse pointer-events-none">
                     <circle
                       cx={justPlacedLocation.x}
                       cy={(justPlacedLocation.y / 100) * 93.3}
-                      r="5"
+                      r="4.2"
                       fill="#10b981"
-                      fillOpacity="0.4"
+                      fillOpacity="0.35"
                       stroke="#34d399"
-                      strokeWidth="1.2"
-                    />
-                    <circle
-                      cx={justPlacedLocation.x}
-                      cy={(justPlacedLocation.y / 100) * 93.3}
-                      r="2.8"
-                      fill="#10b981"
-                      stroke="#064e3b"
                       strokeWidth="0.8"
                     />
-                    <text
-                      x={justPlacedLocation.x}
-                      y={(justPlacedLocation.y / 100) * 93.3 + 0.9}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontSize="2.4"
-                      fontWeight="bold"
-                      fontFamily="monospace"
-                    >
-                      {pendingShot?.playerNumber ?? '✓'}
-                    </text>
+                    <circle
+                      cx={justPlacedLocation.x}
+                      cy={(justPlacedLocation.y / 100) * 93.3}
+                      r="1.8"
+                      fill="#10b981"
+                      stroke="#ffffff"
+                      strokeWidth="0.5"
+                    />
                   </g>
                 )}
 
                 {/* Pending Manual Click Marker */}
                 {pendingClick && (
-                  <g className="animate-pulse">
+                  <g className="animate-pulse pointer-events-none">
                     <circle
                       cx={pendingClick.x}
                       cy={(pendingClick.y / 100) * 93.3}
-                      r="4"
+                      r="3.5"
                       fill="#f97316"
                       fillOpacity="0.4"
                       stroke="#fb923c"
-                      strokeWidth="1"
+                      strokeWidth="0.8"
                     />
                     <circle
                       cx={pendingClick.x}
                       cy={(pendingClick.y / 100) * 93.3}
-                      r="1.5"
+                      r="1.2"
                       fill="#ffffff"
                     />
                   </g>

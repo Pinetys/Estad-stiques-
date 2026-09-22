@@ -15,6 +15,7 @@ interface CourtRosterPanelProps {
   onPerformSubstitution: (playerOutId: string, playerInId: string) => void;
   onOpenSubstitutionModal: () => void;
   onOpenStartingFiveModal: () => void;
+  onOpenRosterModal?: () => void;
 }
 
 export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
@@ -27,6 +28,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   onPerformSubstitution,
   onOpenSubstitutionModal,
   onOpenStartingFiveModal,
+  onOpenRosterModal,
 }) => {
   // Direct In-Game Substitution State (Ultra-Fast 2-Tap Swap)
   const [pendingOutId, setPendingOutId] = useState<string | null>(null);
@@ -150,6 +152,18 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-1">
+          {onOpenRosterModal && (
+            <button
+              type="button"
+              onClick={onOpenRosterModal}
+              className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-[10px] font-mono font-bold flex items-center gap-1 transition"
+              title="Editar jugadores convocados que vienen al partido"
+            >
+              <Users className="w-3 h-3 text-orange-400" />
+              <span>Convocatoria</span>
+            </button>
+          )}
+
           {isPreGame && (
             <button
               type="button"

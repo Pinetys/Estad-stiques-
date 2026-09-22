@@ -1473,6 +1473,7 @@ export default function App() {
           onUndoLastAction={handleUndoLastAction}
           onDeleteEvent={handleDeleteEvent}
           onOpenSubstitutionModal={() => setShowSubModal(true)}
+          onOpenRosterModal={() => setShowRosterModal(true)}
           onPerformSubstitution={handlePerformSubstitution}
           selectedPlayerId={selectedPlayerId}
           onSelectPlayer={setSelectedPlayerId}
@@ -2341,23 +2342,16 @@ export default function App() {
       {showRosterModal && (
         <TeamRosterModal
           players={game.players}
+          activeTeam={teams.find(t => t.id === activeTeamId) || teams[0]}
           onUpdatePlayers={newPlayers => {
             setGame(prev => ({ ...prev, players: newPlayers }));
-            // Also sync changes to active team profile in local storage and cloud
+          }}
+          onUpdateMasterRoster={newMasterRoster => {
             const currentTeam = teams.find(t => t.id === activeTeamId) || teams[0];
             if (currentTeam) {
               const updatedTeamProfile: TeamProfile = {
                 ...currentTeam,
-                roster: newPlayers.map(p => ({
-                  id: p.id,
-                  name: p.name,
-                  number: p.number,
-                  position: p.position,
-                  starter: p.starter,
-                  onCourt: p.onCourt,
-                  foulsCount: p.foulsCount,
-                  isFouledOut: p.isFouledOut,
-                })),
+                roster: newMasterRoster,
               };
               const newTeams = upsertTeamProfile(updatedTeamProfile);
               setTeams(newTeams);
@@ -2406,6 +2400,7 @@ export default function App() {
         <TeamSelectorModal
           teams={teams}
           activeTeamId={activeTeamId}
+          currentGame={game}
           onSelectTeam={handleSelectTeam}
           onSaveTeam={handleSaveTeam}
           onDeleteTeam={handleDeleteTeam}

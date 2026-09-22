@@ -32,6 +32,8 @@ import {
   Sun,
   AlertCircle,
   RotateCcw,
+  X,
+  UserCheck,
 } from 'lucide-react';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 
@@ -161,9 +163,46 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const [showStartingFiveFullModal, setShowStartingFiveFullModal] = useState(false);
   const [starterWarning, setStarterWarning] = useState<string | null>(null);
 
+  // Match Attendance: list of player IDs who attend this match (convocatoria)
+  const [attendingPlayerIds, setAttendingPlayerIds] = useState<string[]>(() =>
+    currentRoster.map(p => p.id)
+  );
+
   const startersCount = useMemo(() => {
-    return currentRoster.filter(p => p.starter || p.onCourt).length;
-  }, [currentRoster]);
+    return currentRoster.filter(
+      p => attendingPlayerIds.includes(p.id) && (p.starter || p.onCourt)
+    ).length;
+  }, [currentRoster, attendingPlayerIds]);
+
+  // Toggle match attendance (convocatoria) for a player
+  const handleToggleAttendance = (playerId: string) => {
+    playSound('click', soundEnabled);
+    triggerHaptic('light', vibrationEnabled);
+
+    if (attendingPlayerIds.includes(playerId)) {
+      if (attendingPlayerIds.length <= 5) {
+        setStarterWarning('Debes convocar al menos a 5 jugadores para el quinteto inicial.');
+        triggerHaptic('warning', vibrationEnabled);
+        setTimeout(() => setStarterWarning(null), 3000);
+        return;
+      }
+      setAttendingPlayerIds(prev => prev.filter(id => id !== playerId));
+      // Remove starter status if this player was marked as starter
+      setCurrentRoster(prev =>
+        prev.map(p => (p.id === playerId ? { ...p, starter: false, onCourt: false } : p))
+      );
+    } else {
+      setAttendingPlayerIds(prev => [...prev, playerId]);
+    }
+  };
+
+  // Mark all squad players as attending today
+  const handleSelectAllAttend = () => {
+    playSound('click', soundEnabled);
+    triggerHaptic('light', vibrationEnabled);
+    setAttendingPlayerIds(currentRoster.map(p => p.id));
+    setStarterWarning(null);
+  };
 
   // Handle selecting a recorded home team
   const handleSelectHomeRecordedTeam = (teamId: string) => {
@@ -176,7 +215,9 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       if (target.roster && target.roster.length > 0) {
         const cloned = JSON.parse(JSON.stringify(target.roster));
         const numStarters = cloned.filter((p: Player) => p.starter || p.onCourt).length;
-        setCurrentRoster(numStarters === 5 ? cloned : applySuggestedStarters(cloned));
+        const newR = numStarters === 5 ? cloned : applySuggestedStarters(cloned);
+        setCurrentRoster(newR);
+        setAttendingPlayerIds(newR.map((p: Player) => p.id));
       }
       playSound('click', soundEnabled);
     }
@@ -209,7 +250,9 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
     const targetNewHome = availableTeams.find(t => t.name.toLowerCase() === awayTeam.toLowerCase());
     if (targetNewHome && targetNewHome.roster && targetNewHome.roster.length > 0) {
-      setCurrentRoster(JSON.parse(JSON.stringify(targetNewHome.roster)));
+      const cloned = JSON.parse(JSON.stringify(targetNewHome.roster));
+      setCurrentRoster(cloned);
+      setAttendingPlayerIds(cloned.map((p: Player) => p.id));
     }
   };
 
@@ -217,6 +260,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const handleToggleStarterInRoster = (playerId: string) => {
     playSound('click', soundEnabled);
     triggerHaptic('light', vibrationEnabled);
+
+    // If currently not attending, auto-mark as attending
+    if (!attendingPlayerIds.includes(playerId)) {
+      setAttendingPlayerIds(prev => [...prev, playerId]);
+    }
+
     setCurrentRoster(prev => {
       const target = prev.find(p => p.id === playerId);
       if (!target) return prev;
@@ -228,7 +277,9 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
           p.id === playerId ? { ...p, starter: false, onCourt: false } : p
         );
       } else {
-        const currentStarters = prev.filter(p => p.starter || p.onCourt);
+        const currentStarters = prev.filter(
+          p => attendingPlayerIds.includes(p.id) && (p.starter || p.onCourt)
+        );
         if (currentStarters.length >= 5) {
           setStarterWarning('Ya has seleccionado 5 titulares. Desmarca a uno para incluir a este jugador.');
           triggerHaptic('warning', vibrationEnabled);
@@ -301,18 +352,20 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       return;
     }
 
-    const finalRoster: Player[] = currentRoster.map(p => {
-      const isStarter = Boolean(p.starter || p.onCourt);
-      return {
-        ...p,
-        starter: isStarter,
-        onCourt: isStarter,
-        foulsCount: 0,
-        isFouledOut: false,
-        minutesPlayedSeconds: 0,
-        quarterSeconds: {},
-      };
-    });
+    const finalRoster: Player[] = currentRoster
+      .filter(p => attendingPlayerIds.includes(p.id))
+      .map(p => {
+        const isStarter = Boolean(p.starter || p.onCourt);
+        return {
+          ...p,
+          starter: isStarter,
+          onCourt: isStarter,
+          foulsCount: 0,
+          isFouledOut: false,
+          minutesPlayedSeconds: 0,
+          quarterSeconds: {},
+        };
+      });
 
     let homeTeamIdToUse: string | undefined;
 
@@ -752,38 +805,43 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             />
           )}
 
-          {/* ===================== STARTING FIVE (QUINTETO INICIAL) ===================== */}
+          {/* ===================== SQUAD CONVOCATORIA & STARTING FIVE ===================== */}
           <div className="pt-2.5 border-t border-gray-800 space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-orange-400" />
                 <span className="text-xs font-black uppercase tracking-wider text-gray-200">
-                  Quinteto Inicial (Titulares)
+                  Convocatoria y 5 Inicial
                 </span>
               </div>
-              <span
-                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border ${
-                  startersCount === 5
-                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/60'
-                    : 'bg-amber-950/80 text-amber-300 border-amber-500/60'
-                }`}
-              >
-                {startersCount === 5 ? (
-                  <>
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    5/5 LISTOS
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="w-3 h-3 text-amber-400" />
-                    {startersCount}/5 SELECCIONADOS
-                  </>
-                )}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/60">
+                  {attendingPlayerIds.length}/{currentRoster.length} VIENEN HOY
+                </span>
+                <span
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border ${
+                    startersCount === 5
+                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/60'
+                      : 'bg-amber-950/80 text-amber-300 border-amber-500/60'
+                  }`}
+                >
+                  {startersCount === 5 ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      5/5 TITULARES
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-3 h-3 text-amber-400" />
+                      {startersCount}/5 TITULARES
+                    </>
+                  )}
+                </span>
+              </div>
             </div>
 
             <p className="text-[11px] text-gray-400">
-              Configura los 5 jugadores que comenzarán en pista. Toca cualquier jugador para cambiar su rol:
+              Marca con <strong className="text-emerald-400">✓</strong> quién viene hoy al partido y toca <strong className="text-orange-400">TIT</strong> para elegir los 5 titulares. Los ausentes se mantienen seguros en tu club:
             </p>
 
             {starterWarning && (
@@ -794,11 +852,20 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             )}
 
             {/* Quick action tools */}
-            <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
-              <span className="text-gray-400 text-[10px] truncate max-w-[170px]">
-                Plantilla: <span className="text-gray-200 font-bold">{homeTeam}</span>
-              </span>
-              <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center justify-between gap-1 text-[10px] font-mono flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleSelectAllAttend}
+                  className="px-2 py-0.5 rounded bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-600/40 font-bold transition flex items-center gap-1 shadow-xs"
+                  title="Marcar que asisten todos los jugadores registrados de la plantilla"
+                >
+                  <UserCheck className="w-3 h-3 text-emerald-400" />
+                  <span>Vienen Todos</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0 flex-wrap">
                 <button
                   type="button"
                   onClick={handleSuggestStartingFive}
@@ -806,7 +873,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   title="Sugerir automáticamente el quinteto inicial equilibrado por posiciones"
                 >
                   <Sparkles className="w-3 h-3 text-orange-400" />
-                  <span>Sugerir Quinteto</span>
+                  <span>Sugerir 5</span>
                 </button>
                 {startersCount < 5 && (
                   <button
@@ -838,33 +905,74 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               </div>
             </div>
 
-            {/* Grid of players in squad */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
+            {/* Grid of players in squad with attendance toggles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-52 overflow-y-auto pr-1">
               {currentRoster.map(player => {
-                const isStarter = Boolean(player.starter || player.onCourt);
+                const isAttending = attendingPlayerIds.includes(player.id);
+                const isStarter = isAttending && Boolean(player.starter || player.onCourt);
+
                 return (
-                  <button
+                  <div
                     key={player.id}
-                    type="button"
-                    onClick={() => handleToggleStarterInRoster(player.id)}
-                    className={`p-1.5 rounded-lg border text-left flex items-center justify-between transition active:scale-95 ${
-                      isStarter
+                    onClick={() => {
+                      if (!isAttending) {
+                        handleToggleAttendance(player.id);
+                      } else {
+                        handleToggleStarterInRoster(player.id);
+                      }
+                    }}
+                    className={`p-1.5 rounded-lg border text-left flex items-center justify-between transition cursor-pointer select-none active:scale-[0.98] ${
+                      !isAttending
+                        ? 'bg-[#12141a]/60 border-gray-800/80 text-gray-500 opacity-60'
+                        : isStarter
                         ? 'bg-orange-950/50 border-orange-500 text-white shadow-sm ring-1 ring-orange-500/40'
                         : 'bg-[#14161B] hover:bg-[#1A1D24] border-gray-800 text-gray-300'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
+                      {/* Attendance Checkbox */}
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleToggleAttendance(player.id);
+                        }}
+                        className="shrink-0 p-0.5 rounded hover:bg-neutral-800 transition"
+                        title={
+                          isAttending
+                            ? 'Asiste al partido (clic para marcar ausente)'
+                            : 'No asiste (clic para convocar)'
+                        }
+                      >
+                        {isAttending ? (
+                          <div className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                        ) : (
+                          <div className="w-4 h-4 rounded border border-gray-700 bg-neutral-900 flex items-center justify-center text-gray-600">
+                            <X className="w-2.5 h-2.5" />
+                          </div>
+                        )}
+                      </button>
+
                       <span
                         className={`w-6 h-6 rounded flex items-center justify-center font-scoreboard font-black text-xs shrink-0 border ${
-                          isStarter
+                          !isAttending
+                            ? 'bg-neutral-900 text-gray-600 border-gray-800'
+                            : isStarter
                             ? 'bg-orange-600 text-white border-orange-400'
                             : 'bg-neutral-800 text-amber-400 border-neutral-700'
                         }`}
                       >
                         #{player.number}
                       </span>
+
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-gray-200 truncate leading-tight">
+                        <p
+                          className={`text-[11px] font-bold truncate leading-tight ${
+                            isAttending ? 'text-gray-200' : 'text-gray-500 line-through'
+                          }`}
+                        >
                           {player.name}
                         </p>
                         <p className="text-[9px] text-gray-400 font-mono">
@@ -874,18 +982,36 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                     </div>
 
                     <div className="shrink-0 ml-1">
-                      {isStarter ? (
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/60 text-[9px] font-mono font-bold flex items-center gap-0.5">
-                          <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
-                          TIT
-                        </span>
+                      {isAttending ? (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleToggleStarterInRoster(player.id);
+                          }}
+                          className={`px-1.5 py-0.5 rounded border text-[9px] font-mono font-bold flex items-center gap-0.5 transition ${
+                            isStarter
+                              ? 'bg-orange-600 text-white border-orange-400 shadow-xs'
+                              : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:text-white'
+                          }`}
+                          title={isStarter ? 'Titular (clic para banquillo)' : 'Banquillo (clic para titular)'}
+                        >
+                          {isStarter ? (
+                            <>
+                              <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                              TIT
+                            </>
+                          ) : (
+                            'BAN'
+                          )}
+                        </button>
                       ) : (
-                        <span className="px-1.5 py-0.5 rounded bg-neutral-800/80 text-neutral-400 border border-neutral-700 text-[9px] font-mono">
-                          BAN
+                        <span className="px-1.5 py-0.5 rounded bg-neutral-900 text-gray-500 border border-neutral-800 text-[8px] font-mono">
+                          NO VIENE
                         </span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

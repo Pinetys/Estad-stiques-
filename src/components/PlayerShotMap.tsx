@@ -120,7 +120,9 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
   title = 'Carta de Tiros',
 }) => {
   const [filterResult, setFilterResult] = useState<'all' | 'made' | 'missed'>('all');
-  const [viewMode, setViewMode] = useState<'shots' | 'heat' | 'combined'>('combined');
+  const [viewMode, setViewMode] = useState<'shots' | 'heat' | 'combined'>('shots');
+  const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('parquet');
+  const [showPercentagesInCombined, setShowPercentagesInCombined] = useState<boolean>(false);
   const [hoveredShot, setHoveredShot] = useState<PlayEvent | null>(null);
   const [hoveredShotPos, setHoveredShotPos] = useState<{ x: number; y: number } | null>(null);
   const [hoveredZoneId, setHoveredZoneId] = useState<CourtZoneId | null>(null);
@@ -163,16 +165,16 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
   const made3P = shots3P.filter(s => s.actionType === '3PM').length;
   const pct3P = shots3P.length > 0 ? Math.round((made3P / shots3P.length) * 100) : 0;
 
-  // Calculate zone stats
+  // Calculate zone stats with non-colliding peripheral anchors
   const zonesStatsMap = useMemo(() => {
     const rawZones: Record<CourtZoneId, { name: string; shortName: string; isThree: boolean; anchorX: number; anchorY: number }> = {
-      paint: { name: 'Pintura (Bajo Aro)', shortName: 'Pintura', isThree: false, anchorX: 50, anchorY: 21 },
-      mid_center: { name: 'Media Distancia Centro', shortName: 'Media Centro', isThree: false, anchorX: 50, anchorY: 46 },
-      mid_left: { name: 'Media Distancia Izquierda', shortName: 'Media Izq.', isThree: false, anchorX: 20, anchorY: 20 },
-      mid_right: { name: 'Media Distancia Derecha', shortName: 'Media Der.', isThree: false, anchorX: 80, anchorY: 20 },
-      corner3_left: { name: 'Triple Esquina Izquierda', shortName: 'Esq. Izq (T3)', isThree: true, anchorX: 5, anchorY: 15 },
-      corner3_right: { name: 'Triple Esquina Derecha', shortName: 'Esq. Der (T3)', isThree: true, anchorX: 95, anchorY: 15 },
-      top3: { name: 'Triple Frontal y Alas', shortName: 'Triple Frontal', isThree: true, anchorX: 50, anchorY: 72 },
+      paint: { name: 'Pintura (Bajo Aro)', shortName: 'Pintura', isThree: false, anchorX: 35.5, anchorY: 5.5 },
+      mid_center: { name: 'Media Distancia Centro', shortName: 'Media Centro', isThree: false, anchorX: 64, anchorY: 48 },
+      mid_left: { name: 'Media Distancia Izquierda', shortName: 'Media Izq.', isThree: false, anchorX: 18, anchorY: 24 },
+      mid_right: { name: 'Media Distancia Derecha', shortName: 'Media Der.', isThree: false, anchorX: 82, anchorY: 24 },
+      corner3_left: { name: 'Triple Esquina Izquierda', shortName: 'Esq. Izq', isThree: true, anchorX: 5, anchorY: 34 },
+      corner3_right: { name: 'Triple Esquina Derecha', shortName: 'Esq. Der', isThree: true, anchorX: 95, anchorY: 34 },
+      top3: { name: 'Triple Frontal y Alas', shortName: 'Triple Frontal', isThree: true, anchorX: 50, anchorY: 86 },
     };
 
     const stats: Record<CourtZoneId, ZoneData> = {} as Record<CourtZoneId, ZoneData>;
@@ -355,7 +357,7 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 ? 'bg-orange-600 text-white shadow-sm'
                 : 'text-neutral-400 hover:text-white'
             }`}
-            title="Ver tiros individuales metidos y fallados"
+            title="Ver tiros individuales finos (sin solapamientos)"
           >
             <Target className="w-3 h-3" />
             <span>Tiros</span>
@@ -368,7 +370,7 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 ? 'bg-orange-600 text-white shadow-sm'
                 : 'text-neutral-400 hover:text-white'
             }`}
-            title="Ver mapa de calor térmico por zonas y efectividad"
+            title="Ver mapa de calor térmico por zonas y porcentajes"
           >
             <Flame className="w-3 h-3 text-orange-300" />
             <span>Calor</span>
@@ -381,15 +383,43 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 ? 'bg-orange-600 text-white shadow-sm'
                 : 'text-neutral-400 hover:text-white'
             }`}
-            title="Ver mapa de calor de fondo con los lanzamientos superpuestos"
+            title="Ver zonas y tiros individuales"
           >
             <Layers className="w-3 h-3" />
             <span>Ambos</span>
           </button>
+          {viewMode === 'combined' && (
+            <button
+              type="button"
+              onClick={() => setShowPercentagesInCombined(v => !v)}
+              className={`px-1.5 py-1 rounded-md transition text-[9px] border ${
+                showPercentagesInCombined
+                  ? 'bg-blue-600/80 border-blue-400 text-white'
+                  : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-white'
+              }`}
+              title="Mostrar u ocultar los porcentajes en pista"
+            >
+              % Zonas
+            </button>
+          )}
         </div>
 
-        {/* Filter buttons: Todos / Metidos / Fallados */}
+        {/* Court Style & Filter Buttons */}
         <div className="flex items-center gap-1 text-[10px] font-bold">
+          {/* Court Theme Toggle */}
+          <button
+            type="button"
+            onClick={() => setCourtTheme(t => (t === 'parquet' ? 'dark' : 'parquet'))}
+            className={`px-2 py-1 rounded-md transition flex items-center gap-1 border ${
+              courtTheme === 'parquet'
+                ? 'bg-amber-950/70 border-amber-600/60 text-amber-300'
+                : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+            }`}
+            title={courtTheme === 'parquet' ? 'Cambiar a pista oscura' : 'Cambiar a pista parquet real'}
+          >
+            <span>{courtTheme === 'parquet' ? '🪵 Parquet' : '🏟️ Oscura'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setFilterResult('all')}
@@ -483,12 +513,58 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
       >
         <svg
           viewBox="0 0 100 93.3"
-          className={`w-full h-full rounded-xl border shadow-inner pointer-events-none ${
-            isDark ? 'bg-[#0f1218] border-neutral-800' : 'bg-amber-50/40 border-neutral-300'
-          }`}
+          className="w-full h-full rounded-xl border border-neutral-700 shadow-2xl pointer-events-none overflow-hidden"
         >
           {/* DEFINITIONS & FILTERS */}
           <defs>
+            {/* Realistic Maple Parquet Floor */}
+            <pattern
+              id="player-parquet-floor"
+              width="26"
+              height="6.5"
+              patternUnits="userSpaceOnUse"
+            >
+              <rect width="26" height="6.5" fill="#ca995d" />
+              <line x1="0" y1="0" x2="26" y2="0" stroke="#a4743b" strokeWidth="0.18" opacity="0.8" />
+              <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#a4743b" strokeWidth="0.14" opacity="0.65" />
+              <line x1="0" y1="6.5" x2="26" y2="6.5" stroke="#8d5f27" strokeWidth="0.2" opacity="0.9" />
+              <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+              <line x1="21.5" y1="0" x2="21.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+              <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+              <line x1="2.5" y1="3.25" x2="2.5" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
+              <rect x="0" y="0.3" width="8.5" height="2.6" fill="#d9aa70" opacity="0.16" />
+              <rect x="8.5" y="3.5" width="6.5" height="2.6" fill="#b98549" opacity="0.15" />
+              <rect x="15" y="3.5" width="11" height="2.6" fill="#dfb37c" opacity="0.18" />
+            </pattern>
+
+            {/* Dark Arena Pattern */}
+            <pattern
+              id="player-dark-arena"
+              width="26"
+              height="6.5"
+              patternUnits="userSpaceOnUse"
+            >
+              <rect width="26" height="6.5" fill="#141720" />
+              <line x1="0" y1="0" x2="26" y2="0" stroke="#0a0d13" strokeWidth="0.2" opacity="0.9" />
+              <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#0a0d13" strokeWidth="0.16" opacity="0.8" />
+              <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
+              <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
+              <rect x="0" y="0.4" width="8.5" height="2.5" fill="#1b202c" opacity="0.28" />
+            </pattern>
+
+            {/* Key / Paint Lane Gradient Stain */}
+            <linearGradient id="player-fiba-key" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#1e3a8a" stopOpacity={courtTheme === 'parquet' ? '0.52' : '0.45'} />
+              <stop offset="100%" stopColor="#172554" stopOpacity={courtTheme === 'parquet' ? '0.62' : '0.55'} />
+            </linearGradient>
+
+            {/* Arena Spotlight Overhead Glow */}
+            <radialGradient id="player-arena-spotlight" cx="50%" cy="32%" r="68%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.12' : '0.06'} />
+              <stop offset="65%" stopColor="#ffffff" stopOpacity="0" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.32" />
+            </radialGradient>
+
             <filter id="shot-glow" x="-50%" y="-50%" width="200%" height="200%">
               <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#f97316" floodOpacity="0.8" />
             </filter>
@@ -500,8 +576,37 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
             </filter>
           </defs>
 
+          {/* 1. Out of Bounds Apron Perimeter */}
+          <rect x="0" y="0" width="100" height="93.3" fill="#0b0e14" />
+
+          {/* 2. Playing Court Hardwood Floor */}
+          <rect
+            x="2.5"
+            y="2"
+            width="95"
+            height="89.3"
+            rx="0.5"
+            fill={courtTheme === 'parquet' ? 'url(#player-parquet-floor)' : 'url(#player-dark-arena)'}
+          />
+
+          {/* 3. Key / Paint Lane Painted Area */}
+          <rect
+            x="33.7"
+            y="2"
+            width="32.6"
+            height="38.6"
+            fill="url(#player-fiba-key)"
+          />
+
+          {/* 4. Center Jump Circle Area */}
+          <path
+            d="M 38 91.3 A 12 12 0 0 1 62 91.3 Z"
+            fill="url(#player-fiba-key)"
+            fillOpacity="0.4"
+          />
+
           {/* =================================================== */}
-          {/* 1. THERMAL HEAT ZONES (Shown in 'heat' or 'combined' mode) */}
+          {/* THERMAL HEAT ZONES (Shown in 'heat' or 'combined' mode) */}
           {/* =================================================== */}
           {(viewMode === 'heat' || viewMode === 'combined') && (
             <g className="heat-zones-layer transition-opacity duration-200">
@@ -580,9 +685,9 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
 
               {/* Corner 3 Left */}
               <rect
-                x="2"
+                x="2.5"
                 y="2"
-                width="6"
+                width="5.5"
                 height="26"
                 fill={zonesStatsMap.corner3_left.heatColor}
                 fillOpacity={
@@ -599,7 +704,7 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
               <rect
                 x="92"
                 y="2"
-                width="6"
+                width="5.5"
                 height="26"
                 fill={zonesStatsMap.corner3_right.heatColor}
                 fillOpacity={
@@ -612,11 +717,13 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 className="transition-all duration-150"
               />
 
-              {/* Zone Effectiveness Badges (Only in 'heat' mode or when hovered) */}
+              {/* Zone Effectiveness Badges (Positioned at peripheral anchors to prevent overlapping with shots) */}
               {(Object.keys(zonesStatsMap) as CourtZoneId[]).map(zid => {
                 const z = zonesStatsMap[zid];
                 if (z.attempted === 0 && viewMode !== 'heat') return null;
                 const isHovered = hoveredZoneId === zid;
+                // In combined mode, only show if user enabled it or is hovering that zone
+                if (viewMode === 'combined' && !showPercentagesInCombined && !isHovered) return null;
 
                 return (
                   <g
@@ -625,34 +732,34 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                     className="pointer-events-none transition-transform duration-150"
                   >
                     <rect
-                      x="-8"
-                      y="-4"
-                      width="16"
-                      height="8"
-                      rx="2.5"
-                      fill={isDark ? '#11141b' : '#ffffff'}
-                      fillOpacity={isHovered ? 0.98 : 0.85}
+                      x="-5.5"
+                      y="-2.5"
+                      width="11"
+                      height="5"
+                      rx="1.4"
+                      fill="#0f172a"
+                      fillOpacity={isHovered ? 0.98 : 0.88}
                       stroke={isHovered ? '#f97316' : z.heatColor}
-                      strokeWidth={isHovered ? 1.4 : 0.6}
-                      className="drop-shadow"
+                      strokeWidth={isHovered ? 0.8 : 0.4}
+                      className="drop-shadow-sm"
                     />
                     <text
                       x="0"
-                      y="-0.2"
+                      y="0.2"
                       textAnchor="middle"
                       fill={z.heatLevel === 'hot' ? '#fb923c' : z.heatLevel === 'warm' ? '#facc15' : z.heatLevel === 'cold' ? '#38bdf8' : '#94a3b8'}
-                      fontSize="2.8"
-                      fontWeight="900"
+                      fontSize="2.1"
+                      fontWeight="bold"
                       fontFamily="monospace"
                     >
                       {z.attempted > 0 ? `${z.pct}%` : '0%'}
                     </text>
                     <text
                       x="0"
-                      y="2.7"
+                      y="1.8"
                       textAnchor="middle"
-                      fill={isDark ? '#94a3b8' : '#64748b'}
-                      fontSize="1.9"
+                      fill="#cbd5e1"
+                      fontSize="1.5"
                       fontFamily="monospace"
                     >
                       {z.made}/{z.attempted}
@@ -664,153 +771,79 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
           )}
 
           {/* =================================================== */}
-          {/* 2. COURT BOUNDARY & REGULATION LINES */}
+          {/* COURT REGULATION FIBA LINES (Crisp White with High Contrast) */}
           {/* =================================================== */}
-          <g className="pointer-events-none">
-            {/* Court Boundary Lines */}
-            <rect
-              x="2"
-              y="2"
-              width="96"
-              height="89.3"
-              fill="none"
-              stroke={isDark ? '#475569' : '#94a3b8'}
-              strokeWidth="0.8"
-            />
+          <g className="pointer-events-none" stroke="#ffffff" strokeWidth="0.75" fill="none" opacity="0.95">
+            {/* Outer Boundary Perimeter Line */}
+            <rect x="2.5" y="2" width="95" height="89.3" />
 
-            {/* Half Court Line and Center Circle */}
-            <line
-              x1="2"
-              y1="91.3"
-              x2="98"
-              y2="91.3"
-              stroke={isDark ? '#475569' : '#94a3b8'}
-              strokeWidth="0.8"
-            />
-            <path
-              d="M 38 91.3 A 12 12 0 0 1 62 91.3"
-              fill="none"
-              stroke={isDark ? '#475569' : '#94a3b8'}
-              strokeWidth="0.8"
-            />
+            {/* Half-Court Line */}
+            <line x1="2.5" y1="91.3" x2="97.5" y2="91.3" />
 
-            {/* 3-Point Lines: Straight Corners + Arc */}
-            <line
-              x1="8"
-              y1="2"
-              x2="8"
-              y2="28"
-              stroke="#ea580c"
-              strokeWidth="1"
-              opacity="0.85"
-            />
-            <line
-              x1="92"
-              y1="2"
-              x2="92"
-              y2="28"
-              stroke="#ea580c"
-              strokeWidth="1"
-              opacity="0.85"
-            />
-            <path
-              d="M 8 28 A 43.5 43.5 0 0 0 92 28"
-              fill="none"
-              stroke="#ea580c"
-              strokeWidth="1"
-              opacity="0.85"
-            />
+            {/* Center Circle */}
+            <path d="M 38 91.3 A 12 12 0 0 1 62 91.3" />
+
+            {/* 3-Point Straight Baseline Corners (FIBA 6.75m layout) */}
+            <line x1="7.5" y1="2" x2="7.5" y2="28" strokeWidth="0.8" />
+            <line x1="92.5" y1="2" x2="92.5" y2="28" strokeWidth="0.8" />
+
+            {/* 3-Point Arc */}
+            <path d="M 7.5 28 A 43.5 43.5 0 0 0 92.5 28" strokeWidth="0.8" />
 
             {/* Key / Paint Lane Border */}
-            <rect
-              x="33.7"
-              y="2"
-              width="32.6"
-              height="38.6"
-              fill="none"
-              stroke={isDark ? '#64748b' : '#94a3b8'}
-              strokeWidth="0.8"
-            />
+            <rect x="33.7" y="2" width="32.6" height="38.6" />
 
-            {/* Free Throw Circle */}
-            <circle
-              cx="50"
-              cy="40.6"
-              r="12"
-              fill="none"
-              stroke={isDark ? '#64748b' : '#94a3b8'}
-              strokeWidth="0.8"
-            />
+            {/* Free Throw Line */}
+            <line x1="33.7" y1="40.6" x2="66.3" y2="40.6" strokeWidth="0.8" />
+
+            {/* Free Throw Circle: Solid half towards half-court */}
+            <path d="M 33.7 40.6 A 16.3 16.3 0 0 0 66.3 40.6" />
+
+            {/* Free Throw Circle: Dashed half inside key */}
             <path
-              d="M 38 40.6 A 12 12 0 0 1 62 40.6"
-              fill="none"
-              stroke={isDark ? '#64748b' : '#94a3b8'}
-              strokeWidth="0.8"
-              strokeDasharray="1.5, 1.5"
+              d="M 33.7 40.6 A 16.3 16.3 0 0 1 66.3 40.6"
+              strokeDasharray="1.6, 1.6"
+              opacity="0.8"
             />
 
-            {/* Restricted Area Arc */}
-            <path
-              d="M 41.7 11 A 8.3 8.3 0 0 0 58.3 11"
-              fill="none"
-              stroke={isDark ? '#94a3b8' : '#cbd5e1'}
-              strokeWidth="0.8"
-            />
+            {/* Key Rebound Hash Marks (Regulation FIBA Lane Spaces) */}
+            <line x1="32.3" y1="17.5" x2="33.7" y2="17.5" strokeWidth="0.6" />
+            <rect x="31.8" y="22.7" width="1.9" height="1.6" fill="#ffffff" stroke="none" />
+            <line x1="32.3" y1="29.5" x2="33.7" y2="29.5" strokeWidth="0.6" />
+            <line x1="32.3" y1="35.5" x2="33.7" y2="35.5" strokeWidth="0.6" />
 
-            {/* Backboard & Rim */}
-            <line
-              x1="40"
-              y1="8"
-              x2="60"
-              y2="8"
-              stroke={isDark ? '#ffffff' : '#334155'}
-              strokeWidth="1.2"
-            />
-            <line x1="50" y1="8" x2="50" y2="9.5" stroke="#ea580c" strokeWidth="1.2" />
-            <circle cx="50" cy="11" r="3" fill="none" stroke="#ea580c" strokeWidth="1.4" />
+            <line x1="66.3" y1="17.5" x2="67.7" y2="17.5" strokeWidth="0.6" />
+            <rect x="66.3" y="22.7" width="1.9" height="1.6" fill="#ffffff" stroke="none" />
+            <line x1="66.3" y1="29.5" x2="67.7" y2="29.5" strokeWidth="0.6" />
+            <line x1="66.3" y1="35.5" x2="67.7" y2="35.5" strokeWidth="0.6" />
 
-            {/* Subtle Zone Labels in 'shots' mode */}
-            {viewMode === 'shots' && (
-              <>
-                <text
-                  x="50"
-                  y="24"
-                  textAnchor="middle"
-                  fill={isDark ? '#64748b' : '#94a3b8'}
-                  fontSize="3"
-                  fontFamily="monospace"
-                  opacity="0.6"
-                >
-                  PINTURA
-                </text>
-                <text
-                  x="50"
-                  y="58"
-                  textAnchor="middle"
-                  fill={isDark ? '#64748b' : '#94a3b8'}
-                  fontSize="3"
-                  fontFamily="monospace"
-                  opacity="0.6"
-                >
-                  MEDIA DISTANCIA
-                </text>
-                <text
-                  x="50"
-                  y="82"
-                  textAnchor="middle"
-                  fill="#ea580c"
-                  fontSize="3"
-                  fontFamily="monospace"
-                  opacity="0.7"
-                >
-                  TRIPLE (6.75m)
-                </text>
-              </>
-            )}
+            {/* Restricted Area Arc (No-Charge Semi-Circle, 1.25m from basket) */}
+            <path d="M 41.7 11 A 8.3 8.3 0 0 0 58.3 11" strokeWidth="0.75" />
+            <line x1="41.7" y1="11" x2="41.7" y2="7.5" strokeWidth="0.75" />
+            <line x1="58.3" y1="11" x2="58.3" y2="7.5" strokeWidth="0.75" />
           </g>
 
+          {/* Backboard & Rim */}
+          <g className="pointer-events-none">
+            <line x1="39" y1="7.5" x2="61" y2="7.5" stroke="#ffffff" strokeWidth="1.2" />
+            <rect x="45.5" y="7.3" width="9" height="0.4" fill="none" stroke="#ffffff" strokeWidth="0.5" />
+            <line x1="50" y1="7.5" x2="50" y2="9.2" stroke="#ea580c" strokeWidth="1.2" />
+            <circle cx="50" cy="11" r="2.8" fill="none" stroke="#ea580c" strokeWidth="1.3" />
+            <path
+              d="M 47.7 11 L 48.6 13.6 L 51.4 13.6 L 52.3 11"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="0.35"
+              strokeDasharray="0.6, 0.6"
+              opacity="0.6"
+            />
+          </g>
+
+          {/* Arena Spotlight Overlay */}
+          <rect x="2.5" y="2" width="95" height="89.3" fill="url(#player-arena-spotlight)" pointerEvents="none" />
+
           {/* =================================================== */}
-          {/* 3. SHOT MARKERS LAYER (Shown in 'shots' or 'combined' mode) */}
+          {/* SLEEK, ULTRA-REFINED SHOT MARKERS (Shown in 'shots' or 'combined' mode) */}
           {/* =================================================== */}
           {viewMode !== 'heat' &&
             displayedShots.map((shot, idx) => {
@@ -828,67 +861,65 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                     <circle
                       cx={x}
                       cy={y}
-                      r="5.8"
+                      r="4.2"
                       fill={isMade ? '#10b981' : '#ef4444'}
-                      fillOpacity="0.45"
+                      fillOpacity="0.35"
                       stroke={isMade ? '#34d399' : '#f87171'}
-                      strokeWidth="0.9"
+                      strokeWidth="0.6"
                       filter={isMade ? 'url(#made-glow)' : 'url(#miss-glow)'}
                     />
                   )}
 
                   {isMade ? (
-                    // Made Shot: Emerald Green Circle with Point Badge
-                    <g className="transition-transform duration-100">
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={isHovered ? 4.2 : 3.1}
-                        fill="#10b981"
-                        stroke="#064e3b"
-                        strokeWidth="0.7"
-                        className="drop-shadow"
-                      />
-                      <text
-                        x={x}
-                        y={y + 1.0}
-                        textAnchor="middle"
-                        fill="#ffffff"
-                        fontSize={isHovered ? '2.9' : '2.6'}
-                        fontWeight="900"
-                        fontFamily="monospace"
-                      >
-                        {shot.actionType === '3PM' ? '3' : '2'}
-                      </text>
-                    </g>
+                    /* Made Shot: Sleek Emerald Green Circle with Crisp White Rim */
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={isHovered ? 2.1 : 1.35}
+                      fill="#10b981"
+                      stroke="#ffffff"
+                      strokeWidth="0.35"
+                      className="drop-shadow-sm transition-transform duration-100"
+                    />
                   ) : (
-                    // Missed Shot: Vivid Red 'X' with subtle backing circle
-                    <g className="drop-shadow transition-transform duration-100">
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={isHovered ? 3.8 : 2.8}
-                        fill={isDark ? '#450a0a' : '#fee2e2'}
-                        fillOpacity="0.85"
-                        stroke="#ef4444"
-                        strokeWidth="0.6"
-                      />
+                    /* Missed Shot: Crisp, Fine Red Cross (X) */
+                    <g className="transition-transform duration-100">
+                      {/* Backing dark stroke for high contrast on parquet */}
                       <line
-                        x1={x - (isHovered ? 2.4 : 1.7)}
-                        y1={y - (isHovered ? 2.4 : 1.7)}
-                        x2={x + (isHovered ? 2.4 : 1.7)}
-                        y2={y + (isHovered ? 2.4 : 1.7)}
-                        stroke="#ef4444"
-                        strokeWidth={isHovered ? '1.5' : '1.1'}
+                        x1={x - (isHovered ? 1.4 : 1.05)}
+                        y1={y - (isHovered ? 1.4 : 1.05)}
+                        x2={x + (isHovered ? 1.4 : 1.05)}
+                        y2={y + (isHovered ? 1.4 : 1.05)}
+                        stroke="#111827"
+                        strokeWidth={isHovered ? '1.2' : '0.9'}
                         strokeLinecap="round"
                       />
                       <line
-                        x1={x - (isHovered ? 2.4 : 1.7)}
-                        y1={y + (isHovered ? 2.4 : 1.7)}
-                        x2={x + (isHovered ? 2.4 : 1.7)}
-                        y2={y - (isHovered ? 2.4 : 1.7)}
+                        x1={x - (isHovered ? 1.4 : 1.05)}
+                        y1={y + (isHovered ? 1.4 : 1.05)}
+                        x2={x + (isHovered ? 1.4 : 1.05)}
+                        y2={y - (isHovered ? 1.4 : 1.05)}
+                        stroke="#111827"
+                        strokeWidth={isHovered ? '1.2' : '0.9'}
+                        strokeLinecap="round"
+                      />
+                      {/* Crisp red foreground cross */}
+                      <line
+                        x1={x - (isHovered ? 1.4 : 1.05)}
+                        y1={y - (isHovered ? 1.4 : 1.05)}
+                        x2={x + (isHovered ? 1.4 : 1.05)}
+                        y2={y + (isHovered ? 1.4 : 1.05)}
                         stroke="#ef4444"
-                        strokeWidth={isHovered ? '1.5' : '1.1'}
+                        strokeWidth={isHovered ? '0.85' : '0.55'}
+                        strokeLinecap="round"
+                      />
+                      <line
+                        x1={x - (isHovered ? 1.4 : 1.05)}
+                        y1={y + (isHovered ? 1.4 : 1.05)}
+                        x2={x + (isHovered ? 1.4 : 1.05)}
+                        y2={y - (isHovered ? 1.4 : 1.05)}
+                        stroke="#ef4444"
+                        strokeWidth={isHovered ? '0.85' : '0.55'}
                         strokeLinecap="round"
                       />
                     </g>

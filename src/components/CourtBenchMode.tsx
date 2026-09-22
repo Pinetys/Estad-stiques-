@@ -59,6 +59,7 @@ interface CourtBenchModeProps {
   onDeleteEvent?: (eventId: string) => void;
   onOpenSubstitutionModal: () => void;
   onPerformSubstitution?: (playerOutId: string, playerInId: string) => void;
+  onOpenRosterModal?: () => void;
   selectedPlayerId: string | null;
   onSelectPlayer: (playerId: string) => void;
   recentEvent: PlayEvent | null;
@@ -80,6 +81,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onDeleteEvent,
   onOpenSubstitutionModal,
   onPerformSubstitution,
+  onOpenRosterModal,
   selectedPlayerId,
   onSelectPlayer,
   recentEvent,
@@ -1154,6 +1156,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               onOpenStartingFiveModal={() => {
                 if (isActionsLocked) return;
                 setShowStartingFiveModal(true);
+              }}
+              onOpenRosterModal={() => {
+                if (isActionsLocked) return;
+                if (onOpenRosterModal) onOpenRosterModal();
               }}
             />
           </div>

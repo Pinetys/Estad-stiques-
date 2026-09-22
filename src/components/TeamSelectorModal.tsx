@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { TeamProfile, Player } from '../types';
+import React, { useState, useMemo } from 'react';
+import { TeamProfile, Player, Game } from '../types';
 import { TeamLogoDisplay, TeamLogoPickerModal } from './TeamLogoPicker';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { getTeamMatches } from '../utils/teamStorage';
@@ -15,11 +15,14 @@ import {
   Camera,
   ArrowRight,
   Star,
+  Clock,
+  Filter,
 } from 'lucide-react';
 
 interface TeamSelectorModalProps {
   teams: TeamProfile[];
   activeTeamId: string;
+  currentGame?: Game;
   onSelectTeam: (teamId: string) => void;
   onSaveTeam: (team: TeamProfile) => void;
   onDeleteTeam: (teamId: string) => void;
@@ -29,6 +32,7 @@ interface TeamSelectorModalProps {
 export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
   teams,
   activeTeamId,
+  currentGame,
   onSelectTeam,
   onSaveTeam,
   onDeleteTeam,
@@ -38,6 +42,30 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const [formActiveTab, setFormActiveTab] = useState<'roster' | 'club'>('roster');
+  const [filterPendingOnly, setFilterPendingOnly] = useState(false);
+
+  // Helper to determine pending or live (unfinished) matches for each team
+  const getTeamPendingMatches = (teamId: string) => {
+    const matches = getTeamMatches(teamId);
+    const pending = matches.filter(m => m.status !== 'finished');
+    const team = teams.find(t => t.id === teamId);
+    if (
+      currentGame &&
+      currentGame.status !== 'finished' &&
+      (currentGame.teamId === teamId || (team && currentGame.homeTeamName?.trim().toLowerCase() === team.name?.trim().toLowerCase()))
+    ) {
+      if (!pending.some(m => m.id === currentGame.id)) {
+        pending.push(currentGame);
+      }
+    }
+    return pending;
+  };
+
+  const teamsWithPendingMatches = useMemo(() => {
+    return teams.filter(t => getTeamPendingMatches(t.id).length > 0);
+  }, [teams, currentGame]);
+
+  const displayedTeams = filterPendingOnly ? teamsWithPendingMatches : teams;
 
   // Form State
   const [formName, setFormName] = useState('');
@@ -217,122 +245,204 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
         <div className="p-4 sm:p-5 overflow-y-auto grow space-y-4">
           {!editingTeam && !isCreatingNew ? (
             <>
-              {/* Teams List */}
-              <div className="grid grid-cols-1 gap-2.5">
-                {teams.map(team => {
-                  const isActive = team.id === activeTeamId;
-                  const matches = getTeamMatches(team.id);
-                  const wins = matches.filter(m => m.homeScore > m.awayScore).length;
-                  const losses = matches.filter(m => m.awayScore > m.homeScore).length;
+              {/* Quick Filter Bar for Pending / All Teams */}
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-1 bg-[#161820] p-2.5 rounded-xl border border-gray-800">
+                <div className="flex items-center gap-1.5 text-xs font-mono flex-wrap">
+                  <span className="text-gray-400 font-bold flex items-center gap-1">
+                    <Filter className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Filtrar:</span>
+                  </span>
+                  <button
+                    type="button"
+                    id="filter-all-teams-btn"
+                    onClick={() => {
+                      playSound('click', true);
+                      setFilterPendingOnly(false);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono transition flex items-center gap-1 ${
+                      !filterPendingOnly
+                        ? 'bg-orange-600 text-white shadow-sm'
+                        : 'bg-neutral-800 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <span>Todos ({teams.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="filter-pending-teams-btn"
+                    onClick={() => {
+                      playSound('click', true);
+                      setFilterPendingOnly(prev => !prev);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono transition flex items-center gap-1.5 border active:scale-95 ${
+                      filterPendingOnly
+                        ? 'bg-amber-500/25 text-amber-300 border-amber-500/70 shadow-sm ring-1 ring-amber-500/40'
+                        : 'bg-neutral-800/80 text-gray-300 border-neutral-700 hover:text-amber-300 hover:border-amber-500/50'
+                    }`}
+                    title="Filtrar solo aquellos equipos que tengan partidos pendientes o sin finalizar"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Partidos pendientes ({teamsWithPendingMatches.length})</span>
+                  </button>
+                </div>
 
-                  return (
-                    <div
-                      key={team.id}
-                      onClick={() => {
-                        playSound('click', true);
-                        triggerHaptic('medium', true);
-                        onSelectTeam(team.id);
-                        onClose();
-                      }}
-                      className={`p-3.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 group active:scale-[0.99] ${
-                        isActive
-                          ? 'bg-gradient-to-r from-orange-950/60 to-[#181c26] border-orange-500 shadow-lg ring-1 ring-orange-500/50'
-                          : 'bg-[#161820] hover:bg-[#1c202a] border-gray-800 hover:border-gray-700'
-                      }`}
-                    >
-                      {/* Left: Logo & Info */}
-                      <div className="flex items-center gap-3">
-                        <div className="shrink-0">
-                          <TeamLogoDisplay logo={team.logo} teamName={team.name} size="md" />
-                        </div>
-
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-extrabold text-sm sm:text-base text-white group-hover:text-orange-400 transition">
-                              {team.name}
-                            </h3>
-                            {isActive && (
-                              <span className="px-2 py-0.5 bg-orange-600 text-white font-mono font-bold text-[10px] uppercase rounded-full shadow">
-                                Activo
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
-                            <span className="text-orange-400 font-semibold">{team.category || 'Senior'}</span>
-                            <span>•</span>
-                            <span>{team.season || '2025/2026'}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Users className="w-3 h-3 text-gray-400" />
-                              {team.roster.length} jug.
-                            </span>
-                          </div>
-
-                          {/* Stats Pill */}
-                          <div className="text-[11px] font-mono text-gray-400 pt-0.5 flex items-center gap-2">
-                            <span className="text-emerald-400 font-bold">{wins}V</span> -{' '}
-                            <span className="text-rose-400 font-bold">{losses}D</span>
-                            <span className="text-gray-500">({matches.length} partidos)</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={e => handleOpenEdit(team, e, 'roster')}
-                          className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-orange-400 hover:text-orange-300 rounded-lg border border-gray-700 transition text-xs font-mono font-bold flex items-center gap-1.5 shadow-sm"
-                          title="Editar jugadores y dorsales de este equipo"
-                        >
-                          <Users className="w-3.5 h-3.5 text-orange-400" />
-                          <span className="hidden sm:inline">Plantilla</span>
-                        </button>
-
-                        <button
-                          onClick={e => handleOpenEdit(team, e, 'club')}
-                          className="p-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white rounded-lg border border-gray-700 transition"
-                          title="Editar datos del club"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {teams.length > 1 && (
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              if (confirm(`¿Estás seguro de eliminar el equipo "${team.name}"?`)) {
-                                onDeleteTeam(team.id);
-                              }
-                            }}
-                            className="p-2 bg-rose-950/60 hover:bg-rose-900 text-rose-300 rounded-lg border border-rose-800/80 transition"
-                            title="Eliminar equipo"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => {
-                            playSound('click', true);
-                            triggerHaptic('medium', true);
-                            onSelectTeam(team.id);
-                            onClose();
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-1 transition ${
-                            isActive
-                              ? 'bg-orange-600 text-white'
-                              : 'bg-neutral-800 text-gray-300 hover:bg-orange-600 hover:text-white'
-                          }`}
-                        >
-                          <span>{isActive ? 'Seleccionado' : 'Usar'}</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {filterPendingOnly && (
+                  <span className="text-[11px] font-mono text-amber-300 bg-amber-950/60 border border-amber-600/40 px-2 py-0.5 rounded-full">
+                    {teamsWithPendingMatches.length} de {teams.length} con partidos activos
+                  </span>
+                )}
               </div>
+
+              {/* Empty state when filtering */}
+              {displayedTeams.length === 0 ? (
+                <div className="bg-[#161820] border border-gray-800 rounded-xl p-8 text-center space-y-2.5">
+                  <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-black text-gray-200 text-sm">
+                    No hay equipos con partidos pendientes o sin finalizar
+                  </h4>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                    Todos los partidos registrados están finalizados o aún no has iniciado partidos con estos equipos.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playSound('click', true);
+                      setFilterPendingOnly(false);
+                    }}
+                    className="mt-2 px-3.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-orange-400 hover:text-orange-300 rounded-lg text-xs font-mono font-bold border border-gray-700 transition"
+                  >
+                    Ver todos los equipos ({teams.length})
+                  </button>
+                </div>
+              ) : (
+                /* Teams List */
+                <div className="grid grid-cols-1 gap-2.5">
+                  {displayedTeams.map(team => {
+                    const isActive = team.id === activeTeamId;
+                    const matches = getTeamMatches(team.id);
+                    const pendingMatches = getTeamPendingMatches(team.id);
+                    const wins = matches.filter(m => m.homeScore > m.awayScore).length;
+                    const losses = matches.filter(m => m.awayScore > m.homeScore).length;
+
+                    return (
+                      <div
+                        key={team.id}
+                        onClick={() => {
+                          playSound('click', true);
+                          triggerHaptic('medium', true);
+                          onSelectTeam(team.id);
+                          onClose();
+                        }}
+                        className={`p-3.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 group active:scale-[0.99] ${
+                          isActive
+                            ? 'bg-gradient-to-r from-orange-950/60 to-[#181c26] border-orange-500 shadow-lg ring-1 ring-orange-500/50'
+                            : 'bg-[#161820] hover:bg-[#1c202a] border-gray-800 hover:border-gray-700'
+                        }`}
+                      >
+                        {/* Left: Logo & Info */}
+                        <div className="flex items-center gap-3">
+                          <div className="shrink-0">
+                            <TeamLogoDisplay logo={team.logo} teamName={team.name} size="md" />
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-extrabold text-sm sm:text-base text-white group-hover:text-orange-400 transition">
+                                {team.name}
+                              </h3>
+                              {isActive && (
+                                <span className="px-2 py-0.5 bg-orange-600 text-white font-mono font-bold text-[10px] uppercase rounded-full shadow">
+                                  Activo
+                                </span>
+                              )}
+                              {pendingMatches.length > 0 && (
+                                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] rounded-full flex items-center gap-1 shadow-xs">
+                                  <Clock className="w-2.5 h-2.5 text-amber-400 animate-pulse" />
+                                  <span>
+                                    {pendingMatches.length} {pendingMatches.length === 1 ? 'partido pendiente' : 'partidos pendientes'}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-xs text-gray-400 font-mono flex-wrap">
+                              <span className="text-orange-400 font-semibold">{team.category || 'Senior'}</span>
+                              <span>•</span>
+                              <span>{team.season || '2025/2026'}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3 text-gray-400" />
+                                {team.roster.length} jug.
+                              </span>
+                            </div>
+
+                            {/* Stats Pill */}
+                            <div className="text-[11px] font-mono text-gray-400 pt-0.5 flex items-center gap-2 flex-wrap">
+                              <span className="text-emerald-400 font-bold">{wins}V</span> -{' '}
+                              <span className="text-rose-400 font-bold">{losses}D</span>
+                              <span className="text-gray-500">({matches.length} partidos)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={e => handleOpenEdit(team, e, 'roster')}
+                            className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-orange-400 hover:text-orange-300 rounded-lg border border-gray-700 transition text-xs font-mono font-bold flex items-center gap-1.5 shadow-sm"
+                            title="Editar jugadores y dorsales de este equipo"
+                          >
+                            <Users className="w-3.5 h-3.5 text-orange-400" />
+                            <span className="hidden sm:inline">Plantilla</span>
+                          </button>
+
+                          <button
+                            onClick={e => handleOpenEdit(team, e, 'club')}
+                            className="p-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white rounded-lg border border-gray-700 transition"
+                            title="Editar datos del club"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {teams.length > 1 && (
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (confirm(`¿Estás seguro de eliminar el equipo "${team.name}"?`)) {
+                                  onDeleteTeam(team.id);
+                                }
+                              }}
+                              className="p-2 bg-rose-950/60 hover:bg-rose-900 text-rose-300 rounded-lg border border-rose-800/80 transition"
+                              title="Eliminar equipo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              playSound('click', true);
+                              triggerHaptic('medium', true);
+                              onSelectTeam(team.id);
+                              onClose();
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-1 transition ${
+                              isActive
+                                ? 'bg-orange-600 text-white'
+                                : 'bg-neutral-800 text-gray-300 hover:bg-orange-600 hover:text-white'
+                            }`}
+                          >
+                            <span>{isActive ? 'Seleccionado' : 'Usar'}</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Add Team Button */}
               <button
