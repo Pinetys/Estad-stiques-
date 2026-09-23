@@ -1,7 +1,8 @@
 import React from 'react';
-import { Game } from '../types';
+import { Game, PlayEvent } from '../types';
 import { formatGameTime } from '../utils/statsCalculator';
 import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown } from 'lucide-react';
+import { GameClocksProgressBar } from './GameClocksProgressBar';
 
 interface CourtScoreboardProps {
   game: Game;
@@ -22,6 +23,8 @@ interface CourtScoreboardProps {
   onOpenQuickTimeAdjust?: () => void;
   onTriggerTimeout?: (team: 'home' | 'away') => void;
   onOpenProBenefits?: () => void;
+  onUndoLastAction?: () => void;
+  recentEvent?: PlayEvent | null;
 }
 
 export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
@@ -43,6 +46,8 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
   onOpenQuickTimeAdjust,
   onTriggerTimeout,
   onOpenProBenefits,
+  onUndoLastAction,
+  recentEvent,
 }) => {
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
 
@@ -360,6 +365,20 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
             # Dorsal
           </button>
         </div>
+      </div>
+
+      {/* Visual Time & Possession Progress Bar (FIBA Urgency & Bonus Semáforo) */}
+      <div className="mt-1.5 pt-1 border-t border-neutral-800/80">
+        <GameClocksProgressBar
+          game={game}
+          shotClockSecs={shotClockSecs}
+          isActionsLocked={isActionsLocked}
+          onToggleClock={toggleClock}
+          onResetShotClock={handleResetShotClock}
+          onUndoLastAction={onUndoLastAction}
+          recentEvent={recentEvent}
+          compact={compact}
+        />
       </div>
     </div>
   );

@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Game, TeamProfile } from '../types';
-import { getSavedGamesFromStorage, saveAllGamesToStorage, saveGameToLibrary } from '../utils/libraryUtils';
-import { getRegisteredTeams, saveRegisteredTeams } from '../utils/teamStorage';
+import {
+  getSavedGamesFromStorage,
+  saveAllGamesToStorage,
+  saveGameToLibrary,
+  purgeCuratedInitialGames,
+} from '../utils/libraryUtils';
+import { getRegisteredTeams, saveRegisteredTeams, ensureTeamsForMatches } from '../utils/teamStorage';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import {
@@ -63,7 +68,7 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
     return () => unsub();
   }, []);
 
-  // 1. Force Full Sync (Server + Firestore)
+  // 1. Force Full Sync (Push local + fetch Server + Firestore)
   const handleFullSyncNow = async () => {
     playSound('click', true);
     triggerHaptic('medium', true);
@@ -71,11 +76,13 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
     setStatusMessage(null);
 
     try {
+      // Push local data first so nothing is lost or overwritten
+      await syncEngine.pushAllLocalDataToServer();
       const result = await syncEngine.syncAll({ force: true });
       playSound('score', true);
       triggerHaptic('heavy', true);
       setStatusMessage({
-        text: `¡Sincronización completada! ${result.matches.length} partidos y ${result.teams.length} equipos sincronizados.`,
+        text: `¡Sincronización completada! ${result.matches.length} partidos y ${result.teams.length} equipos sincronizados con la nube.`,
         type: 'success',
       });
       onRestoreCompleted();
@@ -89,8 +96,8 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
     }
   };
 
-  // 2. Upload all data recorded on this Tablet to Server
-  const handlePushAllTabletData = async () => {
+  // 2. Upload and record all local data (from JSON, Tablet or PC) to Cloud Firestore and Server
+  const handlePushAllDataToCloud = async () => {
     playSound('click', true);
     triggerHaptic('medium', true);
     setIsSyncing(true);
@@ -102,7 +109,7 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
         playSound('score', true);
         triggerHaptic('heavy', true);
         setStatusMessage({
-          text: `¡Éxito! Se han subido todos los partidos de esta tablet al servidor central. Ya están disponibles en tu ordenador y móvil.`,
+          text: `¡Grabado en la Nube con éxito! ${res.matchesCount} partidos y ${res.teamsCount} equipos guardados permanentemente en Firestore y el Servidor.`,
           type: 'success',
         });
         onRestoreCompleted();
@@ -111,7 +118,7 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
       }
     } catch (err: any) {
       setStatusMessage({
-        text: `Error al subir datos de la tablet: ${err.message || 'Error de conexión'}`,
+        text: `Error al grabar en la nube: ${err.message || 'Error de conexión'}`,
         type: 'error',
       });
     } finally {
@@ -227,35 +234,54 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
     });
   };
 
-  // Restore data from payload
-  const handleRestoreFromParsed = (parsed: any) => {
+  // Restore data from payload (supports array, object with matches, or full backup)
+  const handleRestoreFromParsed = async (parsed: any) => {
     try {
-      if (!parsed || (!parsed.matches && !parsed.teams)) {
-        throw new Error('El formato del archivo no es válido.');
+      let incomingMatches: Game[] = [];
+      let incomingTeams: TeamProfile[] = [];
+
+      if (Array.isArray(parsed)) {
+        incomingMatches = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.matches)) incomingMatches = parsed.matches;
+        else if (Array.isArray(parsed.games)) incomingMatches = parsed.games;
+        else if (parsed.id && (parsed.homeTeamName || parsed.title)) incomingMatches = [parsed];
+
+        if (Array.isArray(parsed.teams)) incomingTeams = parsed.teams;
       }
 
-      if (Array.isArray(parsed.teams) && parsed.teams.length > 0) {
-        saveRegisteredTeams(parsed.teams);
+      if (incomingMatches.length === 0 && incomingTeams.length === 0) {
+        throw new Error('El archivo no contiene partidos ni equipos válidos.');
       }
 
-      if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
-        saveAllGamesToStorage(parsed.matches);
+      // If teams are provided in backup, save them
+      if (incomingTeams.length > 0) {
+        saveRegisteredTeams(incomingTeams);
       }
 
-      // Also sync to server
-      syncEngine.pushAllLocalDataToServer().catch(() => {});
+      // Ensure every match has a corresponding team profile in registered teams
+      const { updatedMatches, teams: allUpdatedTeams } = ensureTeamsForMatches(incomingMatches);
+
+      // Clean out initial sample games so they don't pollute or overwrite real matches
+      purgeCuratedInitialGames();
+
+      // Save imported matches to storage
+      saveAllGamesToStorage(updatedMatches);
+
+      // CRITICAL: Push everything directly to both Server and Cloud Firestore!
+      await syncEngine.pushAllLocalDataToServer();
 
       playSound('score', true);
       triggerHaptic('heavy', true);
 
       setStatusMessage({
-        text: `¡Restauración exitosa! (${parsed.teams?.length || 0} equipos y ${parsed.matches?.length || 0} partidos guardados)`,
+        text: `¡${updatedMatches.length} partidos y ${allUpdatedTeams.length} equipos importados y grabados en la nube con éxito!`,
         type: 'success',
       });
 
       setTimeout(() => {
         onRestoreCompleted();
-      }, 1200);
+      }, 1500);
     } catch (err: any) {
       setStatusMessage({
         text: `Error al restaurar: ${err.message || 'Datos corruptos'}`,
@@ -477,17 +503,21 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
                   </div>
                 </div>
 
-                {/* Main Action 1: Upload everything from this Tablet */}
+                {/* Main Action 1: Upload and save everything to Cloud Firestore and Server */}
                 <button
-                  onClick={handlePushAllTabletData}
+                  onClick={handlePushAllDataToCloud}
                   disabled={isSyncing}
-                  className="w-full py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:opacity-50 text-white font-mono font-bold text-xs uppercase rounded-lg shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.99]"
+                  className="w-full py-3 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:via-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-mono font-bold text-xs uppercase rounded-lg shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.99]"
                 >
-                  <Tablet className="w-4 h-4" />
-                  <span>{isSyncing ? 'Subiendo datos...' : '⚡ Subir todo lo de esta Tablet al Servidor'}</span>
+                  <Cloud className="w-4 h-4 text-cyan-200" />
+                  <span>
+                    {isSyncing
+                      ? 'Grabando en la nube...'
+                      : '☁️ Grabar Todos los Partidos en la Nube (Subida Completa)'}
+                  </span>
                 </button>
                 <p className="text-[11px] text-gray-400 text-center">
-                  ¿Anotaste ayer un partido con la tablet? Pulsa este botón para volcarlo al servidor y que tu ordenador y móvil lo muestren de inmediato.
+                  ¿Cargaste un JSON o anotaste partidos? Pulsa aquí para grabarlos permanentemente en la nube Firestore y el servidor central.
                 </p>
 
                 {/* Main Action 2: Force full bidirectional sync */}
@@ -497,7 +527,11 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
                   className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-cyan-300 font-mono font-bold text-xs uppercase rounded-lg border border-cyan-600/40 flex items-center justify-center gap-2 transition active:scale-[0.99]"
                 >
                   <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? 'Sincronizando...' : '🔄 Descargar y Combinar Datos de la Nube y Servidor'}</span>
+                  <span>
+                    {isSyncing
+                      ? 'Sincronizando...'
+                      : '🔄 Sincronizar y Descargar de la Nube'}
+                  </span>
                 </button>
               </div>
 

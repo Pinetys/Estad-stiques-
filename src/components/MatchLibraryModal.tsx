@@ -15,7 +15,10 @@ import {
   getTrashedGamesFromStorage,
   restoreGameFromTrash,
   permanentlyDeleteFromTrash,
+  purgeCuratedInitialGames,
 } from '../utils/libraryUtils';
+import { ensureTeamsForMatches, saveRegisteredTeams } from '../utils/teamStorage';
+import { syncEngine } from '../lib/syncEngine';
 import { sanitizeAndIsolateLibraryGames } from '../utils/teamIsolation';
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
@@ -38,6 +41,7 @@ import {
   Copy,
   Check,
   TrendingUp,
+  Cloud,
   FileSpreadsheet,
   Users,
   Target,
@@ -133,6 +137,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
     setIsCloudRefreshing(true);
     playSound('click', currentGame.settings.soundEnabled);
     try {
+      // First push local data to Server and Cloud so nothing is lost
+      await syncEngine.pushAllLocalDataToServer();
       const cloudMatches = await syncMatchesFromCloud();
       if (recordedTeams && recordedTeams.length > 0) {
         const { sanitized } = sanitizeAndIsolateLibraryGames(cloudMatches, recordedTeams);
@@ -144,6 +150,21 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       triggerHaptic('medium', currentGame.settings.vibrationEnabled);
     } catch (err) {
       console.warn('Manual cloud sync failed:', err);
+    } finally {
+      setIsCloudRefreshing(false);
+    }
+  };
+
+  const handlePushToCloudNow = async () => {
+    setIsCloudRefreshing(true);
+    playSound('click', currentGame.settings.soundEnabled);
+    try {
+      const res = await syncEngine.pushAllLocalDataToServer();
+      playSound('score', currentGame.settings.soundEnabled);
+      triggerHaptic('heavy', currentGame.settings.vibrationEnabled);
+      alert(`¡${res.matchesCount} partidos y ${res.teamsCount} equipos grabados en la nube Firestore y el servidor central con éxito!`);
+    } catch (err: any) {
+      alert('Error al grabar en la nube: ' + (err?.message || 'Error de conexión'));
     } finally {
       setIsCloudRefreshing(false);
     }
@@ -227,19 +248,58 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = event => {
+    reader.onload = async event => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
+        let incomingMatches: Game[] = [];
+        let incomingTeams: TeamProfile[] = [];
+
         if (Array.isArray(parsed)) {
-          saveGamesToStorage(parsed);
-          refreshLibrary(parsed);
-          alert(`¡${parsed.length} partidos importados con éxito a la biblioteca!`);
+          incomingMatches = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.matches)) incomingMatches = parsed.matches;
+          else if (Array.isArray(parsed.games)) incomingMatches = parsed.games;
+          else if (parsed.id && (parsed.homeTeamName || parsed.title)) incomingMatches = [parsed];
+
+          if (Array.isArray(parsed.teams)) incomingTeams = parsed.teams;
         }
-      } catch (err) {
-        alert('Error al leer el archivo JSON de copia de seguridad.');
+
+        if (incomingMatches.length === 0 && incomingTeams.length === 0) {
+          alert('El archivo JSON no contiene partidos ni equipos válidos.');
+          return;
+        }
+
+        // If teams provided in JSON, save them
+        if (incomingTeams.length > 0) {
+          saveRegisteredTeams(incomingTeams);
+        }
+
+        // Ensure every match has a registered team so team cards in Hub and library work properly
+        const { updatedMatches, teams: updatedTeams } = ensureTeamsForMatches(incomingMatches);
+
+        // Purge initial dummy sample games so they don't overwrite or pollute the user's real season
+        purgeCuratedInitialGames();
+
+        // Save imported matches
+        saveGamesToStorage(updatedMatches);
+        refreshLibrary(updatedMatches);
+
+        // Push everything immediately to Server and Cloud Firestore!
+        setIsCloudRefreshing(true);
+        const syncRes = await syncEngine.pushAllLocalDataToServer();
+        setIsCloudRefreshing(false);
+
+        playSound('score', currentGame.settings.soundEnabled);
+        triggerHaptic('heavy', currentGame.settings.vibrationEnabled);
+
+        alert(`¡${updatedMatches.length} partidos y ${updatedTeams.length} equipos importados y grabados en la nube con éxito!`);
+      } catch (err: any) {
+        setIsCloudRefreshing(false);
+        alert('Error al importar el archivo JSON: ' + (err?.message || 'Formato corrupto'));
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleGenerateSeasonAiPlan = async (focusOption = aiFocus) => {
@@ -517,6 +577,18 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
+                  {/* Grabar en la Nube */}
+                  <button
+                    type="button"
+                    onClick={handlePushToCloudNow}
+                    disabled={isCloudRefreshing}
+                    className="p-1.5 px-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded flex items-center gap-1 font-semibold transition active:scale-95 shadow-sm"
+                    title="Subir y grabar permanentemente todos los partidos en la nube Firestore y servidor"
+                  >
+                    <Cloud className="w-3.5 h-3.5 text-white" />
+                    <span>Grabar en la Nube</span>
+                  </button>
+
                   {/* Sincronizar Nube */}
                   <button
                     type="button"

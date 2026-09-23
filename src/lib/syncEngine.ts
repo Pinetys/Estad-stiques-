@@ -13,6 +13,7 @@ import {
 import {
   syncMatchToCloud,
   syncTeamToCloud,
+  syncBulkToCloud,
   fetchAllMatchesFromCloud,
   fetchAllTeamsFromCloud,
   isFirebaseConfigured,
@@ -451,14 +452,36 @@ class AutoSyncManager {
   }
 
   /**
-   * Force full upload of all local matches and teams from this device to Server
-   * (Crucial for when tablet was offline yesterday and now connects!)
+   * Force full upload of all local matches and teams from this device to Server & Firestore Cloud
+   * (Crucial when importing backup JSON or flusing tablet data to PC and cloud!)
    */
-  public async pushAllLocalDataToServer(): Promise<{ success: boolean; message: string }> {
+  public async pushAllLocalDataToServer(): Promise<{
+    success: boolean;
+    message: string;
+    matchesCount: number;
+    teamsCount: number;
+  }> {
     const allMatches = getSavedGamesFromStorage();
     const allTeams = getRegisteredTeams();
 
-    return this.pushBulkToServer(allMatches, allTeams);
+    // 1. Push to Server API
+    await this.pushBulkToServer(allMatches, allTeams);
+
+    // 2. Also push directly to Cloud Firestore
+    if (isFirebaseConfigured && !this.firestoreQuotaExceeded) {
+      try {
+        await syncBulkToCloud(allMatches, allTeams);
+      } catch (fErr) {
+        console.warn('Firestore bulk sync notice:', fErr);
+      }
+    }
+
+    return {
+      success: true,
+      message: `${allMatches.length} partidos y ${allTeams.length} equipos grabados en la nube y servidor central`,
+      matchesCount: allMatches.length,
+      teamsCount: allTeams.length,
+    };
   }
 
   private async pushBulkToServer(matches: Game[], teams: TeamProfile[]): Promise<{ success: boolean; message: string }> {

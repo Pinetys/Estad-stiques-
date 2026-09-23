@@ -21,6 +21,97 @@ export function isDemoTeam(team: Partial<TeamProfile>): boolean {
 export const DEFAULT_INITIAL_TEAMS: TeamProfile[] = [];
 
 /**
+ * Automatically creates and registers missing teams from imported matches
+ * so that they seamlessly appear in the Teams Hub and match isolation engine.
+ */
+export function ensureTeamsForMatches(matches: Game[]): {
+  teamsAdded: number;
+  updatedMatches: Game[];
+  teams: TeamProfile[];
+} {
+  if (!matches || matches.length === 0) {
+    return { teamsAdded: 0, updatedMatches: matches || [], teams: getRegisteredTeams() };
+  }
+
+  const currentTeams = getRegisteredTeams();
+  const teamsMap = new Map<string, TeamProfile>();
+  currentTeams.forEach(t => {
+    teamsMap.set(t.id, t);
+    if (t.name) teamsMap.set(t.name.toLowerCase().trim(), t);
+  });
+
+  let teamsAdded = 0;
+  const newTeams: TeamProfile[] = [...currentTeams];
+
+  const updatedMatches = matches.map(match => {
+    const updated = { ...match };
+    const homeName = (updated.homeTeamName || '').trim();
+    if (!homeName) return updated;
+
+    let matchingTeam =
+      (updated.teamId && teamsMap.get(updated.teamId)) || teamsMap.get(homeName.toLowerCase());
+
+    if (!matchingTeam) {
+      // Synthesize team profile from match data
+      const teamId = updated.teamId || `team-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const roster: Player[] = (updated.players || []).map((p, idx) => ({
+        ...p,
+        id: p.id || `p-${teamId}-${p.number || idx}`,
+        starter: p.starter ?? idx < 5,
+        onCourt: false,
+        foulsCount: 0,
+        isFouledOut: false,
+        minutesPlayedSeconds: 0,
+        quarterSeconds: {},
+      }));
+
+      const newTeam: TeamProfile = {
+        id: teamId,
+        name: homeName,
+        category: updated.category || 'General',
+        season: '2025/2026',
+        primaryColor: updated.homeTeamColor || '#f97316',
+        logo: updated.homeTeamLogo || '🏀',
+        roster,
+        createdAt: new Date().toISOString(),
+      };
+
+      teamsMap.set(teamId, newTeam);
+      teamsMap.set(homeName.toLowerCase(), newTeam);
+      newTeams.push(newTeam);
+      teamsAdded++;
+      matchingTeam = newTeam;
+
+      // Sync the new team to cloud and server
+      syncTeamToCloud(newTeam).catch(() => {});
+      fetch('/api/sync/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team: newTeam }),
+      }).catch(() => {});
+    }
+
+    if (matchingTeam) {
+      updated.teamId = matchingTeam.id;
+      if (!updated.category && matchingTeam.category) {
+        updated.category = matchingTeam.category;
+      }
+    }
+
+    return updated;
+  });
+
+  if (teamsAdded > 0) {
+    saveRegisteredTeams(newTeams);
+    if (!getActiveTeamId() && newTeams.length > 0) {
+      setActiveTeamId(newTeams[0].id);
+    }
+  }
+
+  return { teamsAdded, updatedMatches, teams: newTeams };
+}
+
+/**
  * Get all registered clubs / teams created by the user
  */
 export function getRegisteredTeams(): TeamProfile[] {

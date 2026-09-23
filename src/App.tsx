@@ -630,7 +630,7 @@ export default function App() {
       // Auto-pause clock on fouls in FIBA stop-clock mode or on any foul event
       const shouldAutoPause = isFoul;
 
-      // Auto-reset shot clock on fouls or rebounds
+      // Auto-reset shot clock on fouls, made baskets (pointsToAdd > 0), or rebounds
       let nextShotClock = prev.shotClockSeconds;
       let nextShotClockRunning = prev.isShotClockRunning;
 
@@ -638,6 +638,10 @@ export default function App() {
         // Reset to 24s and stop clock on foul
         nextShotClock = 24;
         nextShotClockRunning = false;
+      } else if (pointsToAdd > 0) {
+        // Canasta convertida: reinicio automático a 24 segundos
+        nextShotClock = 24;
+        nextShotClockRunning = prev.isClockRunning;
       } else if (isOreb && prev.settings.autoResetShotClockOnOreb !== false) {
         nextShotClock = 14;
         nextShotClockRunning = true;
@@ -961,9 +965,24 @@ export default function App() {
         return qs;
       });
 
+      // Auto-reset shot clock on opponent foul or opponent scored basket
+      let nextShotClock = prev.shotClockSeconds;
+      let nextShotClockRunning = prev.isShotClockRunning;
+
+      if (isFoul) {
+        nextShotClock = 24;
+        nextShotClockRunning = false;
+      } else if (pointsToAdd > 0) {
+        // Canasta rival: reinicio automático a 24 segundos
+        nextShotClock = 24;
+        nextShotClockRunning = prev.isClockRunning;
+      }
+
       return {
         ...prev,
         isClockRunning: shouldAutoPause ? false : prev.isClockRunning,
+        shotClockSeconds: nextShotClock,
+        isShotClockRunning: nextShotClockRunning,
         awayScore: newAwayScore,
         awayQuarterFouls: newAwayQuarterFouls,
         events: [newEvent, ...prev.events],
@@ -1052,8 +1071,11 @@ export default function App() {
           return qs;
         });
 
+        const isMadeBasket = pointsToAdd > 0;
         return {
           ...prev,
+          shotClockSeconds: isMadeBasket ? 24 : prev.shotClockSeconds,
+          isShotClockRunning: isMadeBasket ? prev.isClockRunning : prev.isShotClockRunning,
           awayScore: newAwayScore,
           events: [newEvent, ...prev.events],
           quarterScores: updatedQuarterScores,
@@ -1104,8 +1126,11 @@ export default function App() {
         return qs;
       });
 
+      const isHomeMadeBasket = pointsToAdd > 0;
       return {
         ...prev,
+        shotClockSeconds: isHomeMadeBasket ? 24 : prev.shotClockSeconds,
+        isShotClockRunning: isHomeMadeBasket ? prev.isClockRunning : prev.isShotClockRunning,
         homeScore: newHomeScore,
         events: [newEvent, ...prev.events],
         quarterScores: updatedQuarterScores,

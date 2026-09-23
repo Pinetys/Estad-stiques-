@@ -822,6 +822,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             setShowCloseConfirmModal(true);
           }}
           onCycleShotMode={handleCycleShotMode}
+          onUndoLastAction={onUndoLastAction}
+          recentEvent={recentEvent}
           onSelectQuarter={(quarter) => {
             if (isActionsLocked) return;
             triggerHaptic('medium', game.settings.vibrationEnabled);

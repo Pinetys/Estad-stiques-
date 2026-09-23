@@ -658,11 +658,11 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setDisplayLayer('percentages');
+                        setDisplayLayer('zones');
                         setShowPercentagesOnCourt(true);
                       }}
                       className={`px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 ${
-                        displayLayer === 'percentages'
+                        displayLayer === 'zones'
                           ? 'bg-orange-600 text-white'
                           : 'text-gray-400 hover:text-gray-200'
                       }`}
@@ -701,55 +701,73 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
               >
                 {/* SVG DEFINITIONS FOR REALISTIC PARQUET & GLOW */}
                 <defs>
-                  {/* Realistic Natural Maple Parquet Pattern */}
+                  {/* Ultra-realistic Maple Hardwood Court Pattern */}
                   <pattern
                     id="court-parquet-floor"
-                    width="26"
-                    height="6.5"
+                    width="24"
+                    height="8"
                     patternUnits="userSpaceOnUse"
                   >
-                    <rect width="26" height="6.5" fill="#ca995d" />
-                    {/* Horizontal plank grooves */}
-                    <line x1="0" y1="0" x2="26" y2="0" stroke="#a4743b" strokeWidth="0.18" opacity="0.8" />
-                    <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#a4743b" strokeWidth="0.14" opacity="0.65" />
-                    <line x1="0" y1="6.5" x2="26" y2="6.5" stroke="#8d5f27" strokeWidth="0.2" opacity="0.9" />
-                    {/* Staggered vertical butt seams */}
-                    <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-                    <line x1="21.5" y1="0" x2="21.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-                    <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-                    <line x1="2.5" y1="3.25" x2="2.5" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-                    {/* Subtle wood plank natural variation */}
-                    <rect x="0" y="0.3" width="8.5" height="2.6" fill="#d9aa70" opacity="0.16" />
-                    <rect x="8.5" y="3.5" width="6.5" height="2.6" fill="#b98549" opacity="0.15" />
-                    <rect x="15" y="3.5" width="11" height="2.6" fill="#dfb37c" opacity="0.18" />
+                    {/* Natural maple base wood tone */}
+                    <rect width="24" height="8" fill="#c9975a" />
+                    {/* Alternating plank tones */}
+                    <rect x="0" y="0" width="10" height="2" fill="#d7a96d" opacity="0.32" />
+                    <rect x="10" y="0" width="14" height="2" fill="#bc894c" opacity="0.22" />
+                    <rect x="0" y="2" width="16" height="2" fill="#b98547" opacity="0.25" />
+                    <rect x="16" y="2" width="8" height="2" fill="#dfb377" opacity="0.35" />
+                    <rect x="0" y="4" width="7" height="2" fill="#d4a365" opacity="0.3" />
+                    <rect x="7" y="4" width="17" height="2" fill="#be8c4e" opacity="0.2" />
+                    <rect x="0" y="6" width="13" height="2" fill="#bc8849" opacity="0.26" />
+                    <rect x="13" y="6" width="11" height="2" fill="#ddaf73" opacity="0.34" />
+                    {/* Fine horizontal plank seams (timber joints) */}
+                    <line x1="0" y1="0" x2="24" y2="0" stroke="#7e5321" strokeWidth="0.16" opacity="0.75" />
+                    <line x1="0" y1="2" x2="24" y2="2" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
+                    <line x1="0" y1="4" x2="24" y2="4" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
+                    <line x1="0" y1="6" x2="24" y2="6" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
+                    <line x1="0" y1="8" x2="24" y2="8" stroke="#7e5321" strokeWidth="0.16" opacity="0.75" />
+                    {/* Staggered vertical end joints */}
+                    <line x1="10" y1="0" x2="10" y2="2" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+                    <line x1="16" y1="2" x2="16" y2="4" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+                    <line x1="7" y1="4" x2="7" y2="6" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+                    <line x1="13" y1="6" x2="13" y2="8" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+                    {/* Subtle natural longitudinal wood fibers */}
+                    <line x1="0" y1="0.8" x2="24" y2="0.8" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
+                    <line x1="0" y1="2.9" x2="24" y2="2.9" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
+                    <line x1="0" y1="4.7" x2="24" y2="4.7" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
+                    <line x1="0" y1="6.8" x2="24" y2="6.8" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
                   </pattern>
 
                   {/* Dark Arena Parquet Pattern */}
                   <pattern
                     id="court-dark-arena"
-                    width="26"
-                    height="6.5"
+                    width="24"
+                    height="8"
                     patternUnits="userSpaceOnUse"
                   >
-                    <rect width="26" height="6.5" fill="#141720" />
-                    <line x1="0" y1="0" x2="26" y2="0" stroke="#0a0d13" strokeWidth="0.2" opacity="0.9" />
-                    <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#0a0d13" strokeWidth="0.16" opacity="0.8" />
-                    <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
-                    <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
-                    <rect x="0" y="0.4" width="8.5" height="2.5" fill="#1b202c" opacity="0.28" />
+                    <rect width="24" height="8" fill="#141720" />
+                    <line x1="0" y1="0" x2="24" y2="0" stroke="#090b10" strokeWidth="0.18" opacity="0.85" />
+                    <line x1="0" y1="2" x2="24" y2="2" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
+                    <line x1="0" y1="4" x2="24" y2="4" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
+                    <line x1="0" y1="6" x2="24" y2="6" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
+                    <line x1="10" y1="0" x2="10" y2="2" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+                    <line x1="16" y1="2" x2="16" y2="4" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+                    <line x1="7" y1="4" x2="7" y2="6" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+                    <line x1="13" y1="6" x2="13" y2="8" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+                    <rect x="0" y="0.3" width="10" height="1.6" fill="#1b202c" opacity="0.3" />
+                    <rect x="16" y="2.3" width="8" height="1.6" fill="#1f2533" opacity="0.3" />
                   </pattern>
 
                   {/* Key / Paint Lane Gradient Stain (FIBA Blue over parquet) */}
                   <linearGradient id="fiba-key-paint" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#1e3a8a" stopOpacity={courtTheme === 'parquet' ? '0.52' : '0.45'} />
-                    <stop offset="100%" stopColor="#172554" stopOpacity={courtTheme === 'parquet' ? '0.62' : '0.55'} />
+                    <stop offset="0%" stopColor="#1e3a8a" stopOpacity={courtTheme === 'parquet' ? '0.45' : '0.45'} />
+                    <stop offset="100%" stopColor="#172554" stopOpacity={courtTheme === 'parquet' ? '0.55' : '0.55'} />
                   </linearGradient>
 
                   {/* Arena Spotlight Overhead Glow */}
                   <radialGradient id="arena-spotlight" cx="50%" cy="32%" r="68%">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.12' : '0.06'} />
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.1' : '0.05'} />
                     <stop offset="65%" stopColor="#ffffff" stopOpacity="0" />
-                    <stop offset="100%" stopColor="#000000" stopOpacity="0.32" />
+                    <stop offset="100%" stopColor="#000000" stopOpacity="0.28" />
                   </radialGradient>
                 </defs>
 
@@ -861,60 +879,60 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                 {/* 7. Arena Spotlight Overlay */}
                 <rect x="2.5" y="2" width="95" height="89.3" fill="url(#arena-spotlight)" pointerEvents="none" />
 
-                {/* 8. NON-COLLIDING ZONE PERCENTAGE BADGES (Peripheral Anchors) */}
-                {(displayLayer === 'percentages' || showPercentagesOnCourt) && (
+                {/* 8. ZONE PERCENTAGE BADGES (Only shown in 'zones' mode so they NEVER overlap shot markers) */}
+                {displayLayer === 'zones' && (
                   <g className="pointer-events-none transition-opacity duration-200">
-                    {/* Paint % Badge (Top left corner of key, away from basket at 50, 11) */}
-                    <g transform="translate(35, 5)">
-                      <rect x="-6" y="-2.5" width="12" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#3b82f6" strokeWidth="0.4" />
-                      <text x="0" y="0.2" textAnchor="middle" fill="#60a5fa" fontSize="2.1" fontWeight="bold" fontFamily="monospace">
+                    {/* Paint % Badge */}
+                    <g transform="translate(50, 24)">
+                      <rect x="-8.5" y="-3.5" width="17" height="7" rx="1.8" fill="#0f172a" fillOpacity="0.92" stroke="#3b82f6" strokeWidth="0.5" />
+                      <text x="0" y="-0.2" textAnchor="middle" fill="#60a5fa" fontSize="2.4" fontWeight="bold" fontFamily="monospace">
                         PINTURA {paintStats.pct}%
                       </text>
-                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                      <text x="0" y="2.2" textAnchor="middle" fill="#cbd5e1" fontSize="1.8" fontFamily="monospace">
                         {paintStats.made}/{paintStats.attempted}
                       </text>
                     </g>
 
-                    {/* Mid-Range % Badge (Upper-right mid zone, clear of central lane) */}
-                    <g transform="translate(74, 48)">
-                      <rect x="-6" y="-2.5" width="12" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#8b5cf6" strokeWidth="0.4" />
-                      <text x="0" y="0.2" textAnchor="middle" fill="#c084fc" fontSize="2.1" fontWeight="bold" fontFamily="monospace">
+                    {/* Mid-Range % Badge */}
+                    <g transform="translate(50, 48)">
+                      <rect x="-8.5" y="-3.5" width="17" height="7" rx="1.8" fill="#0f172a" fillOpacity="0.92" stroke="#8b5cf6" strokeWidth="0.5" />
+                      <text x="0" y="-0.2" textAnchor="middle" fill="#c084fc" fontSize="2.4" fontWeight="bold" fontFamily="monospace">
                         MEDIA {midStats.pct}%
                       </text>
-                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                      <text x="0" y="2.2" textAnchor="middle" fill="#cbd5e1" fontSize="1.8" fontFamily="monospace">
                         {midStats.made}/{midStats.attempted}
                       </text>
                     </g>
 
-                    {/* Top 3 % Badge (Anchored near half court line, away from 3pt shooting arc) */}
-                    <g transform="translate(50, 86)">
-                      <rect x="-6.5" y="-2.5" width="13" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#f97316" strokeWidth="0.4" />
-                      <text x="0" y="0.2" textAnchor="middle" fill="#fb923c" fontSize="2.1" fontWeight="bold" fontFamily="monospace">
+                    {/* Top 3 % Badge */}
+                    <g transform="translate(50, 78)">
+                      <rect x="-9.5" y="-3.5" width="19" height="7" rx="1.8" fill="#0f172a" fillOpacity="0.92" stroke="#f97316" strokeWidth="0.5" />
+                      <text x="0" y="-0.2" textAnchor="middle" fill="#fb923c" fontSize="2.4" fontWeight="bold" fontFamily="monospace">
                         T3 FRONTAL {top3Stats.pct}%
                       </text>
-                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                      <text x="0" y="2.2" textAnchor="middle" fill="#cbd5e1" fontSize="1.8" fontFamily="monospace">
                         {top3Stats.made}/{top3Stats.attempted}
                       </text>
                     </g>
 
                     {/* Corner 3 Left */}
-                    <g transform="translate(5, 34)">
-                      <rect x="-4" y="-2.5" width="8" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#f97316" strokeWidth="0.4" />
-                      <text x="0" y="0.2" textAnchor="middle" fill="#fb923c" fontSize="2.0" fontWeight="bold" fontFamily="monospace">
+                    <g transform="translate(5, 20)">
+                      <rect x="-4.5" y="-3.5" width="9" height="7" rx="1.8" fill="#0f172a" fillOpacity="0.92" stroke="#f97316" strokeWidth="0.5" />
+                      <text x="0" y="-0.2" textAnchor="middle" fill="#fb923c" fontSize="2.3" fontWeight="bold" fontFamily="monospace">
                         {cornerLeftStats.pct}%
                       </text>
-                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                      <text x="0" y="2.2" textAnchor="middle" fill="#cbd5e1" fontSize="1.7" fontFamily="monospace">
                         {cornerLeftStats.made}/{cornerLeftStats.attempted}
                       </text>
                     </g>
 
                     {/* Corner 3 Right */}
-                    <g transform="translate(95, 34)">
-                      <rect x="-4" y="-2.5" width="8" height="5" rx="1.5" fill="#0f172a" fillOpacity="0.88" stroke="#f97316" strokeWidth="0.4" />
-                      <text x="0" y="0.2" textAnchor="middle" fill="#fb923c" fontSize="2.0" fontWeight="bold" fontFamily="monospace">
+                    <g transform="translate(95, 20)">
+                      <rect x="-4.5" y="-3.5" width="9" height="7" rx="1.8" fill="#0f172a" fillOpacity="0.92" stroke="#f97316" strokeWidth="0.5" />
+                      <text x="0" y="-0.2" textAnchor="middle" fill="#fb923c" fontSize="2.3" fontWeight="bold" fontFamily="monospace">
                         {cornerRightStats.pct}%
                       </text>
-                      <text x="0" y="1.9" textAnchor="middle" fill="#cbd5e1" fontSize="1.5" fontFamily="monospace">
+                      <text x="0" y="2.2" textAnchor="middle" fill="#cbd5e1" fontSize="1.7" fontFamily="monospace">
                         {cornerRightStats.made}/{cornerRightStats.attempted}
                       </text>
                     </g>
@@ -922,7 +940,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                 )}
 
                 {/* 9. SLEEK, ULTRA-REFINED SHOT MARKERS (Shown in 'shots' or 'both' mode) */}
-                {displayLayer !== 'percentages' &&
+                {displayLayer !== 'zones' &&
                   shotsWithLocation.map((shot, idx) => {
                     const loc = shot.shotLocation!;
                     const isOpponent = Boolean(shot.isOpponentAction);
@@ -948,7 +966,7 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                         <circle
                           cx={posX}
                           cy={posY}
-                          r="5.5"
+                          r="4.5"
                           fill="transparent"
                           style={{ pointerEvents: 'all' }}
                         />
@@ -960,11 +978,11 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                             <circle
                               cx={posX}
                               cy={posY}
-                              r="4.2"
+                              r="2.8"
                               fill={isOpponent ? '#ef4444' : isMade ? '#10b981' : '#f43f5e'}
-                              fillOpacity="0.35"
+                              fillOpacity="0.3"
                               stroke={isOpponent ? '#f87171' : isMade ? '#34d399' : '#fb7185'}
-                              strokeWidth="0.6"
+                              strokeWidth="0.4"
                             />
                           )}
 
@@ -973,10 +991,10 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                             <circle
                               cx={posX}
                               cy={posY}
-                              r={isHovered ? 2.1 : 1.35}
+                              r={isHovered ? 1.4 : 0.85}
                               fill="#ef4444"
                               stroke="#ffffff"
-                              strokeWidth="0.35"
+                              strokeWidth={isHovered ? 0.3 : 0.2}
                               className="drop-shadow-sm"
                             />
                           ) : isMade ? (
@@ -984,51 +1002,51 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                             <circle
                               cx={posX}
                               cy={posY}
-                              r={isHovered ? 2.1 : 1.35}
+                              r={isHovered ? 1.4 : 0.85}
                               fill="#10b981"
                               stroke="#ffffff"
-                              strokeWidth="0.35"
+                              strokeWidth={isHovered ? 0.3 : 0.2}
                               className="drop-shadow-sm"
                             />
                           ) : (
-                            /* Missed Shot: Crisp, Fine Red/Rose Cross (X) */
+                            /* Missed Shot: Crisp, Ultra-fine Red/Rose Cross (X) */
                             <g>
                               {/* Dark shadow stroke behind for maximum contrast on wood floor */}
                               <line
-                                x1={posX - (isHovered ? 1.4 : 1.05)}
-                                y1={posY - (isHovered ? 1.4 : 1.05)}
-                                x2={posX + (isHovered ? 1.4 : 1.05)}
-                                y2={posY + (isHovered ? 1.4 : 1.05)}
-                                stroke="#111827"
-                                strokeWidth={isHovered ? '1.2' : '0.9'}
+                                x1={posX - (isHovered ? 0.95 : 0.65)}
+                                y1={posY - (isHovered ? 0.95 : 0.65)}
+                                x2={posX + (isHovered ? 0.95 : 0.65)}
+                                y2={posY + (isHovered ? 0.95 : 0.65)}
+                                stroke="#0f172a"
+                                strokeWidth={isHovered ? '0.75' : '0.5'}
                                 strokeLinecap="round"
                               />
                               <line
-                                x1={posX - (isHovered ? 1.4 : 1.05)}
-                                y1={posY + (isHovered ? 1.4 : 1.05)}
-                                x2={posX + (isHovered ? 1.4 : 1.05)}
-                                y2={posY - (isHovered ? 1.4 : 1.05)}
-                                stroke="#111827"
-                                strokeWidth={isHovered ? '1.2' : '0.9'}
+                                x1={posX - (isHovered ? 0.95 : 0.65)}
+                                y1={posY + (isHovered ? 0.95 : 0.65)}
+                                x2={posX + (isHovered ? 0.95 : 0.65)}
+                                y2={posY - (isHovered ? 0.95 : 0.65)}
+                                stroke="#0f172a"
+                                strokeWidth={isHovered ? '0.75' : '0.5'}
                                 strokeLinecap="round"
                               />
                               {/* Crisp colored foreground cross */}
                               <line
-                                x1={posX - (isHovered ? 1.4 : 1.05)}
-                                y1={posY - (isHovered ? 1.4 : 1.05)}
-                                x2={posX + (isHovered ? 1.4 : 1.05)}
-                                y2={posY + (isHovered ? 1.4 : 1.05)}
+                                x1={posX - (isHovered ? 0.95 : 0.65)}
+                                y1={posY - (isHovered ? 0.95 : 0.65)}
+                                x2={posX + (isHovered ? 0.95 : 0.65)}
+                                y2={posY + (isHovered ? 0.95 : 0.65)}
                                 stroke="#ef4444"
-                                strokeWidth={isHovered ? '0.85' : '0.55'}
+                                strokeWidth={isHovered ? '0.45' : '0.32'}
                                 strokeLinecap="round"
                               />
                               <line
-                                x1={posX - (isHovered ? 1.4 : 1.05)}
-                                y1={posY + (isHovered ? 1.4 : 1.05)}
-                                x2={posX + (isHovered ? 1.4 : 1.05)}
-                                y2={posY - (isHovered ? 1.4 : 1.05)}
+                                x1={posX - (isHovered ? 0.95 : 0.65)}
+                                y1={posY + (isHovered ? 0.95 : 0.65)}
+                                x2={posX + (isHovered ? 0.95 : 0.65)}
+                                y2={posY - (isHovered ? 0.95 : 0.65)}
                                 stroke="#ef4444"
-                                strokeWidth={isHovered ? '0.85' : '0.55'}
+                                strokeWidth={isHovered ? '0.45' : '0.32'}
                                 strokeLinecap="round"
                               />
                             </g>
@@ -1157,6 +1175,34 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Non-overlapping Zone Effectiveness Pill Strip */}
+            <div className="w-full flex items-center justify-between gap-1 mt-1.5 px-0.5 text-[10px] font-mono flex-wrap">
+              <div className="flex items-center gap-1 bg-blue-950/60 border border-blue-800/50 px-2 py-0.5 rounded text-blue-300">
+                <span className="font-semibold">Pintura:</span>
+                <span className="font-bold text-white">{paintStats.pct}%</span>
+                <span className="text-[9px] text-blue-400/80">({paintStats.made}/{paintStats.attempted})</span>
+              </div>
+              <div className="flex items-center gap-1 bg-purple-950/60 border border-purple-800/50 px-2 py-0.5 rounded text-purple-300">
+                <span className="font-semibold">Media:</span>
+                <span className="font-bold text-white">{midStats.pct}%</span>
+                <span className="text-[9px] text-purple-400/80">({midStats.made}/{midStats.attempted})</span>
+              </div>
+              <div className="flex items-center gap-1 bg-orange-950/60 border border-orange-800/50 px-2 py-0.5 rounded text-orange-300">
+                <span className="font-semibold">T3 Frontal:</span>
+                <span className="font-bold text-white">{top3Stats.pct}%</span>
+                <span className="text-[9px] text-orange-400/80">({top3Stats.made}/{top3Stats.attempted})</span>
+              </div>
+              <div className="flex items-center gap-1 bg-amber-950/60 border border-amber-800/50 px-2 py-0.5 rounded text-amber-300">
+                <span className="font-semibold">Esquinas:</span>
+                <span className="font-bold text-white">
+                  {cornerLeftStats.attempted + cornerRightStats.attempted > 0
+                    ? Math.round(((cornerLeftStats.made + cornerRightStats.made) / (cornerLeftStats.attempted + cornerRightStats.attempted)) * 100)
+                    : 0}%
+                </span>
+                <span className="text-[9px] text-amber-400/80">({cornerLeftStats.made + cornerRightStats.made}/{cornerLeftStats.attempted + cornerRightStats.attempted})</span>
+              </div>
             </div>
 
             {/* Tooltip info */}

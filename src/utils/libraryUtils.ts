@@ -7,6 +7,26 @@ export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
 export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
 
 export const DEMO_GAME_IDS = new Set(['game-sample-01', 'game-sample-02', 'sample-game-1', 'sample-game-2']);
+export const CURATED_INITIAL_GAME_IDS = new Set(['game-brafa-gaudi', 'game-brafa-bam', 'game-brafa-ubsa']);
+
+/**
+ * Purges the 3 initial seed matches from storage, Server DB, and Cloud
+ * so they never pollute or overwrite user-imported matches.
+ */
+export function purgeCuratedInitialGames(): void {
+  const current = getSavedGamesFromStorage();
+  const filtered = current.filter(g => !CURATED_INITIAL_GAME_IDS.has(g.id));
+  saveGamesToStorage(filtered);
+
+  CURATED_INITIAL_GAME_IDS.forEach(id => {
+    deleteMatchFromCloud(id).catch(() => {});
+    fetch('/api/sync/match/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchId: id }),
+    }).catch(() => {});
+  });
+}
 
 export function isDemoGame(game: Partial<Game>): boolean {
   if (!game) return true;
@@ -557,9 +577,16 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
   });
 
   const localMatches = getSavedGamesFromStorage();
+  const hasUserMatches = localMatches.some(lm => !CURATED_INITIAL_GAME_IDS.has(lm.id));
+  const localHasCurated = new Set(localMatches.filter(lm => CURATED_INITIAL_GAME_IDS.has(lm.id)).map(lm => lm.id));
+
   const mergedMap = new Map<string, Game>();
   localMatches.forEach(m => mergedMap.set(m.id, m));
   cleanCloudMatches.forEach(m => {
+    // If the user has recorded or imported real matches, do not resurrect missing initial curated matches
+    if (hasUserMatches && CURATED_INITIAL_GAME_IDS.has(m.id) && !localHasCurated.has(m.id)) {
+      return;
+    }
     const existing = mergedMap.get(m.id);
     // Protect games against data regression: Never replace a game that has more events/data with an empty or fewer-events game!
     if (existing) {

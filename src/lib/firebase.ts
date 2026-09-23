@@ -237,6 +237,44 @@ export async function fetchAllMatchesFromCloud(): Promise<Game[]> {
 }
 
 /**
+ * Bulk upload matches and teams to Cloud Firestore
+ */
+export async function syncBulkToCloud(
+  matches: Game[],
+  teams: TeamProfile[] = []
+): Promise<{ uploadedMatches: number; uploadedTeams: number }> {
+  if (!isFirebaseConfigured) return { uploadedMatches: 0, uploadedTeams: 0 };
+  let uploadedMatches = 0;
+  let uploadedTeams = 0;
+
+  // 1. Upload teams
+  if (teams && teams.length > 0) {
+    await Promise.allSettled(
+      teams.map(async team => {
+        if (team && team.id) {
+          const success = await syncTeamToCloud(team);
+          if (success) uploadedTeams++;
+        }
+      })
+    );
+  }
+
+  // 2. Upload matches
+  if (matches && matches.length > 0) {
+    await Promise.allSettled(
+      matches.map(async match => {
+        if (match && match.id) {
+          const success = await syncMatchToCloud(match);
+          if (success) uploadedMatches++;
+        }
+      })
+    );
+  }
+
+  return { uploadedMatches, uploadedTeams };
+}
+
+/**
  * Subscribe to Matches collection in real time across devices
  */
 export function subscribeToMatches(onUpdate: (matches: Game[]) => void): Unsubscribe {

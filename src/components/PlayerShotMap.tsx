@@ -517,52 +517,80 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
         >
           {/* DEFINITIONS & FILTERS */}
           <defs>
-            {/* Realistic Maple Parquet Floor */}
+            {/* Ultra-realistic Maple Hardwood Court Pattern */}
             <pattern
               id="player-parquet-floor"
-              width="26"
-              height="6.5"
+              width="24"
+              height="8"
               patternUnits="userSpaceOnUse"
             >
-              <rect width="26" height="6.5" fill="#ca995d" />
-              <line x1="0" y1="0" x2="26" y2="0" stroke="#a4743b" strokeWidth="0.18" opacity="0.8" />
-              <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#a4743b" strokeWidth="0.14" opacity="0.65" />
-              <line x1="0" y1="6.5" x2="26" y2="6.5" stroke="#8d5f27" strokeWidth="0.2" opacity="0.9" />
-              <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-              <line x1="21.5" y1="0" x2="21.5" y2="3.25" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-              <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-              <line x1="2.5" y1="3.25" x2="2.5" y2="6.5" stroke="#8d5f27" strokeWidth="0.18" opacity="0.75" />
-              <rect x="0" y="0.3" width="8.5" height="2.6" fill="#d9aa70" opacity="0.16" />
-              <rect x="8.5" y="3.5" width="6.5" height="2.6" fill="#b98549" opacity="0.15" />
-              <rect x="15" y="3.5" width="11" height="2.6" fill="#dfb37c" opacity="0.18" />
+              {/* Natural maple base wood tone */}
+              <rect width="24" height="8" fill="#c9975a" />
+              {/* Alternating plank tones */}
+              <rect x="0" y="0" width="10" height="2" fill="#d7a96d" opacity="0.32" />
+              <rect x="10" y="0" width="14" height="2" fill="#bc894c" opacity="0.22" />
+              <rect x="0" y="2" width="16" height="2" fill="#b98547" opacity="0.25" />
+              <rect x="16" y="2" width="8" height="2" fill="#dfb377" opacity="0.35" />
+              <rect x="0" y="4" width="7" height="2" fill="#d4a365" opacity="0.3" />
+              <rect x="7" y="4" width="17" height="2" fill="#be8c4e" opacity="0.2" />
+              <rect x="0" y="6" width="13" height="2" fill="#bc8849" opacity="0.26" />
+              <rect x="13" y="6" width="11" height="2" fill="#ddaf73" opacity="0.34" />
+              {/* Fine horizontal plank seams (timber joints) */}
+              <line x1="0" y1="0" x2="24" y2="0" stroke="#7e5321" strokeWidth="0.16" opacity="0.75" />
+              <line x1="0" y1="2" x2="24" y2="2" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
+              <line x1="0" y1="4" x2="24" y2="4" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
+              <line x1="0" y1="6" x2="24" y2="6" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
+              <line x1="0" y1="8" x2="24" y2="8" stroke="#7e5321" strokeWidth="0.16" opacity="0.75" />
+              {/* Staggered vertical end joints */}
+              <line x1="10" y1="0" x2="10" y2="2" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+              <line x1="16" y1="2" x2="16" y2="4" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+              <line x1="7" y1="4" x2="7" y2="6" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+              <line x1="13" y1="6" x2="13" y2="8" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
+              {/* Subtle natural longitudinal wood fibers */}
+              <line x1="0" y1="0.8" x2="24" y2="0.8" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
+              <line x1="0" y1="2.9" x2="24" y2="2.9" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
+              <line x1="0" y1="4.7" x2="24" y2="4.7" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
+              <line x1="0" y1="6.8" x2="24" y2="6.8" stroke="#a17136" strokeWidth="0.08" opacity="0.4" />
             </pattern>
 
-            {/* Dark Arena Pattern */}
+            {/* Dark Arena Parquet Pattern */}
             <pattern
               id="player-dark-arena"
-              width="26"
-              height="6.5"
+              width="24"
+              height="8"
               patternUnits="userSpaceOnUse"
             >
-              <rect width="26" height="6.5" fill="#141720" />
-              <line x1="0" y1="0" x2="26" y2="0" stroke="#0a0d13" strokeWidth="0.2" opacity="0.9" />
-              <line x1="0" y1="3.25" x2="26" y2="3.25" stroke="#0a0d13" strokeWidth="0.16" opacity="0.8" />
-              <line x1="8.5" y1="0" x2="8.5" y2="3.25" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
-              <line x1="15" y1="3.25" x2="15" y2="6.5" stroke="#0a0d13" strokeWidth="0.2" opacity="0.8" />
-              <rect x="0" y="0.4" width="8.5" height="2.5" fill="#1b202c" opacity="0.28" />
+              <rect width="24" height="8" fill="#141720" />
+              <line x1="0" y1="0" x2="24" y2="0" stroke="#090b10" strokeWidth="0.18" opacity="0.85" />
+              <line x1="0" y1="2" x2="24" y2="2" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
+              <line x1="0" y1="4" x2="24" y2="4" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
+              <line x1="0" y1="6" x2="24" y2="6" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
+              <line x1="10" y1="0" x2="10" y2="2" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+              <line x1="16" y1="2" x2="16" y2="4" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+              <line x1="7" y1="4" x2="7" y2="6" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+              <line x1="13" y1="6" x2="13" y2="8" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
+              <rect x="0" y="0.3" width="10" height="1.6" fill="#1b202c" opacity="0.3" />
+              <rect x="16" y="2.3" width="8" height="1.6" fill="#1f2533" opacity="0.3" />
             </pattern>
 
             {/* Key / Paint Lane Gradient Stain */}
             <linearGradient id="player-fiba-key" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#1e3a8a" stopOpacity={courtTheme === 'parquet' ? '0.52' : '0.45'} />
-              <stop offset="100%" stopColor="#172554" stopOpacity={courtTheme === 'parquet' ? '0.62' : '0.55'} />
+              <stop offset="0%" stopColor="#1e3a8a" stopOpacity={courtTheme === 'parquet' ? '0.45' : '0.45'} />
+              <stop offset="100%" stopColor="#172554" stopOpacity={courtTheme === 'parquet' ? '0.55' : '0.55'} />
+            </linearGradient>
+
+            {/* Polyurethane Semi-Gloss Court Light Reflection */}
+            <linearGradient id="player-varnish-sheen" x1="20%" y1="0%" x2="80%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.12' : '0.04'} />
+              <stop offset="45%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.06' : '0.02'} />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.22" />
             </linearGradient>
 
             {/* Arena Spotlight Overhead Glow */}
             <radialGradient id="player-arena-spotlight" cx="50%" cy="32%" r="68%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.12' : '0.06'} />
+              <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.1' : '0.05'} />
               <stop offset="65%" stopColor="#ffffff" stopOpacity="0" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0.32" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.28" />
             </radialGradient>
 
             <filter id="shot-glow" x="-50%" y="-50%" width="200%" height="200%">
@@ -717,56 +745,55 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                 className="transition-all duration-150"
               />
 
-              {/* Zone Effectiveness Badges (Positioned at peripheral anchors to prevent overlapping with shots) */}
-              {(Object.keys(zonesStatsMap) as CourtZoneId[]).map(zid => {
-                const z = zonesStatsMap[zid];
-                if (z.attempted === 0 && viewMode !== 'heat') return null;
-                const isHovered = hoveredZoneId === zid;
-                // In combined mode, only show if user enabled it or is hovering that zone
-                if (viewMode === 'combined' && !showPercentagesInCombined && !isHovered) return null;
+              {/* Zone Effectiveness Badges (Only in heat mode or when explicitly toggled on) */}
+              {(viewMode === 'heat' || (viewMode === 'combined' && showPercentagesInCombined)) &&
+                (Object.keys(zonesStatsMap) as CourtZoneId[]).map(zid => {
+                  const z = zonesStatsMap[zid];
+                  if (z.attempted === 0 && viewMode !== 'heat') return null;
+                  const isHovered = hoveredZoneId === zid;
 
-                return (
-                  <g
-                    key={`badge-${zid}`}
-                    transform={`translate(${z.anchorX}, ${z.anchorY}) scale(${isHovered ? 1.15 : 1})`}
-                    className="pointer-events-none transition-transform duration-150"
-                  >
-                    <rect
-                      x="-5.5"
-                      y="-2.5"
-                      width="11"
-                      height="5"
-                      rx="1.4"
-                      fill="#0f172a"
-                      fillOpacity={isHovered ? 0.98 : 0.88}
-                      stroke={isHovered ? '#f97316' : z.heatColor}
-                      strokeWidth={isHovered ? 0.8 : 0.4}
-                      className="drop-shadow-sm"
-                    />
-                    <text
-                      x="0"
-                      y="0.2"
-                      textAnchor="middle"
-                      fill={z.heatLevel === 'hot' ? '#fb923c' : z.heatLevel === 'warm' ? '#facc15' : z.heatLevel === 'cold' ? '#38bdf8' : '#94a3b8'}
-                      fontSize="2.1"
-                      fontWeight="bold"
-                      fontFamily="monospace"
+                  return (
+                    <g
+                      key={`badge-${zid}`}
+                      transform={`translate(${z.anchorX}, ${z.anchorY}) scale(${isHovered ? 1.15 : 1})`}
+                      className="pointer-events-none transition-transform duration-150"
                     >
-                      {z.attempted > 0 ? `${z.pct}%` : '0%'}
-                    </text>
-                    <text
-                      x="0"
-                      y="1.8"
-                      textAnchor="middle"
-                      fill="#cbd5e1"
-                      fontSize="1.5"
-                      fontFamily="monospace"
-                    >
-                      {z.made}/{z.attempted}
-                    </text>
-                  </g>
-                );
-              })}
+                      <rect
+                        x="-5.5"
+                        y="-2.5"
+                        width="11"
+                        height="5"
+                        rx="1.4"
+                        fill="#0f172a"
+                        fillOpacity={isHovered ? 0.98 : 0.88}
+                        stroke={isHovered ? '#f97316' : z.heatColor}
+                        strokeWidth={isHovered ? 0.8 : 0.4}
+                        className="drop-shadow-sm"
+                      />
+                      <text
+                        x="0"
+                        y="0.2"
+                        textAnchor="middle"
+                        fill={z.heatLevel === 'hot' ? '#fb923c' : z.heatLevel === 'warm' ? '#facc15' : z.heatLevel === 'cold' ? '#38bdf8' : '#94a3b8'}
+                        fontSize="2.1"
+                        fontWeight="bold"
+                        fontFamily="monospace"
+                      >
+                        {z.attempted > 0 ? `${z.pct}%` : '0%'}
+                      </text>
+                      <text
+                        x="0"
+                        y="1.8"
+                        textAnchor="middle"
+                        fill="#cbd5e1"
+                        fontSize="1.5"
+                        fontFamily="monospace"
+                      >
+                        {z.made}/{z.attempted}
+                      </text>
+                    </g>
+                  );
+                })}
             </g>
           )}
 
@@ -861,65 +888,65 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                     <circle
                       cx={x}
                       cy={y}
-                      r="4.2"
+                      r="2.8"
                       fill={isMade ? '#10b981' : '#ef4444'}
-                      fillOpacity="0.35"
+                      fillOpacity="0.3"
                       stroke={isMade ? '#34d399' : '#f87171'}
-                      strokeWidth="0.6"
+                      strokeWidth="0.4"
                       filter={isMade ? 'url(#made-glow)' : 'url(#miss-glow)'}
                     />
                   )}
 
                   {isMade ? (
-                    /* Made Shot: Sleek Emerald Green Circle with Crisp White Rim */
+                    /* Made Shot: Ultra-fine, sleek emerald circle with fine white rim */
                     <circle
                       cx={x}
                       cy={y}
-                      r={isHovered ? 2.1 : 1.35}
+                      r={isHovered ? 1.4 : 0.85}
                       fill="#10b981"
                       stroke="#ffffff"
-                      strokeWidth="0.35"
+                      strokeWidth={isHovered ? 0.3 : 0.2}
                       className="drop-shadow-sm transition-transform duration-100"
                     />
                   ) : (
-                    /* Missed Shot: Crisp, Fine Red Cross (X) */
+                    /* Missed Shot: Ultra-fine, crisp red cross (X) */
                     <g className="transition-transform duration-100">
                       {/* Backing dark stroke for high contrast on parquet */}
                       <line
-                        x1={x - (isHovered ? 1.4 : 1.05)}
-                        y1={y - (isHovered ? 1.4 : 1.05)}
-                        x2={x + (isHovered ? 1.4 : 1.05)}
-                        y2={y + (isHovered ? 1.4 : 1.05)}
-                        stroke="#111827"
-                        strokeWidth={isHovered ? '1.2' : '0.9'}
+                        x1={x - (isHovered ? 0.95 : 0.65)}
+                        y1={y - (isHovered ? 0.95 : 0.65)}
+                        x2={x + (isHovered ? 0.95 : 0.65)}
+                        y2={y + (isHovered ? 0.95 : 0.65)}
+                        stroke="#0f172a"
+                        strokeWidth={isHovered ? '0.75' : '0.5'}
                         strokeLinecap="round"
                       />
                       <line
-                        x1={x - (isHovered ? 1.4 : 1.05)}
-                        y1={y + (isHovered ? 1.4 : 1.05)}
-                        x2={x + (isHovered ? 1.4 : 1.05)}
-                        y2={y - (isHovered ? 1.4 : 1.05)}
-                        stroke="#111827"
-                        strokeWidth={isHovered ? '1.2' : '0.9'}
+                        x1={x - (isHovered ? 0.95 : 0.65)}
+                        y1={y + (isHovered ? 0.95 : 0.65)}
+                        x2={x + (isHovered ? 0.95 : 0.65)}
+                        y2={y - (isHovered ? 0.95 : 0.65)}
+                        stroke="#0f172a"
+                        strokeWidth={isHovered ? '0.75' : '0.5'}
                         strokeLinecap="round"
                       />
                       {/* Crisp red foreground cross */}
                       <line
-                        x1={x - (isHovered ? 1.4 : 1.05)}
-                        y1={y - (isHovered ? 1.4 : 1.05)}
-                        x2={x + (isHovered ? 1.4 : 1.05)}
-                        y2={y + (isHovered ? 1.4 : 1.05)}
+                        x1={x - (isHovered ? 0.95 : 0.65)}
+                        y1={y - (isHovered ? 0.95 : 0.65)}
+                        x2={x + (isHovered ? 0.95 : 0.65)}
+                        y2={y + (isHovered ? 0.95 : 0.65)}
                         stroke="#ef4444"
-                        strokeWidth={isHovered ? '0.85' : '0.55'}
+                        strokeWidth={isHovered ? '0.45' : '0.32'}
                         strokeLinecap="round"
                       />
                       <line
-                        x1={x - (isHovered ? 1.4 : 1.05)}
-                        y1={y + (isHovered ? 1.4 : 1.05)}
-                        x2={x + (isHovered ? 1.4 : 1.05)}
-                        y2={y - (isHovered ? 1.4 : 1.05)}
+                        x1={x - (isHovered ? 0.95 : 0.65)}
+                        y1={y + (isHovered ? 0.95 : 0.65)}
+                        x2={x + (isHovered ? 0.95 : 0.65)}
+                        y2={y - (isHovered ? 0.95 : 0.65)}
                         stroke="#ef4444"
-                        strokeWidth={isHovered ? '0.85' : '0.55'}
+                        strokeWidth={isHovered ? '0.45' : '0.32'}
                         strokeLinecap="round"
                       />
                     </g>

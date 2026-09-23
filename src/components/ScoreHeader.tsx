@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Game, Player } from '../types';
+import { Game, Player, PlayEvent } from '../types';
 import { formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { TeamLogoDisplay, TeamLogoPickerModal } from './TeamLogoPicker';
 import { MatchTimeProgressBar } from './MatchTimeProgressBar';
+import { GameClocksProgressBar } from './GameClocksProgressBar';
 import {
   Play,
   Pause,
@@ -40,6 +41,8 @@ interface ScoreHeaderProps {
   onOpenOfficialSheet?: () => void;
   isEditingFinishedGame?: boolean;
   onToggleEditFinishedGame?: () => void;
+  onUndoLastAction?: () => void;
+  recentEvent?: PlayEvent | null;
 }
 
 export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
@@ -55,6 +58,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onOpenOfficialSheet,
   isEditingFinishedGame = false,
   onToggleEditFinishedGame,
+  onUndoLastAction,
+  recentEvent,
 }) => {
   const [showClockAdjust, setShowClockAdjust] = useState(false);
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
@@ -432,6 +437,20 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               </span>
             )}
           </div>
+        </div>
+
+        {/* Real-time Game Clocks Progress Bar (Quarter Elapsed & 24s Possession Bar) */}
+        <div className="mt-1.5 pt-1 border-t border-gray-800/60">
+          <GameClocksProgressBar
+            game={game}
+            shotClockSecs={shotClockSecs}
+            isActionsLocked={isActionsLocked}
+            onToggleClock={toggleClock}
+            onResetShotClock={handleResetShotClock}
+            onUndoLastAction={onUndoLastAction}
+            recentEvent={recentEvent}
+            compact={isCourtMode}
+          />
         </div>
 
         {/* Quick Clock Adjust Drawer with Micro-adjustments (+-1s, +-5s, +-10s, +-1m) */}
