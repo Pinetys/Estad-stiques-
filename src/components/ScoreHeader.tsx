@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Game, Player, PlayEvent } from '../types';
+import { Game, Player } from '../types';
 import { formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { TeamLogoDisplay, TeamLogoPickerModal } from './TeamLogoPicker';
 import { MatchTimeProgressBar } from './MatchTimeProgressBar';
-import { GameClocksProgressBar } from './GameClocksProgressBar';
 import {
   Play,
   Pause,
@@ -41,8 +40,6 @@ interface ScoreHeaderProps {
   onOpenOfficialSheet?: () => void;
   isEditingFinishedGame?: boolean;
   onToggleEditFinishedGame?: () => void;
-  onUndoLastAction?: () => void;
-  recentEvent?: PlayEvent | null;
 }
 
 export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
@@ -58,8 +55,6 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onOpenOfficialSheet,
   isEditingFinishedGame = false,
   onToggleEditFinishedGame,
-  onUndoLastAction,
-  recentEvent,
 }) => {
   const [showClockAdjust, setShowClockAdjust] = useState(false);
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
@@ -187,21 +182,21 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   const isCourtMode = Boolean(game.settings.courtMode);
 
   return (
-    <div className={`${isCourtMode ? 'bg-black border-neutral-800' : 'bg-[#1A1D23] border-gray-800'} border-b shadow-xl relative z-30 w-full max-w-full overflow-hidden`}>
+    <div className={`${isCourtMode ? 'bg-[#090f23] border-blue-900/60' : 'bg-gradient-to-b from-[#101c40] via-[#0d1736] to-[#091026] border-blue-900/60'} border-b shadow-xl relative z-30 w-full max-w-full overflow-hidden`}>
       {/* Top Bar: Quarter Selector, Clock, Status */}
       <div className="max-w-6xl mx-auto px-2 sm:px-4 py-2 w-full max-w-full">
         <div className="flex items-center justify-between gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
           {/* Quarter Controls (Prev, Selector Dropdown, Next) */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {/* Prev Quarter Button */}
             <button
               id="prev-quarter-btn"
               onClick={handlePrevQuarter}
               disabled={game.currentQuarter <= 1}
-              className={`p-1 rounded ${isCourtMode ? 'bg-[#111317] border-neutral-800 text-gray-400' : 'bg-[#14161B] hover:bg-gray-800 text-gray-300 border-gray-700'} disabled:opacity-30 disabled:pointer-events-none border font-bold transition`}
+              className={`p-1.5 sm:p-2 rounded-xl ${isCourtMode ? 'bg-[#0d1633] border-blue-900/60 text-slate-300' : 'bg-[#0f1b3b] hover:bg-[#182a5c] text-slate-200 border-blue-900/80'} disabled:opacity-30 disabled:pointer-events-none border font-bold transition active:scale-95 shadow-sm`}
               title="Cuarto anterior"
             >
-              <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {/* Quarter Selector Pill with Dropdown */}
@@ -211,20 +206,20 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                 onClick={() => setShowQuarterPicker(!showQuarterPicker)}
                 className={`${
                   isCourtMode
-                    ? 'bg-neutral-900 border-neutral-700 text-amber-300'
-                    : 'bg-orange-600/20 hover:bg-orange-600/30 border-orange-600/50 text-orange-400'
-                } border px-2 sm:px-2.5 py-1 rounded text-xs font-black uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 font-mono shadow-sm transition active:scale-95`}
+                    ? 'bg-[#0f1b3b] border-blue-500/70 text-amber-300'
+                    : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 border-orange-400/50 text-white shadow-md shadow-orange-600/25'
+                } border px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-sm sm:text-base md:text-lg font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 font-mono shadow-md transition active:scale-95`}
                 title="Elegir cuarto específico"
               >
-                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isCourtMode ? 'bg-amber-400' : 'bg-orange-500 animate-live-dot'}`}></span>
-                <span>{formatQuarterShort(game.currentQuarter)}</span>
-                <ChevronDown className="w-3 h-3 opacity-80" />
+                <span className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${isCourtMode ? 'bg-amber-400' : 'bg-white animate-live-dot'}`}></span>
+                <span className="leading-none">{formatQuarterShort(game.currentQuarter)}</span>
+                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-90" />
               </button>
 
               {/* Quarter Picker Popup */}
               {showQuarterPicker && (
-                <div className="absolute left-0 top-full mt-1.5 w-48 bg-[#14161B] border border-orange-500/40 rounded-lg shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 px-1 font-mono">
+                <div className="absolute left-0 top-full mt-1.5 w-52 bg-[#0e1736] border border-blue-500/60 rounded-xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1.5 px-1 font-mono">
                     Seleccionar Cuarto:
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -232,10 +227,10 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                       <button
                         key={q}
                         onClick={() => handleQuarterPick(q)}
-                        className={`px-2 py-1.5 rounded text-xs font-mono font-bold border text-center transition ${
+                        className={`px-2.5 py-2 rounded-lg text-xs font-mono font-bold border text-center transition ${
                           game.currentQuarter === q
-                            ? 'bg-orange-600 text-white border-orange-500 shadow'
-                            : 'bg-[#1A1D23] text-gray-300 hover:bg-gray-800 border-gray-800'
+                            ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400 shadow'
+                            : 'bg-[#142045] text-slate-200 hover:bg-[#1c2c5e] border-blue-900/60'
                         }`}
                       >
                         {q}º Cuarto (Q{q})
@@ -243,8 +238,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                     ))}
                   </div>
 
-                  <div className="mt-2 pt-2 border-t border-gray-800">
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-gray-500 mb-1 px-1 font-mono">
+                  <div className="mt-2 pt-2 border-t border-blue-900/60">
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-1 font-mono">
                       Prórrogas (OT):
                     </div>
                     <div className="grid grid-cols-3 gap-1">
@@ -252,10 +247,10 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                         <button
                           key={q}
                           onClick={() => handleQuarterPick(q)}
-                          className={`px-1.5 py-1 rounded text-xs font-mono font-bold border text-center transition ${
+                          className={`px-1.5 py-1.5 rounded-lg text-xs font-mono font-bold border text-center transition ${
                             game.currentQuarter === q
-                              ? 'bg-orange-600 text-white border-orange-500'
-                              : 'bg-[#1A1D23] text-gray-400 hover:bg-gray-800 border-gray-800'
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400'
+                              : 'bg-[#142045] text-slate-300 hover:bg-[#1c2c5e] border-blue-900/60'
                           }`}
                         >
                           PR{q - 4}
@@ -271,53 +266,53 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
             <button
               id="next-quarter-btn"
               onClick={onNextQuarter}
-              className="text-xs bg-[#14161B] hover:bg-gray-800 active:bg-black text-gray-300 px-1.5 sm:px-2 py-1 rounded flex items-center gap-0.5 border border-gray-700 font-bold uppercase transition"
+              className="text-xs sm:text-sm bg-[#0f1b3b] hover:bg-[#182a5c] active:bg-[#0c1633] text-slate-200 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl flex items-center gap-1 border border-blue-900/80 font-black uppercase transition shadow-sm"
               title="Avanzar al siguiente cuarto"
             >
               <span>{game.currentQuarter < 4 ? `Q${game.currentQuarter + 1}` : 'PR'}</span>
-              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" />
+              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-300" />
             </button>
           </div>
 
           {/* Clock & Shot Clock controls */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
             {/* Game Clock (Total Game Clock) */}
             <button
               id="toggle-clock-btn"
               onClick={toggleClock}
               disabled={isActionsLocked}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg font-mono font-black text-sm sm:text-lg md:text-xl border transition active:scale-95 shadow-md ${
+              className={`flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-5 py-1 sm:py-1.5 rounded-xl font-mono font-black text-lg sm:text-2xl md:text-3xl border transition active:scale-95 shadow-xl ${
                 isGameFinished
-                  ? 'bg-black border-neutral-700 text-neutral-400'
+                  ? 'bg-[#060a17] border-blue-900/50 text-slate-500'
                   : game.isClockRunning
                   ? isCourtMode
-                    ? 'bg-neutral-900 border-emerald-500/80 text-emerald-300 ring-1 ring-emerald-500/30'
-                    : 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-sm'
+                    ? 'bg-emerald-950/90 border-emerald-400 text-emerald-300 ring-2 ring-emerald-500/30'
+                    : 'bg-emerald-950/95 border-emerald-400 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.4)]'
                   : isCourtMode
-                  ? 'bg-black border-amber-500/60 text-amber-300'
-                  : 'bg-black/60 border-orange-500/50 text-orange-400'
+                  ? 'bg-[#060a17] border-blue-500/70 text-amber-300'
+                  : 'bg-[#060a17] border-blue-500/80 text-amber-300 shadow-[0_0_15px_rgba(59,130,246,0.25)]'
               }`}
               title={isActionsLocked ? 'Partido cerrado (00:00). Pulsa Editar para retocar datos' : 'Pausar o Reanudar tiempo'}
             >
               {isGameFinished ? (
-                <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-500" />
+                <Lock className="w-4 h-4 sm:w-6 sm:h-6 text-neutral-500 shrink-0" />
               ) : game.isClockRunning ? (
-                <Pause className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 fill-emerald-400 ${isCourtMode ? '' : 'animate-pulse'}`} />
+                <Pause className={`w-4 h-4 sm:w-6 sm:h-6 text-emerald-400 fill-emerald-400 shrink-0 ${isCourtMode ? '' : 'animate-pulse'}`} />
               ) : (
-                <Play className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-orange-400 fill-orange-400'}`} />
+                <Play className={`w-4 h-4 sm:w-6 sm:h-6 shrink-0 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-amber-400 fill-amber-400'}`} />
               )}
-              <span className="tracking-widest">
+              <span className="tracking-widest font-scoreboard leading-none">
                 {isGameFinished ? '00:00' : formatGameTime(game.currentSecondsRemaining)}
               </span>
             </button>
 
             {/* Shot Clock (24s / 14s) Widget (Optimized & High Visibility) */}
-            <div className={`flex items-center gap-0.5 bg-[#0C0E12] border border-gray-800 rounded p-0.5 font-mono ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+            <div className={`flex items-center gap-1 bg-[#060b19] border border-blue-900/80 rounded-xl p-1 font-mono shadow-md ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
               <button
                 type="button"
                 onClick={() => handleResetShotClock(24)}
                 disabled={isActionsLocked}
-                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95 disabled:opacity-40"
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-blue-950/80 hover:bg-blue-900 text-amber-300 border border-blue-700/60 rounded-lg text-xs sm:text-sm font-black transition active:scale-95 disabled:opacity-40 shadow-xs"
                 title="Reiniciar a 24s"
               >
                 24s
@@ -326,7 +321,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                 type="button"
                 onClick={() => handleResetShotClock(14)}
                 disabled={isActionsLocked}
-                className="px-1.5 py-0.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/50 rounded text-[10px] font-black transition active:scale-95 disabled:opacity-40"
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-blue-950/80 hover:bg-blue-900 text-amber-300 border border-blue-700/60 rounded-lg text-xs sm:text-sm font-black transition active:scale-95 disabled:opacity-40 shadow-xs"
                 title="Reiniciar a 14s (Rebote Ofensivo / Falta pista delantera)"
               >
                 14s
@@ -335,12 +330,12 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                 type="button"
                 onClick={handleToggleShotClock}
                 disabled={isActionsLocked}
-                className={`px-2 py-0.5 rounded text-xs font-black border transition font-scoreboard ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-sm sm:text-lg md:text-xl font-black border transition font-scoreboard shadow-sm ${
                   shotClockSecs <= 5 && !isGameFinished
-                    ? 'bg-red-950 text-red-200 border-red-500 animate-pulse'
+                    ? 'bg-rose-950 text-rose-200 border-rose-500 animate-pulse ring-1 ring-rose-500'
                     : (game.isShotClockRunning ?? true) && !isGameFinished
-                    ? 'bg-black text-amber-300 border-amber-500/60 shadow-[0_0_8px_rgba(245,158,11,0.25)]'
-                    : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                    ? 'bg-[#060a17] text-amber-300 border-amber-500/70 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
+                    : 'bg-[#101730] text-slate-400 border-blue-950'
                 }`}
                 title="Pausar / Reanudar 24s"
               >
@@ -439,20 +434,6 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
           </div>
         </div>
 
-        {/* Real-time Game Clocks Progress Bar (Quarter Elapsed & 24s Possession Bar) */}
-        <div className="mt-1.5 pt-1 border-t border-gray-800/60">
-          <GameClocksProgressBar
-            game={game}
-            shotClockSecs={shotClockSecs}
-            isActionsLocked={isActionsLocked}
-            onToggleClock={toggleClock}
-            onResetShotClock={handleResetShotClock}
-            onUndoLastAction={onUndoLastAction}
-            recentEvent={recentEvent}
-            compact={isCourtMode}
-          />
-        </div>
-
         {/* Quick Clock Adjust Drawer with Micro-adjustments (+-1s, +-5s, +-10s, +-1m) */}
         {showClockAdjust && (
           <div className="mt-2 pt-2 border-t border-gray-800 flex items-center justify-center gap-1.5 flex-wrap bg-black/70 p-2 rounded-xl border border-gray-800">
@@ -526,61 +507,61 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
         </div>
 
         {/* Main Scoreboard: Home vs Away in High Density Layout */}
-        <div className="grid grid-cols-2 gap-2 mt-1.5">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-2">
           {/* Home Team Card */}
-          <div className={`${isCourtMode ? 'bg-[#0a0a0c] border-neutral-800' : 'bg-[#0F1115] border-orange-500/30'} border rounded p-2 relative overflow-hidden flex flex-col justify-between`}>
-            <div className="flex items-center justify-between">
+          <div className={`${isCourtMode ? 'bg-gradient-to-br from-[#121f44] to-[#0a1127] border-orange-500/50' : 'bg-gradient-to-br from-[#13224b] via-[#0f1938] to-[#0a1127] border-2 border-orange-500/60'} rounded-xl p-2.5 sm:p-3 relative overflow-hidden flex flex-col justify-between shadow-xl`}>
+            <div className="flex items-center justify-between gap-1">
               <div
                 onClick={() => setEditingLogoTeam('home')}
-                className="flex items-center gap-1.5 overflow-hidden cursor-pointer group"
+                className="flex items-center gap-2 overflow-hidden cursor-pointer group min-w-0"
                 title="Cambiar o fotografiar logo del equipo local"
               >
-                <div className="relative">
-                  <TeamLogoDisplay logo={game.homeTeamLogo} teamName={game.homeTeamName} size="sm" />
+                <div className="relative shrink-0">
+                  <TeamLogoDisplay logo={game.homeTeamLogo} teamName={game.homeTeamName} size="md" />
                   <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                    <Camera className="w-2.5 h-2.5 text-white" />
+                    <Camera className="w-3 h-3 text-white" />
                   </div>
                 </div>
-                <h2 className="font-bold text-xs sm:text-sm text-gray-100 uppercase tracking-wide truncate group-hover:text-orange-400 transition">
+                <h2 className="font-black text-sm sm:text-base md:text-lg text-white uppercase tracking-wide truncate group-hover:text-orange-400 transition">
                   {game.homeTeamName}
                 </h2>
               </div>
-              {/* Timeout dots */}
+              {/* Timeout button */}
               <button
                 onClick={() => toggleTimeout('home')}
-                className="flex items-center gap-1 text-[10px] text-gray-400 bg-black px-1.5 py-0.5 rounded border border-gray-800 hover:border-gray-700 font-mono font-bold"
+                className="flex items-center gap-1 text-xs sm:text-sm text-slate-200 bg-[#070c1b] px-2 sm:px-2.5 py-1 rounded-lg border border-blue-900/80 hover:border-blue-700 font-mono font-bold shrink-0 transition active:scale-95 shadow-xs"
                 title="Tiempos muertos restantes (tap para restar)"
               >
-                <span>TM:</span>
-                <span className={isCourtMode ? 'text-amber-300' : 'text-orange-400'}>{game.homeTimeouts}</span>
+                <span className="text-[10px] sm:text-xs text-slate-400">TM:</span>
+                <span className={`font-black ${isCourtMode ? 'text-amber-300' : 'text-orange-400'}`}>{game.homeTimeouts}</span>
               </button>
             </div>
 
-            <div className="flex items-baseline justify-between mt-1">
+            <div className="flex items-baseline justify-between mt-1 sm:mt-2">
               <div className="flex items-baseline gap-1.5">
-                <span className={`font-scoreboard text-4xl sm:text-5xl font-black ${isCourtMode ? 'text-amber-300' : 'text-orange-400'} leading-none`}>
+                <span className={`font-scoreboard text-5xl sm:text-6xl md:text-7xl font-black ${isCourtMode ? 'text-amber-300' : 'text-orange-400'} leading-none tracking-tight drop-shadow-md`}>
                   {game.homeScore}
                 </span>
-                <span className="text-[10px] uppercase font-bold text-gray-500">pts</span>
+                <span className="text-[10px] sm:text-xs uppercase font-black text-slate-400">pts</span>
               </div>
 
               {/* Home Team Quarter Fouls */}
               <div className="text-right">
-                <div className="text-[9px] text-gray-400 uppercase font-mono font-bold">Faltas Q</div>
-                <div className="flex items-center justify-end gap-0.5 sm:gap-1 mt-0.5">
+                <div className="text-[10px] sm:text-xs text-slate-400 uppercase font-mono font-bold">Faltas Q</div>
+                <div className="flex items-center justify-end gap-1 mt-0.5">
                   {[1, 2, 3, 4, 5].map(dot => (
                     <span
                       key={dot}
-                      className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+                      className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${
                         dot <= game.homeQuarterFouls
                           ? dot >= 5
                             ? `bg-rose-500 ring-2 ring-rose-500/50 ${isCourtMode ? '' : 'animate-pulse'}`
-                            : isCourtMode ? 'bg-amber-500' : 'bg-orange-500'
-                          : 'bg-gray-800'
+                            : isCourtMode ? 'bg-amber-400' : 'bg-orange-500'
+                          : 'bg-blue-950/80 border border-blue-900/50'
                       }`}
                     />
                   ))}
-                  <span className="text-[11px] sm:text-xs font-mono font-bold text-gray-300 ml-0.5 sm:ml-1">
+                  <span className="text-xs sm:text-sm font-mono font-bold text-slate-300 ml-1">
                     ({game.homeQuarterFouls})
                   </span>
                 </div>
@@ -589,58 +570,58 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
           </div>
 
           {/* Away Team Card */}
-          <div className={`${isCourtMode ? 'bg-[#0a0a0c] border-neutral-800' : 'bg-[#0F1115] border-gray-800'} border rounded p-2 relative overflow-hidden flex flex-col justify-between`}>
-            <div className="flex items-center justify-between">
+          <div className={`${isCourtMode ? 'bg-gradient-to-br from-[#121f44] to-[#0a1127] border-sky-500/50' : 'bg-gradient-to-br from-[#13224b] via-[#0f1938] to-[#0a1127] border-2 border-sky-500/60'} rounded-xl p-2.5 sm:p-3 relative overflow-hidden flex flex-col justify-between shadow-xl`}>
+            <div className="flex items-center justify-between gap-1">
               <div
                 onClick={() => setEditingLogoTeam('away')}
-                className="flex items-center gap-1.5 overflow-hidden cursor-pointer group"
+                className="flex items-center gap-2 overflow-hidden cursor-pointer group min-w-0"
                 title="Cambiar o fotografiar logo del rival"
               >
-                <div className="relative">
-                  <TeamLogoDisplay logo={game.awayTeamLogo} teamName={game.awayTeamName} size="sm" />
+                <div className="relative shrink-0">
+                  <TeamLogoDisplay logo={game.awayTeamLogo} teamName={game.awayTeamName} size="md" />
                   <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                    <Camera className="w-2.5 h-2.5 text-white" />
+                    <Camera className="w-3 h-3 text-white" />
                   </div>
                 </div>
-                <h2 className="font-bold text-xs sm:text-sm text-gray-100 uppercase tracking-wide truncate group-hover:text-sky-400 transition">
+                <h2 className="font-black text-sm sm:text-base md:text-lg text-white uppercase tracking-wide truncate group-hover:text-sky-400 transition">
                   {game.awayTeamName}
                 </h2>
               </div>
               <button
                 onClick={() => toggleTimeout('away')}
-                className="flex items-center gap-1 text-[10px] text-gray-400 bg-black px-1.5 py-0.5 rounded border border-gray-800 hover:border-gray-700 font-mono font-bold"
+                className="flex items-center gap-1 text-xs sm:text-sm text-slate-200 bg-[#070c1b] px-2 sm:px-2.5 py-1 rounded-lg border border-blue-900/80 hover:border-blue-700 font-mono font-bold shrink-0 transition active:scale-95 shadow-xs"
                 title="Tiempos muertos rival"
               >
-                <span>TM:</span>
-                <span className={isCourtMode ? 'text-sky-300' : 'text-blue-400'}>{game.awayTimeouts}</span>
+                <span className="text-[10px] sm:text-xs text-slate-400">TM:</span>
+                <span className={`font-black ${isCourtMode ? 'text-sky-300' : 'text-blue-400'}`}>{game.awayTimeouts}</span>
               </button>
             </div>
 
-            <div className="flex items-baseline justify-between mt-1">
+            <div className="flex items-baseline justify-between mt-1 sm:mt-2">
               <div className="flex items-baseline gap-1.5">
-                <span className={`font-scoreboard text-4xl sm:text-5xl font-black ${isCourtMode ? 'text-sky-300' : 'text-blue-400'} leading-none`}>
+                <span className={`font-scoreboard text-5xl sm:text-6xl md:text-7xl font-black ${isCourtMode ? 'text-sky-300' : 'text-blue-400'} leading-none tracking-tight drop-shadow-md`}>
                   {game.awayScore}
                 </span>
-                <span className="text-[10px] uppercase font-bold text-gray-500">pts</span>
+                <span className="text-[10px] sm:text-xs uppercase font-black text-slate-400">pts</span>
               </div>
 
               {/* Away Team Quarter Fouls */}
               <div className="text-right">
-                <div className="text-[9px] text-gray-400 uppercase font-mono font-bold">Faltas Q</div>
-                <div className="flex items-center justify-end gap-0.5 sm:gap-1 mt-0.5">
+                <div className="text-[10px] sm:text-xs text-slate-400 uppercase font-mono font-bold">Faltas Q</div>
+                <div className="flex items-center justify-end gap-1 mt-0.5">
                   {[1, 2, 3, 4, 5].map(dot => (
                     <span
                       key={dot}
-                      className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+                      className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${
                         dot <= game.awayQuarterFouls
                           ? dot >= 5
                             ? `bg-rose-500 ring-2 ring-rose-500/50 ${isCourtMode ? '' : 'animate-pulse'}`
                             : isCourtMode ? 'bg-sky-500' : 'bg-blue-500'
-                          : 'bg-gray-800'
+                          : 'bg-blue-950/80 border border-blue-900/50'
                       }`}
                     />
                   ))}
-                  <span className="text-[11px] sm:text-xs font-mono font-bold text-gray-300 ml-0.5 sm:ml-1">
+                  <span className="text-xs sm:text-sm font-mono font-bold text-slate-300 ml-1">
                     ({game.awayQuarterFouls})
                   </span>
                 </div>
@@ -650,7 +631,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
         </div>
 
         {/* Mini Quarter Scores Progression Strip */}
-        <div className="mt-1.5 flex items-center justify-between gap-1 bg-black/40 px-2 sm:px-2.5 py-1 rounded border border-gray-800 font-mono text-[10px] sm:text-xs overflow-x-auto w-full max-w-full min-w-0">
+        <div className="mt-1.5 flex items-center justify-between gap-1 bg-[#070c1d]/90 px-2 sm:px-2.5 py-1 rounded-lg border border-blue-900/60 font-mono text-[10px] sm:text-xs overflow-x-auto w-full max-w-full min-w-0">
           <span className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase shrink-0">Cuartos:</span>
           <div className="flex items-center gap-1.5 sm:gap-3 grow justify-around min-w-0">
             {game.quarterScores.map(qs => (

@@ -1487,7 +1487,7 @@ export default function App() {
   useScreenWakeLock((isCourtMode || activeTab === 'live') && game.settings.keepScreenAwake !== false);
 
   return (
-    <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-black text-neutral-200' : 'min-h-screen bg-[#0F1115] text-gray-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
+    <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#070c1e] text-slate-100' : 'min-h-screen bg-[#090f23] text-slate-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
       {/* 1. If Court Mode is Active: Show Ultra-Clean Bench Tactile Console */}
       {isCourtMode ? (
         <CourtBenchMode
@@ -1516,7 +1516,7 @@ export default function App() {
       ) : (
         <>
           {/* Clean, Simple & Unified Navigation Header */}
-          <header className="h-14 bg-[#14161B] border-b border-gray-800 flex items-center justify-between px-3 sm:px-5 shrink-0 sticky top-0 z-40 w-full">
+          <header className="h-14 bg-gradient-to-r from-[#0c1633] via-[#101b3d] to-[#0c1633] border-b border-blue-900/60 shadow-lg flex items-center justify-between px-3 sm:px-5 shrink-0 sticky top-0 z-40 w-full">
             {/* Left: Brand + Active Team/Category */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
@@ -1543,7 +1543,7 @@ export default function App() {
                   playSound('click', game.settings.soundEnabled);
                   setShowTeamModal(true);
                 }}
-                className="flex items-center gap-1.5 bg-[#0e1014] hover:bg-neutral-800 px-2 py-1 rounded-lg border border-gray-700 hover:border-orange-500/50 text-xs font-mono transition shadow-sm min-w-0"
+                className="flex items-center gap-1.5 bg-[#091129] hover:bg-[#132047] px-2 py-1 rounded-lg border border-blue-900/60 hover:border-orange-500/60 text-xs font-mono transition shadow-sm min-w-0"
                 title="Cambiar de equipo o categoría"
               >
                 <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
@@ -1732,12 +1732,12 @@ export default function App() {
                       className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs transition-opacity"
                       onClick={() => setShowMobileHeaderMenu(false)}
                     />
-                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#121419]/95 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[85vh] overflow-y-auto">
+                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#0d1633]/98 backdrop-blur-md border border-blue-800/80 rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[85vh] overflow-y-auto">
                       {/* Prominent Accessible Close Header */}
-                      <div className="flex items-center justify-between px-2 py-1 pb-2 border-b border-gray-800">
+                      <div className="flex items-center justify-between px-2 py-1 pb-2 border-b border-blue-900/60">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                          <span className="text-xs font-black uppercase tracking-wider text-gray-200 font-mono">
+                          <span className="text-xs font-black uppercase tracking-wider text-slate-100 font-mono">
                             Menú de Opciones
                           </span>
                         </div>
@@ -1745,7 +1745,7 @@ export default function App() {
                           type="button"
                           onClick={() => setShowMobileHeaderMenu(false)}
                           aria-label="Cerrar menú"
-                          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-gray-200 hover:text-white border border-gray-600 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
+                          className="px-2.5 py-1 rounded-lg bg-blue-950/80 hover:bg-blue-900 active:bg-blue-800 text-slate-200 hover:text-white border border-blue-700/60 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
                         >
                           <X className="w-4 h-4 text-orange-400" />
                           <span>Cerrar</span>
@@ -2033,18 +2033,18 @@ export default function App() {
 
           {/* Match In-Screen Sub-Navigation when inside a game */}
           {activeTab !== 'teams' && activeTab !== 'stats' && activeTab !== 'scout' && (
-            <div className="bg-[#14161B] border-b border-gray-800 px-3 sm:px-6 py-1.5 shrink-0 sticky top-14 z-30">
+            <div className="bg-gradient-to-r from-[#0c1633] via-[#0f1b3d] to-[#0c1633] border-b border-blue-900/60 px-3 sm:px-6 py-1.5 shrink-0 sticky top-14 z-30 shadow-sm">
               <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
                 <div className="flex items-center gap-1 font-mono text-xs font-bold">
                   <button
                     onClick={() => setActiveTab('live')}
                     className={`px-3 py-1 rounded-lg transition flex items-center gap-1 uppercase ${
                       activeTab === 'live'
-                        ? 'bg-orange-600 text-white shadow'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 font-black'
+                        : 'text-slate-300 hover:text-white hover:bg-blue-900/40'
                     }`}
                   >
-                    <Flame className="w-3 h-3" />
+                    <Flame className="w-3 h-3 text-orange-400" />
                     <span>Mesa Directo</span>
                   </button>
 
@@ -2052,11 +2052,11 @@ export default function App() {
                     onClick={() => setActiveTab('charts')}
                     className={`px-3 py-1 rounded-lg transition flex items-center gap-1 uppercase ${
                       activeTab === 'charts'
-                        ? 'bg-orange-600 text-white shadow'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 font-black'
+                        : 'text-slate-300 hover:text-white hover:bg-blue-900/40'
                     }`}
                   >
-                    <PieChart className="w-3 h-3" />
+                    <PieChart className="w-3 h-3 text-sky-400" />
                     <span>Tiros</span>
                   </button>
 
@@ -2064,18 +2064,18 @@ export default function App() {
                     onClick={() => setActiveTab('playbyplay')}
                     className={`px-3 py-1 rounded-lg transition flex items-center gap-1 uppercase ${
                       activeTab === 'playbyplay'
-                        ? 'bg-orange-600 text-white shadow'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 font-black'
+                        : 'text-slate-300 hover:text-white hover:bg-blue-900/40'
                     }`}
                   >
-                    <ListOrdered className="w-3 h-3" />
+                    <ListOrdered className="w-3 h-3 text-indigo-400" />
                     <span>Jugadas</span>
                   </button>
                 </div>
 
                 <button
                   onClick={() => setShowOfficialSheet(true)}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 transition flex items-center gap-1 text-xs font-bold uppercase"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/60 transition flex items-center gap-1 text-xs font-bold uppercase shadow-sm"
                   title="Ver acta oficial del partido"
                 >
                   <Share2 className="w-3 h-3 text-emerald-400" />
@@ -2086,7 +2086,7 @@ export default function App() {
           )}
 
           {/* Active Tab View Content */}
-          <main className="grow bg-[#0F1115]">
+          <main className="grow bg-[#090f23]">
             {/* Teams Hub: Primary Entry Point of the App */}
             {activeTab === 'teams' && (
               <TeamsHubView

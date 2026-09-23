@@ -100,25 +100,25 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   };
 
   return (
-    <header className="bg-gradient-to-b from-[#13151d] via-[#0d0f14] to-[#08090c] border-b border-neutral-800/90 shrink-0 select-none shadow-xl w-full z-20">
+    <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
       {/* 1. TOP UTILITY STRIP: Responsive compact layout preventing button overlap on horizontal tablets */}
-      <div className="border-b border-neutral-800/60 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#090a0e]/80 gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-1.5 overflow-x-auto no-scrollbar">
         {/* Left: Exit button & Mode title */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={onToggleCourtMode}
-            className="px-2 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700/80 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0"
+            className="px-2.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#FFFDF7] border border-[#D4AF37]/50 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0"
             title="Volver a la vista completa estándar de mesa"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <ArrowLeft className="w-3.5 h-3.5 text-[#F5C542] shrink-0" />
             <span className="hidden sm:inline">SALIR MODO PISTA</span>
             <span className="sm:hidden">SALIR</span>
           </button>
 
-          <div className="hidden md:flex items-center gap-1.5 text-neutral-400 font-mono text-[10px] shrink-0">
+          <div className="hidden md:flex items-center gap-1.5 text-slate-300 font-mono text-[10px] shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-bold text-neutral-300">TABLET PISTA</span>
+            <span className="font-bold text-[#FFFDF7]">TABLET PISTA</span>
             {game.status === 'finished' ? (
               <span className="text-red-400 font-black ml-1 bg-red-950/80 px-1.5 py-0.2 rounded border border-red-800">
                 FINALIZADO (00:00)
@@ -128,7 +128,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 EN JUEGO
               </span>
             ) : (
-              <span className="text-amber-400 font-black ml-1 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-800">
+              <span className="text-[#F5C542] font-black ml-1 bg-[#0E224A] px-1.5 py-0.2 rounded border border-[#D4AF37]/40">
                 PAUSA
               </span>
             )}
@@ -265,31 +265,31 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
       </div>
 
       {/* 2. MAIN MATCH & TIME CONSOLE: Perfectly proportioned 3-column layout that NEVER overlaps on horizontal tablets */}
-      <div className="px-2 sm:px-3 py-1.5 flex items-center justify-between gap-2 overflow-x-auto">
+      <div className="px-2 sm:px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto">
         {/* LEFT SECTION: LOCAL TEAM SCORECARD */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="flex items-center gap-2 bg-[#151722] border border-neutral-800 rounded-xl px-2 sm:px-2.5 py-1 min-w-[125px] sm:min-w-[145px] shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2.5 sm:px-3.5 py-1.5 min-w-[135px] sm:min-w-[165px] shadow-md">
             <div className="flex flex-col text-left min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-black text-orange-400 uppercase tracking-wider truncate max-w-[85px] sm:max-w-[100px] leading-tight">
+              <span className="text-xs sm:text-sm md:text-base font-black text-[#F5C542] uppercase tracking-wider truncate max-w-[95px] sm:max-w-[120px] leading-tight">
                 {game.homeTeamName || 'LOCAL'}
               </span>
-              <div className="flex items-center gap-1 text-[9px] font-mono mt-0.5">
-                <span className="text-neutral-500 font-bold">F:</span>
+              <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5">
+                <span className="text-slate-400 font-bold">F:</span>
                 <span
-                  className={`font-black px-1 rounded text-[9px] ${
+                  className={`font-black px-1 rounded text-[10px] ${
                     homeIsBonus
-                      ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse'
-                      : 'text-neutral-300 bg-neutral-900 border border-neutral-800'
+                      ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
+                      : 'text-[#FFFDF7] bg-[#071328] border border-[#D4AF37]/40'
                   }`}
                   title={homeIsBonus ? '¡Bonus alcanzado!' : 'Faltas de equipo este cuarto'}
                 >
                   {game.homeQuarterFouls || 0}
-                  {homeIsBonus && <span className="ml-0.5 text-[7px] text-red-400 font-bold">BONUS</span>}
+                  {homeIsBonus && <span className="ml-0.5 text-[8px] text-rose-400 font-bold">BONUS</span>}
                 </span>
               </div>
             </div>
 
-            <div className="font-scoreboard font-black text-2xl sm:text-3xl text-white tracking-tight leading-none ml-auto drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)] pl-1">
+            <div className="font-scoreboard font-extrabold text-3xl sm:text-4xl md:text-5xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1.5">
               {game.homeScore}
             </div>
 
@@ -299,10 +299,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 type="button"
                 onClick={() => onTriggerTimeout('home')}
                 disabled={isActionsLocked || (game.homeTimeouts !== undefined && game.homeTimeouts <= 0)}
-                className="px-1.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 active:bg-amber-800 border border-amber-500/60 text-[9px] font-mono font-bold text-amber-300 flex items-center gap-0.5 transition active:scale-95 disabled:opacity-30 shadow-sm ml-0.5 shrink-0"
+                className="px-2 py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-[#D4AF37]/60 text-[10px] sm:text-xs font-mono font-bold text-[#F5C542] flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm ml-0.5 shrink-0"
                 title="Pedir Tiempo Muerto Local (60 segundos)"
               >
-                <Timer className="w-3 h-3 text-amber-400" />
+                <Timer className="w-3.5 h-3.5 text-[#F5C542]" />
                 <span>TM: {game.homeTimeouts ?? 3}</span>
               </button>
             )}
@@ -310,24 +310,24 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
 
         {/* CENTER SECTION: QUARTER NAVIGATOR, MASTER CLOCK, AND SHOT CLOCK */}
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Quarter Selector */}
-          <div className="flex items-center bg-[#151722] border border-neutral-800 rounded-xl px-1 py-0.5 text-xs font-mono shrink-0">
+          <div className="flex items-center bg-[#071328] border border-[#D4AF37]/50 rounded-xl px-1.5 py-1 text-sm font-mono shrink-0 shadow-sm">
             <button
               onClick={handlePrevQuarter}
               disabled={isActionsLocked || game.currentQuarter <= 1}
-              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-bold transition text-xs"
+              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-black transition text-sm sm:text-base"
               title="Cuarto anterior"
             >
               ‹
             </button>
-            <span className="px-1 font-black text-amber-400 text-xs tracking-wider">
+            <span className="px-1.5 font-black text-[#F5C542] text-sm sm:text-base md:text-lg tracking-wider">
               {currentQuarterLabel}
             </span>
             <button
               onClick={handleNextQuarter}
               disabled={isActionsLocked || game.currentQuarter >= 6}
-              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-bold transition text-xs"
+              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-black transition text-sm sm:text-base"
               title="Siguiente cuarto"
             >
               ›
@@ -339,37 +339,37 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               onClick={toggleClock}
               disabled={isActionsLocked}
-              className={`px-2.5 sm:px-3 py-1 rounded-xl border flex items-center gap-1.5 sm:gap-2 transition active:scale-95 shadow-lg shrink-0 ${
+              className={`px-3 sm:px-4 py-1.5 rounded-xl border-2 flex items-center gap-2 sm:gap-2.5 transition active:scale-95 shadow-xl shrink-0 ${
                 isActionsLocked
-                  ? 'bg-[#121318] border-neutral-800 text-neutral-400 cursor-not-allowed opacity-90'
+                  ? 'bg-[#071328] border-[#D4AF37]/30 text-slate-500 cursor-not-allowed opacity-90'
                   : game.isClockRunning
-                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40'
-                  : 'bg-black/90 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                  ? 'bg-emerald-950/95 border-emerald-400 text-[#FFFDF7] shadow-[0_0_20px_rgba(16,185,129,0.4)] ring-2 ring-emerald-500/40'
+                  : 'bg-[#071328] border-[#D4AF37]/80 text-[#FFFDF7] shadow-[0_0_20px_rgba(212,175,55,0.25)]'
               }`}
               title={game.status === 'finished' ? 'Partido finalizado (00:00)' : 'Iniciar / Pausar tiempo de partido'}
             >
               {game.status === 'finished' ? (
-                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-[#F5C542] shrink-0" />
               ) : game.isClockRunning ? (
-                <Pause className="w-4 h-4 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
+                <Pause className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
               ) : (
-                <Play className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 text-[#F5C542] fill-[#F5C542] shrink-0" />
               )}
               <div className="flex flex-col items-center">
-                <span className="font-scoreboard font-black text-xl sm:text-2xl lg:text-3xl tracking-widest leading-none drop-shadow-md">
+                <span className="font-scoreboard font-black text-2xl sm:text-3xl lg:text-4xl tracking-wider leading-none drop-shadow-md text-[#FFFDF7]">
                   {formatGameTime(game.status === 'finished' ? 0 : game.currentSecondsRemaining)}
                 </span>
-                <span className="text-[7.5px] sm:text-[8px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
+                <span className="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
                   {game.status === 'finished' ? (
                     isEditingFinishedGame ? (
-                      <span className="text-amber-400 font-black">MODO EDICIÓN</span>
+                      <span className="text-[#F5C542] font-black">MODO EDICIÓN</span>
                     ) : (
                       <span className="text-red-400 font-black">FINALIZADO</span>
                     )
                   ) : game.isClockRunning ? (
                     <span className="text-emerald-400">EN JUEGO</span>
                   ) : (
-                    <span className="text-amber-400/90">PAUSA</span>
+                    <span className="text-[#F5C542]/90">PAUSA</span>
                   )}
                 </span>
               </div>
@@ -380,7 +380,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenQuickTimeAdjust}
-                className="p-1.5 sm:p-2 bg-[#151722] hover:bg-[#202330] text-amber-400 hover:text-amber-300 border border-neutral-700 hover:border-amber-500/60 rounded-xl transition active:scale-95 shadow-md flex flex-col items-center justify-center gap-0.5 shrink-0"
+                className="p-1.5 sm:p-2 bg-[#071328] hover:bg-[#122B5C] text-[#F5C542] hover:text-[#FFFDF7] border border-[#D4AF37]/60 rounded-xl transition active:scale-95 shadow-md flex flex-col items-center justify-center gap-0.5 shrink-0"
                 title="Ajuste rápido de minutos, segundos y régimen del reloj"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -392,12 +392,12 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </div>
 
           {/* Shot Clock Controls (24s / 14s & display) */}
-          <div className={`flex items-center gap-1 bg-[#151722] border border-neutral-800 rounded-xl p-1 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+          <div className={`flex items-center gap-1 bg-[#071328] border border-[#D4AF37]/45 rounded-xl p-1 shrink-0 shadow-sm ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               onClick={() => handleResetShotClock(24)}
               disabled={isActionsLocked}
-              className="px-2 py-1 bg-amber-950/90 hover:bg-amber-800 text-amber-200 border border-amber-500/70 rounded-lg text-[11px] font-black font-mono transition active:scale-95 shadow-md disabled:opacity-40"
+              className="px-2.5 py-1 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-xs disabled:opacity-40"
               title="Reiniciar posesión a 24s"
             >
               24s
@@ -406,7 +406,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={() => handleResetShotClock(14)}
               disabled={isActionsLocked}
-              className="px-2 py-1 bg-amber-950/90 hover:bg-amber-800 text-amber-200 border border-amber-500/70 rounded-lg text-[11px] font-black font-mono transition active:scale-95 shadow-md disabled:opacity-40"
+              className="px-2.5 py-1 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-xs disabled:opacity-40"
               title="Reiniciar posesión a 14s (Rebote ofensivo / Falta pista delantera)"
             >
               14s
@@ -415,16 +415,16 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               type="button"
               onClick={handleToggleShotClock}
               disabled={isActionsLocked}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg font-scoreboard font-black text-xs sm:text-sm border transition active:scale-95 shadow-md flex items-center gap-1 disabled:opacity-40 ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg font-scoreboard font-black text-sm sm:text-lg lg:text-xl border transition active:scale-95 shadow-sm flex items-center gap-1 disabled:opacity-40 ${
                 shotClockSecs <= 5
-                  ? 'bg-red-950 text-red-200 border-red-500 animate-pulse ring-1 ring-red-500'
+                  ? 'bg-rose-950 text-rose-200 border-rose-500 animate-pulse ring-1 ring-rose-500'
                   : (game.isShotClockRunning ?? true)
-                  ? 'bg-black text-amber-300 border-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
-                  : 'bg-neutral-900 text-neutral-400 border-neutral-700'
+                  ? 'bg-[#071328] text-[#F5C542] border-2 border-[#D4AF37]/80 shadow-[0_0_10px_rgba(212,175,55,0.35)]'
+                  : 'bg-[#0E224A] text-slate-400 border-[#D4AF37]/30'
               }`}
               title="Pausar o Reanudar posesión"
             >
-              <span className="text-[8px] font-mono text-neutral-400 font-bold">POS</span>
+              <span className="text-[8px] font-mono text-slate-400 font-bold">POS</span>
               <span>{game.status === 'finished' ? 0 : shotClockSecs}″</span>
             </button>
           </div>
@@ -434,7 +434,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               onClick={() => adjustSeconds(10)}
               disabled={isActionsLocked}
-              className="px-1.5 py-1 bg-[#151722] text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-700 rounded-lg text-[9px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
+              className="px-2 py-1 bg-[#071328] text-[#FFFDF7] hover:text-[#F5C542] border border-[#D4AF37]/40 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
               title="+10 segundos"
             >
               +10s
@@ -442,7 +442,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               onClick={() => adjustSeconds(-10)}
               disabled={isActionsLocked}
-              className="px-1.5 py-1 bg-[#151722] text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-700 rounded-lg text-[9px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
+              className="px-2 py-1 bg-[#071328] text-[#FFFDF7] hover:text-[#F5C542] border border-[#D4AF37]/40 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
               title="-10 segundos"
             >
               -10s
@@ -453,8 +453,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         {/* RIGHT SECTION: AWAY TEAM & OPPONENT LIVE ACTIONS */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* RIVAL TEAM CARD */}
-          <div className="flex items-center gap-2 bg-[#151722] border border-neutral-800 rounded-xl px-2 sm:px-2.5 py-1 min-w-[125px] sm:min-w-[145px] shadow-sm">
-            <div className="font-scoreboard font-black text-2xl sm:text-3xl text-white tracking-tight leading-none drop-shadow-[0_2px_8px_rgba(56,189,248,0.35)] pr-1">
+          <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2.5 sm:px-3.5 py-1.5 min-w-[135px] sm:min-w-[165px] shadow-md">
+            <div className="font-scoreboard font-extrabold text-3xl sm:text-4xl md:text-5xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1.5">
               {game.awayScore}
             </div>
 
@@ -464,30 +464,30 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 type="button"
                 onClick={() => onTriggerTimeout('away')}
                 disabled={isActionsLocked || (game.awayTimeouts !== undefined && game.awayTimeouts <= 0)}
-                className="px-1.5 py-1 rounded bg-sky-950/80 hover:bg-sky-900 active:bg-sky-800 border border-sky-500/60 text-[9px] font-mono font-bold text-sky-300 flex items-center gap-0.5 transition active:scale-95 disabled:opacity-30 shadow-sm mr-0.5 shrink-0"
+                className="px-2 py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-sky-500/60 text-[10px] sm:text-xs font-mono font-bold text-sky-300 flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm mr-0.5 shrink-0"
                 title="Tiempo Muerto Rival (60 segundos)"
               >
-                <Timer className="w-3 h-3 text-sky-400" />
+                <Timer className="w-3.5 h-3.5 text-sky-400" />
                 <span>TM: {game.awayTimeouts ?? 3}</span>
               </button>
             )}
 
             <div className="flex flex-col text-right ml-auto min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-black text-sky-400 uppercase tracking-wider truncate max-w-[85px] sm:max-w-[100px] leading-tight">
+              <span className="text-xs sm:text-sm md:text-base font-black text-sky-400 uppercase tracking-wider truncate max-w-[95px] sm:max-w-[120px] leading-tight">
                 {game.awayTeamName || 'RIVAL'}
               </span>
-              <div className="flex items-center justify-end gap-1 text-[9px] font-mono mt-0.5">
-                <span className="text-neutral-500 font-bold">F:</span>
+              <div className="flex items-center justify-end gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5">
+                <span className="text-slate-400 font-bold">F:</span>
                 <span
-                  className={`font-black px-1 rounded text-[9px] ${
+                  className={`font-black px-1 rounded text-[10px] ${
                     awayIsBonus
-                      ? 'bg-red-950 text-red-300 border border-red-500 animate-pulse'
-                      : 'text-neutral-300 bg-neutral-900 border border-neutral-800'
+                      ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
+                      : 'text-slate-200 bg-blue-950/80 border border-blue-900/60'
                   }`}
                   title={awayIsBonus ? '¡Bonus rival alcanzado!' : 'Faltas de equipo rival este cuarto'}
                 >
                   {game.awayQuarterFouls || 0}
-                  {awayIsBonus && <span className="ml-0.5 text-[7px] text-red-400 font-bold">BONUS</span>}
+                  {awayIsBonus && <span className="ml-0.5 text-[8px] text-rose-400 font-bold">BONUS</span>}
                 </span>
               </div>
             </div>

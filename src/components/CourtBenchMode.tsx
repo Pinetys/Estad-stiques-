@@ -770,7 +770,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   };
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full bg-black text-white flex flex-col overflow-hidden select-none">
+    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#080d1e] text-white flex flex-col overflow-hidden select-none">
       {/* 1. TOP BAR: LANDSCAPE (CENTERED QUARTER CLOCK & ALL CONTROLS) VS PORTRAIT */}
       {isLandscapeTablet ? (
         <CourtLandscapeHeader
@@ -822,8 +822,6 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             setShowCloseConfirmModal(true);
           }}
           onCycleShotMode={handleCycleShotMode}
-          onUndoLastAction={onUndoLastAction}
-          recentEvent={recentEvent}
           onSelectQuarter={(quarter) => {
             if (isActionsLocked) return;
             triggerHaptic('medium', game.settings.vibrationEnabled);
@@ -839,12 +837,12 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           }}
         />
       ) : (
-        <div className="bg-[#0c0d10] border-b border-neutral-800 px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
+        <div className="bg-[#0c142b] border-b border-blue-900/60 px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
         <div className="flex items-center gap-1.5">
           {/* Exit Court Mode button */}
           <button
             onClick={onToggleCourtMode}
-            className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 rounded font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px]"
+            className="px-2 py-0.5 bg-blue-950/80 hover:bg-blue-900 text-amber-300 border border-blue-700/60 rounded font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px]"
             title="Salir de Modo Pista y volver a la vista completa"
           >
             <ZapOff className="w-3 h-3 text-amber-400" />
@@ -852,7 +850,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </button>
 
           {/* Quarter Navigator */}
-          <div className="flex items-center bg-[#14161d] rounded border border-neutral-800 p-0.5 font-mono text-[11px] font-bold">
+          <div className="flex items-center bg-[#070c1d] rounded border border-blue-900/70 p-0.5 font-mono text-[11px] font-bold">
             <button
               onClick={() => handleChangeQuarter(-1)}
               disabled={isActionsLocked || game.currentQuarter <= 1}
@@ -1173,15 +1171,15 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               {bonusFreeThrowPrompt && renderBonusAssistant()}
               {assistPromptForEvent && renderAssistPrompt()}
 
-              <div className="flex items-center justify-between px-2.5 py-1 bg-[#12141c] border border-neutral-800/80 rounded-xl text-xs font-mono">
+              <div className="flex items-center justify-between px-2.5 py-1 bg-[#0c1533] border border-blue-900/80 rounded-xl text-xs font-mono">
                 <div className="flex items-center gap-1.5 truncate">
-                  <span className="text-[10px] uppercase font-bold text-neutral-400">Acción para:</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Acción para:</span>
                   {selectedPlayer ? (
                     <span className="text-amber-400 font-black truncate">
                       #{selectedPlayer.number} {selectedPlayer.name}
                     </span>
                   ) : (
-                    <span className="text-neutral-500 italic text-[11px]">
+                    <span className="text-slate-400 italic text-[11px]">
                       Toca un botón de acción o selecciona un jugador
                     </span>
                   )}
@@ -1189,7 +1187,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 {selectedPlayer && (
                   <button
                     onClick={() => onSelectPlayer('')}
-                    className="text-[10px] text-neutral-400 hover:text-white underline font-bold shrink-0 ml-1"
+                    className="text-[10px] text-slate-300 hover:text-white underline font-bold shrink-0 ml-1"
                   >
                     Deseleccionar ✕
                   </button>
@@ -1208,7 +1206,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </div>
 
             {/* Bottom Bar: Recent Play Event & Big Undo Button */}
-            <div className="shrink-0 pt-0.5 border-t border-neutral-800/60">
+            <div className="shrink-0 pt-0.5 border-t border-blue-900/60">
               {renderBottomBar(true)}
             </div>
           </div>
@@ -1227,8 +1225,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
         return (
           <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in">
-            <div className={`bg-[#12141a] border rounded-2xl p-3 pb-safe max-w-md w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
-              isFoulConfirmation ? 'border-red-500/70 space-y-2' : 'border-amber-500/60 space-y-2.5'
+            <div className={`bg-[#0c142b] border rounded-2xl p-3 pb-safe max-w-md w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
+              isFoulConfirmation ? 'border-rose-500/80 space-y-2' : 'border-amber-500/70 space-y-2.5'
             }`}>
               {/* Modal Header with Action badge */}
               <div className="flex items-center justify-between pb-1.5 border-b border-neutral-800">

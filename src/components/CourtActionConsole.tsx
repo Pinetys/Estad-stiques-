@@ -91,8 +91,8 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           </button>
         </div>
 
-        {/* SECTION B: REBOUNDS & GAMEPLAY (6 COLUMNAS EN HORIZONTAL) - EXTRA TALL */}
-        <div className="grid grid-cols-6 gap-1.5 sm:gap-2 w-full pt-1">
+        {/* SECTION B: REBOUNDS & GAMEPLAY (5 COLUMNAS EN HORIZONTAL - EQUALIZADO) - EXTRA TALL */}
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-full pt-1">
           {/* REBOTE DEFENSIVO */}
           <button
             id="action-dreb-btn"
@@ -114,7 +114,6 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
             <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none text-indigo-100">REB OF</span>
             <span className="text-[8.5px] sm:text-[10px] uppercase text-indigo-300 font-bold mt-1">Ofensivo</span>
           </button>
-
 
           {/* ROBO */}
           <button
@@ -150,13 +149,13 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           </button>
         </div>
 
-        {/* SECTION C: FIBA FOULS (5 COLUMNAS EN HORIZONTAL) - EXTRA TALL */}
+        {/* SECTION C: FIBA FOULS (5 COLUMNAS EN HORIZONTAL - EQUALIZADO) - EXTRA TALL */}
         <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-full pt-1">
           {/* FALTA PERSONAL (P) */}
           <button
             id="action-pf-btn"
             onClick={() => onInitiateAction('PF')}
-            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border-2 border-rose-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[60px] sm:min-h-[68px] lg:min-h-[74px]"
+            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border-2 border-rose-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[64px] sm:min-h-[72px] lg:min-h-[78px]"
             title="Falta Personal simple (P)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-rose-100">FALTA (P)</span>
@@ -167,7 +166,7 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <button
             id="action-pft-btn"
             onClick={() => onInitiateAction('PFT')}
-            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border-2 border-rose-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[60px] sm:min-h-[68px] lg:min-h-[74px]"
+            className="bg-rose-950/95 hover:bg-rose-900 active:bg-rose-950 text-rose-100 border-2 border-rose-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[64px] sm:min-h-[72px] lg:min-h-[78px]"
             title="Falta con tiros concedidos (P1/2/3)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-rose-100">TIRO (PFT)</span>
@@ -178,7 +177,7 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <button
             id="action-of-btn"
             onClick={() => onInitiateAction('OF')}
-            className="bg-orange-950/95 hover:bg-orange-900 active:bg-orange-950 text-orange-200 border-2 border-orange-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[60px] sm:min-h-[68px] lg:min-h-[74px]"
+            className="bg-orange-950/95 hover:bg-orange-900 active:bg-orange-950 text-orange-200 border-2 border-orange-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[64px] sm:min-h-[72px] lg:min-h-[78px]"
             title="Falta en Ataque sin tiros (O)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-orange-200">ATAQUE (O)</span>
@@ -189,7 +188,7 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <button
             id="action-tf-btn"
             onClick={() => onInitiateAction('TF')}
-            className="bg-purple-950/95 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border-2 border-purple-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[60px] sm:min-h-[68px] lg:min-h-[74px]"
+            className="bg-purple-950/95 hover:bg-purple-900 active:bg-purple-950 text-purple-200 border-2 border-purple-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[64px] sm:min-h-[72px] lg:min-h-[78px]"
             title="Falta Técnica o Antideportiva"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-purple-200">TÉC / ANT</span>
@@ -200,7 +199,7 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <button
             id="action-fd-btn"
             onClick={() => onInitiateAction('FD')}
-            className="bg-lime-950/95 hover:bg-lime-900 active:bg-lime-950 text-lime-100 border-2 border-lime-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[60px] sm:min-h-[68px] lg:min-h-[74px]"
+            className="bg-lime-950/95 hover:bg-lime-900 active:bg-lime-950 text-lime-100 border-2 border-lime-600/80 font-black rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[64px] sm:min-h-[72px] lg:min-h-[78px]"
             title="Falta Personal Recibida o Provocada (+1 Valoración)"
           >
             <span className="text-xs sm:text-sm font-black font-mono leading-none text-lime-200">RECIB (FD)</span>
@@ -295,8 +294,8 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
         </div>
       </div>
 
-      {/* SECTION B: REBOUNDS & GAMEPLAY - EXTRA LARGE TOUCH TARGETS */}
-      <div className="grid grid-cols-6 gap-1 xs:gap-1.5 sm:gap-2 w-full shrink-0">
+      {/* SECTION B: REBOUNDS & GAMEPLAY - 5 COLUMNS EQUALIZED */}
+      <div className="grid grid-cols-5 gap-1 xs:gap-1.5 sm:gap-2 w-full shrink-0">
         <button
           id="action-dreb-btn"
           onClick={() => onInitiateAction('DREB')}
@@ -316,7 +315,6 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <span className="text-[10px] xs:text-[11.5px] sm:text-xs font-black font-mono leading-none text-indigo-100">REB OF</span>
           <span className="text-[7px] xs:text-[8px] uppercase text-indigo-300 font-bold mt-1">Ataque</span>
         </button>
-
 
         <button
           id="action-stl-btn"

@@ -13,16 +13,19 @@
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
-    background-color: #0F1115;
-    color: #F3F4F6;
+    background-color: #0B1C3D;
+    color: #FFFDF7;
     margin: 0;
     padding: 0;
   }
 }
 
 .font-scoreboard {
-  font-family: 'Teko', sans-serif;
-  letter-spacing: 0.05em;
+  font-family: 'Rajdhani', 'Barlow Semi Condensed', 'Plus Jakarta Sans', sans-serif;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  font-weight: 800;
 }
 
 /* iOS and Android safe area insets */
@@ -39,14 +42,14 @@
   width: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0F1115;
+  background: #0B1C3D;
 }
 ::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #1C3565;
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4B5563;
+  background: #2D4C8A;
 }
 
 /* Pulse animation for active clock */

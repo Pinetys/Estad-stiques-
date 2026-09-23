@@ -141,12 +141,12 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col justify-between bg-[#0e1014] border-r border-neutral-800/80 pr-2 select-none overflow-hidden">
+    <div className="w-full h-full flex flex-col justify-between bg-[#0a0f24] border-r border-blue-900/60 pr-2 select-none overflow-hidden">
       {/* 1. TOP HEADER: ROSTER INFO & QUICK MODAL BUTTONS */}
-      <div className="flex items-center justify-between pb-1.5 pt-0.5 border-b border-neutral-800/70 shrink-0">
+      <div className="flex items-center justify-between pb-1.5 pt-0.5 border-b border-blue-900/60 shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-black font-mono uppercase tracking-wider text-neutral-200">
+          <span className="text-xs font-black font-mono uppercase tracking-wider text-slate-200">
             Plantilla ({game.players.length})
           </span>
         </div>
@@ -156,7 +156,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             <button
               type="button"
               onClick={onOpenRosterModal}
-              className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-[10px] font-mono font-bold flex items-center gap-1 transition"
+              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-slate-300 hover:text-white border border-blue-800/80 text-[10px] font-mono font-bold flex items-center gap-1 transition"
               title="Editar jugadores convocados que vienen al partido"
             >
               <Users className="w-3 h-3 text-orange-400" />
@@ -168,7 +168,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             <button
               type="button"
               onClick={onOpenStartingFiveModal}
-              className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-[10px] font-mono font-bold flex items-center gap-1 transition"
+              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-slate-300 hover:text-white border border-blue-800/80 text-[10px] font-mono font-bold flex items-center gap-1 transition"
               title="Configurar los 5 titulares iniciales"
             >
               <Users className="w-3 h-3 text-orange-400" />
@@ -179,7 +179,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
           <button
             type="button"
             onClick={onOpenSubstitutionModal}
-            className="px-2 py-0.5 bg-[#1a1d26] hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700/80 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm"
+            className="px-2 py-0.5 bg-blue-950/80 hover:bg-blue-900 text-slate-300 hover:text-white border border-blue-800/80 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm"
             title="Abrir ventana de cambios múltiples"
           >
             <ArrowRightLeft className="w-3 h-3 text-amber-400" />
@@ -260,8 +260,8 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       : isFouledOut
                       ? 'bg-red-950/30 border-red-800 text-red-300'
                       : isFoulDanger
-                      ? 'bg-amber-950/20 border-amber-700/80 text-neutral-200 hover:border-amber-500'
-                      : 'bg-[#14161f] hover:bg-[#1a1d29] border-neutral-800/90 text-neutral-200'
+                      ? 'bg-amber-950/20 border-amber-700/80 text-slate-200 hover:border-amber-500'
+                      : 'bg-[#0e1736] hover:bg-[#131f47] border-blue-900/70 text-slate-200'
                   }`}
                 >
                   {/* Left: Dorsal + Name + Status */}
@@ -270,10 +270,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       #{player.number}
                     </span>
                     <div className="flex flex-col min-w-0 text-left">
-                      <span className="text-xs font-bold text-neutral-200 truncate leading-tight">
+                      <span className="text-xs font-bold text-slate-200 truncate leading-tight">
                         {player.name}
                       </span>
-                      <span className="text-[9px] text-neutral-400 font-medium">
+                      <span className="text-[9px] text-slate-400 font-medium">
                         ⏱ {stats.minutesPlayedFormatted} · {player.position || 'JUG'}
                       </span>
                     </div>
@@ -321,12 +321,12 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
         {/* SECTION B: BANQUILLO (SUPLENTES) */}
         <div className="pt-1">
-          <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 mb-1 px-0.5">
+          <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1 px-0.5">
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
               Banquillo ({benchPlayers.length})
             </span>
-            <span className="text-neutral-500 text-[9px]">
+            <span className="text-slate-400 text-[9px]">
               {pendingOutId ? 'Toca quién entra ⏎' : 'Toca para meter a pista'}
             </span>
           </div>
@@ -349,7 +349,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       ? 'bg-emerald-950/90 border-emerald-500 ring-2 ring-emerald-500/60 text-white shadow-lg'
                       : pendingOutId
                       ? 'bg-emerald-950/40 hover:bg-emerald-900/80 border-emerald-500/70 text-emerald-200 animate-pulse'
-                      : 'bg-[#12141c] hover:bg-[#181a24] border-neutral-800/80 text-neutral-300'
+                      : 'bg-[#0c142b] hover:bg-[#111c3d] border-blue-950 text-slate-300'
                   }`}
                 >
                   {/* Left: Dorsal + Name */}

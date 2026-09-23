@@ -53,7 +53,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
       {/* Top Highlights Cards (High Density) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
         {/* MVP Card */}
-        <div className="bg-[#14161B] border border-amber-500/40 rounded p-2">
+        <div className="bg-[#0e1738] border border-amber-500/40 rounded-xl p-2 shadow-sm">
           <div className="flex items-center gap-1.5 text-amber-400 text-[10px] font-bold uppercase tracking-wider font-mono">
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
             <span>MVP (Valoración)</span>
@@ -63,18 +63,18 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               <span className="font-scoreboard text-xl font-black text-amber-400">
                 #{mvpPlayer?.player.number}
               </span>{' '}
-              <span className="text-xs font-bold text-gray-200">
+              <span className="text-xs font-bold text-slate-200">
                 {mvpPlayer?.player.name.split(' ')[0]}
               </span>
             </div>
             <span className="text-sm font-black font-mono text-amber-400">
-              {mvpPlayer?.efficiency} <span className="text-[9px] text-gray-500 font-normal">VAL</span>
+              {mvpPlayer?.efficiency} <span className="text-[9px] text-slate-400 font-normal">VAL</span>
             </span>
           </div>
         </div>
 
         {/* Top Scorer Card */}
-        <div className="bg-[#14161B] border border-orange-500/40 rounded p-2">
+        <div className="bg-[#0e1738] border border-orange-500/40 rounded-xl p-2 shadow-sm">
           <div className="flex items-center gap-1.5 text-orange-400 text-[10px] font-bold uppercase tracking-wider font-mono">
             <Flame className="w-3.5 h-3.5 text-orange-400" />
             <span>Máx. Anotador</span>
@@ -84,18 +84,18 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               <span className="font-scoreboard text-xl font-black text-orange-400">
                 #{topScorer?.player.number}
               </span>{' '}
-              <span className="text-xs font-bold text-gray-200">
+              <span className="text-xs font-bold text-slate-200">
                 {topScorer?.player.name.split(' ')[0]}
               </span>
             </div>
             <span className="text-sm font-black font-mono text-orange-400">
-              {topScorer?.points} <span className="text-[9px] text-gray-500 font-normal">PTS</span>
+              {topScorer?.points} <span className="text-[9px] text-slate-400 font-normal">PTS</span>
             </span>
           </div>
         </div>
 
         {/* Top Rebounder Card */}
-        <div className="bg-[#14161B] border border-blue-500/40 rounded p-2">
+        <div className="bg-[#0e1738] border border-blue-500/40 rounded-xl p-2 shadow-sm">
           <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase tracking-wider font-mono">
             <Shield className="w-3.5 h-3.5 text-blue-400" />
             <span>Rebotes</span>
@@ -105,18 +105,18 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               <span className="font-scoreboard text-xl font-black text-blue-400">
                 #{topRebounder?.player.number}
               </span>{' '}
-              <span className="text-xs font-bold text-gray-200">
+              <span className="text-xs font-bold text-slate-200">
                 {topRebounder?.player.name.split(' ')[0]}
               </span>
             </div>
             <span className="text-sm font-black font-mono text-blue-400">
-              {topRebounder?.totalRebounds} <span className="text-[9px] text-gray-500 font-normal">REB</span>
+              {topRebounder?.totalRebounds} <span className="text-[9px] text-slate-400 font-normal">REB</span>
             </span>
           </div>
         </div>
 
         {/* Top Assister Card */}
-        <div className="bg-[#14161B] border border-sky-500/40 rounded p-2">
+        <div className="bg-[#0e1738] border border-sky-500/40 rounded-xl p-2 shadow-sm">
           <div className="flex items-center gap-1.5 text-sky-400 text-[10px] font-bold uppercase tracking-wider font-mono">
             <Award className="w-3.5 h-3.5 text-sky-400" />
             <span>Asistencias</span>
@@ -126,12 +126,12 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               <span className="font-scoreboard text-xl font-black text-sky-400">
                 #{topAssister?.player.number}
               </span>{' '}
-              <span className="text-xs font-bold text-gray-200">
+              <span className="text-xs font-bold text-slate-200">
                 {topAssister?.player.name.split(' ')[0]}
               </span>
             </div>
             <span className="text-sm font-black font-mono text-sky-400">
-              {topAssister?.assists} <span className="text-[9px] text-gray-500 font-normal">AST</span>
+              {topAssister?.assists} <span className="text-[9px] text-slate-400 font-normal">AST</span>
             </span>
           </div>
         </div>
@@ -142,10 +142,10 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
         <div className="flex items-center gap-1 font-mono">
           <button
             onClick={() => setQuarterFilter(undefined)}
-            className={`px-2.5 py-1 rounded text-xs font-bold transition border ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
               quarterFilter === undefined
-                ? 'bg-orange-600 border-orange-500 text-white'
-                : 'bg-[#14161B] border-gray-800 hover:bg-gray-800 text-gray-300'
+                ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
+                : 'bg-[#0e1738] border-blue-900/60 hover:bg-blue-900/50 text-slate-300'
             }`}
           >
             Partido Completo
@@ -154,10 +154,10 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
             <button
               key={q}
               onClick={() => setQuarterFilter(q)}
-              className={`px-2.5 py-1 rounded text-xs font-bold transition border ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
                 quarterFilter === q
-                  ? 'bg-orange-600 border-orange-500 text-white'
-                  : 'bg-[#14161B] border-gray-800 hover:bg-gray-800 text-gray-300'
+                  ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
+                  : 'bg-[#0e1738] border-blue-900/60 hover:bg-blue-900/50 text-slate-300'
               }`}
             >
               {formatQuarterShort(q)}
@@ -166,10 +166,10 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
           {game.currentQuarter > 4 && (
             <button
               onClick={() => setQuarterFilter(5)}
-              className={`px-2.5 py-1 rounded text-xs font-bold transition border ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
                 quarterFilter === 5
-                  ? 'bg-orange-600 border-orange-500 text-white'
-                  : 'bg-[#14161B] border-gray-800 hover:bg-gray-800 text-gray-300'
+                  ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
+                  : 'bg-[#0e1738] border-blue-900/60 hover:bg-blue-900/50 text-slate-300'
               }`}
             >
               PR
@@ -177,18 +177,18 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
           )}
         </div>
 
-        <span className="text-[10px] uppercase font-mono tracking-wider text-gray-500 hidden sm:inline">
+        <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 hidden sm:inline">
           {quarterFilter ? `Datos de Q${quarterFilter}` : 'Acumulado Total'}
         </span>
       </div>
 
       {/* Full Box Score Table */}
-      <div className="bg-[#14161B] border border-gray-800 rounded shadow overflow-hidden">
+      <div className="bg-[#0a0f24] border border-blue-900/60 rounded-xl shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse min-w-[780px]">
             <thead>
-              <tr className="bg-[#1A1D23] border-b border-gray-800 text-gray-400 font-mono font-bold uppercase text-[10px] tracking-wider">
-                <th className="py-2 px-2.5 sticky left-0 bg-[#1A1D23] z-10"># Jugador</th>
+              <tr className="bg-[#0e1738] border-b border-blue-900/70 text-slate-300 font-mono font-bold uppercase text-[10px] tracking-wider">
+                <th className="py-2 px-2.5 sticky left-0 bg-[#0e1738] z-10"># Jugador</th>
                 <th className="py-2 px-1.5 text-center">POS</th>
                 <th
                   onClick={() => handleSort('secondsPlayed')}
@@ -286,7 +286,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/80 font-mono">
+            <tbody className="divide-y divide-blue-900/40 font-mono">
               {sortedPlayers.map((ps, idx) => {
                 const isFouledOut = ps.foulsPersonal >= game.settings.foulOutLimit;
                 const isFoulDanger = ps.foulsPersonal === 4;
@@ -295,10 +295,10 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                   <tr
                     key={`${ps.player.id}-${idx}`}
                     onClick={() => setSelectedPlayerModal(ps)}
-                    className="hover:bg-gray-800/60 transition cursor-pointer"
+                    className="hover:bg-blue-900/30 transition cursor-pointer"
                   >
                     {/* Player Number & Name */}
-                    <td className="py-1.5 px-2.5 sticky left-0 bg-[#14161B] z-10 font-sans">
+                    <td className="py-1.5 px-2.5 sticky left-0 bg-[#0a0f24] z-10 font-sans">
                       <div className="flex items-center gap-1.5">
                         <span className="font-scoreboard text-base font-black text-orange-400 w-6">
                           #{ps.player.number}
@@ -401,8 +401,8 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               })}
 
               {/* Total Team Row */}
-              <tr className="bg-[#1A1D23] font-bold border-t-2 border-gray-700 text-gray-100 font-mono">
-                <td className="py-2 px-2.5 sticky left-0 bg-[#1A1D23] z-10 font-sans font-black uppercase text-xs">
+              <tr className="bg-[#0e1738] font-bold border-t-2 border-blue-700 text-slate-100 font-mono">
+                <td className="py-2 px-2.5 sticky left-0 bg-[#0e1738] z-10 font-sans font-black uppercase text-xs">
                   TOTAL EQUIPO
                 </td>
                 <td className="py-2 px-1.5 text-center text-gray-500 font-sans">-</td>
