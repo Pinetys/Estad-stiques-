@@ -71,8 +71,8 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
-      <div className="bg-[#1A1D23] border border-gray-800 rounded max-w-lg w-full p-3.5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto relative">
+    <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
+      <div className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-lg w-full p-4 shadow-2xl space-y-3.5 max-h-[90vh] overflow-y-auto relative text-[#FFFDF7]">
         {pdfToast && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-mono font-bold text-xs px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-emerald-400">
             <Check className="w-3.5 h-3.5" />
@@ -81,25 +81,27 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-gray-800">
-          <div className="flex items-center gap-1.5">
-            <Share2 className="w-4 h-4 text-orange-500" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-100">Compartir y Exportar Acta</h2>
+        <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F5C542]">
+              <Share2 className="w-4 h-4" />
+            </div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">Compartir y Exportar Acta</h2>
           </div>
           <button
             onClick={onClose}
-            className="w-6 h-6 rounded bg-[#14161B] hover:bg-gray-800 text-gray-300 flex items-center justify-center text-xs font-bold border border-gray-700"
+            className="w-7 h-7 rounded-xl bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold border border-[#203a70]"
           >
             ✕
           </button>
         </div>
 
         {/* Quick Share Buttons */}
-        <div className="grid grid-cols-2 gap-1.5 font-mono">
+        <div className="grid grid-cols-2 gap-2 font-mono">
           {/* Direct PDF Download */}
           <button
             onClick={handleDownloadPdf}
-            className="p-2.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-bold rounded flex items-center justify-center gap-1.5 text-xs uppercase"
+            className="p-2.5 bg-[#D4AF37] hover:bg-[#F5C542] active:bg-[#C29B27] text-[#0B1C3D] font-black rounded-xl flex items-center justify-center gap-1.5 text-xs uppercase shadow-md transition"
           >
             <Download className="w-4 h-4" />
             <span>Descargar PDF</span>
@@ -108,7 +110,7 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
           {/* Native PDF Share */}
           <button
             onClick={handleSharePdf}
-            className="p-2.5 bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white font-bold rounded flex items-center justify-center gap-1.5 text-xs uppercase"
+            className="p-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs uppercase shadow-md transition"
           >
             <Share2 className="w-4 h-4" />
             <span>Enviar PDF Móvil</span>
@@ -117,16 +119,16 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
           {/* WhatsApp Direct Share */}
           <button
             onClick={handleWhatsAppShare}
-            className="p-2 bg-[#14161B] hover:bg-gray-800 active:bg-gray-900 border border-gray-700 text-green-400 font-bold rounded flex items-center justify-center gap-1.5 text-xs"
+            className="p-2 bg-[#0E224A] hover:bg-[#16356E] active:bg-[#1f4082] border border-[#203a70] text-emerald-400 font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs transition"
           >
-            <MessageCircle className="w-3.5 h-3.5 fill-green-400" />
+            <MessageCircle className="w-3.5 h-3.5 fill-emerald-400" />
             <span>WhatsApp Texto</span>
           </button>
 
           {/* Copy Text */}
           <button
             onClick={handleCopyClipboard}
-            className="p-2 bg-[#14161B] hover:bg-gray-800 active:bg-gray-900 border border-gray-700 text-gray-100 font-bold rounded flex items-center justify-center gap-1.5 text-xs"
+            className="p-2 bg-[#0E224A] hover:bg-[#16356E] active:bg-[#1f4082] border border-[#203a70] text-slate-200 font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs transition"
           >
             {copied ? (
               <>
@@ -135,7 +137,7 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-gray-300" />
+                <Copy className="w-3.5 h-3.5 text-slate-300" />
                 <span>Copiar Resumen</span>
               </>
             )}
@@ -144,16 +146,16 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
           {/* Download CSV */}
           <button
             onClick={handleDownloadCSV}
-            className="p-2 bg-[#14161B] hover:bg-gray-800 text-gray-200 border border-gray-800 font-semibold rounded flex items-center justify-center gap-1.5 text-[11px]"
+            className="p-2 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 border border-[#203a70] font-semibold rounded-xl flex items-center justify-center gap-1.5 text-[11px] transition"
           >
-            <Download className="w-3.5 h-3.5 text-orange-400" />
+            <Download className="w-3.5 h-3.5 text-[#F5C542]" />
             <span>Descargar CSV</span>
           </button>
 
           {/* Print Sheet */}
           <button
             onClick={handlePrint}
-            className="p-2 bg-[#14161B] hover:bg-gray-800 text-gray-200 border border-gray-800 font-semibold rounded flex items-center justify-center gap-1.5 text-[11px]"
+            className="p-2 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 border border-[#203a70] font-semibold rounded-xl flex items-center justify-center gap-1.5 text-[11px] transition"
           >
             <Printer className="w-3.5 h-3.5 text-sky-400" />
             <span>Imprimir</span>
@@ -162,17 +164,17 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
 
         {/* Text Preview Box */}
         <div>
-          <label className="text-[10px] uppercase font-mono font-bold text-gray-400 block mb-1">
+          <label className="text-[10px] uppercase font-mono font-bold text-slate-300 block mb-1">
             Vista previa del informe (formato WhatsApp / Telegram):
           </label>
-          <pre className="bg-[#0F1115] border border-gray-800 p-2.5 rounded text-[10px] text-gray-300 font-mono whitespace-pre-wrap max-h-52 overflow-y-auto leading-relaxed select-all">
+          <pre className="bg-[#071328] border border-[#203a70] p-2.5 rounded-xl text-[10px] text-slate-200 font-mono whitespace-pre-wrap max-h-52 overflow-y-auto leading-relaxed select-all">
             {shareText}
           </pre>
         </div>
 
         <button
           onClick={onClose}
-          className="w-full py-2 bg-[#14161B] hover:bg-gray-800 text-gray-300 font-bold rounded text-xs border border-gray-700 uppercase font-mono"
+          className="w-full py-2 bg-[#0E224A] hover:bg-[#16356E] text-white font-bold rounded-xl text-xs border border-[#203a70] uppercase font-mono transition"
         >
           Cerrar
         </button>

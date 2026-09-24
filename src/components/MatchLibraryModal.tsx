@@ -453,24 +453,24 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-      <div className="bg-[#1A1D23] border border-gray-700 rounded-xl max-w-5xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+    <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
+      <div className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-5xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden my-auto text-[#FFFDF7]">
         {/* Header */}
-        <div className="px-4 py-3 bg-[#14161B] border-b border-gray-800 flex items-center justify-between shrink-0">
+        <div className="px-4 py-3 bg-gradient-to-r from-[#0E224A] to-[#0B1C3D] border-b border-[#203a70] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-orange-600/20 border border-orange-500/40 text-orange-400">
+            <div className="p-2 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F5C542]">
               <Library className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-gray-100 uppercase tracking-wide">
+                <h2 className="text-base font-bold text-white uppercase tracking-wide">
                   Biblioteca & Volcado de Partidos
                 </h2>
-                <span className="text-[10px] bg-orange-600 text-white font-mono font-bold px-2 py-0.5 rounded-full uppercase">
+                <span className="text-[10px] bg-[#D4AF37] text-[#0B1C3D] font-mono font-black px-2 py-0.5 rounded-full uppercase">
                   {library.length} {library.length === 1 ? 'Partido' : 'Partidos'}
                 </span>
               </div>
-              <p className="text-xs text-gray-400 font-mono">
+              <p className="text-xs text-slate-300 font-mono">
                 Historial de encuentros, estadísticas acumuladas y planes de entrenamiento con IA
               </p>
             </div>
@@ -478,21 +478,21 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#16356E] transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Sub-Navigation Tabs */}
-        <div className="bg-[#14161B] px-4 pt-2 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2 shrink-0">
+        <div className="bg-[#0E224A] px-4 pt-2 border-b border-[#203a70] flex items-center justify-between flex-wrap gap-2 shrink-0">
           <div className="flex items-center gap-1.5 font-mono">
             <button
               onClick={() => setActiveSubTab('matches')}
               className={`px-3 py-2 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 ${
                 activeSubTab === 'matches'
-                  ? 'bg-[#1A1D23] text-orange-400 border-t-2 border-orange-500'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-[#0B1C3D] text-[#F5C542] border-t-2 border-[#D4AF37]'
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -503,8 +503,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               onClick={() => setActiveSubTab('seasonStats')}
               className={`px-3 py-2 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 ${
                 activeSubTab === 'seasonStats'
-                  ? 'bg-[#1A1D23] text-orange-400 border-t-2 border-orange-500'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-[#0B1C3D] text-[#F5C542] border-t-2 border-[#D4AF37]'
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -515,8 +515,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               onClick={() => setActiveSubTab('aiPlan')}
               className={`px-3 py-2 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 ${
                 activeSubTab === 'aiPlan'
-                  ? 'bg-[#1A1D23] text-orange-400 border-t-2 border-orange-500'
-                  : 'text-orange-400/80 hover:text-orange-300'
+                  ? 'bg-[#0B1C3D] text-[#F5C542] border-t-2 border-[#D4AF37]'
+                  : 'text-amber-300/80 hover:text-amber-200'
               }`}
             >
               <Brain className="w-3.5 h-3.5 text-orange-400" />
@@ -630,7 +630,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                   {/* Backup JSON */}
                   <button
                     onClick={handleExportJSON}
-                    className="p-1.5 px-2.5 bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 rounded flex items-center gap-1 font-semibold"
+                    className="p-1.5 px-2.5 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 border border-[#203a70] rounded-lg flex items-center gap-1 font-semibold"
                     title="Exportar copia de seguridad en JSON"
                   >
                     <Download className="w-3.5 h-3.5 text-sky-400" />
@@ -639,7 +639,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
                   <button
                     onClick={() => fileImportRef.current?.click()}
-                    className="p-1.5 px-2.5 bg-[#14161B] hover:bg-gray-800 text-gray-300 border border-gray-700 rounded flex items-center gap-1 font-semibold"
+                    className="p-1.5 px-2.5 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 border border-[#203a70] rounded-lg flex items-center gap-1 font-semibold"
                     title="Restaurar copia de seguridad JSON"
                   >
                     <Upload className="w-3.5 h-3.5 text-emerald-400" />
@@ -657,7 +657,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
               {/* Empty state when no games */}
               {library.length === 0 && (
-                <div className="bg-[#14161B] border border-gray-800 rounded-xl p-8 text-center space-y-4">
+                <div className="bg-[#0E224A] border border-[#203a70] rounded-xl p-8 text-center space-y-4">
                   <div className="w-14 h-14 rounded-2xl bg-neutral-900/90 border border-gray-800 flex items-center justify-center mx-auto text-gray-500">
                     <Library className="w-7 h-7 text-gray-400" />
                   </div>
@@ -717,18 +717,18 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       }}
                       className={`p-3.5 rounded-xl border transition cursor-pointer flex flex-col justify-between space-y-3 relative group ${
                         isCurrent
-                          ? 'bg-orange-950/20 border-orange-500/80 ring-1 ring-orange-500/50 shadow-lg'
-                          : 'bg-[#14161B] hover:bg-gray-800/80 border-gray-800'
+                          ? 'bg-[#16356E] border-[#D4AF37] ring-2 ring-[#D4AF37]/50 shadow-lg'
+                          : 'bg-[#0E224A] hover:bg-[#132A58] border-[#203a70]'
                       }`}
                     >
                       {/* Top Match Info */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono text-gray-400 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">
+                          <span className="text-[10px] font-mono text-slate-300 bg-[#071328] px-1.5 py-0.5 rounded border border-[#203a70]">
                             {game.date}
                           </span>
                           {isCurrent && (
-                            <span className="text-[9px] font-mono font-bold bg-orange-600 text-white px-1.5 py-0.5 rounded uppercase">
+                            <span className="text-[9px] font-mono font-bold bg-[#D4AF37] text-[#0B1C3D] px-1.5 py-0.5 rounded uppercase">
                               Activo en Pista
                             </span>
                           )}
@@ -738,8 +738,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                           <span
                             className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full ${
                               isWin
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-700'
-                                : 'bg-rose-950 text-rose-400 border border-rose-700'
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-600'
+                                : 'bg-rose-950 text-rose-300 border border-rose-600'
                             }`}
                           >
                             {isWin ? 'VICTORIA' : 'DERROTA'}
@@ -752,7 +752,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                               e.stopPropagation();
                               setGameToDelete(game);
                             }}
-                            className="p-1 px-2 rounded-md text-rose-400 hover:text-white bg-rose-950/40 hover:bg-rose-900/80 border border-rose-800/60 transition flex items-center gap-1 text-[11px] font-mono font-bold shrink-0"
+                            className="p-1 px-2 rounded-md text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-900/80 border border-rose-800/60 transition flex items-center gap-1 text-[11px] font-mono font-bold shrink-0"
                             title="Eliminar este partido de la biblioteca"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -762,23 +762,23 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       </div>
 
                       {/* Teams & Logos Scoreboard */}
-                      <div className="bg-[#0F1115] border border-gray-800 rounded-lg p-3 flex items-center justify-between">
+                      <div className="bg-[#071328] border border-[#203a70] rounded-xl p-3 flex items-center justify-between">
                         {/* Home Team */}
                         <div className="flex items-center gap-2 max-w-[42%]">
                           <TeamLogoDisplay logo={game.homeTeamLogo} teamName={game.homeTeamName} size="md" />
                           <div className="truncate">
-                            <span className="text-xs font-bold text-gray-100 block truncate">{game.homeTeamName}</span>
-                            <span className="text-[10px] text-orange-400 font-mono uppercase">Local</span>
+                            <span className="text-xs font-bold text-white block truncate">{game.homeTeamName}</span>
+                            <span className="text-[10px] text-[#F5C542] font-mono uppercase">Local</span>
                           </div>
                         </div>
 
                         {/* Score */}
-                        <div className="flex items-center gap-1 font-mono font-black text-base sm:text-lg">
-                          <span className={game.homeScore >= game.awayScore ? 'text-white' : 'text-gray-400'}>
+                        <div className="flex items-center gap-1.5 font-mono font-black text-lg sm:text-xl">
+                          <span className={game.homeScore >= game.awayScore ? 'text-[#F5C542]' : 'text-slate-400'}>
                             {game.homeScore}
                           </span>
-                          <span className="text-gray-600">-</span>
-                          <span className={game.awayScore >= game.homeScore ? 'text-white' : 'text-gray-400'}>
+                          <span className="text-slate-500">-</span>
+                          <span className={game.awayScore >= game.homeScore ? 'text-[#F5C542]' : 'text-slate-400'}>
                             {game.awayScore}
                           </span>
                         </div>
@@ -786,7 +786,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                         {/* Away Team */}
                         <div className="flex items-center justify-end gap-2 max-w-[42%] text-right">
                           <div className="truncate">
-                            <span className="text-xs font-bold text-gray-100 block truncate">{game.awayTeamName}</span>
+                            <span className="text-xs font-bold text-white block truncate">{game.awayTeamName}</span>
                             <span className="text-[10px] text-sky-400 font-mono uppercase">Rival</span>
                           </div>
                           <TeamLogoDisplay logo={game.awayTeamLogo} teamName={game.awayTeamName} size="md" />
@@ -794,20 +794,20 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       </div>
 
                       {/* Quick Summary Stats */}
-                      <div className="grid grid-cols-3 gap-1 text-center font-mono text-[10px] bg-[#0F1115] p-2 rounded border border-gray-800">
+                      <div className="grid grid-cols-3 gap-1 text-center font-mono text-[10px] bg-[#071328] p-2 rounded-xl border border-[#203a70]">
                         <div>
-                          <span className="text-gray-500 block">T2 / T3</span>
-                          <span className="text-gray-200 font-bold">
+                          <span className="text-slate-400 block">T2 / T3</span>
+                          <span className="text-white font-bold">
                             {teamBox.twoPointsPercentage}% / {teamBox.threePointsPercentage}%
                           </span>
                         </div>
                         <div>
-                          <span className="text-gray-500 block">Rebotes</span>
-                          <span className="text-gray-200 font-bold">{teamBox.totalRebounds} RT</span>
+                          <span className="text-slate-400 block">Rebotes</span>
+                          <span className="text-white font-bold">{teamBox.totalRebounds} RT</span>
                         </div>
                         <div>
-                          <span className="text-gray-500 block">AST / PER</span>
-                          <span className="text-gray-200 font-bold">
+                          <span className="text-slate-400 block">AST / PER</span>
+                          <span className="text-white font-bold">
                             {teamBox.assists} / {teamBox.turnovers}
                           </span>
                         </div>
@@ -815,8 +815,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
                       {/* Top Scorer & Load Button */}
                       <div className="flex items-center justify-between text-[11px] font-mono pt-1">
-                        <span className="text-gray-400 truncate max-w-[65%]">
-                          ⭐ #{topScorer.number} {topScorer.name}: <strong className="text-orange-400">{topScorer.points} pts</strong>
+                        <span className="text-slate-300 truncate max-w-[65%]">
+                          ⭐ #{topScorer.number} {topScorer.name}: <strong className="text-[#F5C542]">{topScorer.points} pts</strong>
                         </span>
                         <span className="text-orange-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition">
                           <span>Cargar</span>
@@ -864,16 +864,16 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                             handleGenerateSeasonAiPlan(opt.id);
                           }
                         }}
-                        className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
+                        className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
                           isSelected
-                            ? 'bg-orange-600/20 border-orange-500 text-orange-200 ring-1 ring-orange-500'
-                            : 'bg-[#14161B] hover:bg-gray-800 border-gray-800 text-gray-300'
+                            ? 'bg-[#16356E] border-[#D4AF37] text-amber-200 ring-2 ring-[#D4AF37]/50'
+                            : 'bg-[#0E224A] hover:bg-[#132A58] border-[#203a70] text-slate-200'
                         }`}
                       >
                         <div className="font-bold text-xs flex items-center gap-1.5">
                           <span>{opt.label}</span>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1 leading-tight">{opt.desc}</p>
+                        <p className="text-[10px] text-slate-300 mt-1 leading-tight">{opt.desc}</p>
                       </button>
                     );
                   })}
@@ -882,22 +882,22 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
               {/* Generate Banner if no plan yet */}
               {!aiPlan && !isAiLoading && (
-                <div className="bg-[#14161B] border border-orange-500/40 rounded-xl p-6 sm:p-8 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-orange-600/20 border border-orange-500/50 text-orange-400 flex items-center justify-center mx-auto shadow-lg">
+                <div className="bg-[#0E224A] border-2 border-[#D4AF37]/50 rounded-2xl p-6 sm:p-8 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/60 text-[#F5C542] flex items-center justify-center mx-auto shadow-lg">
                     <Sparkles className="w-7 h-7 animate-pulse" />
                   </div>
                   <div className="space-y-1 max-w-lg mx-auto">
-                    <h3 className="text-base font-bold text-gray-100 uppercase tracking-wide">
+                    <h3 className="text-base font-bold text-white uppercase tracking-wide">
                       Generar Plan Maestro de Temporada y Microciclo con IA
                     </h3>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-slate-300">
                       La IA cruzará las estadísticas de los <strong>{library.length} partidos</strong> de tu biblioteca (% tiro, pérdidas, rebotes, rendimiento de cada jugador y marcadores) para crear un plan de entrenamiento semanal estructurado con ejercicios técnicos concretos.
                     </p>
                   </div>
 
                   <button
                     onClick={() => handleGenerateSeasonAiPlan()}
-                    className="bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white font-extrabold uppercase tracking-wider px-6 py-3 rounded-lg text-xs shadow-xl transition flex items-center gap-2 mx-auto active:scale-95"
+                    className="bg-[#D4AF37] hover:bg-[#F5C542] active:bg-[#C29B27] text-[#0B1C3D] font-black uppercase tracking-wider px-6 py-3 rounded-xl text-xs shadow-xl transition flex items-center gap-2 mx-auto active:scale-95"
                   >
                     <Brain className="w-4 h-4" />
                     <span>Generar Plan de Temporada Ahora</span>
@@ -907,13 +907,13 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
               {/* Loading State */}
               {isAiLoading && (
-                <div className="bg-[#14161B] border border-orange-500/30 rounded-xl p-8 text-center space-y-3 animate-pulse">
-                  <RefreshCw className="w-8 h-8 text-orange-500 animate-spin mx-auto" />
-                  <h4 className="font-bold text-sm text-gray-100">
+                <div className="bg-[#0E224A] border border-[#D4AF37]/40 rounded-xl p-8 text-center space-y-3 animate-pulse">
+                  <RefreshCw className="w-8 h-8 text-[#F5C542] animate-spin mx-auto" />
+                  <h4 className="font-bold text-sm text-white">
                     Procesando volcado de {library.length} partidos y diseñando plan de entrenamiento...
                   </h4>
-                  <p className="text-xs text-gray-400 font-mono">
-                    Analizando debilidades crónicas, porcentajes de tiro y confeccionando sesiones 5c5/3c3 con Gemini 3.7 Flash...
+                  <p className="text-xs text-slate-300 font-mono">
+                    Analizando debilidades crónicas, porcentajes de tiro y confeccionando sesiones 5c5/3c3 con Gemini...
                   </p>
                 </div>
               )}
@@ -934,26 +934,26 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               {/* Rendered Plan */}
               {aiPlan && !isAiLoading && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-800">
+                  <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#203a70]">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      <span className="text-xs font-mono text-gray-300">
-                        Plan de Temporada: <strong className="text-orange-400">{aiFocus}</strong> ({library.length} partidos analizados)
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span className="text-xs font-mono text-slate-200">
+                        Plan de Temporada: <strong className="text-[#F5C542]">{aiFocus}</strong> ({library.length} partidos analizados)
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5 font-mono text-xs">
                       <button
                         onClick={handleCopyPlan}
-                        className="px-3 py-1.5 rounded bg-[#14161B] hover:bg-gray-800 text-gray-200 border border-gray-700 font-bold flex items-center gap-1 transition"
+                        className="px-3 py-1.5 rounded-lg bg-[#0E224A] hover:bg-[#16356E] text-slate-200 border border-[#203a70] font-bold flex items-center gap-1 transition"
                       >
-                        {copiedPlan ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                        {copiedPlan ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
                         <span>{copiedPlan ? 'Copiado' : 'Copiar'}</span>
                       </button>
 
                       <button
                         onClick={handleSharePlan}
-                        className="px-3 py-1.5 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700 font-bold flex items-center gap-1 transition"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700 font-bold flex items-center gap-1 transition"
                       >
                         <Share2 className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Compartir</span>
@@ -961,15 +961,15 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
 
                       <button
                         onClick={() => handleGenerateSeasonAiPlan()}
-                        className="px-3 py-1.5 rounded bg-orange-950/80 hover:bg-orange-900 text-orange-200 border border-orange-700 font-bold flex items-center gap-1 transition"
+                        className="px-3 py-1.5 rounded-lg bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 font-bold flex items-center gap-1 transition"
                       >
-                        <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
+                        <RefreshCw className="w-3.5 h-3.5 text-[#F5C542]" />
                         <span>Regenerar</span>
                       </button>
                     </div>
                   </div>
 
-                  <div className="bg-[#14161B] border border-gray-800 rounded-xl p-5 sm:p-7 text-gray-200 max-w-none text-xs sm:text-sm leading-relaxed space-y-4 font-sans shadow-lg">
+                  <div className="bg-[#0E224A] border border-[#203a70] rounded-xl p-5 sm:p-7 text-slate-100 max-w-none text-xs sm:text-sm leading-relaxed space-y-4 font-sans shadow-lg">
                     <div className="markdown-body">
                       <Markdown>{aiPlan}</Markdown>
                     </div>
@@ -982,13 +982,13 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
           {/* TAB 4: TRASH / PAPELERA DE PARTIDOS RECUPERABLES */}
           {activeSubTab === 'trash' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2 p-3 bg-[#14161B] border border-gray-800 rounded-xl">
+              <div className="flex items-center justify-between flex-wrap gap-2 p-3 bg-[#0E224A] border border-[#203a70] rounded-xl">
                 <div>
-                  <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wide flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wide flex items-center gap-1.5">
                     <Archive className="w-4 h-4 text-rose-400" />
                     Papelera de Partidos Eliminados ({trashedGames.length})
                   </h3>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-slate-300">
                     Los partidos eliminados no vuelven a salir en la biblioteca activa, pero puedes recuperarlos en cualquier momento.
                   </p>
                 </div>
@@ -1001,7 +1001,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       setTrashToast('Papelera vaciada.');
                       setTimeout(() => setTrashToast(null), 3000);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-rose-950/60 border border-gray-800 hover:border-rose-700/50 text-rose-400 text-xs font-mono font-bold transition flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-lg bg-[#071328] hover:bg-rose-950/60 border border-[#203a70] hover:border-rose-700/50 text-rose-400 text-xs font-mono font-bold transition flex items-center gap-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Vaciar Papelera
@@ -1010,12 +1010,12 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               </div>
 
               {trashedGames.length === 0 ? (
-                <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-10 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-neutral-800/80 border border-gray-700 text-gray-400 flex items-center justify-center mx-auto">
+                <div className="bg-[#0E224A] border border-[#203a70] rounded-2xl p-10 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-[#071328] border border-[#203a70] text-slate-400 flex items-center justify-center mx-auto">
                     <Archive className="w-6 h-6" />
                   </div>
-                  <p className="text-gray-300 font-bold text-xs">La papelera está vacía</p>
-                  <p className="text-gray-500 text-[11px] max-w-sm mx-auto">
+                  <p className="text-white font-bold text-xs">La papelera está vacía</p>
+                  <p className="text-slate-300 text-[11px] max-w-sm mx-auto">
                     Cuando elimines un partido de la biblioteca, se guardará aquí de forma segura para que puedas restaurarlo con todos sus datos y acciones.
                   </p>
                 </div>
@@ -1024,18 +1024,18 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                   {trashedGames.map(game => (
                     <div
                       key={game.id}
-                      className="p-3.5 rounded-xl bg-[#14161B] border border-gray-800 hover:border-gray-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      className="p-3.5 rounded-xl bg-[#0E224A] border border-[#203a70] hover:border-[#D4AF37]/50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold text-white">
                             {game.homeTeamName} vs {game.awayTeamName}
                           </span>
-                          <span className="px-2 py-0.5 rounded bg-neutral-800 text-[10px] font-mono font-bold text-orange-400 border border-neutral-700">
+                          <span className="px-2 py-0.5 rounded bg-[#071328] text-[10px] font-mono font-bold text-[#F5C542] border border-[#203a70]">
                             {game.homeScore} - {game.awayScore}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] font-mono text-gray-400 flex-wrap">
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-slate-300 flex-wrap">
                           <span>Fecha: {game.date}</span>
                           <span>Acciones: {game.events?.length || 0}</span>
                           {game.category && <span>Categoría: {game.category}</span>}
@@ -1070,13 +1070,13 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 bg-[#14161B] border-t border-gray-800 flex items-center justify-between text-xs text-gray-400 shrink-0">
+        <div className="px-4 py-3 bg-[#0E224A] border-t border-[#203a70] flex items-center justify-between text-xs text-slate-300 shrink-0">
           <span className="font-mono text-[11px]">
             BasketStats PRO • Biblioteca de Temporada & Scouting Global
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold uppercase tracking-wider text-xs transition"
+            className="px-4 py-1.5 rounded-lg bg-[#071328] hover:bg-[#16356E] text-white font-bold uppercase tracking-wider text-xs border border-[#203a70] transition"
           >
             Cerrar
           </button>
@@ -1086,11 +1086,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       {/* Confirmation Dialog: Delete Single Match */}
       {gameToDelete && (
         <div
-          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
           onClick={() => setGameToDelete(null)}
         >
           <div
-            className="bg-[#181B22] border border-rose-500/50 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -1101,20 +1101,20 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                   ¿Eliminar este partido?
                 </h3>
-                <p className="text-[11px] text-gray-400 font-mono">
+                <p className="text-[11px] text-slate-300 font-mono">
                   Se borrará del historial local y de la nube.
                 </p>
               </div>
             </div>
 
-            <div className="bg-[#0D0F13] border border-gray-800 p-3 rounded-xl font-mono text-xs space-y-1">
-              <div className="text-orange-400 font-bold truncate">
+            <div className="bg-[#071328] border border-[#203a70] p-3 rounded-xl font-mono text-xs space-y-1">
+              <div className="text-[#F5C542] font-bold truncate">
                 {gameToDelete.homeTeamName} vs {gameToDelete.awayTeamName}
               </div>
-              <div className="text-gray-300 font-bold text-sm">
+              <div className="text-white font-bold text-sm">
                 Marcador: {gameToDelete.homeScore} - {gameToDelete.awayScore}
               </div>
-              <div className="text-[11px] text-gray-500">
+              <div className="text-[11px] text-slate-400">
                 Fecha: {gameToDelete.date} • {gameToDelete.events.length} acciones registradas
               </div>
             </div>
@@ -1123,7 +1123,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               <button
                 type="button"
                 onClick={() => setGameToDelete(null)}
-                className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 rounded-lg text-xs font-bold font-mono transition"
+                className="px-3.5 py-2 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 rounded-lg text-xs font-bold font-mono border border-[#203a70] transition"
               >
                 Cancelar
               </button>
@@ -1143,11 +1143,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       {/* Confirmation Dialog: Clear All Matches */}
       {showClearAllConfirm && (
         <div
-          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
           onClick={() => setShowClearAllConfirm(false)}
         >
           <div
-            className="bg-[#181B22] border border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -1158,13 +1158,13 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                   ¿Vaciar toda la biblioteca?
                 </h3>
-                <p className="text-[11px] text-gray-400 font-mono">
+                <p className="text-[11px] text-slate-300 font-mono">
                   Se borrarán los {library.length} partidos acumulados.
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-gray-300 bg-[#0D0F13] border border-gray-800 p-3 rounded-xl">
+            <p className="text-xs text-slate-200 bg-[#071328] border border-[#203a70] p-3 rounded-xl">
               Esta acción eliminará todos los partidos acumulados de la temporada tanto de este dispositivo como de la copia en la nube.
             </p>
 
@@ -1172,7 +1172,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowClearAllConfirm(false)}
-                className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 rounded-lg text-xs font-bold font-mono transition"
+                className="px-3.5 py-2 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 rounded-lg text-xs font-bold font-mono border border-[#203a70] transition"
               >
                 Cancelar
               </button>

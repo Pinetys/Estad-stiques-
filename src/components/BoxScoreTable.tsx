@@ -183,12 +183,12 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
       </div>
 
       {/* Full Box Score Table */}
-      <div className="bg-[#0a0f24] border border-blue-900/60 rounded-xl shadow overflow-hidden">
+      <div className="bg-[#0e224a] border border-[#203a70] rounded-xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse min-w-[780px]">
             <thead>
-              <tr className="bg-[#0e1738] border-b border-blue-900/70 text-slate-300 font-mono font-bold uppercase text-[10px] tracking-wider">
-                <th className="py-2 px-2.5 sticky left-0 bg-[#0e1738] z-10"># Jugador</th>
+              <tr className="bg-[#132a58] border-b border-[#203a70] text-slate-300 font-mono font-bold uppercase text-[10px] tracking-wider">
+                <th className="py-2 px-2.5 sticky left-0 bg-[#132a58] z-10"># Jugador</th>
                 <th className="py-2 px-1.5 text-center">POS</th>
                 <th
                   onClick={() => handleSort('secondsPlayed')}
@@ -200,7 +200,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                 </th>
                 <th
                   onClick={() => handleSort('points')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-orange-400 font-bold text-orange-400"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-amber-300 font-bold text-amber-300"
                 >
                   <div className="flex items-center justify-center gap-0.5">
                     PTS {sortField === 'points' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
@@ -208,31 +208,31 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                 </th>
                 <th
                   onClick={() => handleSort('fieldGoalsPercentage')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   TC (M/I - %)
                 </th>
                 <th
                   onClick={() => handleSort('twoPointsMade')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   T2 (M/I - %)
                 </th>
                 <th
                   onClick={() => handleSort('threePointsMade')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   T3 (M/I - %)
                 </th>
                 <th
                   onClick={() => handleSort('freeThrowsMade')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   TL (M/I - %)
                 </th>
                 <th
                   onClick={() => handleSort('totalRebounds')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200 font-semibold"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white font-semibold"
                 >
                   <div className="flex items-center justify-center gap-0.5">
                     REB (D/O/T) {sortField === 'totalRebounds' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
@@ -240,25 +240,25 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                 </th>
                 <th
                   onClick={() => handleSort('assists')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   AST
                 </th>
                 <th
                   onClick={() => handleSort('steals')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   ROB
                 </th>
                 <th
                   onClick={() => handleSort('turnovers')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   PER
                 </th>
                 <th
                   onClick={() => handleSort('blocks')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   TAP
                 </th>
@@ -272,7 +272,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                 </th>
                 <th
                   onClick={() => handleSort('foulsDrawn')}
-                  className="py-2 px-2 text-center cursor-pointer hover:text-gray-200"
+                  className="py-2 px-2 text-center cursor-pointer hover:text-white"
                 >
                   FR
                 </th>
@@ -286,7 +286,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-900/40 font-mono">
+            <tbody className="divide-y divide-[#203a70] font-mono">
               {sortedPlayers.map((ps, idx) => {
                 const isFouledOut = ps.foulsPersonal >= game.settings.foulOutLimit;
                 const isFoulDanger = ps.foulsPersonal === 4;
@@ -295,16 +295,16 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                   <tr
                     key={`${ps.player.id}-${idx}`}
                     onClick={() => setSelectedPlayerModal(ps)}
-                    className="hover:bg-blue-900/30 transition cursor-pointer"
+                    className="hover:bg-[#16336e] transition cursor-pointer"
                   >
                     {/* Player Number & Name */}
-                    <td className="py-1.5 px-2.5 sticky left-0 bg-[#0a0f24] z-10 font-sans">
+                    <td className="py-1.5 px-2.5 sticky left-0 bg-[#0e224a] z-10 font-sans">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-scoreboard text-base font-black text-orange-400 w-6">
+                        <span className="font-scoreboard text-base font-black text-amber-300 w-6">
                           #{ps.player.number}
                         </span>
                         <div className="truncate max-w-[120px]">
-                          <span className="font-bold text-gray-100">{ps.player.name}</span>
+                          <span className="font-bold text-white">{ps.player.name}</span>
                           {ps.player.onCourt && (
                             <span className="ml-1 text-[9px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 px-1 rounded">
                               EN PISTA
@@ -315,7 +315,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                     </td>
 
                     {/* Position */}
-                    <td className="py-1.5 px-1.5 text-center text-gray-400 font-mono text-[10px]">
+                    <td className="py-1.5 px-1.5 text-center text-slate-300 font-mono text-[10px]">
                       {POSITION_LABELS[ps.player.position]?.short || ps.player.position}
                     </td>
 
@@ -325,51 +325,51 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                     </td>
 
                     {/* Points */}
-                    <td className="py-1.5 px-2 text-center font-extrabold text-sm text-orange-400 bg-orange-950/10">
+                    <td className="py-1.5 px-2 text-center font-extrabold text-sm text-amber-300 bg-amber-500/10">
                       {ps.points}
                     </td>
 
                     {/* TC */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">
+                    <td className="py-1.5 px-2 text-center text-slate-200">
                       {ps.fieldGoalsMade}/{ps.fieldGoalsAttempted}{' '}
-                      <span className="text-gray-500 text-[10px]">({ps.fieldGoalsPercentage}%)</span>
+                      <span className="text-slate-400 text-[10px]">({ps.fieldGoalsPercentage}%)</span>
                     </td>
 
                     {/* T2 */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">
+                    <td className="py-1.5 px-2 text-center text-slate-200">
                       {ps.twoPointsMade}/{ps.twoPointsAttempted}{' '}
-                      <span className="text-gray-500 text-[10px]">({ps.twoPointsPercentage}%)</span>
+                      <span className="text-slate-400 text-[10px]">({ps.twoPointsPercentage}%)</span>
                     </td>
 
                     {/* T3 */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">
+                    <td className="py-1.5 px-2 text-center text-slate-200">
                       {ps.threePointsMade}/{ps.threePointsAttempted}{' '}
-                      <span className="text-gray-500 text-[10px]">({ps.threePointsPercentage}%)</span>
+                      <span className="text-slate-400 text-[10px]">({ps.threePointsPercentage}%)</span>
                     </td>
 
                     {/* TL */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">
+                    <td className="py-1.5 px-2 text-center text-slate-200">
                       {ps.freeThrowsMade}/{ps.freeThrowsAttempted}{' '}
-                      <span className="text-gray-500 text-[10px]">({ps.freeThrowsPercentage}%)</span>
+                      <span className="text-slate-400 text-[10px]">({ps.freeThrowsPercentage}%)</span>
                     </td>
 
                     {/* Rebounds */}
-                    <td className="py-1.5 px-2 text-center text-gray-200">
+                    <td className="py-1.5 px-2 text-center text-white">
                       <span className="font-bold">{ps.totalRebounds}</span>{' '}
-                      <span className="text-gray-500 text-[10px]">({ps.defensiveRebounds}d/{ps.offensiveRebounds}o)</span>
+                      <span className="text-slate-400 text-[10px]">({ps.defensiveRebounds}d/{ps.offensiveRebounds}o)</span>
                     </td>
 
                     {/* Assists */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">{ps.assists}</td>
+                    <td className="py-1.5 px-2 text-center text-slate-200">{ps.assists}</td>
 
                     {/* Steals */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">{ps.steals}</td>
+                    <td className="py-1.5 px-2 text-center text-slate-200">{ps.steals}</td>
 
                     {/* Turnovers */}
-                    <td className="py-1.5 px-2 text-center text-gray-400">{ps.turnovers}</td>
+                    <td className="py-1.5 px-2 text-center text-slate-400">{ps.turnovers}</td>
 
                     {/* Blocks */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">{ps.blocks}</td>
+                    <td className="py-1.5 px-2 text-center text-slate-200">{ps.blocks}</td>
 
                     {/* Fouls */}
                     <td className="py-1.5 px-2 text-center">
@@ -380,8 +380,8 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                             : isFoulDanger
                             ? 'bg-amber-900 text-amber-200 border border-amber-600'
                             : ps.foulsPersonal > 0
-                            ? 'text-gray-200'
-                            : 'text-gray-600'
+                            ? 'text-slate-200'
+                            : 'text-slate-400'
                         }`}
                       >
                         {ps.foulsPersonal}
@@ -390,10 +390,10 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
                     </td>
 
                     {/* Fouls Drawn */}
-                    <td className="py-1.5 px-2 text-center text-gray-300">{ps.foulsDrawn}</td>
+                    <td className="py-1.5 px-2 text-center text-slate-200">{ps.foulsDrawn}</td>
 
                     {/* Valuation / Efficiency */}
-                    <td className="py-1.5 px-2 text-center font-black text-sm text-emerald-400 bg-emerald-950/10">
+                    <td className="py-1.5 px-2 text-center font-black text-sm text-emerald-400 bg-emerald-950/20">
                       {ps.efficiency}
                     </td>
                   </tr>
@@ -401,34 +401,34 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               })}
 
               {/* Total Team Row */}
-              <tr className="bg-[#0e1738] font-bold border-t-2 border-blue-700 text-slate-100 font-mono">
-                <td className="py-2 px-2.5 sticky left-0 bg-[#0e1738] z-10 font-sans font-black uppercase text-xs">
+              <tr className="bg-[#132a58] font-bold border-t-2 border-[#D4AF37] text-slate-100 font-mono">
+                <td className="py-2 px-2.5 sticky left-0 bg-[#132a58] z-10 font-sans font-black uppercase text-xs text-amber-300">
                   TOTAL EQUIPO
                 </td>
-                <td className="py-2 px-1.5 text-center text-gray-500 font-sans">-</td>
-                <td className="py-2 px-1.5 text-center text-gray-500 font-mono text-[11px]">-</td>
-                <td className="py-2 px-2 text-center font-extrabold text-sm text-orange-400">
+                <td className="py-2 px-1.5 text-center text-slate-400 font-sans">-</td>
+                <td className="py-2 px-1.5 text-center text-slate-400 font-mono text-[11px]">-</td>
+                <td className="py-2 px-2 text-center font-extrabold text-sm text-amber-300">
                   {teamStats.points}
                 </td>
                 <td className="py-2 px-2 text-center">
                   {teamStats.fieldGoalsMade}/{teamStats.fieldGoalsAttempted}{' '}
-                  <span className="text-gray-500 text-[10px]">({teamStats.fieldGoalsPercentage}%)</span>
+                  <span className="text-slate-400 text-[10px]">({teamStats.fieldGoalsPercentage}%)</span>
                 </td>
                 <td className="py-2 px-2 text-center">
                   {teamStats.twoPointsMade}/{teamStats.twoPointsAttempted}{' '}
-                  <span className="text-gray-500 text-[10px]">({teamStats.twoPointsPercentage}%)</span>
+                  <span className="text-slate-400 text-[10px]">({teamStats.twoPointsPercentage}%)</span>
                 </td>
                 <td className="py-2 px-2 text-center">
                   {teamStats.threePointsMade}/{teamStats.threePointsAttempted}{' '}
-                  <span className="text-gray-500 text-[10px]">({teamStats.threePointsPercentage}%)</span>
+                  <span className="text-slate-400 text-[10px]">({teamStats.threePointsPercentage}%)</span>
                 </td>
                 <td className="py-2 px-2 text-center">
                   {teamStats.freeThrowsMade}/{teamStats.freeThrowsAttempted}{' '}
-                  <span className="text-gray-500 text-[10px]">({teamStats.freeThrowsPercentage}%)</span>
+                  <span className="text-slate-400 text-[10px]">({teamStats.freeThrowsPercentage}%)</span>
                 </td>
                 <td className="py-2 px-2 text-center">
                   {teamStats.totalRebounds}{' '}
-                  <span className="text-gray-500 text-[10px]">({teamStats.defensiveRebounds}d/{teamStats.offensiveRebounds}o)</span>
+                  <span className="text-slate-400 text-[10px]">({teamStats.defensiveRebounds}d/{teamStats.offensiveRebounds}o)</span>
                 </td>
                 <td className="py-2 px-2 text-center">{teamStats.assists}</td>
                 <td className="py-2 px-2 text-center">{teamStats.steals}</td>
@@ -447,16 +447,16 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
 
       {/* Individual Player Breakdown Modal when row clicked */}
       {selectedPlayerModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#14161B] border border-gray-800 rounded max-w-md w-full p-4 shadow-2xl space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+        <div className="fixed inset-0 z-50 bg-[#060f22]/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-md w-full p-4 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2">
-                <span className="font-scoreboard text-3xl font-black text-orange-400">
+                <span className="font-scoreboard text-3xl font-black text-amber-300">
                   #{selectedPlayerModal.player.number}
                 </span>
                 <div>
-                  <h3 className="font-bold text-base text-gray-100">{selectedPlayerModal.player.name}</h3>
-                  <p className="text-xs text-gray-400 font-mono">
+                  <h3 className="font-bold text-base text-white">{selectedPlayerModal.player.name}</h3>
+                  <p className="text-xs text-slate-300 font-mono">
                     {POSITION_LABELS[selectedPlayerModal.player.position]?.full} | {selectedPlayerModal.player.onCourt ? 'En Pista' : 'Banquillo'}
                   </p>
                 </div>
@@ -464,21 +464,21 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
 
               <button
                 onClick={() => setSelectedPlayerModal(null)}
-                className="w-7 h-7 rounded bg-[#1A1D23] hover:bg-gray-800 text-gray-300 flex items-center justify-center font-mono border border-gray-700 text-xs"
+                className="w-7 h-7 rounded bg-[#16356e] hover:bg-[#1e458e] text-slate-200 flex items-center justify-center font-mono border border-[#203a70] text-xs"
               >
                 ✕
               </button>
             </div>
 
             {/* Tabs: Resumen de Estadísticas vs Mapa de Tiros */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#1A1D23] rounded-lg border border-gray-800 text-xs font-mono">
+            <div className="flex items-center gap-1.5 p-1 bg-[#0a1835] rounded-xl border border-[#203a70] text-xs font-mono">
               <button
                 type="button"
                 onClick={() => setModalTab('stats')}
-                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 font-bold transition ${
+                className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 font-bold transition ${
                   modalTab === 'stats'
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
                 <BarChart2 className="w-3.5 h-3.5" />
@@ -487,15 +487,15 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               <button
                 type="button"
                 onClick={() => setModalTab('shotChart')}
-                className={`flex-1 py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 font-bold transition ${
+                className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 font-bold transition ${
                   modalTab === 'shotChart'
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
                 <Target className="w-3.5 h-3.5" />
                 <span>Mapa de Tiros</span>
-                <span className="text-[10px] px-1 rounded bg-black/40 text-orange-200">
+                <span className="text-[10px] px-1 rounded bg-[#16356e] text-amber-200">
                   {game.events.filter(e => e.playerId === selectedPlayerModal.player.id && ['2PM', '2PA', '3PM', '3PA'].includes(e.actionType)).length}
                 </span>
               </button>
@@ -505,58 +505,58 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
               <>
                 {/* Quick Stats Grid */}
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
-                    <div className="text-[10px] uppercase font-mono text-gray-400">Puntos</div>
-                    <div className="text-xl font-black font-mono text-orange-400">{selectedPlayerModal.points}</div>
+                  <div className="bg-[#16336e] p-2 rounded-xl text-center border border-[#254d9b]">
+                    <div className="text-[10px] uppercase font-mono text-slate-300">Puntos</div>
+                    <div className="text-xl font-black font-mono text-amber-300">{selectedPlayerModal.points}</div>
                   </div>
-                  <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
-                    <div className="text-[10px] uppercase font-mono text-gray-400">Rebotes</div>
-                    <div className="text-xl font-black font-mono text-blue-400">{selectedPlayerModal.totalRebounds}</div>
+                  <div className="bg-[#16336e] p-2 rounded-xl text-center border border-[#254d9b]">
+                    <div className="text-[10px] uppercase font-mono text-slate-300">Rebotes</div>
+                    <div className="text-xl font-black font-mono text-blue-300">{selectedPlayerModal.totalRebounds}</div>
                   </div>
-                  <div className="bg-[#1A1D23] p-2 rounded text-center border border-gray-800">
-                    <div className="text-[10px] uppercase font-mono text-gray-400">Valoración</div>
-                    <div className="text-xl font-black font-mono text-emerald-400">{selectedPlayerModal.efficiency}</div>
+                  <div className="bg-[#16336e] p-2 rounded-xl text-center border border-[#254d9b]">
+                    <div className="text-[10px] uppercase font-mono text-slate-300">Valoración</div>
+                    <div className="text-xl font-black font-mono text-emerald-300">{selectedPlayerModal.efficiency}</div>
                   </div>
                 </div>
 
                 {/* Detailed list */}
-                <div className="space-y-1 text-xs text-gray-300 bg-[#1A1D23] p-2.5 rounded border border-gray-800 font-mono max-h-56 overflow-y-auto">
+                <div className="space-y-1 text-xs text-slate-200 bg-[#0a1835] p-2.5 rounded-xl border border-[#203a70] font-mono max-h-56 overflow-y-auto">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Minutos en Pista:</span>
+                    <span className="text-slate-400">Minutos en Pista:</span>
                     <span className="font-bold text-emerald-400">{selectedPlayerModal.minutesPlayedFormatted}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tiros de 2:</span>
+                    <span className="text-slate-400">Tiros de 2:</span>
                     <span>{selectedPlayerModal.twoPointsMade}/{selectedPlayerModal.twoPointsAttempted} ({selectedPlayerModal.twoPointsPercentage}%)</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Triples (T3):</span>
+                    <span className="text-slate-400">Triples (T3):</span>
                     <span>{selectedPlayerModal.threePointsMade}/{selectedPlayerModal.threePointsAttempted} ({selectedPlayerModal.threePointsPercentage}%)</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tiros Libres:</span>
+                    <span className="text-slate-400">Tiros Libres:</span>
                     <span>{selectedPlayerModal.freeThrowsMade}/{selectedPlayerModal.freeThrowsAttempted} ({selectedPlayerModal.freeThrowsPercentage}%)</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Asistencias:</span>
+                    <span className="text-slate-400">Asistencias:</span>
                     <span>{selectedPlayerModal.assists}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Robos / Pérdidas:</span>
+                    <span className="text-slate-400">Robos / Pérdidas:</span>
                     <span>{selectedPlayerModal.steals} / {selectedPlayerModal.turnovers}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tapones (Favor / Contra):</span>
+                    <span className="text-slate-400">Tapones (Favor / Contra):</span>
                     <span>{selectedPlayerModal.blocks} / {selectedPlayerModal.blocksReceived}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Faltas Cometidas:</span>
+                    <span className="text-slate-400">Faltas Cometidas:</span>
                     <span className={selectedPlayerModal.foulsPersonal >= 5 ? 'text-red-400 font-bold' : ''}>
                       {selectedPlayerModal.foulsPersonal} {selectedPlayerModal.foulsPersonal >= 5 && '(EXPULSADO)'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Faltas Recibidas:</span>
+                    <span className="text-slate-400">Faltas Recibidas:</span>
                     <span>{selectedPlayerModal.foulsDrawn}</span>
                   </div>
                 </div>
@@ -574,7 +574,7 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
 
             <button
               onClick={() => setSelectedPlayerModal(null)}
-              className="w-full py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold font-mono uppercase tracking-wider rounded text-xs"
+              className="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black font-mono uppercase tracking-wider rounded-xl text-xs shadow-lg transition active:scale-95"
             >
               Cerrar Ficha
             </button>

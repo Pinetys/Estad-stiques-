@@ -136,17 +136,17 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   return (
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 pb-24 text-gray-100">
       {/* 1. Clean, Modern Header */}
-      <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-[#0E224A] border-2 border-[#D4AF37]/40 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[#FFFDF7]">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-orange-600/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+            <div className="w-8 h-8 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/50 flex items-center justify-center text-[#F5C542]">
               <Shield className="w-4 h-4" />
             </div>
             <h1 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white">
               Equipos y Categorías
             </h1>
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-slate-300">
             Gestiona tus plantillas separadas por categoría, inicia partidos y consulta estadísticas independientes.
           </p>
         </div>
@@ -311,10 +311,10 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
               playSound('click', soundEnabled);
               setSelectedCategoryFilter('ALL');
             }}
-            className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap ${
+            className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition whitespace-nowrap ${
               selectedCategoryFilter === 'ALL'
-                ? 'bg-orange-600 text-white shadow-sm'
-                : 'bg-[#14161B] text-gray-300 hover:bg-neutral-800 border border-gray-800'
+                ? 'bg-[#D4AF37] text-[#0B1C3D] font-black shadow-md'
+                : 'bg-[#0E224A] text-slate-200 hover:bg-[#16356E] border border-[#203a70]'
             }`}
           >
             Todas ({teams.length})
@@ -330,10 +330,10 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                   playSound('click', soundEnabled);
                   setSelectedCategoryFilter(cat.name);
                 }}
-                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap ${
+                className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition whitespace-nowrap ${
                   isSelected
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'bg-[#14161B] text-gray-300 hover:bg-neutral-800 border border-gray-800'
+                    ? 'bg-[#D4AF37] text-[#0B1C3D] font-black shadow-md'
+                    : 'bg-[#0E224A] text-slate-200 hover:bg-[#16356E] border border-[#203a70]'
                 }`}
               >
                 {cat.name} ({cat.count})
@@ -345,19 +345,19 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
 
       {/* 4. Search Filter */}
       <div className="relative">
-        <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Buscar por equipo, categoría o jugador..."
-          className="w-full bg-[#14161B] border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition"
+          className="w-full bg-[#0E224A] border border-[#203a70] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#D4AF37] transition"
         />
         {searchQuery && (
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
           >
             ✕
           </button>
@@ -366,15 +366,15 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
 
       {/* 5. Team Cards Grid */}
       {filteredTeams.length === 0 ? (
-        <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-8 text-center space-y-3">
-          <p className="text-gray-400 text-xs">No se encontraron equipos con este filtro.</p>
+        <div className="bg-[#0E224A] border border-[#203a70] rounded-2xl p-8 text-center space-y-3">
+          <p className="text-slate-300 text-xs">No se encontraron equipos con este filtro.</p>
           <button
             type="button"
             onClick={() => {
               setSelectedCategoryFilter('ALL');
               setSearchQuery('');
             }}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-mono"
+            className="px-3 py-1.5 rounded-xl bg-[#071328] hover:bg-[#16356E] text-white text-xs font-mono border border-[#203a70]"
           >
             Mostrar todos los equipos
           </button>
@@ -390,8 +390,8 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
             return (
               <div
                 key={team.id}
-                className={`bg-[#14161B] border rounded-2xl p-4 shadow-md flex flex-col justify-between transition hover:border-gray-700 relative overflow-hidden ${
-                  isActive ? 'border-orange-500/60 ring-1 ring-orange-500/20' : 'border-gray-800'
+                className={`bg-[#0E224A] border rounded-2xl p-4 shadow-lg flex flex-col justify-between transition hover:border-[#D4AF37]/60 relative overflow-hidden ${
+                  isActive ? 'border-[#D4AF37] ring-2 ring-[#D4AF37]/50' : 'border-[#203a70]'
                 }`}
               >
                 {/* Accent top color */}
@@ -581,17 +581,17 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
       {/* APARTADO / MODAL DE PARTIDOS DEL EQUIPO */}
       {selectedTeamForMatches && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in"
+          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in"
           onClick={() => setSelectedTeamForMatches(null)}
         >
           <div
-            className="bg-[#181B22] border border-gray-800 rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95"
+            className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-4 bg-[#14161B] border-b border-gray-800 flex items-center justify-between gap-3 shrink-0">
+            <div className="p-4 bg-gradient-to-r from-[#0E224A] to-[#0B1C3D] border-b border-[#203a70] flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-xl bg-neutral-900 border border-gray-800 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                <div className="w-11 h-11 rounded-xl bg-[#071328] border border-[#203a70] flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
                   <TeamLogoDisplay
                     logo={selectedTeamForMatches.logo}
                     teamName={selectedTeamForMatches.name}
@@ -603,11 +603,11 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                     <h2 className="text-base font-black text-white truncate">
                       {selectedTeamForMatches.name}
                     </h2>
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-orange-600/20 text-orange-400 border border-orange-500/30">
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#F5C542] border border-[#D4AF37]/40">
                       {selectedTeamForMatches.category || 'General'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 font-mono">
+                  <p className="text-xs text-slate-300 font-mono">
                     Historial de partidos y resultados de este equipo
                   </p>
                 </div>
@@ -616,7 +616,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedTeamForMatches(null)}
-                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-neutral-800 transition"
+                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-[#16356E] transition"
               >
                 ✕
               </button>
@@ -630,11 +630,11 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
 
               return (
                 <>
-                  <div className="px-4 py-2.5 bg-[#121418] border-b border-gray-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono shrink-0">
+                  <div className="px-4 py-2.5 bg-[#0E224A] border-b border-[#203a70] flex items-center justify-between gap-2 flex-wrap text-xs font-mono shrink-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400">Total:</span>
+                      <span className="text-slate-400">Total:</span>
                       <strong className="text-white">{teamMatches.length} partidos</strong>
-                      <span className="text-gray-500">•</span>
+                      <span className="text-slate-500">•</span>
                       <span className="text-emerald-400 font-bold">{wins}V</span>
                       <span className="text-rose-400 font-bold">{losses}D</span>
                     </div>
@@ -646,9 +646,9 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                         setSelectedTeamForMatches(null);
                         onCreateMatchForTeam(team);
                       }}
-                      className="px-3 py-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                      className="px-3 py-1.5 rounded-xl bg-[#D4AF37] hover:bg-[#F5C542] text-[#0B1C3D] font-black text-xs flex items-center gap-1.5 transition active:scale-95 shadow-md"
                     >
-                      <Play className="w-3 h-3 fill-white" />
+                      <Play className="w-3 h-3 fill-[#0B1C3D]" />
                       <span>Empezar Nuevo Partido</span>
                     </button>
                   </div>
@@ -657,13 +657,13 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                   <div className="p-4 overflow-y-auto grow space-y-2.5">
                     {teamMatches.length === 0 ? (
                       <div className="text-center py-12 space-y-3">
-                        <div className="w-12 h-12 rounded-full bg-neutral-900 border border-gray-800 text-gray-500 flex items-center justify-center mx-auto">
+                        <div className="w-12 h-12 rounded-full bg-[#0E224A] border border-[#203a70] text-slate-400 flex items-center justify-center mx-auto">
                           <Calendar className="w-6 h-6" />
                         </div>
-                        <p className="text-sm text-gray-300 font-bold">
+                        <p className="text-sm text-slate-200 font-bold">
                           No hay partidos registrados aún para {selectedTeamForMatches.name}
                         </p>
-                        <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                        <p className="text-xs text-slate-400 max-w-sm mx-auto">
                           Empieza un partido oficial o amistoso con este equipo para registrar estadísticas, faltas y minutos de juego en tiempo real.
                         </p>
                         <button
@@ -673,9 +673,9 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                             setSelectedTeamForMatches(null);
                             onCreateMatchForTeam(team);
                           }}
-                          className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold inline-flex items-center gap-1.5 transition"
+                          className="px-4 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#F5C542] text-[#0B1C3D] text-xs font-black inline-flex items-center gap-1.5 transition shadow-lg"
                         >
-                          <Play className="w-3.5 h-3.5 fill-white" />
+                          <Play className="w-3.5 h-3.5 fill-[#0B1C3D]" />
                           <span>Crear Primer Partido</span>
                         </button>
                       </div>
@@ -693,7 +693,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                         return (
                           <div
                             key={match.id}
-                            className="p-3.5 rounded-xl bg-[#14161B] border border-gray-800/80 hover:border-orange-500/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                            className="p-3.5 rounded-xl bg-[#0E224A] border border-[#203a70] hover:border-[#D4AF37]/50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                           >
                             <div className="space-y-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -702,7 +702,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                                     isWin
                                       ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/40'
                                       : isTie
-                                      ? 'bg-neutral-800 text-gray-300 border border-neutral-700'
+                                      ? 'bg-[#071328] text-slate-300 border border-[#203a70]'
                                       : 'bg-rose-950/80 text-rose-300 border border-rose-600/40'
                                   }`}
                                 >

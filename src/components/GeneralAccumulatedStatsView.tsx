@@ -377,9 +377,9 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
   return (
     <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 space-y-4 pb-28">
       {/* 1. TOP BAR: TEAM SELECTOR & PRIMARY MODE TOGGLE */}
-      <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+      <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl p-3 sm:p-4 shadow-2xl space-y-3">
         {/* Team Selector: ONE TEAM AT A TIME */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#203a70]">
           <div className="flex items-center gap-3">
             <TeamLogoDisplay
               logo={currentTeam.logo}
@@ -388,10 +388,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
             />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] uppercase font-mono font-bold text-orange-400 bg-orange-950/60 border border-orange-700/60 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] uppercase font-mono font-black text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-sm">
                   Equipo Activo
                 </span>
-                <span className="text-[11px] font-mono text-gray-400">
+                <span className="text-[11px] font-mono text-slate-300">
                   {teamAllMatches.length} {teamAllMatches.length === 1 ? 'partido registrado' : 'partidos registrados'}
                 </span>
               </div>
@@ -409,7 +409,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                       setDiscardedGameIds(new Set()); // Reset exclusions on team switch
                       onSelectTeam?.(newId);
                     }}
-                    className="bg-neutral-900 text-white font-bold text-base sm:text-lg rounded-lg px-3 py-1 pr-8 border border-neutral-700 focus:border-orange-500 focus:outline-none cursor-pointer appearance-none shadow-sm"
+                    className="bg-[#0a1835] text-white font-bold text-base sm:text-lg rounded-xl px-3 py-1 pr-8 border border-[#203a70] focus:border-amber-400 focus:outline-none cursor-pointer appearance-none shadow-sm"
                   >
                     {Object.entries(teamsByCategory).map(([category, catTeams]) => (
                       <optgroup key={category} label={`📁 Categoría: ${category}`}>
@@ -421,12 +421,12 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                       </optgroup>
                     ))}
                   </select>
-                  <ChevronDown className="w-4 h-4 text-orange-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-amber-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               ) : (
-                <h1 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide font-scoreboard mt-0.5">
+                <h1 className="text-lg sm:text-xl font-black text-amber-300 uppercase tracking-wide font-scoreboard mt-0.5">
                   {currentTeam.name}{' '}
-                  <span className="text-xs text-orange-400 font-mono font-normal">
+                  <span className="text-xs text-amber-400 font-mono font-normal">
                     ({currentTeam.category || 'Equipo'})
                   </span>
                 </h1>
@@ -442,10 +442,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                   id="btn-download-accumulated-pdf"
                   type="button"
                   onClick={handleDownloadTeamPdf}
-                  className="py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-orange-600/20 active:scale-95 transition"
+                  className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg active:scale-95 transition"
                   title="Descargar informe completo del equipo en PDF con mapa de tiro"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 stroke-[2.5]" />
                   <span>Descargar PDF</span>
                 </button>
 
@@ -454,7 +454,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                   type="button"
                   onClick={handleShareTeamPdf}
                   disabled={isSharing}
-                  className="py-2 px-3.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition"
+                  className="py-2 px-3.5 rounded-xl bg-[#16356e] hover:bg-[#1e458e] text-emerald-300 border border-[#203a70] font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition shadow"
                   title="Enviar informe a WhatsApp o compartir desde el móvil"
                 >
                   <Share2 className="w-4 h-4 text-emerald-400" />
@@ -467,10 +467,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                   id="btn-download-match-acta"
                   type="button"
                   onClick={handleDownloadMatchPdf}
-                  className="py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-orange-600/20 active:scale-95 transition"
+                  className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg active:scale-95 transition"
                   title="Descargar acta oficial del partido en PDF"
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-4 h-4 stroke-[2.5]" />
                   <span>Acta PDF</span>
                 </button>
 
@@ -478,7 +478,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                   id="btn-share-match-whatsapp"
                   type="button"
                   onClick={handleShareMatchWhatsApp}
-                  className="py-2 px-3.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition"
+                  className="py-2 px-3.5 rounded-xl bg-[#16356e] hover:bg-[#1e458e] text-emerald-300 border border-[#203a70] font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition shadow"
                   title="Compartir resultado y destacados del partido por WhatsApp"
                 >
                   <Send className="w-4 h-4 text-emerald-400" />
@@ -506,15 +506,19 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
               playSound('click', soundEnabled);
               setActiveTab('accumulated');
             }}
-            className={`flex-1 py-2 px-3 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 px-3 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 border ${
               activeTab === 'accumulated'
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/25'
-                : 'bg-neutral-900 hover:bg-neutral-800 text-gray-400 border border-neutral-800'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-400 shadow-lg'
+                : 'bg-[#0a1835] hover:bg-[#132a58] text-slate-300 border-[#203a70]'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
             <span>Estadísticas Acumuladas & Tiro</span>
-            <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-black/40 text-orange-300">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              activeTab === 'accumulated'
+                ? 'bg-slate-950/30 text-slate-950'
+                : 'bg-[#16356e] text-amber-300'
+            }`}>
               {includedGames.length} {includedGames.length === 1 ? 'partido' : 'partidos'}
             </span>
           </button>
@@ -526,10 +530,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
               playSound('click', soundEnabled);
               setActiveTab('match');
             }}
-            className={`flex-1 py-2 px-3 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 px-3 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 border ${
               activeTab === 'match'
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/25'
-                : 'bg-neutral-900 hover:bg-neutral-800 text-gray-400 border border-neutral-800'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-400 shadow-lg'
+                : 'bg-[#0a1835] hover:bg-[#132a58] text-slate-300 border-[#203a70]'
             }`}
           >
             <Activity className="w-4 h-4" />
@@ -543,16 +547,16 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
         /* ACCUMULATED STATS VIEW (100% EXCLUSIVE TO THIS TEAM) */
         <div className="space-y-4">
           {/* A. PARTIDOS & FILTRO DE DESCARTE (SUPER SIMPLE) */}
-          <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-lg space-y-3">
+          <div className="bg-[#0e224a] border border-[#203a70] rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-orange-400" />
-                  <h3 className="text-xs sm:text-sm font-black text-gray-200 uppercase tracking-wider font-mono">
+                  <Filter className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider font-mono">
                     Filtro de Partidos (Descartar partidos)
                   </h3>
                 </div>
-                <p className="text-[11px] text-gray-400 font-mono mt-0.5">
+                <p className="text-[11px] text-slate-300 font-mono mt-0.5">
                   Desmarca cualquier partido para excluirlo al instante de las estadísticas y del mapa de tiro.
                 </p>
               </div>
@@ -562,10 +566,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                 <button
                   type="button"
                   onClick={handleIncludeAllGames}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition border ${
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition border ${
                     discardedGameIds.size === 0
-                      ? 'bg-orange-600/20 text-orange-300 border-orange-500/50'
-                      : 'bg-neutral-900 hover:bg-neutral-800 text-gray-400 border-neutral-800'
+                      ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-sm'
+                      : 'bg-[#132a58] hover:bg-[#16356e] text-slate-300 border-[#203a70]'
                   }`}
                 >
                   Todos ({teamAllMatches.length})
@@ -573,14 +577,14 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                 <button
                   type="button"
                   onClick={handleFilterWinsOnly}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-neutral-900 hover:bg-neutral-800 text-emerald-400 border border-neutral-800 transition"
+                  className="px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-[#132a58] hover:bg-[#16356e] text-emerald-300 border border-[#203a70] transition"
                 >
                   Solo Victorias
                 </button>
                 <button
                   type="button"
                   onClick={handleFilterLossesOnly}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-neutral-900 hover:bg-neutral-800 text-red-400 border border-neutral-800 transition"
+                  className="px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-[#132a58] hover:bg-[#16356e] text-rose-300 border border-[#203a70] transition"
                 >
                   Solo Derrotas
                 </button>
@@ -589,7 +593,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
             {/* Match List with Checkboxes */}
             {teamAllMatches.length === 0 ? (
-              <div className="py-6 text-center text-xs text-gray-500 font-mono bg-neutral-900/50 rounded-xl border border-neutral-800/60">
+              <div className="py-6 text-center text-xs text-slate-400 font-mono bg-[#0a1835] rounded-xl border border-[#203a70]">
                 Aún no hay partidos guardados para {currentTeam.name}. Los partidos que juegues con este equipo aparecerán aquí automáticamente.
               </div>
             ) : (
@@ -608,35 +612,35 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                       onClick={() => toggleDiscardGame(g.id)}
                       className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2 ${
                         isDiscarded
-                          ? 'bg-neutral-900/40 border-neutral-800/60 text-gray-500 opacity-60'
-                          : 'bg-neutral-900 border-neutral-700/80 hover:border-orange-500 text-white shadow-sm'
+                          ? 'bg-[#0a1835]/50 border-[#203a70]/50 text-slate-400 opacity-60'
+                          : 'bg-[#132a58] border-[#203a70] hover:border-amber-400 text-white shadow-md'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div
                           className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border ${
                             isDiscarded
-                              ? 'border-neutral-700 bg-neutral-800 text-transparent'
-                              : 'border-orange-500 bg-orange-600 text-white'
+                              ? 'border-[#203a70] bg-[#0a1835] text-transparent'
+                              : 'border-amber-400 bg-amber-500 text-slate-950 font-black'
                           }`}
                         >
                           <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold font-mono truncate">
+                          <div className="text-xs font-bold font-mono truncate text-white">
                             vs {rivalName}
                           </div>
-                          <div className="text-[10px] font-mono text-gray-400">
+                          <div className="text-[10px] font-mono text-slate-300">
                             {g.date || 'Sin fecha'} · {teamScore} - {oppScore}
                           </div>
                         </div>
                       </div>
 
                       <span
-                        className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                        className={`text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-md shrink-0 ${
                           isWin
-                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/50'
-                            : 'bg-red-950 text-red-400 border border-red-700/50'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50'
+                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/50'
                         }`}
                       >
                         {isWin ? 'V' : 'D'}
@@ -650,79 +654,79 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
           {/* B. TEAM KPI SUMMARY CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 font-mono">
-            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
-              <span className="text-[10px] text-gray-400 uppercase font-bold block">Balance</span>
-              <span className="text-xl font-black text-orange-400 font-scoreboard">
+            <div className="bg-[#132a58] border border-[#203a70] rounded-xl p-3 text-center shadow-md">
+              <span className="text-[10px] text-amber-300 uppercase font-bold block">Balance</span>
+              <span className="text-xl font-black text-amber-400 font-scoreboard">
                 {teamMetrics.wins || 0}V - {teamMetrics.losses || 0}D
               </span>
-              <span className="text-[10px] text-gray-500 block">
+              <span className="text-[10px] text-slate-300 block">
                 {teamMetrics.gamesCount > 0
                   ? `${Math.round(((teamMetrics.wins || 0) / teamMetrics.gamesCount) * 100)}% Victorias`
                   : '0%'}
               </span>
             </div>
 
-            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
-              <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos/Partido</span>
+            <div className="bg-[#132a58] border border-[#203a70] rounded-xl p-3 text-center shadow-md">
+              <span className="text-[10px] text-emerald-300 uppercase font-bold block">Puntos/Partido</span>
               <span className="text-xl font-black text-emerald-400 font-scoreboard">
                 {teamMetrics.pointsForAvg || 0}
               </span>
-              <span className="text-[10px] text-gray-500 block">
+              <span className="text-[10px] text-slate-300 block">
                 Total: {teamMetrics.pointsFor || 0} pts
               </span>
             </div>
 
-            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
-              <span className="text-[10px] text-gray-400 uppercase font-bold block">Puntos Encajados/P</span>
+            <div className="bg-[#132a58] border border-[#203a70] rounded-xl p-3 text-center shadow-md">
+              <span className="text-[10px] text-rose-300 uppercase font-bold block">Puntos Encajados/P</span>
               <span className="text-xl font-black text-rose-400 font-scoreboard">
                 {teamMetrics.pointsAgainstAvg || 0}
               </span>
-              <span className="text-[10px] text-gray-500 block">
+              <span className="text-[10px] text-slate-300 block">
                 Total: {teamMetrics.pointsAgainst || 0} pts
               </span>
             </div>
 
-            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
-              <span className="text-[10px] text-gray-400 uppercase font-bold block">Tiros de Campo</span>
-              <span className="text-xl font-black text-amber-400 font-scoreboard">
+            <div className="bg-[#132a58] border border-[#203a70] rounded-xl p-3 text-center shadow-md">
+              <span className="text-[10px] text-amber-300 uppercase font-bold block">Tiros de Campo</span>
+              <span className="text-xl font-black text-amber-300 font-scoreboard">
                 {teamMetrics.fieldGoalsPercentage || 0}%
               </span>
-              <span className="text-[10px] text-gray-500 block">
+              <span className="text-[10px] text-slate-300 block">
                 {teamMetrics.fieldGoalsMade || 0}/{teamMetrics.fieldGoalsAttempted || 0} TC
               </span>
             </div>
 
-            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
-              <span className="text-[10px] text-gray-400 uppercase font-bold block">Eficacia Triples</span>
+            <div className="bg-[#132a58] border border-[#203a70] rounded-xl p-3 text-center shadow-md">
+              <span className="text-[10px] text-sky-300 uppercase font-bold block">Eficacia Triples</span>
               <span className="text-xl font-black text-sky-400 font-scoreboard">
                 {teamMetrics.threePointsPercentage || 0}%
               </span>
-              <span className="text-[10px] text-gray-500 block">
+              <span className="text-[10px] text-slate-300 block">
                 {teamMetrics.threePointsMade || 0}/{teamMetrics.threePointsAttempted || 0} T3
               </span>
             </div>
 
-            <div className="bg-[#14161B] border border-gray-800 rounded-xl p-3 text-center">
-              <span className="text-[10px] text-gray-400 uppercase font-bold block">Tiros Libres</span>
-              <span className="text-xl font-black text-purple-400 font-scoreboard">
+            <div className="bg-[#132a58] border border-[#203a70] rounded-xl p-3 text-center shadow-md">
+              <span className="text-[10px] text-amber-200 uppercase font-bold block">Tiros Libres</span>
+              <span className="text-xl font-black text-amber-300 font-scoreboard">
                 {teamMetrics.freeThrowsPercentage || 0}%
               </span>
-              <span className="text-[10px] text-gray-500 block">
+              <span className="text-[10px] text-slate-300 block">
                 {teamMetrics.freeThrowsMade || 0}/{teamMetrics.freeThrowsAttempted || 0} TL
               </span>
             </div>
           </div>
 
           {/* C. MAPA DE TIRO ACUMULADO DEL EQUIPO */}
-          <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-800">
+          <div className="bg-[#0e224a] border border-[#203a70] rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2">
-                <Target className="w-5 h-5 text-orange-400" />
+                <Target className="w-5 h-5 text-amber-400" />
                 <div>
-                  <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                  <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-wide font-scoreboard">
                     Mapa de Tiro Acumulado del Equipo
                   </h3>
-                  <p className="text-[11px] text-gray-400 font-mono">
+                  <p className="text-[11px] text-slate-300 font-mono">
                     Todos los lanzamientos registrados en los {includedGames.length} partidos incluidos de este equipo.
                   </p>
                 </div>
@@ -730,11 +734,11 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
               {/* Player Shot Filter */}
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono text-gray-400">Filtrar por jugador:</span>
+                <span className="text-[11px] font-mono text-slate-300">Filtrar por jugador:</span>
                 <select
                   value={playerShotFilter}
                   onChange={e => setPlayerShotFilter(e.target.value)}
-                  className="bg-neutral-900 text-white text-xs font-mono font-bold rounded-lg px-2.5 py-1.5 border border-neutral-700 focus:border-orange-500 focus:outline-none"
+                  className="bg-[#0a1835] text-white text-xs font-mono font-bold rounded-xl px-2.5 py-1.5 border border-[#203a70] focus:border-amber-400 focus:outline-none"
                 >
                   <option value="all">Todo el Equipo ({teamShots.length} tiros)</option>
                   {rosterPlayers.map(p => {
@@ -777,15 +781,15 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
           </div>
 
           {/* D. TABLA ACUMULADA DE LA PLANTILLA */}
-          <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-800">
+          <div className="bg-[#0e224a] border border-[#203a70] rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-orange-400" />
+                <Users className="w-5 h-5 text-amber-400" />
                 <div>
-                  <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                  <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-wide font-scoreboard">
                     Estadísticas Acumuladas de la Plantilla
                   </h3>
-                  <p className="text-[11px] text-gray-400 font-mono">
+                  <p className="text-[11px] text-slate-300 font-mono">
                     Rendimiento individual, minutos jugados y mapas de tiro de cada jugador en los {includedGames.length} partidos computados.
                   </p>
                 </div>
@@ -795,17 +799,17 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
               <button
                 type="button"
                 onClick={handleToggleExpandAll}
-                className="self-start sm:self-auto px-2.5 py-1 bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-700 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                className="self-start sm:self-auto px-2.5 py-1 bg-[#132a58] hover:bg-[#16356e] text-slate-200 hover:text-white border border-[#203a70] rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
                 title="Desplegar o plegar todos los mapas de tiro y minutos de los jugadores"
               >
                 {expandedPlayerIds.size === sortedAccumulatedPlayers.length ? (
                   <>
-                    <ChevronUp className="w-3.5 h-3.5 text-orange-400" />
+                    <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
                     <span>Plegar Todos</span>
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="w-3.5 h-3.5 text-orange-400" />
+                    <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
                     <span>Desplegar Todos ({expandedPlayerIds.size}/{sortedAccumulatedPlayers.length})</span>
                   </>
                 )}
@@ -813,9 +817,9 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
             </div>
 
             {/* Scrollable Player Table */}
-            <div className="overflow-x-auto rounded-xl border border-gray-800">
+            <div className="overflow-x-auto rounded-xl border border-[#203a70]">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-[#101216] text-gray-400 uppercase text-[10px] font-black border-b border-gray-800">
+                <thead className="bg-[#0a1835] text-amber-300 uppercase text-[10px] font-black border-b border-[#203a70]">
                   <tr>
                     <th className="py-2.5 px-3"># Jugador</th>
                     <th
@@ -905,42 +909,42 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                           <tr
                             onClick={() => toggleExpandPlayer(row.playerId)}
                             className={`cursor-pointer transition select-none ${
-                              isExpanded ? 'bg-neutral-800/60 border-l-2 border-orange-500' : 'hover:bg-neutral-800/40'
+                              isExpanded ? 'bg-[#16356e] border-l-4 border-amber-400' : 'hover:bg-[#132a58]/60'
                             }`}
                             title="Pulsa para desplegar o plegar el mapa de tiro y desglose de minutos"
                           >
-                            <td className="py-2 px-3 font-bold text-gray-200 flex items-center gap-2">
+                            <td className="py-2 px-3 font-bold text-white flex items-center gap-2">
                               {isExpanded ? (
-                                <ChevronUp className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                                <ChevronUp className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                               ) : (
-                                <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               )}
-                              <span className="w-6 h-6 rounded-full bg-neutral-900 border border-neutral-700 text-orange-400 font-scoreboard text-xs flex items-center justify-center shrink-0">
+                              <span className="w-6 h-6 rounded-full bg-amber-500 border border-amber-400 text-slate-950 font-scoreboard text-xs flex items-center justify-center shrink-0 font-black">
                                 {row.playerNumber}
                               </span>
                               <span className="truncate max-w-[140px] sm:max-w-[200px]">{row.playerName}</span>
                             </td>
-                            <td className="py-2 px-2 text-center text-gray-300 font-bold">{row.gamesPlayed}</td>
-                            <td className="py-2 px-2 text-center text-cyan-300 font-bold font-mono">
+                            <td className="py-2 px-2 text-center text-slate-200 font-bold">{row.gamesPlayed}</td>
+                            <td className="py-2 px-2 text-center text-sky-300 font-bold font-mono">
                               {formatAccumulatedMinutes(row.totalSeconds)}
                             </td>
-                            <td className="py-2 px-2 text-center font-black text-orange-400">{row.points}</td>
-                            <td className="py-2 px-2 text-center font-black text-orange-300">{row.pointsAvg}</td>
-                            <td className="py-2 px-2 text-center text-gray-300">
+                            <td className="py-2 px-2 text-center font-black text-amber-300">{row.points}</td>
+                            <td className="py-2 px-2 text-center font-black text-amber-200">{row.pointsAvg}</td>
+                            <td className="py-2 px-2 text-center text-slate-200">
                               {row.twoPointsPct}%{' '}
-                              <span className="text-[9px] text-gray-500">
+                              <span className="text-[9px] text-slate-300">
                                 ({row.twoPointsMade}/{row.twoPointsAttempted})
                               </span>
                             </td>
-                            <td className="py-2 px-2 text-center text-gray-300">
+                            <td className="py-2 px-2 text-center text-slate-200">
                               {row.threePointsPct}%{' '}
-                              <span className="text-[9px] text-gray-500">
+                              <span className="text-[9px] text-slate-300">
                                 ({row.threePointsMade}/{row.threePointsAttempted})
                               </span>
                             </td>
-                            <td className="py-2 px-2 text-center text-gray-300">
+                            <td className="py-2 px-2 text-center text-slate-200">
                               {row.freeThrowsPct}%{' '}
-                              <span className="text-[9px] text-gray-500">
+                              <span className="text-[9px] text-slate-300">
                                 ({row.freeThrowsMade}/{row.freeThrowsAttempted})
                               </span>
                             </td>
@@ -951,23 +955,23 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
                           {/* ACCORDION EXPANDED: MAPA DE TIRO INDIVIDUAL Y MINUTOS ACUMULADOS */}
                           {isExpanded && (
-                            <tr className="bg-[#0B0D11] border-b border-gray-800/80">
+                            <tr className="bg-[#0a1835] border-b border-[#203a70]">
                               <td colSpan={11} className="p-3 sm:p-4">
-                                <div className="bg-[#12141A] rounded-xl border border-gray-800 p-3 sm:p-4 space-y-3">
+                                <div className="bg-[#0e224a] rounded-xl border border-[#203a70] p-3 sm:p-4 space-y-3 shadow-lg">
                                   {/* Player Info and Accumulated Minutes Header */}
-                                  <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-gray-800">
+                                  <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-[#203a70]">
                                     <div className="flex items-center gap-2.5">
-                                      <span className="w-8 h-8 rounded-full bg-orange-600 text-white font-bold font-scoreboard text-sm flex items-center justify-center shadow">
+                                      <span className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-black font-scoreboard text-sm flex items-center justify-center shadow">
                                         #{row.playerNumber}
                                       </span>
                                       <div>
                                         <h4 className="font-bold text-sm sm:text-base text-white flex items-center gap-2">
                                           <span>{row.playerName}</span>
-                                          <span className="text-xs text-orange-400 font-mono font-normal">
+                                          <span className="text-xs text-amber-300 font-mono font-normal">
                                             ({row.gamesPlayed} {row.gamesPlayed === 1 ? 'partido' : 'partidos'})
                                           </span>
                                         </h4>
-                                        <p className="text-[11px] text-gray-400 font-mono">
+                                        <p className="text-[11px] text-slate-300 font-mono">
                                           Estadísticas individuales acumuladas en los {includedGames.length} partidos computados
                                         </p>
                                       </div>
@@ -975,17 +979,17 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
                                     {/* Badges for Accumulated Minutes and Key Metrics */}
                                     <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
-                                      <div className="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-700/60 px-2.5 py-1 rounded-lg text-cyan-300 shadow-sm">
-                                        <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                                      <div className="flex items-center gap-1.5 bg-[#132a58] border border-[#203a70] px-2.5 py-1 rounded-xl text-sky-300 shadow-sm">
+                                        <Clock className="w-3.5 h-3.5 text-sky-400" />
                                         <span>Minutos Totales: <strong>{formatAccumulatedMinutes(row.totalSeconds)}</strong></span>
                                       </div>
-                                      <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-700 px-2.5 py-1 rounded-lg text-gray-300">
+                                      <div className="flex items-center gap-1.5 bg-[#132a58] border border-[#203a70] px-2.5 py-1 rounded-xl text-slate-200">
                                         <span>Promedio/partido: <strong>{formatAccumulatedMinutes(Math.round(row.totalSeconds / (row.gamesPlayed || 1)))}</strong></span>
                                       </div>
-                                      <div className="flex items-center gap-1.5 bg-orange-950/60 border border-orange-700/60 px-2.5 py-1 rounded-lg text-orange-300">
+                                      <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 px-2.5 py-1 rounded-xl text-amber-300 font-bold">
                                         <span>PTS: <strong>{row.points}</strong> ({row.pointsAvg} p/p)</span>
                                       </div>
-                                      <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-700/60 px-2.5 py-1 rounded-lg text-emerald-300">
+                                      <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 rounded-xl text-emerald-300 font-bold">
                                         <span>VAL: <strong>{row.efficiency}</strong> ({row.efficiencyAvg} p/p)</span>
                                       </div>
                                     </div>
@@ -994,13 +998,13 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                                   {/* Grid: Left = PlayerShotMap, Right = Efficiency breakdown */}
                                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
                                     {/* Left: Shot Map */}
-                                    <div className="md:col-span-7 bg-[#090A0E] rounded-xl border border-gray-800 p-2 overflow-hidden shadow-inner">
+                                    <div className="md:col-span-7 bg-[#071329] rounded-xl border border-[#203a70] p-2 overflow-hidden shadow-inner">
                                       <div className="flex items-center justify-between mb-1.5 px-1 font-mono">
-                                        <span className="text-[11px] font-bold text-gray-300 flex items-center gap-1">
-                                          <Target className="w-3.5 h-3.5 text-orange-400" />
+                                        <span className="text-[11px] font-bold text-white flex items-center gap-1">
+                                          <Target className="w-3.5 h-3.5 text-amber-400" />
                                           Mapa de Tiro Individual (#{row.playerNumber} {row.playerName})
                                         </span>
-                                        <span className="text-[10px] text-gray-400">
+                                        <span className="text-[10px] text-slate-300">
                                           {playerShots.length} tiros registrados
                                         </span>
                                       </div>
@@ -1014,59 +1018,59 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
                                     {/* Right: Detailed breakdown */}
                                     <div className="md:col-span-5 space-y-2 font-mono">
-                                      <div className="bg-[#161820] p-3 rounded-xl border border-gray-800/80 space-y-2 text-xs">
-                                        <h5 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider border-b border-gray-800 pb-1 flex items-center justify-between">
+                                      <div className="bg-[#132a58] p-3 rounded-xl border border-[#203a70] space-y-2 text-xs shadow-sm">
+                                        <h5 className="text-[11px] font-bold uppercase text-amber-300 tracking-wider border-b border-[#203a70] pb-1 flex items-center justify-between">
                                           <span>Eficacia de Tiro</span>
-                                          <span className="text-orange-400">{row.points} PTS</span>
+                                          <span className="text-amber-400 font-black">{row.points} PTS</span>
                                         </h5>
                                         <div className="space-y-1.5">
-                                          <div className="flex justify-between items-center bg-black/40 px-2.5 py-1.5 rounded border border-gray-800">
-                                            <span className="text-gray-400">Tiros de 2 (T2):</span>
-                                            <span className="font-bold text-gray-200">
+                                          <div className="flex justify-between items-center bg-[#0a1835] px-2.5 py-1.5 rounded-lg border border-[#203a70]">
+                                            <span className="text-slate-300">Tiros de 2 (T2):</span>
+                                            <span className="font-bold text-white">
                                               {row.twoPointsMade}/{row.twoPointsAttempted}{' '}
-                                              <span className="text-orange-400 font-black">({row.twoPointsPct}%)</span>
+                                              <span className="text-amber-300 font-black">({row.twoPointsPct}%)</span>
                                             </span>
                                           </div>
-                                          <div className="flex justify-between items-center bg-black/40 px-2.5 py-1.5 rounded border border-gray-800">
-                                            <span className="text-gray-400">Triples (T3):</span>
-                                            <span className="font-bold text-gray-200">
+                                          <div className="flex justify-between items-center bg-[#0a1835] px-2.5 py-1.5 rounded-lg border border-[#203a70]">
+                                            <span className="text-slate-300">Triples (T3):</span>
+                                            <span className="font-bold text-white">
                                               {row.threePointsMade}/{row.threePointsAttempted}{' '}
-                                              <span className="text-orange-400 font-black">({row.threePointsPct}%)</span>
+                                              <span className="text-amber-300 font-black">({row.threePointsPct}%)</span>
                                             </span>
                                           </div>
-                                          <div className="flex justify-between items-center bg-black/40 px-2.5 py-1.5 rounded border border-gray-800">
-                                            <span className="text-gray-400">Tiros Libres (TL):</span>
-                                            <span className="font-bold text-gray-200">
+                                          <div className="flex justify-between items-center bg-[#0a1835] px-2.5 py-1.5 rounded-lg border border-[#203a70]">
+                                            <span className="text-slate-300">Tiros Libres (TL):</span>
+                                            <span className="font-bold text-white">
                                               {row.freeThrowsMade}/{row.freeThrowsAttempted}{' '}
-                                              <span className="text-orange-400 font-black">({row.freeThrowsPct}%)</span>
+                                              <span className="text-amber-300 font-black">({row.freeThrowsPct}%)</span>
                                             </span>
                                           </div>
                                         </div>
                                       </div>
 
-                                      <div className="bg-[#161820] p-3 rounded-xl border border-gray-800/80 space-y-2 text-xs">
-                                        <h5 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider border-b border-gray-800 pb-1">
+                                      <div className="bg-[#132a58] p-3 rounded-xl border border-[#203a70] space-y-2 text-xs shadow-sm">
+                                        <h5 className="text-[11px] font-bold uppercase text-amber-300 tracking-wider border-b border-[#203a70] pb-1">
                                           Rendimiento Global
                                         </h5>
                                         <div className="grid grid-cols-2 gap-1.5 text-center">
-                                          <div className="bg-black/40 p-2 rounded border border-gray-800">
-                                            <span className="text-[10px] text-gray-500 block">Rebotes:</span>
-                                            <span className="text-sky-400 font-bold text-sm">{row.rebounds}</span>
-                                            <span className="text-[9px] text-gray-400 block">({row.reboundsAvg} /p)</span>
+                                          <div className="bg-[#0a1835] p-2 rounded-lg border border-[#203a70]">
+                                            <span className="text-[10px] text-slate-300 block">Rebotes:</span>
+                                            <span className="text-sky-300 font-bold text-sm">{row.rebounds}</span>
+                                            <span className="text-[9px] text-slate-400 block">({row.reboundsAvg} /p)</span>
                                           </div>
-                                          <div className="bg-black/40 p-2 rounded border border-gray-800">
-                                            <span className="text-[10px] text-gray-500 block">Asistencias:</span>
-                                            <span className="text-cyan-400 font-bold text-sm">{row.assists}</span>
-                                            <span className="text-[9px] text-gray-400 block">({row.assistsAvg} /p)</span>
+                                          <div className="bg-[#0a1835] p-2 rounded-lg border border-[#203a70]">
+                                            <span className="text-[10px] text-slate-300 block">Asistencias:</span>
+                                            <span className="text-cyan-300 font-bold text-sm">{row.assists}</span>
+                                            <span className="text-[9px] text-slate-400 block">({row.assistsAvg} /p)</span>
                                           </div>
-                                          <div className="bg-black/40 p-2 rounded border border-gray-800">
-                                            <span className="text-[10px] text-gray-500 block">Robos / Pérdidas:</span>
-                                            <span className="text-gray-200 font-bold text-sm">{row.steals} / {row.turnovers}</span>
+                                          <div className="bg-[#0a1835] p-2 rounded-lg border border-[#203a70]">
+                                            <span className="text-[10px] text-slate-300 block">Robos / Pérdidas:</span>
+                                            <span className="text-white font-bold text-sm">{row.steals} / {row.turnovers}</span>
                                           </div>
-                                          <div className="bg-black/40 p-2 rounded border border-gray-800">
-                                            <span className="text-[10px] text-gray-500 block">Valoración Media:</span>
+                                          <div className="bg-[#0a1835] p-2 rounded-lg border border-[#203a70]">
+                                            <span className="text-[10px] text-slate-300 block">Valoración Media:</span>
                                             <span className="text-emerald-400 font-bold text-sm">{row.efficiencyAvg}</span>
-                                            <span className="text-[9px] text-gray-400 block">({row.efficiency} tot)</span>
+                                            <span className="text-[9px] text-slate-400 block">({row.efficiency} tot)</span>
                                           </div>
                                         </div>
                                       </div>
@@ -1089,8 +1093,8 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
         /* CURRENT MATCH BOX SCORE & SHOT CHART VIEW */
         <div className="space-y-4">
           {!activeMatch ? (
-            <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-6 text-center font-mono">
-              <p className="text-gray-400 text-sm">
+            <div className="bg-[#0e224a] border border-[#203a70] rounded-2xl p-6 text-center font-mono">
+              <p className="text-slate-300 text-sm">
                 No hay partidos registrados para {currentTeam.name} ({currentTeam.category}).
               </p>
             </div>
@@ -1098,71 +1102,71 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
             <>
               {/* Match Highlights Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
-                <div className="bg-[#14161B] border border-amber-500/40 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                <div className="bg-[#132a58] border-2 border-[#D4AF37] rounded-xl p-3 shadow-md">
+                  <div className="flex items-center gap-1.5 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
                     <Trophy className="w-4 h-4 text-amber-400" />
                     <span>MVP Partido</span>
                   </div>
                   <div className="mt-1 flex items-baseline justify-between">
                     <div className="truncate">
-                      <span className="font-scoreboard text-xl font-black text-amber-400">
+                      <span className="font-scoreboard text-xl font-black text-amber-300">
                         #{matchMVP?.player.number || '-'}
                       </span>{' '}
-                      <span className="text-xs font-bold text-gray-200">
+                      <span className="text-xs font-bold text-white">
                         {matchMVP?.player.name?.split(' ')[0] || ''}
                       </span>
                     </div>
-                    <span className="text-sm font-black text-amber-400">
-                      {matchMVP?.efficiency || 0} <span className="text-[9px] text-gray-500 font-normal">VAL</span>
+                    <span className="text-sm font-black text-amber-300">
+                      {matchMVP?.efficiency || 0} <span className="text-[9px] text-slate-300 font-normal">VAL</span>
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-[#14161B] border border-orange-500/40 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-orange-400 text-[10px] font-bold uppercase tracking-wider">
+                <div className="bg-[#132a58] border-2 border-orange-500/60 rounded-xl p-3 shadow-md">
+                  <div className="flex items-center gap-1.5 text-orange-300 text-[10px] font-bold uppercase tracking-wider">
                     <Flame className="w-4 h-4 text-orange-400" />
                     <span>Máx. Anotador</span>
                   </div>
                   <div className="mt-1 flex items-baseline justify-between">
                     <div className="truncate">
-                      <span className="font-scoreboard text-xl font-black text-orange-400">
+                      <span className="font-scoreboard text-xl font-black text-orange-300">
                         #{matchTopScorer?.player.number || '-'}
                       </span>{' '}
-                      <span className="text-xs font-bold text-gray-200">
+                      <span className="text-xs font-bold text-white">
                         {matchTopScorer?.player.name?.split(' ')[0] || ''}
                       </span>
                     </div>
-                    <span className="text-sm font-black text-orange-400">
-                      {matchTopScorer?.points || 0} <span className="text-[9px] text-gray-500 font-normal">PTS</span>
+                    <span className="text-sm font-black text-orange-300">
+                      {matchTopScorer?.points || 0} <span className="text-[9px] text-slate-300 font-normal">PTS</span>
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-[#14161B] border border-blue-500/40 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-                    <Shield className="w-4 h-4 text-blue-400" />
+                <div className="bg-[#132a58] border-2 border-sky-500/60 rounded-xl p-3 shadow-md">
+                  <div className="flex items-center gap-1.5 text-sky-300 text-[10px] font-bold uppercase tracking-wider">
+                    <Shield className="w-4 h-4 text-sky-400" />
                     <span>Rebotes Equipo</span>
                   </div>
                   <div className="mt-1 flex items-baseline justify-between">
-                    <span className="font-scoreboard text-2xl font-black text-blue-400">
+                    <span className="font-scoreboard text-2xl font-black text-sky-300">
                       {matchTeamStats?.totalRebounds || 0}
                     </span>
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-slate-300">
                       {matchTeamStats?.offensiveRebounds || 0} Of / {matchTeamStats?.defensiveRebounds || 0} Def
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-[#14161B] border border-emerald-500/40 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                <div className="bg-[#132a58] border-2 border-emerald-500/60 rounded-xl p-3 shadow-md">
+                  <div className="flex items-center gap-1.5 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
                     <Award className="w-4 h-4 text-emerald-400" />
                     <span>Asistencias Equipo</span>
                   </div>
                   <div className="mt-1 flex items-baseline justify-between">
-                    <span className="font-scoreboard text-2xl font-black text-emerald-400">
+                    <span className="font-scoreboard text-2xl font-black text-emerald-300">
                       {matchTeamStats?.assists || 0}
                     </span>
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-slate-300">
                       VAL Total: {matchTeamStats?.efficiency || 0}
                     </span>
                   </div>
@@ -1170,11 +1174,11 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
               </div>
 
               {/* Match Box Score Table */}
-              <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+              <div className="bg-[#0e224a] border border-[#203a70] rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
                   <div className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-orange-400" />
-                    <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                    <Activity className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-wide font-scoreboard">
                       Box Score del Partido · {activeMatch.homeTeamName} ({activeMatch.category || 'Categoría'})
                     </h3>
                   </div>
@@ -1183,10 +1187,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setMatchQuarterFilter(undefined)}
-                      className={`px-2 py-1 rounded text-[10px] font-mono font-bold border transition ${
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition ${
                         matchQuarterFilter === undefined
-                          ? 'bg-orange-600 text-white border-orange-500'
-                          : 'bg-neutral-900 text-gray-400 border-neutral-700'
+                          ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-sm'
+                          : 'bg-[#132a58] text-slate-300 border-[#203a70] hover:text-white'
                       }`}
                     >
                       Total
@@ -1195,10 +1199,10 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                       <button
                         key={q}
                         onClick={() => setMatchQuarterFilter(q)}
-                        className={`px-2 py-1 rounded text-[10px] font-mono font-bold border transition ${
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition ${
                           matchQuarterFilter === q
-                            ? 'bg-orange-600 text-white border-orange-500'
-                            : 'bg-neutral-900 text-gray-400 border-neutral-700'
+                            ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-sm'
+                            : 'bg-[#132a58] text-slate-300 border-[#203a70] hover:text-white'
                         }`}
                       >
                         Q{q}
@@ -1207,53 +1211,53 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-gray-800">
+                <div className="overflow-x-auto rounded-xl border border-[#203a70]">
                   <table className="w-full text-left text-xs font-mono">
-                    <thead className="bg-[#101216] text-gray-400 uppercase text-[10px] font-black border-b border-gray-800">
+                    <thead className="bg-[#0a1835] text-amber-300 uppercase text-[10px] font-black border-b border-[#203a70]">
                       <tr>
                         <th className="py-2.5 px-3"># Jugador</th>
                         <th className="py-2.5 px-2 text-center">Min</th>
-                        <th className="py-2.5 px-2 text-center text-orange-400 font-bold">PTS</th>
+                        <th className="py-2.5 px-2 text-center text-amber-300 font-bold">PTS</th>
                         <th className="py-2.5 px-2 text-center">T2</th>
                         <th className="py-2.5 px-2 text-center">T3</th>
                         <th className="py-2.5 px-2 text-center">TL</th>
-                        <th className="py-2.5 px-2 text-center text-blue-400">REB</th>
-                        <th className="py-2.5 px-2 text-center text-cyan-400">AST</th>
+                        <th className="py-2.5 px-2 text-center text-blue-300">REB</th>
+                        <th className="py-2.5 px-2 text-center text-cyan-300">AST</th>
                         <th className="py-2.5 px-2 text-center">ROB</th>
                         <th className="py-2.5 px-2 text-center">PER</th>
                         <th className="py-2.5 px-2 text-center">FAL</th>
                         <th className="py-2.5 px-2 text-center text-emerald-400 font-bold">VAL</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-800/60">
+                    <tbody className="divide-y divide-[#203a70]">
                       {sortedMatchPlayers.map(row => (
                         <tr
                           key={row.player.id}
                           onClick={() => setSelectedMatchPlayer(row)}
-                          className="hover:bg-neutral-800/40 transition cursor-pointer"
+                          className="hover:bg-[#132a58]/60 transition cursor-pointer"
                         >
-                          <td className="py-2 px-3 font-bold text-gray-200 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-neutral-900 border border-neutral-700 text-orange-400 font-scoreboard text-xs flex items-center justify-center shrink-0">
+                          <td className="py-2 px-3 font-bold text-white flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 border border-amber-400 text-slate-950 font-scoreboard text-xs flex items-center justify-center shrink-0 font-black">
                               {row.player.number}
                             </span>
                             <span className="truncate max-w-[140px] sm:max-w-[200px]">{row.player.name}</span>
                           </td>
-                          <td className="py-2 px-2 text-center text-emerald-400 font-bold">{row.minutesPlayedFormatted}</td>
-                          <td className="py-2 px-2 text-center font-black text-orange-400">{row.points}</td>
-                          <td className="py-2 px-2 text-center text-gray-300">
+                          <td className="py-2 px-2 text-center text-emerald-300 font-bold">{row.minutesPlayedFormatted}</td>
+                          <td className="py-2 px-2 text-center font-black text-amber-300">{row.points}</td>
+                          <td className="py-2 px-2 text-center text-slate-200">
                             {row.twoPointsMade}/{row.twoPointsAttempted}
                           </td>
-                          <td className="py-2 px-2 text-center text-gray-300">
+                          <td className="py-2 px-2 text-center text-slate-200">
                             {row.threePointsMade}/{row.threePointsAttempted}
                           </td>
-                          <td className="py-2 px-2 text-center text-gray-300">
+                          <td className="py-2 px-2 text-center text-slate-200">
                             {row.freeThrowsMade}/{row.freeThrowsAttempted}
                           </td>
                           <td className="py-2 px-2 text-center text-blue-300 font-bold">{row.totalRebounds}</td>
                           <td className="py-2 px-2 text-center text-cyan-300 font-bold">{row.assists}</td>
-                          <td className="py-2 px-2 text-center text-gray-300">{row.steals}</td>
-                          <td className="py-2 px-2 text-center text-gray-400">{row.turnovers}</td>
-                          <td className="py-2 px-2 text-center text-gray-300">{row.foulsPersonal}</td>
+                          <td className="py-2 px-2 text-center text-slate-200">{row.steals}</td>
+                          <td className="py-2 px-2 text-center text-slate-300">{row.turnovers}</td>
+                          <td className="py-2 px-2 text-center text-slate-200">{row.foulsPersonal}</td>
                           <td className="py-2 px-2 text-center font-black text-emerald-400">{row.efficiency}</td>
                         </tr>
                       ))}
@@ -1263,14 +1267,14 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
               </div>
 
               {/* Match Shot Chart */}
-              <div className="bg-[#14161B] border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-800">
-                  <Target className="w-5 h-5 text-orange-400" />
+              <div className="bg-[#0e224a] border border-[#203a70] rounded-2xl p-3 sm:p-4 shadow-xl space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-[#203a70]">
+                  <Target className="w-5 h-5 text-amber-400" />
                   <div>
-                    <h3 className="text-sm sm:text-base font-black text-gray-100 uppercase tracking-wide font-scoreboard">
+                    <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-wide font-scoreboard">
                       Carta de Tiro del Partido
                     </h3>
-                    <p className="text-[11px] text-gray-400 font-mono">
+                    <p className="text-[11px] text-slate-300 font-mono">
                       Todos los tiros ejecutados en este partido (verdes = metidos, rojos = fallados).
                     </p>
                   </div>
@@ -1291,23 +1295,23 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
       {/* Selected Match Player Detail Modal */}
       {selectedMatchPlayer && activeMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#14161B] border border-orange-500/50 rounded-2xl p-4 max-w-md w-full shadow-2xl space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-[#060f22]/85 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#0e224a] border-2 border-amber-400 rounded-2xl p-4 max-w-md w-full shadow-2xl space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-full bg-orange-600 text-white font-scoreboard text-base font-black flex items-center justify-center">
+                <span className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-scoreboard text-base font-black flex items-center justify-center shadow">
                   {selectedMatchPlayer.player.number}
                 </span>
                 <div>
                   <h4 className="font-bold text-white text-sm font-mono">{selectedMatchPlayer.player.name}</h4>
-                  <span className="text-[10px] text-orange-400 font-mono">
+                  <span className="text-[10px] text-amber-300 font-mono">
                     Minutos: {selectedMatchPlayer.minutesPlayedFormatted} · {selectedMatchPlayer.points} PTS · {selectedMatchPlayer.efficiency} VAL
                   </span>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedMatchPlayer(null)}
-                className="p-1 rounded bg-neutral-800 text-gray-400 hover:text-white"
+                className="p-1.5 rounded-lg bg-[#16356e] text-slate-300 hover:text-white border border-[#203a70]"
               >
                 ✕
               </button>
@@ -1325,7 +1329,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
             <button
               type="button"
               onClick={() => setSelectedMatchPlayer(null)}
-              className="w-full py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold font-mono uppercase tracking-wider rounded-xl text-xs"
+              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black font-mono uppercase tracking-wider rounded-xl text-xs shadow-lg active:scale-95 transition"
             >
               Cerrar
             </button>

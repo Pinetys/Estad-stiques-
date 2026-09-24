@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Game } from '../types';
 import { formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { isFullscreenActive, toggleAppFullscreen } from '../utils/fullscreen';
 import {
   Play,
   Pause,
@@ -17,6 +18,8 @@ import {
   Timer,
   Crown,
   HelpCircle,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 
 interface CourtLandscapeHeaderProps {
@@ -83,6 +86,28 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   const currentQuarterLabel = formatQuarterShort(game.currentQuarter);
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
 
+  // Tablet Fullscreen Mode State
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(isFullscreenActive());
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggleFullscreen = async () => {
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('medium', game.settings.vibrationEnabled);
+    const active = await toggleAppFullscreen();
+    setIsFullscreen(active);
+  };
+
   const handlePrevQuarter = () => {
     if (game.currentQuarter > 1 && onSelectQuarter) {
       playSound('click', game.settings.soundEnabled);
@@ -101,9 +126,9 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
 
   return (
     <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
-      {/* 1. TOP UTILITY STRIP: Responsive compact layout preventing button overlap on horizontal tablets */}
-      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-1.5 overflow-x-auto no-scrollbar">
-        {/* Left: Exit button & Mode title */}
+      {/* 1. TOP UTILITY STRIP: Fixed responsive layout preventing lateral shifts on tablets */}
+      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-1.5 overflow-hidden">
+        {/* Left: Exit button & Mode title & Fullscreen button */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
@@ -112,8 +137,33 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             title="Volver a la vista completa estándar de mesa"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-[#F5C542] shrink-0" />
-            <span className="hidden sm:inline">SALIR MODO PISTA</span>
+            <span className="hidden sm:inline">SALIR PISTA</span>
             <span className="sm:hidden">SALIR</span>
+          </button>
+
+          {/* Fullscreen Tablet Mode Button */}
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className={`px-2.5 py-0.5 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0 ${
+              isFullscreen
+                ? 'bg-amber-500/20 text-[#F5C542] border border-[#D4AF37]'
+                : 'bg-[#0E224A] hover:bg-[#16356E] text-[#FFFDF7] border border-[#D4AF37]/50'
+            }`}
+            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa: Oculta la barra del navegador de la tablet'}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize className="w-3.5 h-3.5 text-[#F5C542] shrink-0" />
+                <span className="hidden sm:inline">VENTANA</span>
+              </>
+            ) : (
+              <>
+                <Maximize className="w-3.5 h-3.5 text-[#F5C542] shrink-0" />
+                <span className="hidden sm:inline">PANTALLA COMPLETA</span>
+                <span className="sm:hidden">EXPANDIR</span>
+              </>
+            )}
           </button>
 
           <div className="hidden md:flex items-center gap-1.5 text-slate-300 font-mono text-[10px] shrink-0">
@@ -144,11 +194,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             className={`px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
               isWakeLockActive
                 ? 'bg-emerald-950/90 border-emerald-500/70 text-emerald-300'
-                : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                : 'bg-[#0E224A] border-blue-900/60 text-slate-300 hover:text-white'
             }`}
             title={isWakeLockActive ? 'Anti-bloqueo activo (la pantalla no se apagará)' : 'Activar anti-bloqueo'}
           >
-            {isWakeLockActive ? <Sun className="w-3 h-3 text-emerald-400" /> : <Moon className="w-3 h-3 text-neutral-500" />}
+            {isWakeLockActive ? <Sun className="w-3 h-3 text-emerald-400" /> : <Moon className="w-3 h-3 text-slate-400" />}
             <span className="hidden xl:inline">{isWakeLockActive ? 'Pantalla Activa' : 'Auto Bloqueo'}</span>
           </button>
 
@@ -157,10 +207,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenShotChart}
-              className="px-1.5 py-0.5 bg-orange-950/60 hover:bg-orange-900 text-orange-300 border border-orange-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
+              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
               title="Abrir mapa de tiro interactivo"
             >
-              <Crosshair className="w-3 h-3 text-orange-400" />
+              <Crosshair className="w-3 h-3 text-[#F5C542]" />
               <span className="hidden xl:inline">Mapa Tiro</span>
             </button>
           )}
@@ -172,7 +222,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               onClick={onCycleShotMode}
               className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border transition active:scale-95 hidden md:inline-flex shrink-0 ${
                 currentShotMode === 'off'
-                  ? 'bg-neutral-900 border-neutral-700 text-neutral-400'
+                  ? 'bg-[#0E224A] border-blue-900/60 text-slate-400'
                   : currentShotMode === 'all'
                   ? 'bg-amber-950/80 border-amber-500/70 text-amber-300'
                   : 'bg-orange-950/80 border-orange-500/70 text-orange-300'
@@ -188,10 +238,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenOfficialSheet}
-              className="px-1.5 py-0.5 bg-blue-950/60 hover:bg-blue-900 text-blue-300 border border-blue-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
+              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-sky-300 border border-sky-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
               title="Abrir acta oficial de partido FIBA"
             >
-              <FileText className="w-3 h-3 text-blue-400" />
+              <FileText className="w-3 h-3 text-sky-400" />
               <span className="hidden xl:inline">Acta PDF</span>
             </button>
           )}
@@ -201,10 +251,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenTutorial}
-              className="px-1.5 py-0.5 bg-neutral-900 hover:bg-neutral-800 text-amber-300 border border-neutral-700/80 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
+              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/30 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
               title="Ver tutorial de uso"
             >
-              <HelpCircle className="w-3 h-3 text-amber-400" />
+              <HelpCircle className="w-3 h-3 text-[#F5C542]" />
               <span className="hidden 2xl:inline">Ayuda</span>
             </button>
           )}
@@ -264,8 +314,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
       </div>
 
-      {/* 2. MAIN MATCH & TIME CONSOLE: Perfectly proportioned 3-column layout that NEVER overlaps on horizontal tablets */}
-      <div className="px-2 sm:px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto">
+      {/* 2. MAIN MATCH & TIME CONSOLE: Fixed non-overflowing 3-column layout */}
+      <div className="px-2 sm:px-3 py-2 flex items-center justify-between gap-2 overflow-hidden w-full">
         {/* LEFT SECTION: LOCAL TEAM SCORECARD */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2.5 sm:px-3.5 py-1.5 min-w-[135px] sm:min-w-[165px] shadow-md">

@@ -1,0 +1,10 @@
+{
+  "name": "BasketStats Live - Anotador Baloncesto",
+  "short_name": "BasketStats",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1C3D",
+  "theme_color": "#0B1C3D",
+  "orientation": "landscape-primary",
+  "description": "Anotador y estadísticas de baloncesto para tablet y móvil con estilo Euroliga"
+}

@@ -424,26 +424,26 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
-      <div className="bg-[#1A1D23] border border-gray-800 rounded-xl max-w-lg w-full p-4 shadow-2xl space-y-3.5 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-[#060f22]/85 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
+      <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-lg w-full p-4 shadow-2xl space-y-3.5 max-h-[92vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 border-b border-gray-800">
+        <div className="flex items-center justify-between pb-2.5 border-b border-[#203a70]">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-orange-600/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
-              <PlusCircle className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400">
+              <PlusCircle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-100">
+              <h2 className="text-sm font-black uppercase tracking-wider text-amber-300">
                 Nuevo Partido de Baloncesto
               </h2>
-              <p className="text-[11px] text-gray-400 font-mono">
+              <p className="text-[11px] text-slate-300 font-mono">
                 Selecciona equipos grabados o introduce manualmente
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg bg-[#14161B] hover:bg-gray-800 text-gray-300 flex items-center justify-center text-xs font-bold border border-gray-700 transition"
+            className="w-7 h-7 rounded-lg bg-[#16356e] hover:bg-[#1e458e] text-slate-200 flex items-center justify-center text-xs font-bold border border-[#203a70] transition"
           >
             ✕
           </button>
@@ -451,17 +451,17 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* ===================== HOME TEAM (LOCAL) ===================== */}
-          <div className="bg-[#14161B] p-3 rounded-xl border border-gray-800 space-y-2.5">
+          <div className="bg-[#132a58] p-3 rounded-xl border border-[#203a70] space-y-2.5 shadow">
             <div className="flex items-center justify-between flex-wrap gap-1.5">
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 ring-2 ring-orange-500/20"></span>
-                <label className="text-[11px] uppercase font-mono font-bold text-orange-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-amber-400/20"></span>
+                <label className="text-[11px] uppercase font-mono font-bold text-amber-300">
                   Tu Equipo (Local)
                 </label>
               </div>
 
               {/* Mode Toggle: Recorded vs Manual */}
-              <div className="flex items-center bg-[#0F1115] p-0.5 rounded-lg border border-gray-800 text-[10px] font-mono">
+              <div className="flex items-center bg-[#0a1835] p-0.5 rounded-lg border border-[#203a70] text-[10px] font-mono">
                 <button
                   type="button"
                   onClick={() => {
@@ -474,8 +474,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   }}
                   className={`px-2 py-1 rounded-md transition font-semibold flex items-center gap-1 ${
                     homeTeamMode === 'recorded'
-                      ? 'bg-orange-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   <Users className="w-3 h-3" />
@@ -486,8 +486,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   onClick={() => setHomeTeamMode('manual')}
                   className={`px-2 py-1 rounded-md transition font-semibold flex items-center gap-1 ${
                     homeTeamMode === 'manual'
-                      ? 'bg-orange-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   <span>✏️ Manual</span>
@@ -507,8 +507,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                         onClick={() => handleSelectHomeRecordedTeam(team.id)}
                         className={`cursor-pointer p-2 rounded-lg border transition flex items-center gap-2 text-left relative ${
                           isSelected
-                            ? 'bg-orange-950/30 border-orange-500 shadow-sm'
-                            : 'bg-[#0F1115] border-gray-800 hover:border-gray-700 hover:bg-[#181B22]'
+                            ? 'bg-[#16356e] border-amber-400 shadow-sm ring-1 ring-amber-400'
+                            : 'bg-[#0a1835] border-[#203a70] hover:border-amber-400/50 hover:bg-[#16336e]'
                         }`}
                       >
                         <div className="shrink-0">
@@ -516,15 +516,15 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                         </div>
                         <div className="grow min-w-0">
                           <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-bold text-gray-100 truncate">
+                            <span className="text-xs font-bold text-white truncate">
                               {team.name}
                             </span>
                             {isSelected && (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[9px] text-gray-400 font-mono mt-0.5">
-                            <span className="bg-gray-800/80 px-1 py-0.2 rounded text-gray-300">
+                          <div className="flex items-center gap-1.5 text-[9px] text-slate-300 font-mono mt-0.5">
+                            <span className="bg-[#132a58] px-1 py-0.2 rounded text-slate-200 border border-[#203a70]">
                               {team.category || 'Senior'}
                             </span>
                             <span>{team.roster?.length || 0} jug.</span>
@@ -537,10 +537,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
                 {/* Selected team details preview */}
                 {currentSelectedTeam && (
-                  <div className="bg-[#0D0F13] px-2.5 py-1.5 rounded-lg border border-gray-800/80 flex items-center justify-between text-[11px] font-mono">
+                  <div className="bg-[#0a1835] px-2.5 py-1.5 rounded-lg border border-[#203a70] flex items-center justify-between text-[11px] font-mono">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400">Plantilla vinculada:</span>
-                      <span className="text-emerald-400 font-bold">
+                      <span className="text-slate-300">Plantilla vinculada:</span>
+                      <span className="text-amber-400 font-bold">
                         {currentSelectedTeam.roster.filter(p => p.starter).length} Titulares +{' '}
                         {currentSelectedTeam.roster.filter(p => !p.starter).length} Suplentes
                       </span>
@@ -548,7 +548,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setEditingLogoTeam('home')}
-                      className="text-[10px] text-orange-400 hover:underline flex items-center gap-1"
+                      className="text-[10px] text-amber-300 hover:underline flex items-center gap-1"
                     >
                       <Camera className="w-3 h-3" />
                       <span>Cambiar Logo</span>
@@ -572,7 +572,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                       type="text"
                       value={homeTeam}
                       onChange={e => setHomeTeam(e.target.value)}
-                      className="w-full bg-[#0F1115] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-100 font-bold focus:outline-none focus:border-orange-500 transition"
+                      className="w-full bg-[#0a1835] border border-[#203a70] rounded-lg px-3 py-1.5 text-xs text-white font-bold focus:outline-none focus:border-amber-400 transition"
                       placeholder="Escribe el nombre de tu equipo"
                       required
                     />
@@ -580,36 +580,36 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setEditingLogoTeam('home')}
-                    className="p-2 bg-[#0F1115] hover:bg-gray-800 text-gray-300 rounded-lg border border-gray-700 text-xs shrink-0 flex items-center gap-1"
+                    className="p-2 bg-[#0a1835] hover:bg-[#16356e] text-slate-200 rounded-lg border border-[#203a70] text-xs shrink-0 flex items-center gap-1"
                     title="Foto o Icono del Equipo"
                   >
-                    <Camera className="w-3.5 h-3.5 text-orange-400" />
+                    <Camera className="w-3.5 h-3.5 text-amber-400" />
                   </button>
                 </div>
 
                 {/* Option to save into club's recorded teams */}
-                <div className="bg-[#0F1115] p-2 rounded-lg border border-gray-800 space-y-1.5">
-                  <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                <div className="bg-[#0a1835] p-2 rounded-lg border border-[#203a70] space-y-1.5">
+                  <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={saveHomeAsNewRecorded}
                       onChange={e => setSaveHomeAsNewRecorded(e.target.checked)}
-                      className="rounded bg-[#14161B] border-gray-700 text-orange-500 focus:ring-orange-500 w-3.5 h-3.5"
+                      className="rounded bg-[#132a58] border-[#203a70] text-amber-500 focus:ring-amber-500 w-3.5 h-3.5"
                     />
                     <span className="flex items-center gap-1 font-medium">
-                      <FolderPlus className="w-3.5 h-3.5 text-orange-400" />
+                      <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
                       Guardar en mis Equipos Grabados del Club
                     </span>
                   </label>
                   {saveHomeAsNewRecorded && (
                     <div className="pl-5 flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-gray-400">Categoría:</span>
+                      <span className="text-[10px] font-mono text-slate-400">Categoría:</span>
                       <input
                         type="text"
                         value={newHomeCategory}
                         onChange={e => setNewHomeCategory(e.target.value)}
                         placeholder="Ej. Cadete A, Senior B, Sub-21"
-                        className="bg-[#14161B] border border-gray-700 rounded px-2 py-0.5 text-xs text-gray-200 grow font-mono"
+                        className="bg-[#132a58] border border-[#203a70] rounded px-2 py-0.5 text-xs text-white grow font-mono"
                       />
                     </div>
                   )}
@@ -623,33 +623,33 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             <button
               type="button"
               onClick={handleSwapTeams}
-              className="bg-[#1E222B] hover:bg-orange-600/20 text-gray-300 hover:text-orange-400 px-3 py-1 rounded-full border border-gray-700 hover:border-orange-500/50 text-[10px] font-mono font-bold flex items-center gap-1.5 transition shadow"
+              className="bg-[#16356e] hover:bg-amber-500/20 text-slate-200 hover:text-amber-300 px-3 py-1 rounded-full border border-[#203a70] hover:border-amber-400/50 text-[10px] font-mono font-bold flex items-center gap-1.5 transition shadow"
               title="Invertir quién juega de Local y quién de Visitante"
             >
-              <ArrowLeftRight className="w-3 h-3 text-orange-400" />
+              <ArrowLeftRight className="w-3 h-3 text-amber-400" />
               <span>Invertir Local ↔ Visitante</span>
             </button>
           </div>
 
           {/* ===================== AWAY TEAM (RIVAL / VISITANTE) ===================== */}
-          <div className="bg-[#14161B] p-3 rounded-xl border border-gray-800 space-y-2.5">
+          <div className="bg-[#132a58] p-3 rounded-xl border border-[#203a70] space-y-2.5 shadow">
             <div className="flex items-center justify-between flex-wrap gap-1.5">
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-sky-500 ring-2 ring-sky-500/20"></span>
-                <label className="text-[11px] uppercase font-mono font-bold text-sky-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-400 ring-2 ring-sky-400/20"></span>
+                <label className="text-[11px] uppercase font-mono font-bold text-sky-300">
                   Equipo Rival (Visitante)
                 </label>
               </div>
 
               {/* Mode Toggle: Recorded vs Manual */}
-              <div className="flex items-center bg-[#0F1115] p-0.5 rounded-lg border border-gray-800 text-[10px] font-mono">
+              <div className="flex items-center bg-[#0a1835] p-0.5 rounded-lg border border-[#203a70] text-[10px] font-mono">
                 <button
                   type="button"
                   onClick={() => setAwayTeamMode('recorded')}
                   className={`px-2 py-1 rounded-md transition font-semibold flex items-center gap-1 ${
                     awayTeamMode === 'recorded'
-                      ? 'bg-sky-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200'
+                      ? 'bg-sky-600 text-white shadow-sm font-bold'
+                      : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   <Shield className="w-3 h-3" />
@@ -660,8 +660,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   onClick={() => setAwayTeamMode('manual')}
                   className={`px-2 py-1 rounded-md transition font-semibold flex items-center gap-1 ${
                     awayTeamMode === 'manual'
-                      ? 'bg-sky-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200'
+                      ? 'bg-sky-600 text-white shadow-sm font-bold'
+                      : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   <span>✏️ Manual</span>
@@ -670,7 +670,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             </div>
 
             {/* Selected Away Banner */}
-            <div className="flex items-center gap-2 bg-[#0F1115] p-2 rounded-lg border border-gray-800">
+            <div className="flex items-center gap-2 bg-[#0a1835] p-2 rounded-lg border border-[#203a70]">
               <div
                 onClick={() => setEditingLogoTeam('away')}
                 className="cursor-pointer hover:opacity-80 transition shrink-0"
@@ -679,14 +679,14 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                 <TeamLogoDisplay logo={awayLogo} teamName={awayTeam} size="sm" />
               </div>
               <div className="grow">
-                <span className="text-[9px] uppercase font-mono text-gray-400 block">
+                <span className="text-[9px] uppercase font-mono text-slate-400 block">
                   Rival Seleccionado:
                 </span>
                 <input
                   type="text"
                   value={awayTeam}
                   onChange={e => setAwayTeam(e.target.value)}
-                  className="w-full bg-transparent text-xs font-bold text-gray-100 focus:outline-none"
+                  className="w-full bg-transparent text-xs font-bold text-white focus:outline-none"
                   placeholder="Nombre del rival"
                   required
                 />
@@ -707,13 +707,13 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                 {/* Search filter for opponents */}
                 {recordedOpponents.length > 5 && (
                   <div className="relative">
-                    <Search className="w-3 h-3 text-gray-400 absolute left-2.5 top-2" />
+                    <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-2" />
                     <input
                       type="text"
                       value={awaySearchFilter}
                       onChange={e => setAwaySearchFilter(e.target.value)}
                       placeholder="Buscar rival grabado..."
-                      className="w-full bg-[#0F1115] border border-gray-800 rounded-lg pl-7 pr-2 py-1 text-xs text-gray-200 placeholder-gray-500 font-mono focus:outline-none focus:border-sky-500"
+                      className="w-full bg-[#0a1835] border border-[#203a70] rounded-lg pl-7 pr-2 py-1 text-xs text-white placeholder-slate-400 font-mono focus:outline-none focus:border-sky-500"
                     />
                   </div>
                 )}
@@ -729,15 +729,15 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                         onClick={() => handleSelectAwayOpponent(opp.name, opp.logo)}
                         className={`p-1.5 rounded-lg border text-left flex items-center gap-1.5 transition ${
                           isSelected
-                            ? 'bg-sky-950/40 border-sky-500 text-white shadow-sm'
-                            : 'bg-[#0F1115] border-gray-800/80 text-gray-300 hover:bg-[#181B22] hover:border-gray-700'
+                            ? 'bg-[#16356e] border-sky-400 text-white shadow-sm ring-1 ring-sky-400'
+                            : 'bg-[#0a1835] border-[#203a70] text-slate-200 hover:bg-[#16336e] hover:border-[#254d9b]'
                         }`}
                       >
                         <span className="text-sm shrink-0">{opp.logo || '🛡️'}</span>
                         <div className="min-w-0 grow">
                           <p className="text-[11px] font-bold truncate leading-tight">{opp.name}</p>
                           {opp.count > 0 && (
-                            <p className="text-[9px] text-gray-400 font-mono">
+                            <p className="text-[9px] text-slate-400 font-mono">
                               {opp.count} {opp.count === 1 ? 'partido' : 'partidos'}
                             </p>
                           )}
@@ -750,8 +750,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
                 {/* Option to also pick another team from own club for scrimmage/friendly */}
                 {availableTeams.length > 1 && (
-                  <div className="pt-1.5 border-t border-gray-800/80">
-                    <span className="text-[9px] font-mono text-gray-400 block mb-1">
+                  <div className="pt-1.5 border-t border-[#203a70]">
+                    <span className="text-[9px] font-mono text-slate-400 block mb-1">
                       ¿Amistoso / Partidillo interno del Club?
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -762,7 +762,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                             key={t.id}
                             type="button"
                             onClick={() => handleSelectAwayOpponent(t.name, t.logo)}
-                            className="text-[10px] bg-[#0F1115] hover:bg-gray-800 text-gray-300 px-2 py-0.5 rounded-md border border-gray-800 flex items-center gap-1 font-mono"
+                            className="text-[10px] bg-[#0a1835] hover:bg-[#16356e] text-slate-200 px-2 py-0.5 rounded-md border border-[#203a70] flex items-center gap-1 font-mono"
                           >
                             <span>{t.logo || '🏀'}</span>
                             <span>{t.name}</span>
@@ -775,12 +775,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             ) : (
               /* MANUAL RIVAL OPTION */
               <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={saveAwayAsRecorded}
                     onChange={e => setSaveAwayAsRecorded(e.target.checked)}
-                    className="rounded bg-[#14161B] border-gray-700 text-sky-500 focus:ring-sky-500 w-3.5 h-3.5"
+                    className="rounded bg-[#132a58] border-[#203a70] text-sky-500 focus:ring-sky-500 w-3.5 h-3.5"
                   />
                   <span className="flex items-center gap-1 font-medium text-[11px]">
                     <Shield className="w-3 h-3 text-sky-400" />
@@ -888,7 +888,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                 <button
                   type="button"
                   onClick={handleResetStartersToDefault}
-                  className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 font-bold transition flex items-center gap-0.5"
+                  className="px-2 py-0.5 rounded bg-[#16356e] hover:bg-[#1e458e] text-slate-200 border border-[#203a70] font-bold transition flex items-center gap-0.5"
                   title="Restablecer quinteto predeterminado"
                 >
                   <RotateCcw className="w-2.5 h-2.5" />
@@ -897,7 +897,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowStartingFiveFullModal(true)}
-                  className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 font-bold transition"
+                  className="px-2 py-0.5 rounded bg-[#16356e] hover:bg-[#1e458e] text-slate-200 border border-[#203a70] font-bold transition"
                   title="Abrir selector ampliado"
                 >
                   Modo Amplio
@@ -921,12 +921,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                         handleToggleStarterInRoster(player.id);
                       }
                     }}
-                    className={`p-1.5 rounded-lg border text-left flex items-center justify-between transition cursor-pointer select-none active:scale-[0.98] ${
+                    className={`p-1.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer select-none active:scale-[0.98] ${
                       !isAttending
-                        ? 'bg-[#12141a]/60 border-gray-800/80 text-gray-500 opacity-60'
+                        ? 'bg-[#0a1835]/60 border-[#203a70]/60 text-slate-400 opacity-60'
                         : isStarter
-                        ? 'bg-orange-950/50 border-orange-500 text-white shadow-sm ring-1 ring-orange-500/40'
-                        : 'bg-[#14161B] hover:bg-[#1A1D24] border-gray-800 text-gray-300'
+                        ? 'bg-[#16356e] border-amber-400 text-white shadow-md ring-1 ring-amber-400'
+                        : 'bg-[#0a1835] hover:bg-[#132a58] border-[#203a70] text-slate-200'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -937,7 +937,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                           e.stopPropagation();
                           handleToggleAttendance(player.id);
                         }}
-                        className="shrink-0 p-0.5 rounded hover:bg-neutral-800 transition"
+                        className="shrink-0 p-0.5 rounded hover:bg-[#16356e] transition"
                         title={
                           isAttending
                             ? 'Asiste al partido (clic para marcar ausente)'
@@ -945,11 +945,11 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                         }
                       >
                         {isAttending ? (
-                          <div className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                          <div className="w-4 h-4 rounded bg-emerald-500 text-white flex items-center justify-center shadow-xs">
                             <Check className="w-3 h-3 stroke-[3]" />
                           </div>
                         ) : (
-                          <div className="w-4 h-4 rounded border border-gray-700 bg-neutral-900 flex items-center justify-center text-gray-600">
+                          <div className="w-4 h-4 rounded border border-[#203a70] bg-[#0a1835] flex items-center justify-center text-slate-400">
                             <X className="w-2.5 h-2.5" />
                           </div>
                         )}
@@ -958,10 +958,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                       <span
                         className={`w-6 h-6 rounded flex items-center justify-center font-scoreboard font-black text-xs shrink-0 border ${
                           !isAttending
-                            ? 'bg-neutral-900 text-gray-600 border-gray-800'
+                            ? 'bg-[#0a1835] text-slate-400 border-[#203a70]'
                             : isStarter
-                            ? 'bg-orange-600 text-white border-orange-400'
-                            : 'bg-neutral-800 text-amber-400 border-neutral-700'
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                            : 'bg-[#16356e] text-amber-300 border-[#203a70]'
                         }`}
                       >
                         #{player.number}
@@ -970,12 +970,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                       <div className="min-w-0">
                         <p
                           className={`text-[11px] font-bold truncate leading-tight ${
-                            isAttending ? 'text-gray-200' : 'text-gray-500 line-through'
+                            isAttending ? 'text-white' : 'text-slate-400 line-through'
                           }`}
                         >
                           {player.name}
                         </p>
-                        <p className="text-[9px] text-gray-400 font-mono">
+                        <p className="text-[9px] text-slate-300 font-mono">
                           {POSITION_LABELS[player.position]?.short || player.position}
                         </p>
                       </div>
@@ -991,14 +991,14 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                           }}
                           className={`px-1.5 py-0.5 rounded border text-[9px] font-mono font-bold flex items-center gap-0.5 transition ${
                             isStarter
-                              ? 'bg-orange-600 text-white border-orange-400 shadow-xs'
-                              : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:text-white'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black border-amber-400 shadow-xs'
+                              : 'bg-[#16356e] text-slate-300 border-[#203a70] hover:text-white'
                           }`}
                           title={isStarter ? 'Titular (clic para banquillo)' : 'Banquillo (clic para titular)'}
                         >
                           {isStarter ? (
                             <>
-                              <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                              <Check className="w-2.5 h-2.5 text-slate-950 stroke-[3]" />
                               TIT
                             </>
                           ) : (
@@ -1006,7 +1006,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                           )}
                         </button>
                       ) : (
-                        <span className="px-1.5 py-0.5 rounded bg-neutral-900 text-gray-500 border border-neutral-800 text-[8px] font-mono">
+                        <span className="px-1.5 py-0.5 rounded bg-[#0a1835] text-slate-400 border border-[#203a70] text-[8px] font-mono">
                           NO VIENE
                         </span>
                       )}
@@ -1018,14 +1018,14 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
           </div>
 
           {/* ===================== MATCH RULES & SETTINGS ===================== */}
-          <div className="pt-2 border-t border-gray-800 space-y-2.5">
-            <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
+          <div className="pt-2 border-t border-[#203a70] space-y-2.5">
+            <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-wider block">
               Reglas y Duración del Partido:
             </span>
 
             {/* Quarter duration selector */}
             <div>
-              <label className="text-[10px] uppercase font-mono text-gray-300 block mb-1">
+              <label className="text-[10px] uppercase font-mono text-slate-300 block mb-1">
                 Duración por Cuarto:
               </label>
               <div className="grid grid-cols-4 gap-1">
@@ -1039,10 +1039,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                     key={opt.mins}
                     type="button"
                     onClick={() => setQuarterDuration(opt.mins)}
-                    className={`py-1.5 px-1 text-center rounded-lg text-xs font-mono font-bold border transition ${
+                    className={`py-1.5 px-1 text-center rounded-xl text-xs font-mono font-bold border transition ${
                       quarterDuration === opt.mins
-                        ? 'bg-orange-600 border-orange-400 text-white shadow-sm'
-                        : 'bg-[#14161B] border-gray-800 text-gray-400 hover:text-gray-200'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400 text-slate-950 font-black shadow-md'
+                        : 'bg-[#132a58] border-[#203a70] text-slate-300 hover:text-white hover:bg-[#16356e]'
                     }`}
                   >
                     {opt.label}
@@ -1053,17 +1053,17 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
             {/* Foul out limit */}
             <div>
-              <label className="text-[10px] uppercase font-mono text-gray-300 block mb-1">
+              <label className="text-[10px] uppercase font-mono text-slate-300 block mb-1">
                 Límite de Faltas para Expulsión:
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setFoulOutLimit(5)}
-                  className={`py-1.5 rounded-lg text-xs font-mono font-bold border transition ${
+                  className={`py-1.5 rounded-xl text-xs font-mono font-bold border transition ${
                     foulOutLimit === 5
-                      ? 'bg-orange-600 border-orange-400 text-white shadow-sm'
-                      : 'bg-[#14161B] border-gray-800 text-gray-400 hover:text-gray-200'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400 text-slate-950 font-black shadow-md'
+                      : 'bg-[#132a58] border-[#203a70] text-slate-300 hover:text-white hover:bg-[#16356e]'
                   }`}
                 >
                   5 Faltas (FIBA / FEB)
@@ -1071,10 +1071,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setFoulOutLimit(6)}
-                  className={`py-1.5 rounded-lg text-xs font-mono font-bold border transition ${
+                  className={`py-1.5 rounded-xl text-xs font-mono font-bold border transition ${
                     foulOutLimit === 6
-                      ? 'bg-orange-600 border-orange-400 text-white shadow-sm'
-                      : 'bg-[#14161B] border-gray-800 text-gray-400 hover:text-gray-200'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400 text-slate-950 font-black shadow-md'
+                      : 'bg-[#132a58] border-[#203a70] text-slate-300 hover:text-white hover:bg-[#16356e]'
                   }`}
                 >
                   6 Faltas (NBA)
@@ -1083,24 +1083,24 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             </div>
 
             {/* Quick Experience Toggles */}
-            <div className="space-y-1.5 pt-1 border-t border-gray-800">
+            <div className="space-y-1.5 pt-1 border-t border-[#203a70]">
               {/* Auto-Open Shot Chart Setting */}
-              <div className="bg-[#14161B] p-2 rounded-lg border border-gray-800 space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-gray-200">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Crosshair className="w-3.5 h-3.5 text-orange-400" />
+              <div className="bg-[#132a58] p-2.5 rounded-xl border border-[#203a70] space-y-1.5 shadow-sm">
+                <div className="flex items-center justify-between text-xs text-white">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Crosshair className="w-3.5 h-3.5 text-amber-400" />
                     Abrir Carta Interactiva de Tiro al Anotar
                   </span>
-                  <span className="text-[10px] text-orange-400 font-mono font-bold">1 Paso</span>
+                  <span className="text-[10px] text-amber-300 font-mono font-bold">1 Paso</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1 text-[11px] font-mono">
                   <button
                     type="button"
                     onClick={() => setShotChartAutoOpen('baskets')}
-                    className={`py-1 px-1.5 rounded-md text-center transition font-bold ${
+                    className={`py-1 px-1.5 rounded-lg text-center transition font-bold ${
                       shotChartAutoOpen === 'baskets'
-                        ? 'bg-orange-600 text-white shadow'
-                        : 'bg-[#1D2027] text-gray-400 hover:text-gray-200'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow'
+                        : 'bg-[#0a1835] text-slate-300 hover:text-white hover:bg-[#16356e]'
                     }`}
                   >
                     Canastas
@@ -1108,10 +1108,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShotChartAutoOpen('all')}
-                    className={`py-1 px-1.5 rounded-md text-center transition font-bold ${
+                    className={`py-1 px-1.5 rounded-lg text-center transition font-bold ${
                       shotChartAutoOpen === 'all'
-                        ? 'bg-orange-600 text-white shadow'
-                        : 'bg-[#1D2027] text-gray-400 hover:text-gray-200'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow'
+                        : 'bg-[#0a1835] text-slate-300 hover:text-white hover:bg-[#16356e]'
                     }`}
                   >
                     Todos
@@ -1119,10 +1119,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShotChartAutoOpen('off')}
-                    className={`py-1 px-1.5 rounded-md text-center transition font-bold ${
+                    className={`py-1 px-1.5 rounded-lg text-center transition font-bold ${
                       shotChartAutoOpen === 'off'
-                        ? 'bg-orange-600 text-white shadow'
-                        : 'bg-[#1D2027] text-gray-400 hover:text-gray-200'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow'
+                        : 'bg-[#0a1835] text-slate-300 hover:text-white hover:bg-[#16356e]'
                     }`}
                   >
                     Desactivado
@@ -1131,40 +1131,40 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <label className="flex items-center justify-between text-xs text-gray-200 cursor-pointer bg-[#14161B] p-2 rounded-lg border border-gray-800">
-                  <span className="flex items-center gap-1.5 text-[11px]">
-                    <Volume2 className="w-3.5 h-3.5 text-orange-400" />
+                <label className="flex items-center justify-between text-xs text-white cursor-pointer bg-[#132a58] p-2.5 rounded-xl border border-[#203a70]">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold">
+                    <Volume2 className="w-3.5 h-3.5 text-amber-400" />
                     Sonidos
                   </span>
                   <input
                     type="checkbox"
                     checked={soundEnabled}
                     onChange={e => setSoundEnabled(e.target.checked)}
-                    className="rounded bg-[#0F1115] border-gray-700 text-orange-500 focus:ring-orange-500 w-3.5 h-3.5"
+                    className="rounded bg-[#0a1835] border-[#203a70] text-amber-500 focus:ring-amber-500 w-3.5 h-3.5"
                   />
                 </label>
 
-                <label className="flex items-center justify-between text-xs text-gray-200 cursor-pointer bg-[#14161B] p-2 rounded-lg border border-gray-800">
-                  <span className="flex items-center gap-1.5 text-[11px]">
-                    <Smartphone className="w-3.5 h-3.5 text-orange-400" />
+                <label className="flex items-center justify-between text-xs text-white cursor-pointer bg-[#132a58] p-2.5 rounded-xl border border-[#203a70]">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold">
+                    <Smartphone className="w-3.5 h-3.5 text-amber-400" />
                     Vibración
                   </span>
                   <input
                     type="checkbox"
                     checked={vibrationEnabled}
                     onChange={e => setVibrationEnabled(e.target.checked)}
-                    className="rounded bg-[#0F1115] border-gray-700 text-orange-500 focus:ring-orange-500 w-3.5 h-3.5"
+                    className="rounded bg-[#0a1835] border-[#203a70] text-amber-500 focus:ring-amber-500 w-3.5 h-3.5"
                   />
                 </label>
               </div>
 
-              <label className="flex items-center justify-between text-xs text-emerald-300 font-semibold bg-emerald-950/30 p-2 rounded-lg border border-emerald-800/50 cursor-pointer">
+              <label className="flex items-center justify-between text-xs text-emerald-200 font-semibold bg-[#132a58] p-2.5 rounded-xl border border-emerald-500/40 cursor-pointer">
                 <div className="flex flex-col">
-                  <span className="flex items-center gap-1.5 text-xs">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
                     <ZapOff className="w-3.5 h-3.5 text-emerald-400" />
                     Modo Pista (Ahorro Batería)
                   </span>
-                  <span className="text-[10px] text-emerald-400/80 font-normal">
+                  <span className="text-[10px] text-emerald-300/80 font-normal">
                     Atenúa colores y desactiva animaciones pesadas
                   </span>
                 </div>
@@ -1172,18 +1172,18 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   type="checkbox"
                   checked={courtMode}
                   onChange={e => setCourtMode(e.target.checked)}
-                  className="rounded bg-[#14161B] border-gray-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4 ml-2"
+                  className="rounded bg-[#0a1835] border-emerald-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4 ml-2"
                 />
               </label>
 
               {/* Anti-Bloqueo Móvil */}
-              <label className="flex items-center justify-between p-2 rounded-lg bg-emerald-950/25 border border-emerald-800/40 text-gray-300 font-bold cursor-pointer hover:bg-emerald-950/40 transition">
+              <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#132a58] border border-emerald-500/40 text-slate-200 font-bold cursor-pointer hover:bg-[#16356e] transition">
                 <div className="flex flex-col">
                   <span className="flex items-center gap-1.5 text-xs text-emerald-300">
                     <Sun className="w-3.5 h-3.5 text-emerald-400" />
                     Mantener Pantalla Activa (Anti-bloqueo)
                   </span>
-                  <span className="text-[10px] text-emerald-400/80 font-normal">
+                  <span className="text-[10px] text-emerald-300/80 font-normal">
                     Evita que el móvil se apague o bloquee mientras anotas en pista
                   </span>
                 </div>
@@ -1191,7 +1191,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   type="checkbox"
                   checked={keepScreenAwake}
                   onChange={e => setKeepScreenAwake(e.target.checked)}
-                  className="rounded bg-[#14161B] border-emerald-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4 ml-2"
+                  className="rounded bg-[#0a1835] border-emerald-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4 ml-2"
                 />
               </label>
             </div>
@@ -1202,20 +1202,20 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-1/3 py-2.5 bg-[#14161B] hover:bg-gray-800 text-gray-300 font-bold rounded-xl text-xs border border-gray-700 transition"
+              className="w-1/3 py-2.5 bg-[#16356e] hover:bg-[#1e458e] text-slate-200 font-bold rounded-xl text-xs border border-[#203a70] transition shadow"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={startersCount !== 5}
-              className={`w-2/3 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 transition ${
+              className={`w-2/3 py-2.5 rounded-xl text-xs font-black shadow-xl flex items-center justify-center gap-1.5 transition ${
                 startersCount === 5
-                  ? 'bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white cursor-pointer'
-                  : 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 cursor-pointer'
+                  : 'bg-[#16336e] text-slate-400 border border-[#203a70] cursor-not-allowed opacity-60'
               }`}
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-4 h-4 stroke-[3]" />
               <span>
                 {startersCount === 5 ? 'Comenzar Partido' : `Selecciona 5 Titulares (${startersCount}/5)`}
               </span>

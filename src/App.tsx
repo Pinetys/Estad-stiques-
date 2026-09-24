@@ -1720,16 +1720,16 @@ export default function App() {
                 <button
                   id="quick-menu-btn"
                   onClick={() => setShowMobileHeaderMenu(!showMobileHeaderMenu)}
-                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-gray-700 flex items-center justify-center transition"
+                  className="p-1.5 rounded-lg bg-[#16356e] hover:bg-[#1e458e] text-amber-300 border border-[#203a70] flex items-center justify-center transition shadow"
                   title="Opciones y herramientas"
                 >
-                  <MoreVertical className="w-4 h-4 text-gray-300" />
+                  <MoreVertical className="w-4 h-4 text-amber-300" />
                 </button>
 
                 {showMobileHeaderMenu && (
                   <>
                     <div
-                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs transition-opacity"
+                      className="fixed inset-0 z-40 bg-[#060f22]/70 backdrop-blur-xs transition-opacity"
                       onClick={() => setShowMobileHeaderMenu(false)}
                     />
                     <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#0d1633]/98 backdrop-blur-md border border-blue-800/80 rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[85vh] overflow-y-auto">
@@ -2201,20 +2201,20 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     onClick={() => setShowAICoachModal(true)}
-                    className="bg-[#1A1D23] hover:bg-[#20242C] border border-orange-500/40 rounded-xl p-6 text-center space-y-2.5 transition shadow-xl flex flex-col justify-between"
+                    className="bg-[#0e224a] hover:bg-[#132a58] border-2 border-amber-500/50 rounded-2xl p-6 text-center space-y-2.5 transition shadow-xl flex flex-col justify-between"
                   >
-                    <div className="w-12 h-12 rounded-full bg-orange-600/20 border border-orange-500/50 text-orange-400 flex items-center justify-center mx-auto">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 flex items-center justify-center mx-auto">
                       <Brain className="w-6 h-6 animate-pulse" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-gray-100 uppercase tracking-wide">
+                      <h3 className="font-bold text-sm text-white uppercase tracking-wide">
                         Informe del Partido Actual
                       </h3>
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-3">
+                      <p className="text-xs text-slate-300 mt-1 line-clamp-3">
                         Desglose táctico de quintetos, balance ofensivo/defensivo y rotaciones para este partido.
                       </p>
                     </div>
-                    <div className="inline-flex items-center justify-center gap-2 bg-orange-600 text-white font-bold uppercase tracking-wider px-4 py-2 rounded-lg text-xs shadow-lg mt-2">
+                    <div className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black uppercase tracking-wider px-4 py-2 rounded-xl text-xs shadow-lg mt-2">
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>Analizar Partido</span>
                     </div>
@@ -2222,20 +2222,20 @@ export default function App() {
 
                   <button
                     onClick={() => setShowLibraryModal(true)}
-                    className="bg-[#1A1D23] hover:bg-[#20242C] border border-indigo-500/40 rounded-xl p-6 text-center space-y-2.5 transition shadow-xl flex flex-col justify-between"
+                    className="bg-[#0e224a] hover:bg-[#132a58] border-2 border-indigo-400/50 rounded-2xl p-6 text-center space-y-2.5 transition shadow-xl flex flex-col justify-between"
                   >
-                    <div className="w-12 h-12 rounded-full bg-indigo-600/20 border border-indigo-500/50 text-indigo-400 flex items-center justify-center mx-auto">
+                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 border border-indigo-400/50 text-indigo-300 flex items-center justify-center mx-auto">
                       <Library className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-gray-100 uppercase tracking-wide">
+                      <h3 className="font-bold text-sm text-white uppercase tracking-wide">
                         Biblioteca y Plan de Temporada IA
                       </h3>
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-3">
+                      <p className="text-xs text-slate-300 mt-1 line-clamp-3">
                         Estadísticas acumuladas de todos los partidos jugados y generación de plan semanal de entrenamiento con IA.
                       </p>
                     </div>
-                    <div className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold uppercase tracking-wider px-4 py-2 rounded-lg text-xs shadow-lg mt-2">
+                    <div className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold uppercase tracking-wider px-4 py-2 rounded-xl text-xs shadow-lg mt-2">
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Ver Historial & Plan IA</span>
                     </div>
@@ -2246,7 +2246,7 @@ export default function App() {
           </main>
 
           {/* High Density Mobile Bottom Navigation Bar (5 Primary Tabs) */}
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#1A1D23] border-t border-gray-800 backdrop-blur-md pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0e224a]/95 border-t-2 border-[#D4AF37] backdrop-blur-md pb-safe shadow-2xl">
             <div className="max-w-xl mx-auto grid grid-cols-5 px-1 py-1 gap-1">
               {/* Teams Hub Tab (Primary Entry Point) */}
               <button
@@ -2255,10 +2255,10 @@ export default function App() {
                   playSound('click', game.settings.soundEnabled);
                   setActiveTab('teams');
                 }}
-                className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
+                className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition ${
                   activeTab === 'teams'
-                    ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                    ? 'bg-[#16356e] text-amber-300 border border-[#D4AF37] font-bold shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-[#16356e]/50'
                 }`}
                 title="Menú Principal de Equipos y Categorías"
               >
@@ -2273,17 +2273,17 @@ export default function App() {
                   playSound('click', game.settings.soundEnabled);
                   setActiveTab('live');
                 }}
-                className={`flex flex-col items-center justify-center py-1.5 rounded transition relative ${
+                className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition relative ${
                   activeTab === 'live' || activeTab === 'charts' || activeTab === 'playbyplay'
-                    ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                    ? 'bg-[#16356e] text-amber-300 border border-[#D4AF37] font-bold shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-[#16356e]/50'
                 }`}
                 title="Mesa de Control del Partido en Directo"
               >
                 <div className="relative">
                   <Flame className="w-4 h-4" />
                   {(game.homeScore > 0 || game.awayScore > 0 || game.events.length > 0) && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse ring-2 ring-black" />
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse ring-2 ring-[#0e224a]" />
                   )}
                 </div>
                 <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">Partido</span>
@@ -2297,10 +2297,10 @@ export default function App() {
                   setActiveTab('stats');
                   setLibraryGames(getSavedGamesFromStorage());
                 }}
-                className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
+                className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition ${
                   activeTab === 'stats'
-                    ? 'bg-orange-600/20 text-orange-400 border border-orange-600/40 font-bold'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                    ? 'bg-[#16356e] text-amber-300 border border-[#D4AF37] font-bold shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-[#16356e]/50'
                 }`}
                 title="Estadísticas de Equipos y Jugadores"
               >
@@ -2315,7 +2315,7 @@ export default function App() {
                   playSound('click', game.settings.soundEnabled);
                   setShowLibraryModal(true);
                 }}
-                className="flex flex-col items-center justify-center py-1.5 rounded text-indigo-400/90 hover:text-indigo-300 hover:bg-indigo-950/40 transition"
+                className="flex flex-col items-center justify-center py-1.5 rounded-xl text-indigo-300 hover:text-white hover:bg-indigo-900/40 transition"
                 title="Biblioteca de Partidos Guardados"
               >
                 <Library className="w-4 h-4" />
@@ -2329,14 +2329,14 @@ export default function App() {
                   playSound('click', game.settings.soundEnabled);
                   setShowAICoachModal(true);
                 }}
-                className={`flex flex-col items-center justify-center py-1.5 rounded transition ${
+                className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition ${
                   activeTab === 'scout'
-                    ? 'bg-orange-600/20 text-orange-400 border border-orange-500/40 font-bold'
-                    : 'text-orange-400/80 hover:text-orange-300 hover:bg-orange-950/30'
+                    ? 'bg-[#16356e] text-amber-300 border border-[#D4AF37] font-bold shadow-md'
+                    : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-900/30'
                 }`}
                 title="Informe Táctico con Inteligencia Artificial"
               >
-                <Brain className="w-4 h-4 text-orange-400" />
+                <Brain className="w-4 h-4 text-amber-400" />
                 <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider mt-0.5">
                   Scout IA
                 </span>

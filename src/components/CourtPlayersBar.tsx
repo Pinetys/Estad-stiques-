@@ -87,7 +87,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
       </div>
 
       {/* Players Cards Strip - Clean 5-column grid across full width */}
-      <div className="w-full bg-[#111317] border border-neutral-800 rounded-xl px-1 py-1 text-xs">
+      <div className="w-full bg-[#0B1C3D] border border-[#203a70] rounded-xl px-1 py-1 text-xs">
         <div className="grid grid-cols-5 gap-1.5 w-full">
           {playersOnCourt.map(player => {
             const stats = calculatePlayerStats(player, game.events);
@@ -104,12 +104,12 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                 }}
                 className={`flex flex-col items-center justify-between py-1.5 px-1 rounded-xl border-2 font-mono transition active:scale-95 text-center min-h-[78px] sm:min-h-[88px] shadow-sm ${
                   selectedPlayerId === player.id
-                    ? 'bg-amber-500/25 border-amber-400 text-white shadow-md ring-2 ring-amber-400/70'
+                    ? 'bg-[#D4AF37]/25 border-[#D4AF37] text-white shadow-md ring-2 ring-[#D4AF37]/70'
                     : isFouledOut
                     ? 'bg-red-950/50 border-red-800 text-red-300'
                     : isFoulDanger
                     ? 'bg-amber-950/50 border-amber-700 text-amber-200'
-                    : 'bg-[#181a24] border-neutral-700/80 text-neutral-200 hover:border-neutral-600'
+                    : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7] hover:border-[#D4AF37]/50'
                 }`}
               >
                 {/* Micro-header: Información secundaria reducida (Puntos y Minutos de juego) */}

@@ -266,24 +266,24 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-[#1A1D23] border border-orange-500/40 rounded-lg max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95">
+    <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 text-[#FFFDF7]">
         {/* Modal Header */}
-        <div className="px-4 py-3 bg-[#14161B] border-b border-gray-800 flex items-center justify-between">
+        <div className="px-4 py-3 bg-gradient-to-r from-[#0E224A] to-[#0B1C3D] border-b border-[#203a70] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded bg-orange-600/20 border border-orange-500/40 text-orange-400">
+            <div className="p-2 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F5C542]">
               <Brain className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="font-bold text-sm sm:text-base text-gray-100 uppercase tracking-wide">
+                <h3 className="font-bold text-sm sm:text-base text-white uppercase tracking-wide">
                   Scouting & Asistente Técnico IA (Coach)
                 </h3>
-                <span className="text-[10px] bg-orange-600 text-white font-mono font-bold px-1.5 py-0.2 rounded uppercase">
-                  Gemini 3.7 Flash
+                <span className="text-[10px] bg-[#D4AF37] text-[#0B1C3D] font-mono font-black px-2 py-0.5 rounded-full uppercase">
+                  Gemini
                 </span>
               </div>
-              <p className="text-xs text-gray-400 font-mono">
+              <p className="text-xs text-slate-300 font-mono">
                 {game.homeTeamName} {game.homeScore} - {game.awayScore} {game.awayTeamName} | {formatQuarterShort(game.currentQuarter)}
               </p>
             </div>
@@ -291,7 +291,7 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#16356E] transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -301,7 +301,7 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
         <div className="p-3 sm:p-5 overflow-y-auto grow space-y-4">
           {/* Focus Selector Pills */}
           <div>
-            <label className="text-[10px] uppercase font-bold tracking-wider text-gray-400 block mb-1.5 font-mono">
+            <label className="text-[10px] uppercase font-bold tracking-wider text-slate-300 block mb-1.5 font-mono">
               Seleccionar Tipo de Informe & Enfoque Táctico:
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -317,17 +317,17 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
                         generateReport(opt.id);
                       }
                     }}
-                    className={`p-2.5 rounded border text-left transition flex flex-col justify-between ${
+                    className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
                       isSelected
-                        ? 'bg-orange-600/20 border-orange-500 text-orange-200 ring-1 ring-orange-500'
-                        : 'bg-[#14161B] hover:bg-gray-800 border-gray-800 text-gray-300'
+                        ? 'bg-[#16356E] border-[#D4AF37] text-amber-200 ring-2 ring-[#D4AF37]/50 shadow-md'
+                        : 'bg-[#0E224A] hover:bg-[#132A58] border-[#203a70] text-slate-200'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-bold text-xs">
-                      <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-orange-400' : 'text-gray-400'}`} />
+                      <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#F5C542]' : 'text-slate-400'}`} />
                       <span>{opt.label}</span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1 leading-tight">{opt.desc}</p>
+                    <p className="text-[10px] text-slate-300 mt-1 leading-tight">{opt.desc}</p>
                   </button>
                 );
               })}
@@ -336,22 +336,22 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
 
           {/* Action Generate / Status */}
           {!report && !isLoading && (
-            <div className="bg-[#14161B] border border-gray-800 rounded-lg p-6 text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-orange-600/20 border border-orange-500/40 text-orange-400 flex items-center justify-center mx-auto">
+            <div className="bg-[#0E224A] border-2 border-[#D4AF37]/40 rounded-2xl p-6 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F5C542] flex items-center justify-center mx-auto">
                 <Sparkles className="w-6 h-6 animate-pulse" />
               </div>
               <div>
-                <h4 className="font-bold text-sm text-gray-200">
+                <h4 className="font-bold text-sm text-white">
                   Generar Informe Profesional de Scouting y Puntos a Trabajar
                 </h4>
-                <p className="text-xs text-gray-400 max-w-md mx-auto mt-1">
+                <p className="text-xs text-slate-300 max-w-md mx-auto mt-1">
                   La IA analizará los {game.events.length} eventos registrados, porcentajes de tiro (T2, T3, TL), rebotes, ratio asistencias/pérdidas, faltas y rotaciones para sugerirte ejercicios y ajustes tácticos de nivel profesional.
                 </p>
               </div>
 
               <button
                 onClick={() => generateReport()}
-                className="bg-orange-600 hover:bg-orange-500 text-white font-bold uppercase tracking-wider px-5 py-2.5 rounded text-xs shadow-lg transition flex items-center gap-2 mx-auto active:scale-95"
+                className="bg-[#D4AF37] hover:bg-[#F5C542] active:bg-[#C29B27] text-[#0B1C3D] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl text-xs shadow-lg transition flex items-center gap-2 mx-auto active:scale-95"
               >
                 <Brain className="w-4 h-4" />
                 <span>Generar Informe Táctico Ahora</span>
@@ -361,13 +361,13 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
 
           {/* Loading Animation */}
           {isLoading && (
-            <div className="bg-[#14161B] border border-orange-500/30 rounded-lg p-8 text-center space-y-3 animate-pulse">
-              <RefreshCw className="w-8 h-8 text-orange-500 animate-spin mx-auto" />
+            <div className="bg-[#0E224A] border border-[#D4AF37]/40 rounded-xl p-8 text-center space-y-3 animate-pulse">
+              <RefreshCw className="w-8 h-8 text-[#F5C542] animate-spin mx-auto" />
               <div className="space-y-1">
-                <h4 className="font-bold text-sm text-gray-100">
+                <h4 className="font-bold text-sm text-white">
                   Analizando estadísticas del partido con IA...
                 </h4>
-                <p className="text-xs text-gray-400 font-mono">
+                <p className="text-xs text-slate-300 font-mono">
                   Calculando ratios de tiro, eficiencia PIR, rebotes y plan táctico de entrenamiento...
                 </p>
               </div>
@@ -376,11 +376,11 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
 
           {/* Error Message */}
           {error && (
-            <div className="bg-rose-950/40 border border-rose-600 rounded p-3 text-rose-200 text-xs flex items-center justify-between">
+            <div className="bg-rose-950/40 border border-rose-600 rounded-xl p-3 text-rose-200 text-xs flex items-center justify-between">
               <span>{error}</span>
               <button
                 onClick={() => generateReport()}
-                className="px-2 py-1 bg-rose-800 hover:bg-rose-700 text-white rounded font-bold uppercase text-[10px]"
+                className="px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white rounded font-bold uppercase text-[10px]"
               >
                 Reintentar
               </button>
@@ -390,26 +390,26 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
           {/* Report Display */}
           {report && !isLoading && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-800">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#203a70]">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span className="text-xs font-mono text-gray-300">
-                    Informe generado para: <strong className="text-orange-400">{selectedFocus}</strong>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span className="text-xs font-mono text-slate-300">
+                    Informe generado para: <strong className="text-[#F5C542]">{selectedFocus}</strong>
                   </span>
                 </div>
 
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={handleCopy}
-                    className="px-2.5 py-1 rounded bg-[#14161B] hover:bg-gray-800 text-gray-200 border border-gray-700 text-xs font-bold font-mono flex items-center gap-1 transition"
+                    className="px-2.5 py-1 rounded-lg bg-[#0E224A] hover:bg-[#16356E] text-slate-200 border border-[#203a70] text-xs font-bold font-mono flex items-center gap-1 transition"
                   >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
                     <span>{copied ? 'Copiado' : 'Copiar'}</span>
                   </button>
 
                   <button
                     onClick={handleShare}
-                    className="px-2.5 py-1 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700 text-xs font-bold font-mono flex items-center gap-1 transition"
+                    className="px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700 text-xs font-bold font-mono flex items-center gap-1 transition"
                   >
                     <Share2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Compartir</span>
@@ -417,16 +417,16 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
 
                   <button
                     onClick={() => generateReport()}
-                    className="px-2.5 py-1 rounded bg-orange-950/80 hover:bg-orange-900 text-orange-200 border border-orange-700 text-xs font-bold font-mono flex items-center gap-1 transition"
+                    className="px-2.5 py-1 rounded-lg bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 text-xs font-bold font-mono flex items-center gap-1 transition"
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
+                    <RefreshCw className="w-3.5 h-3.5 text-[#F5C542]" />
                     <span>Regenerar</span>
                   </button>
                 </div>
               </div>
 
               {/* Rendered Markdown Report */}
-              <div className="bg-[#14161B] border border-gray-800 rounded-lg p-4 sm:p-6 text-gray-200 prose prose-invert max-w-none text-xs sm:text-sm leading-relaxed space-y-3 font-sans">
+              <div className="bg-[#0E224A] border border-[#203a70] rounded-xl p-4 sm:p-6 text-slate-100 max-w-none text-xs sm:text-sm leading-relaxed space-y-3 font-sans">
                 <div className="markdown-body">
                   <Markdown>{report}</Markdown>
                 </div>
@@ -436,11 +436,11 @@ export const AICoachReportModal: React.FC<AICoachReportModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-4 py-2.5 bg-[#14161B] border-t border-gray-800 flex items-center justify-between text-xs text-gray-400">
+        <div className="px-4 py-2.5 bg-[#0E224A] border-t border-[#203a70] flex items-center justify-between text-xs text-slate-300">
           <span className="font-mono text-[11px]">BasketStats PRO • Asistente Técnico Táctico</span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold uppercase tracking-wider text-xs transition"
+            className="px-4 py-1.5 rounded-lg bg-[#071328] hover:bg-[#16356E] text-white font-bold uppercase tracking-wider text-xs border border-[#203a70] transition"
           >
             Cerrar
           </button>

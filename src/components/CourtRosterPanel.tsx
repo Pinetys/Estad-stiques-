@@ -141,12 +141,12 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col justify-between bg-[#0a0f24] border-r border-blue-900/60 pr-2 select-none overflow-hidden">
+    <div className="w-full h-full flex flex-col justify-between bg-[#0B1C3D] border-r border-[#203a70] pr-2 select-none overflow-hidden">
       {/* 1. TOP HEADER: ROSTER INFO & QUICK MODAL BUTTONS */}
-      <div className="flex items-center justify-between pb-1.5 pt-0.5 border-b border-blue-900/60 shrink-0">
+      <div className="flex items-center justify-between pb-1.5 pt-0.5 border-b border-[#203a70] shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-black font-mono uppercase tracking-wider text-slate-200">
+          <span className="text-xs font-black font-mono uppercase tracking-wider text-[#FFFDF7]">
             Plantilla ({game.players.length})
           </span>
         </div>
@@ -156,10 +156,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             <button
               type="button"
               onClick={onOpenRosterModal}
-              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-slate-300 hover:text-white border border-blue-800/80 text-[10px] font-mono font-bold flex items-center gap-1 transition"
+              className="px-2 py-0.5 rounded bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white border border-[#203a70] text-[10px] font-mono font-bold flex items-center gap-1 transition"
               title="Editar jugadores convocados que vienen al partido"
             >
-              <Users className="w-3 h-3 text-orange-400" />
+              <Users className="w-3 h-3 text-[#F5C542]" />
               <span>Convocatoria</span>
             </button>
           )}
@@ -168,10 +168,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             <button
               type="button"
               onClick={onOpenStartingFiveModal}
-              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-slate-300 hover:text-white border border-blue-800/80 text-[10px] font-mono font-bold flex items-center gap-1 transition"
+              className="px-2 py-0.5 rounded bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white border border-[#203a70] text-[10px] font-mono font-bold flex items-center gap-1 transition"
               title="Configurar los 5 titulares iniciales"
             >
-              <Users className="w-3 h-3 text-orange-400" />
+              <Users className="w-3 h-3 text-[#F5C542]" />
               <span>5 Inicial</span>
             </button>
           )}
@@ -179,10 +179,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
           <button
             type="button"
             onClick={onOpenSubstitutionModal}
-            className="px-2 py-0.5 bg-blue-950/80 hover:bg-blue-900 text-slate-300 hover:text-white border border-blue-800/80 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm"
+            className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white border border-[#203a70] rounded text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm"
             title="Abrir ventana de cambios múltiples"
           >
-            <ArrowRightLeft className="w-3 h-3 text-amber-400" />
+            <ArrowRightLeft className="w-3 h-3 text-[#F5C542]" />
             <span>Múltiples</span>
           </button>
         </div>
@@ -204,7 +204,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
               </div>
               <button
                 onClick={cancelSwap}
-                className="px-1 py-0.5 bg-black/60 hover:bg-black text-neutral-300 hover:text-white rounded border border-neutral-700 text-[9px] shrink-0 ml-1"
+                className="px-1.5 py-0.5 bg-[#0B1C3D] hover:bg-[#16356E] text-slate-200 hover:text-white rounded border border-[#203a70] text-[9px] shrink-0 ml-1 font-bold"
               >
                 Cancelar ✕
               </button>
@@ -217,7 +217,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
               </div>
               <button
                 onClick={cancelSwap}
-                className="px-1 py-0.5 bg-black/60 hover:bg-black text-neutral-300 hover:text-white rounded border border-neutral-700 text-[9px] shrink-0 ml-1"
+                className="px-1.5 py-0.5 bg-[#0B1C3D] hover:bg-[#16356E] text-slate-200 hover:text-white rounded border border-[#203a70] text-[9px] shrink-0 ml-1 font-bold"
               >
                 Cancelar ✕
               </button>
@@ -254,14 +254,14 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                     isPendingOut
                       ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/60 text-white shadow-lg'
                       : pendingInId
-                      ? 'bg-[#181a24] hover:bg-rose-950/60 border-rose-500/70 text-rose-200 animate-pulse'
+                      ? 'bg-[#0E224A] hover:bg-rose-950/60 border-rose-500/70 text-rose-200 animate-pulse'
                       : isSelectedForAction
-                      ? 'bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/60 text-white shadow-md'
+                      ? 'bg-[#D4AF37]/25 border-[#D4AF37] ring-2 ring-[#D4AF37]/60 text-white shadow-md'
                       : isFouledOut
                       ? 'bg-red-950/30 border-red-800 text-red-300'
                       : isFoulDanger
-                      ? 'bg-amber-950/20 border-amber-700/80 text-slate-200 hover:border-amber-500'
-                      : 'bg-[#0e1736] hover:bg-[#131f47] border-blue-900/70 text-slate-200'
+                      ? 'bg-amber-950/30 border-amber-700/80 text-slate-200 hover:border-[#D4AF37]'
+                      : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
                   }`}
                 >
                   {/* Left: Dorsal + Name + Status */}
@@ -349,19 +349,19 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       ? 'bg-emerald-950/90 border-emerald-500 ring-2 ring-emerald-500/60 text-white shadow-lg'
                       : pendingOutId
                       ? 'bg-emerald-950/40 hover:bg-emerald-900/80 border-emerald-500/70 text-emerald-200 animate-pulse'
-                      : 'bg-[#0c142b] hover:bg-[#111c3d] border-blue-950 text-slate-300'
+                      : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
                   }`}
                 >
                   {/* Left: Dorsal + Name */}
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-scoreboard font-black text-base text-neutral-400 shrink-0 w-6 text-center leading-none">
+                    <span className="font-scoreboard font-black text-base text-[#F5C542] shrink-0 w-6 text-center leading-none">
                       #{player.number}
                     </span>
                     <div className="flex flex-col min-w-0 text-left">
-                      <span className="text-xs font-semibold text-neutral-300 truncate leading-tight">
+                      <span className="text-xs font-semibold text-slate-200 truncate leading-tight">
                         {player.name.split(' ')[0]}
                       </span>
-                      <span className="text-[8px] text-neutral-500">
+                      <span className="text-[8px] text-slate-400">
                         {stats.minutesPlayedFormatted}
                       </span>
                     </div>
@@ -369,7 +369,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
                   {/* Right: Stats & Enter Badge */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-bold text-neutral-300 bg-neutral-900/80 px-1 py-0.5 rounded border border-neutral-800">
+                    <span className="text-[10px] font-bold text-slate-200 bg-[#08152e] px-1 py-0.5 rounded border border-[#203a70]">
                       {stats.points}p
                     </span>
                     <PlayerFoulsIndicator
