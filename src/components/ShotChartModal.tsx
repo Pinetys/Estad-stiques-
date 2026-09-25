@@ -54,8 +54,8 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
 }) => {
   const isPendingMode = Boolean(pendingShot);
 
-  // Realistic Court & Layer Visualization Controls
-  const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('dark');
+  // Realistic Court & Layer Visualization Controls (Pista parquet siempre)
+  const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('parquet');
   const [displayLayer, setDisplayLayer] = useState<'shots' | 'zones' | 'both'>('shots');
 
   // Filters for analytics mode

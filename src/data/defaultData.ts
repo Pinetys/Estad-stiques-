@@ -269,7 +269,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   vibrationEnabled: true,
   assistPromptEnabled: true,
   courtMode: false,
-  shotChartAutoOpen: 'baskets',
+  shotChartAutoOpen: 'all',
   keepScreenAwake: true,
   timingMode: 'fiba_stop',
   autoPauseOnFouls: true,

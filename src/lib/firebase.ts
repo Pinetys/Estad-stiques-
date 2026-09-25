@@ -371,3 +371,81 @@ export function subscribeToActiveMatchMetadata(onUpdate: (meta: ActiveMatchMetad
   }
 }
 
+/**
+ * Cloud Firestore Subscribers Synchronization (Mobile to PC Central & Vice-Versa)
+ */
+export async function syncSubscriberToCloud(subscriber: any): Promise<boolean> {
+  if (!isFirebaseConfigured || !subscriber || !subscriber.id) return false;
+  try {
+    const docRef = doc(db, 'subscribers', subscriber.id);
+    const sanitized = cleanForFirestore({
+      ...subscriber,
+      updatedAt: new Date().toISOString(),
+    });
+    await setDoc(docRef, sanitized, { merge: true });
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `subscribers/${subscriber.id}`);
+    return false;
+  }
+}
+
+export async function deleteSubscriberFromCloud(subscriberId: string): Promise<boolean> {
+  if (!isFirebaseConfigured || !subscriberId) return false;
+  try {
+    const docRef = doc(db, 'subscribers', subscriberId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `subscribers/${subscriberId}`);
+    return false;
+  }
+}
+
+export async function fetchAllSubscribersFromCloud(): Promise<any[]> {
+  if (!isFirebaseConfigured) return [];
+  try {
+    const colRef = collection(db, 'subscribers');
+    const snap = await getDocs(colRef);
+    const subscribers: any[] = [];
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data && data.id && (data.name || data.licenseKey)) {
+        subscribers.push(data);
+      }
+    });
+    return subscribers;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'subscribers');
+    return [];
+  }
+}
+
+export function subscribeToSubscribers(onUpdate: (subscribers: any[]) => void): Unsubscribe {
+  if (!isFirebaseConfigured) {
+    return () => {};
+  }
+  try {
+    const colRef = collection(db, 'subscribers');
+    return onSnapshot(
+      colRef,
+      snapshot => {
+        const subscribers: any[] = [];
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data && data.id && (data.name || data.licenseKey)) {
+            subscribers.push(data);
+          }
+        });
+        onUpdate(subscribers);
+      },
+      error => {
+        handleFirestoreError(error, OperationType.LIST, 'subscribers');
+      }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'subscribers');
+    return () => {};
+  }
+}
+

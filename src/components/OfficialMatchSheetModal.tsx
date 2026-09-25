@@ -281,7 +281,6 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                     <th className="border border-neutral-300 p-1 text-center w-8">Nº</th>
                     <th className="border border-neutral-300 p-1 text-left">Jugador / Licencia</th>
                     <th className="border border-neutral-300 p-1 text-center w-10">Pos</th>
-                    <th className="border border-neutral-300 p-1 text-center w-12">Min</th>
                     <th className="border border-neutral-300 p-1 text-center" colSpan={5}>
                       Faltas Personales (1 2 3 4 5)
                     </th>
@@ -309,9 +308,6 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                         </td>
                         <td className="border border-neutral-300 p-1 text-center text-neutral-600">
                           {p.player.position}
-                        </td>
-                        <td className="border border-neutral-300 p-1 text-center">
-                          {p.minutesPlayedFormatted}
                         </td>
                         {/* 5 Fouls Slots */}
                         {[1, 2, 3, 4, 5].map(slot => (
@@ -350,7 +346,6 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                     <td colSpan={3} className="border border-neutral-300 p-1 text-right">
                       TOTALES EQUIPO:
                     </td>
-                    <td className="border border-neutral-300 p-1 text-center">40'</td>
                     <td colSpan={5} className="border border-neutral-300 p-1 text-center">
                       {teamStats.foulsPersonal} Faltas
                     </td>

@@ -427,6 +427,14 @@ export function getSubscribersList(): Subscriber[] {
 export function saveSubscribersList(list: Subscriber[]): void {
   try {
     localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(list));
+    // Propagate to server sync endpoint asynchronously
+    if (typeof fetch !== 'undefined') {
+      fetch('/api/sync/subscribers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscribers: list }),
+      }).catch(() => {});
+    }
   } catch (e) {
     console.warn('Error saving subscribers list:', e);
   }
@@ -436,15 +444,48 @@ export function deleteSubscriber(id: string): Subscriber[] {
   const current = getSubscribersList();
   const updated = current.filter(s => s.id !== id);
   saveSubscribersList(updated);
+  if (typeof fetch !== 'undefined') {
+    fetch(`/api/sync/subscribers/${id}`, { method: 'DELETE' }).catch(() => {});
+  }
   return updated;
 }
 
 export function clearDemoSubscribers(): Subscriber[] {
   const current = getSubscribersList();
-  const demoIds = new Set(['sub-1', 'sub-2', 'sub-3', 'sub-4']);
+  const demoIds = new Set(['sub-1', 'sub-2', 'sub-3', 'sub-4', 'sub-01', 'sub-02', 'sub-03', 'sub-04']);
   const updated = current.filter(s => !demoIds.has(s.id) && !s.id.startsWith('demo-'));
   saveSubscribersList(updated);
   return updated;
+}
+
+export function mergeCloudSubscribers(cloudSubscribers: Subscriber[]): Subscriber[] {
+  if (!Array.isArray(cloudSubscribers) || cloudSubscribers.length === 0) {
+    return getSubscribersList();
+  }
+  const localList = getSubscribersList();
+  const map = new Map<string, Subscriber>();
+
+  // Add local first
+  localList.forEach(s => {
+    if (s && s.id) map.set(s.id, s);
+  });
+
+  // Merge cloud
+  cloudSubscribers.forEach(cs => {
+    if (cs && cs.id) {
+      const existing = map.get(cs.id);
+      if (!existing) {
+        map.set(cs.id, cs);
+      } else {
+        // Merge newest properties
+        map.set(cs.id, { ...existing, ...cs });
+      }
+    }
+  });
+
+  const merged = Array.from(map.values());
+  saveSubscribersList(merged);
+  return merged;
 }
 
 export function addSubscriber(sub: Omit<Subscriber, 'id' | 'subscribedAt' | 'licenseKey'>): Subscriber {

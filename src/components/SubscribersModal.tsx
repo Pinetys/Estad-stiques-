@@ -27,8 +27,10 @@ import {
   deleteSubscriber,
   clearDemoSubscribers,
   getCleanSubscriberShareLink,
+  mergeCloudSubscribers,
   LicenseTier,
 } from '../utils/accessControl';
+import { subscribeToSubscribers, syncSubscriberToCloud, deleteSubscriberFromCloud, isFirebaseConfigured } from '../lib/firebase';
 import { playSound } from '../utils/soundHaptics';
 
 interface SubscribersModalProps {
@@ -38,6 +40,31 @@ interface SubscribersModalProps {
 
 export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, soundEnabled = true }) => {
   const [subscribers, setSubscribers] = useState<Subscriber[]>(() => getSubscribersList());
+
+  // Real-time synchronization of subscribers between Mobile and Computer
+  React.useEffect(() => {
+    // 1. Fetch from server sync
+    fetch('/api/sync/subscribers')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data.subscribers) && data.subscribers.length > 0) {
+          const merged = mergeCloudSubscribers(data.subscribers);
+          setSubscribers(merged);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Subscribe to Firebase if configured
+    if (isFirebaseConfigured) {
+      const unsub = subscribeToSubscribers(cloudSubs => {
+        if (cloudSubs && cloudSubs.length > 0) {
+          const merged = mergeCloudSubscribers(cloudSubs);
+          setSubscribers(merged);
+        }
+      });
+      return () => unsub();
+    }
+  }, []);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -102,6 +129,11 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
       expiresAt: expires.toISOString().split('T')[0],
       activeTeamsCount: tier === 'club_pro' ? 2 : 1,
     });
+
+    // Cloud Firestore push
+    if (isFirebaseConfigured) {
+      syncSubscriberToCloud(newSub).catch(() => {});
+    }
 
     setSubscribers(getSubscribersList());
     setShowAddForm(false);
@@ -476,6 +508,9 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
                   <button
                     type="button"
                     onClick={() => {
+                      if (isFirebaseConfigured) {
+                        deleteSubscriberFromCloud(subToDelete.id).catch(() => {});
+                      }
                       const updated = deleteSubscriber(subToDelete.id);
                       setSubscribers(updated);
                       setSubToDelete(null);
