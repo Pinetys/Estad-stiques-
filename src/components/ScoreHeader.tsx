@@ -605,26 +605,36 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                 <span className="text-[10px] sm:text-xs uppercase font-black text-slate-400">pts</span>
               </div>
 
-              {/* Away Team Quarter Fouls */}
+              {/* Away Team Quarter Fouls - Interactive button */}
               <div className="text-right">
-                <div className="text-[10px] sm:text-xs text-slate-400 uppercase font-mono font-bold">Faltas Q</div>
-                <div className="flex items-center justify-end gap-1 mt-0.5">
-                  {[1, 2, 3, 4, 5].map(dot => (
-                    <span
-                      key={dot}
-                      className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${
-                        dot <= game.awayQuarterFouls
-                          ? dot >= 5
-                            ? `bg-rose-500 ring-2 ring-rose-500/50 ${isCourtMode ? '' : 'animate-pulse'}`
-                            : isCourtMode ? 'bg-sky-500' : 'bg-blue-500'
-                          : 'bg-blue-950/80 border border-blue-900/50'
-                      }`}
-                    />
-                  ))}
-                  <span className="text-xs sm:text-sm font-mono font-bold text-slate-300 ml-1">
-                    ({game.awayQuarterFouls})
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onLogOpponentAction) {
+                      onLogOpponentAction('OPP_FOUL');
+                    }
+                  }}
+                  disabled={isActionsLocked}
+                  className="px-2 py-0.5 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-mono font-black text-[10px] sm:text-xs flex items-center gap-1 shadow-md border border-red-300 active:scale-95 transition"
+                  title="Tocar para sumar falta al equipo rival"
+                >
+                  <span className="uppercase text-[9px] font-black">+FALTA</span>
+                  <div className="flex items-center gap-0.5 ml-0.5">
+                    {[1, 2, 3, 4, 5].map(dot => (
+                      <span
+                        key={dot}
+                        className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+                          dot <= game.awayQuarterFouls
+                            ? 'bg-white'
+                            : 'bg-red-950/80 border border-red-300/40'
+                        }`}
+                      />
+                    ))}
+                    <span className="text-[10px] sm:text-xs font-mono font-black text-white ml-0.5">
+                      ({game.awayQuarterFouls})
+                    </span>
+                  </div>
+                </button>
               </div>
             </div>
           </div>

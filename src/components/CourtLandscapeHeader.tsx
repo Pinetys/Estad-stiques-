@@ -185,8 +185,38 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Screen wake, shot chart, match sheet, tutorial, pro and finish match buttons */}
+        {/* Right: Screen wake, quick rival foul, shot chart, match sheet, tutorial, pro and finish match buttons */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {/* Quick Foul Opponent in Top Utility Strip - Highly Visible on Tablets */}
+          <button
+            type="button"
+            id="top-utility-away-foul-btn"
+            onClick={() => {
+              onLogOpponentAction('OPP_FOUL');
+              const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+              if (nextAwayFouls >= bonusLimit) {
+                onTriggerOpponentFoulBonus(nextAwayFouls);
+              }
+            }}
+            disabled={isActionsLocked}
+            className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-black flex items-center gap-1 transition active:scale-95 border shadow-sm shrink-0 ${
+              awayIsBonus
+                ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
+                : 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400'
+            }`}
+            title="Sumar falta al equipo rival en la parte superior"
+          >
+            <span className="uppercase text-[9px] font-black tracking-tight">+FALTA RIVAL</span>
+            <span className="bg-red-900 text-white px-1.5 py-0.2 rounded font-black text-xs border border-red-300">
+              {game.awayQuarterFouls || 0}
+            </span>
+            {awayIsBonus && (
+              <span className="text-[8px] bg-white text-red-600 px-1 rounded font-black animate-pulse">
+                BONUS
+              </span>
+            )}
+          </button>
+
           {/* Screen Wake Lock */}
           <button
             type="button"
@@ -314,19 +344,19 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
       </div>
 
-      {/* 2. MAIN MATCH & TIME CONSOLE: Fixed non-overflowing 3-column layout */}
-      <div className="px-2 sm:px-3 py-2 flex items-center justify-between gap-2 overflow-hidden w-full">
+      {/* 2. MAIN MATCH & TIME CONSOLE: Responsive 3-column layout (Optimized for tablets) */}
+      <div className="px-1.5 sm:px-2.5 lg:px-3 py-1 sm:py-1.5 flex items-center justify-between gap-1 sm:gap-2 w-full max-w-full">
         {/* LEFT SECTION: LOCAL TEAM SCORECARD */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2.5 sm:px-3.5 py-1.5 min-w-[135px] sm:min-w-[165px] shadow-md">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[105px] sm:min-w-[130px] lg:min-w-[155px] shadow-md">
             <div className="flex flex-col text-left min-w-0">
-              <span className="text-xs sm:text-sm md:text-base font-black text-[#F5C542] uppercase tracking-wider truncate max-w-[95px] sm:max-w-[120px] leading-tight">
+              <span className="text-xs sm:text-sm font-black text-[#F5C542] uppercase tracking-wider truncate max-w-[85px] sm:max-w-[110px] leading-tight">
                 {game.homeTeamName || 'LOCAL'}
               </span>
               <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5">
-                <span className="text-slate-400 font-bold">F:</span>
+                <span className="text-slate-400 font-bold">Faltas:</span>
                 <span
-                  className={`font-black px-1 rounded text-[10px] ${
+                  className={`font-black px-1.5 py-0.2 rounded text-[10px] ${
                     homeIsBonus
                       ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
                       : 'text-[#FFFDF7] bg-[#071328] border border-[#D4AF37]/40'
@@ -339,7 +369,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               </div>
             </div>
 
-            <div className="font-scoreboard font-extrabold text-3xl sm:text-4xl md:text-5xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1.5">
+            <div className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1">
               {game.homeScore}
             </div>
 
@@ -349,10 +379,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 type="button"
                 onClick={() => onTriggerTimeout('home')}
                 disabled={isActionsLocked || (game.homeTimeouts !== undefined && game.homeTimeouts <= 0)}
-                className="px-2 py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-[#D4AF37]/60 text-[10px] sm:text-xs font-mono font-bold text-[#F5C542] flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm ml-0.5 shrink-0"
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-[#D4AF37]/60 text-[10px] sm:text-xs font-mono font-bold text-[#F5C542] flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm ml-0.5 shrink-0"
                 title="Pedir Tiempo Muerto Local (60 segundos)"
               >
-                <Timer className="w-3.5 h-3.5 text-[#F5C542]" />
+                <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#F5C542]" />
                 <span>TM: {game.homeTimeouts ?? 3}</span>
               </button>
             )}
@@ -480,7 +510,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </div>
 
           {/* Quick Micro-Adjust (+10s / -10s) */}
-          <div className={`hidden lg:flex items-center gap-0.5 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+          <div className={`hidden 2xl:flex items-center gap-0.5 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               onClick={() => adjustSeconds(10)}
               disabled={isActionsLocked}
@@ -501,10 +531,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
 
         {/* RIGHT SECTION: AWAY TEAM & OPPONENT LIVE ACTIONS */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* RIVAL TEAM CARD */}
-          <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2.5 sm:px-3.5 py-1.5 min-w-[135px] sm:min-w-[165px] shadow-md">
-            <div className="font-scoreboard font-extrabold text-3xl sm:text-4xl md:text-5xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1.5">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[105px] sm:min-w-[130px] lg:min-w-[155px] shadow-md">
+            <div className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1">
               {game.awayScore}
             </div>
 
@@ -514,37 +544,75 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 type="button"
                 onClick={() => onTriggerTimeout('away')}
                 disabled={isActionsLocked || (game.awayTimeouts !== undefined && game.awayTimeouts <= 0)}
-                className="px-2 py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-sky-500/60 text-[10px] sm:text-xs font-mono font-bold text-sky-300 flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm mr-0.5 shrink-0"
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-sky-500/60 text-[10px] sm:text-xs font-mono font-bold text-sky-300 flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm mr-0.5 shrink-0"
                 title="Tiempo Muerto Rival (60 segundos)"
               >
-                <Timer className="w-3.5 h-3.5 text-sky-400" />
+                <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sky-400" />
                 <span>TM: {game.awayTimeouts ?? 3}</span>
               </button>
             )}
 
             <div className="flex flex-col text-right ml-auto min-w-0">
-              <span className="text-xs sm:text-sm md:text-base font-black text-sky-400 uppercase tracking-wider truncate max-w-[95px] sm:max-w-[120px] leading-tight">
+              <span className="text-xs sm:text-sm font-black text-sky-400 uppercase tracking-wider truncate max-w-[85px] sm:max-w-[110px] leading-tight">
                 {game.awayTeamName || 'RIVAL'}
               </span>
-              <div className="flex items-center justify-end gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5">
-                <span className="text-slate-400 font-bold">F:</span>
-                <span
-                  className={`font-black px-1 rounded text-[10px] ${
-                    awayIsBonus
-                      ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
-                      : 'text-slate-200 bg-blue-950/80 border border-blue-900/60'
-                  }`}
-                  title={awayIsBonus ? '¡Bonus rival alcanzado!' : 'Faltas de equipo rival este cuarto'}
-                >
+
+              {/* Directly Interactive Foul Button on the Card - Highly Prominent */}
+              <button
+                type="button"
+                id="header-away-card-foul-btn"
+                onClick={() => {
+                  onLogOpponentAction('OPP_FOUL');
+                  const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+                  if (nextAwayFouls >= bonusLimit) {
+                    onTriggerOpponentFoulBonus(nextAwayFouls);
+                  }
+                }}
+                disabled={isActionsLocked}
+                className={`mt-0.5 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-black flex items-center justify-end gap-1 transition active:scale-95 border shadow-sm ${
+                  awayIsBonus
+                    ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
+                    : 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400'
+                }`}
+                title="Tocar para sumar falta al equipo rival"
+              >
+                <span className="text-white text-[9px] uppercase font-black tracking-tight">+FALTA</span>
+                <span className="bg-red-900 text-white font-black px-1.5 py-0.2 rounded border border-red-300 text-xs">
                   {game.awayQuarterFouls || 0}
-                  {awayIsBonus && <span className="ml-0.5 text-[8px] text-rose-400 font-bold">BONUS</span>}
                 </span>
-              </div>
+                <span className="text-red-200 text-xs font-black leading-none">+</span>
+                {awayIsBonus && (
+                  <span className="text-[8px] bg-white text-red-600 px-1 rounded font-bold animate-pulse">
+                    BONUS
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Opponent Live Action Scoring Buttons: Structured without overflow */}
+          {/* Opponent Live Action Buttons (Prominent +FALTA FIRST) */}
           <div className={`flex items-center gap-1 sm:gap-1.5 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+            {/* VIVID RED UNMISSABLE OPPONENT FOUL BUTTON */}
+            <button
+              type="button"
+              id="header-away-foul-action-btn"
+              onClick={() => {
+                onLogOpponentAction('OPP_FOUL');
+                const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+                if (nextAwayFouls >= bonusLimit) {
+                  onTriggerOpponentFoulBonus(nextAwayFouls);
+                }
+              }}
+              disabled={isActionsLocked}
+              className="px-2 sm:px-2.5 lg:px-3 py-1 sm:py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-2 border-red-200 rounded-xl font-mono font-black text-xs sm:text-sm transition active:scale-95 shadow-lg shadow-red-950/60 disabled:opacity-40 shrink-0 flex items-center gap-1"
+              title="+Falta cometida por el equipo Rival (Suma falta al marcador y comprueba bonus)"
+            >
+              <span>+FALTA</span>
+              <span className="text-[10px] sm:text-xs bg-red-900 text-white px-1.5 py-0.2 rounded font-black border border-red-300">
+                {game.awayQuarterFouls || 0}
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={() => onLogOpponentAction('OPP_1P')}
@@ -571,21 +639,6 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               title="+3 Triple Rival"
             >
               +3
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onLogOpponentAction('OPP_FOUL');
-                const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
-                if (nextAwayFouls >= bonusLimit) {
-                  onTriggerOpponentFoulBonus(nextAwayFouls);
-                }
-              }}
-              disabled={isActionsLocked}
-              className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-rose-950/90 hover:bg-rose-900 active:bg-rose-800 text-rose-100 border border-rose-500/80 rounded-xl font-mono font-black text-xs transition active:scale-95 shadow-md disabled:opacity-40 shrink-0"
-              title="+Falta cometida por el Rival"
-            >
-              +Falta
             </button>
             <button
               type="button"

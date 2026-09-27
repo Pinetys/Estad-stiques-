@@ -274,19 +274,35 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           >
             {game.awayScore}
           </div>
-          <div className="flex items-center gap-1 text-[10px] sm:text-xs font-mono">
-            <span className="text-slate-400 text-[9px] sm:text-[10px]">F:</span>
-            <span
-              className={`font-black px-1.5 py-0.2 rounded text-[10px] sm:text-xs ${
-                awayIsBonus
-                  ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
-                  : 'text-[#FFFDF7] bg-[#071328] border border-sky-600/40'
-              }`}
-            >
+          {/* Away Team Interactive Foul Button */}
+          <button
+            type="button"
+            id="scoreboard-away-foul-btn"
+            onClick={() => {
+              onLogOpponentAction('OPP_FOUL');
+              const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+              if (nextAwayFouls >= bonusLimit) {
+                onTriggerOpponentFoulBonus(nextAwayFouls);
+              }
+            }}
+            disabled={isActionsLocked}
+            className={`mt-0.5 px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-mono font-black flex items-center justify-center gap-1 transition active:scale-95 border shadow-sm ${
+              awayIsBonus
+                ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
+                : 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400'
+            }`}
+            title="Tocar para sumar falta al equipo contrario (Rival)"
+          >
+            <span className="text-white text-[9px] uppercase font-black tracking-tight">+FALTA RIVAL</span>
+            <span className="bg-red-900 text-white px-1.5 py-0.2 rounded font-black text-xs border border-red-300">
               {game.awayQuarterFouls || 0}
-              {awayIsBonus && <span className="ml-0.5 text-[8px] text-rose-400 font-bold">BONUS</span>}
             </span>
-          </div>
+            {awayIsBonus && (
+              <span className="text-[8px] bg-white text-red-600 px-1 rounded font-black animate-pulse">
+                BONUS
+              </span>
+            )}
+          </button>
 
           {/* Away Timeouts button (TM) */}
           <button
@@ -308,6 +324,26 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           Rival:
         </span>
         <div className="flex items-center gap-1.5 grow justify-end flex-wrap">
+          {/* Prominent Rival Foul Button */}
+          <button
+            type="button"
+            id="scoreboard-rival-bar-foul-btn"
+            onClick={() => {
+              onLogOpponentAction('OPP_FOUL');
+              const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+              if (nextAwayFouls >= bonusLimit) {
+                onTriggerOpponentFoulBonus(nextAwayFouls);
+              }
+            }}
+            disabled={isActionsLocked}
+            className={`${compact ? 'h-7 px-2.5 text-[11px]' : 'h-8 sm:h-9 px-3 text-xs sm:text-sm'} bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-2 border-red-300 rounded-lg font-black font-mono transition active:scale-95 shadow-md disabled:opacity-40 flex items-center justify-center gap-1`}
+            title="Sumar Falta al Equipo Rival"
+          >
+            <span>+FALTA</span>
+            <span className="bg-red-900 text-white px-1.5 py-0.2 rounded text-[10px] font-black border border-red-300">
+              {game.awayQuarterFouls || 0}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => onLogOpponentAction('OPP_1P')}
@@ -334,21 +370,6 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
             title="Sumar +3 Triple Rival"
           >
             +3
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onLogOpponentAction('OPP_FOUL');
-              const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
-              if (nextAwayFouls >= bonusLimit) {
-                onTriggerOpponentFoulBonus(nextAwayFouls);
-              }
-            }}
-            disabled={isActionsLocked}
-            className={`${compact ? 'h-7 px-2 text-[11px]' : 'h-8 sm:h-9 px-3 text-xs sm:text-sm'} bg-rose-950/90 hover:bg-rose-900 active:bg-rose-800 text-rose-100 border border-rose-500/80 rounded-lg font-black font-mono transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center justify-center`}
-            title="Sumar Falta Rival"
-          >
-            +Falta
           </button>
           <button
             type="button"

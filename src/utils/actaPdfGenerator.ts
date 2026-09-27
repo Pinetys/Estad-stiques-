@@ -364,14 +364,21 @@ function renderTeamShotChartPage(doc: jsPDF, game: Game, teamStats: any) {
   const courtX = (pageWidth - courtW) / 2;
   const courtY = y;
 
-  // Background and Court Border
-  doc.setFillColor(252, 252, 254);
-  doc.setDrawColor(100, 116, 139);
+  // Background and Court Border (Parquet Floor)
+  doc.setFillColor(236, 219, 189); // Natural FIBA Parquet tone
+  doc.setDrawColor(160, 130, 95);
   doc.setLineWidth(0.4);
   doc.roundedRect(courtX, courtY, courtW, courtH, 2, 2, 'FD');
 
+  // Parquet wood slats (subtle hardwood floor planks)
+  doc.setDrawColor(226, 208, 178);
+  doc.setLineWidth(0.12);
+  for (let py = courtY + 4; py < courtY + courtH; py += 4.2) {
+    doc.line(courtX + 0.8, py, courtX + courtW - 0.8, py);
+  }
+
   // Half-court line
-  doc.setDrawColor(148, 163, 184);
+  doc.setDrawColor(120, 95, 70);
   doc.line(courtX, courtY + (89.3 / 93.3) * courtH, courtX + courtW, courtY + (89.3 / 93.3) * courtH);
 
   // Center circle arc at half court
@@ -388,20 +395,20 @@ function renderTeamShotChartPage(doc: jsPDF, game: Game, teamStats: any) {
     );
   }
 
-  // Paint / Key Area
+  // Paint / Key Area (Contrasting wood stain)
   const paintW = (32.6 / 100) * courtW;
   const paintH = (38.6 / 93.3) * courtH;
   const paintX = courtX + (33.7 / 100) * courtW;
   const paintY = courtY + (2 / 93.3) * courtH;
-  doc.setFillColor(254, 243, 199); // Light amber
-  doc.setDrawColor(203, 213, 225);
+  doc.setFillColor(218, 192, 154); // Contrasting parquet key stain
+  doc.setDrawColor(160, 130, 95);
   doc.rect(paintX, paintY, paintW, paintH, 'FD');
 
   // Free Throw Circle
   const ftCx = courtX + courtW / 2;
   const ftCy = courtY + (40.6 / 93.3) * courtH;
   const ftRadius = (12 / 100) * courtW;
-  doc.setDrawColor(148, 163, 184);
+  doc.setDrawColor(120, 95, 70);
   doc.circle(ftCx, ftCy, ftRadius, 'S');
 
   // 3-Point Line

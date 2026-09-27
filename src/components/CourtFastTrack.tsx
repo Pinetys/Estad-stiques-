@@ -21,7 +21,9 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  X,
 } from 'lucide-react';
+import { FoulModalData } from './FoulResolutionModal';
 
 interface CourtFastTrackProps {
   game: Game;
@@ -39,6 +41,8 @@ interface CourtFastTrackProps {
   recentEvent: PlayEvent | null;
   onToggleCourtMode?: () => void;
   onOpenShotChartForBasket?: (shot: PendingShot) => void;
+  onOpenFoulResolutionModal?: (data: FoulModalData) => void;
+  onLogOpponentAction?: (actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL', opponentPlayerNumber?: number, skipModal?: boolean) => void;
 }
 
 export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
@@ -53,7 +57,10 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
   recentEvent,
   onToggleCourtMode,
   onOpenShotChartForBasket,
+  onOpenFoulResolutionModal,
+  onLogOpponentAction,
 }) => {
+  const [pendingFdPlayer, setPendingFdPlayer] = useState<Player | null>(null);
   const [assistPromptForEvent, setAssistPromptForEvent] = useState<{
     scorerId: string;
     actionType: StatActionType;
@@ -76,6 +83,12 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
 
     const actionDef = ACTION_DEFINITIONS[actionType];
     if (!actionDef) return;
+
+    // Special intercept for Falta Recibida (FD): prompt for made basket (2 or 3 pts) + additional free throw
+    if (actionType === 'FD') {
+      setPendingFdPlayer(activePlayer);
+      return;
+    }
 
     // Haptics & Sound
     if (actionType === '3PM') {
@@ -146,6 +159,130 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
     } else {
       setAssistPromptForEvent(null);
     }
+  };
+
+  // Resolution handler for Falta Recibida (FD) with Basket (2+1, 3+1), shooting foul (2 TL, 3 TL) or ground foul
+  const handleResolveFdAction = (
+    player: Player,
+    resolution: '2_and_1' | '3_and_1' | 'shooting_2p' | 'shooting_3p' | 'ground_foul'
+  ) => {
+    setPendingFdPlayer(null);
+
+    const isBonusActive = (game.awayQuarterFouls || 0) + 1 >= (game.settings.bonusFoulsLimit || 5);
+
+    if (resolution === '2_and_1') {
+      // 1. Canasta de 2 Anotada
+      onLogPlayerAction(player.id, '2PM');
+      // 2. Log FD
+      onLogPlayerAction(player.id, 'FD');
+      // 3. Log OPP_FOUL (skipModal = true)
+      if (onLogOpponentAction) {
+        onLogOpponentAction('OPP_FOUL', undefined, true);
+      }
+      // 4. Feedback
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setLastActionFeedback(`🔥 Canasta de 2 + Adicional (2+1) para #${player.number} ${player.name}`);
+      // 5. Open Foul Resolution Modal with 1 FT
+      if (onOpenFoulResolutionModal) {
+        onOpenFoulResolutionModal({
+          isOpponentFoul: true,
+          player,
+          foulType: 'PFT',
+          initialFreeThrows: 1,
+          title: `Falta Recibida • Canasta y Adicional (2+1) • #${player.number} ${player.name}`,
+        });
+      }
+    } else if (resolution === '3_and_1') {
+      // 1. Triple Anotado
+      onLogPlayerAction(player.id, '3PM');
+      // 2. Log FD
+      onLogPlayerAction(player.id, 'FD');
+      // 3. Log OPP_FOUL (skipModal = true)
+      if (onLogOpponentAction) {
+        onLogOpponentAction('OPP_FOUL', undefined, true);
+      }
+      // 4. Feedback
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setLastActionFeedback(`🔥 Triple + Adicional (3+1) para #${player.number} ${player.name}`);
+      // 5. Open Foul Resolution Modal with 1 FT
+      if (onOpenFoulResolutionModal) {
+        onOpenFoulResolutionModal({
+          isOpponentFoul: true,
+          player,
+          foulType: 'PFT',
+          initialFreeThrows: 1,
+          title: `Falta Recibida • Triple y Adicional (3+1) • #${player.number} ${player.name}`,
+        });
+      }
+    } else if (resolution === 'shooting_2p') {
+      // 1. Tiro de 2 fallado en falta de tiro
+      onLogPlayerAction(player.id, '2PA');
+      // 2. Log FD
+      onLogPlayerAction(player.id, 'FD');
+      // 3. Log OPP_FOUL (skipModal = true)
+      if (onLogOpponentAction) {
+        onLogOpponentAction('OPP_FOUL', undefined, true);
+      }
+      // 4. Feedback
+      playSound('foul', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setLastActionFeedback(`⚠️ Falta de Tiro de 2 (2 Tiros Libres) para #${player.number} ${player.name}`);
+      // 5. Open Foul Resolution Modal with 2 FTs
+      if (onOpenFoulResolutionModal) {
+        onOpenFoulResolutionModal({
+          isOpponentFoul: true,
+          player,
+          foulType: 'PFT',
+          initialFreeThrows: 2,
+          title: `Falta de Tiro (2 Tiros Libres) • #${player.number} ${player.name}`,
+        });
+      }
+    } else if (resolution === 'shooting_3p') {
+      // 1. Triple fallado en falta de tiro
+      onLogPlayerAction(player.id, '3PA');
+      // 2. Log FD
+      onLogPlayerAction(player.id, 'FD');
+      // 3. Log OPP_FOUL (skipModal = true)
+      if (onLogOpponentAction) {
+        onLogOpponentAction('OPP_FOUL', undefined, true);
+      }
+      // 4. Feedback
+      playSound('foul', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setLastActionFeedback(`⚠️ Falta en Triple (3 Tiros Libres) para #${player.number} ${player.name}`);
+      // 5. Open Foul Resolution Modal with 3 FTs
+      if (onOpenFoulResolutionModal) {
+        onOpenFoulResolutionModal({
+          isOpponentFoul: true,
+          player,
+          foulType: 'PFT',
+          initialFreeThrows: 3,
+          title: `Falta en Tiro Triple (3 Tiros Libres) • #${player.number} ${player.name}`,
+        });
+      }
+    } else {
+      // Falta en el suelo / sin tiro
+      onLogPlayerAction(player.id, 'FD');
+      if (onLogOpponentAction) {
+        onLogOpponentAction('OPP_FOUL', undefined, true);
+      }
+      playSound('foul', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setLastActionFeedback(`⚠️ Falta Recibida para #${player.number} ${player.name}`);
+      if (onOpenFoulResolutionModal) {
+        onOpenFoulResolutionModal({
+          isOpponentFoul: true,
+          player,
+          foulType: 'PF',
+          initialFreeThrows: isBonusActive ? 2 : 0,
+          title: `Falta Recibida • #${player.number} ${player.name}`,
+        });
+      }
+    }
+
+    setTimeout(() => setLastActionFeedback(null), 2500);
   };
 
   const handleAssistSelection = (assistantId?: string) => {
@@ -770,6 +907,139 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
           <span>Deshacer</span>
         </button>
       </div>
+
+      {/* MODAL / PROMPT: FALTA RECIBIDA CON CANASTA (2+1, 3+1 O SIN CANASTA) */}
+      {pendingFdPlayer && (
+        <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in select-none">
+          <div className="bg-[#0B1C3D] border-2 border-emerald-500 rounded-2xl p-4 max-w-md w-full mx-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
+            <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
+              <div className="flex items-center gap-2">
+                <div className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-mono font-black text-xs uppercase rounded shadow">
+                  FALTA RECIBIDA
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-white uppercase tracking-wide">
+                    #{pendingFdPlayer.number} {pendingFdPlayer.name}
+                  </h3>
+                  <p className="text-[11px] text-emerald-300">
+                    ¿Ha habido canasta anotada en la jugada?
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingFdPlayer(null)}
+                className="p-1 bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white rounded-full font-mono text-xs border border-[#203a70]"
+                title="Cancelar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {/* Canasta de 2 (2+1) */}
+              <button
+                type="button"
+                onClick={() => handleResolveFdAction(pendingFdPlayer, '2_and_1')}
+                className="w-full p-2.5 sm:p-3 bg-[#0E224A] hover:bg-[#16356E] active:bg-emerald-950/80 border-2 border-emerald-500/80 hover:border-emerald-400 rounded-xl text-left transition flex items-center justify-between group shadow-md active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-base shrink-0">
+                    +2
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">Sí, Canasta de 2 Anotada (2+1)</div>
+                    <div className="text-[11px] text-emerald-300/80 font-mono">Suma +2 pts y abre el sistema de 1 Tiro Libre adicional</div>
+                  </div>
+                </div>
+                <span className="text-emerald-400 font-black text-sm shrink-0">2+1 →</span>
+              </button>
+
+              {/* Canasta de 3 (3+1) */}
+              <button
+                type="button"
+                onClick={() => handleResolveFdAction(pendingFdPlayer, '3_and_1')}
+                className="w-full p-2.5 sm:p-3 bg-[#0E224A] hover:bg-[#16356E] active:bg-amber-950/80 border-2 border-amber-500/80 hover:border-amber-400 rounded-xl text-left transition flex items-center justify-between group shadow-md active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-base shrink-0">
+                    +3
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">Sí, Triple de 3 Anotado (3+1)</div>
+                    <div className="text-[11px] text-amber-300/80 font-mono">Suma +3 pts y abre el sistema de 1 Tiro Libre adicional</div>
+                  </div>
+                </div>
+                <span className="text-amber-400 font-black text-sm shrink-0">3+1 →</span>
+              </button>
+
+              {/* Falta en Tiro de 2 (Fallado -> 2 TL) */}
+              <button
+                type="button"
+                onClick={() => handleResolveFdAction(pendingFdPlayer, 'shooting_2p')}
+                className="w-full p-2.5 sm:p-3 bg-[#0E224A] hover:bg-[#16356E] active:bg-blue-950/80 border-2 border-sky-500/70 hover:border-sky-400 rounded-xl text-left transition flex items-center justify-between group shadow-md active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-black text-sm shrink-0">
+                    2 TL
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">No metió • Falta de Tiro de 2 (0 pts)</div>
+                    <div className="text-[11px] text-sky-300/80 font-mono">Registra intento fallado y abre sistema de 2 Tiros Libres</div>
+                  </div>
+                </div>
+                <span className="text-sky-400 font-black text-sm shrink-0">2 TL →</span>
+              </button>
+
+              {/* Falta en Triple (Fallado -> 3 TL) */}
+              <button
+                type="button"
+                onClick={() => handleResolveFdAction(pendingFdPlayer, 'shooting_3p')}
+                className="w-full p-2.5 sm:p-3 bg-[#0E224A] hover:bg-[#16356E] active:bg-blue-950/80 border-2 border-indigo-500/70 hover:border-indigo-400 rounded-xl text-left transition flex items-center justify-between group shadow-md active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-black text-sm shrink-0">
+                    3 TL
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">No metió • Falta en Triple (0 pts)</div>
+                    <div className="text-[11px] text-indigo-300/80 font-mono">Registra intento fallado y abre sistema de 3 Tiros Libres</div>
+                  </div>
+                </div>
+                <span className="text-indigo-400 font-black text-sm shrink-0">3 TL →</span>
+              </button>
+
+              {/* Falta en el Suelo / Sin Tiro (0 pts) */}
+              <button
+                type="button"
+                onClick={() => handleResolveFdAction(pendingFdPlayer, 'ground_foul')}
+                className="w-full p-2.5 sm:p-3 bg-[#0E224A] hover:bg-[#16356E] active:bg-slate-900 border-2 border-[#203a70] hover:border-slate-400 rounded-xl text-left transition flex items-center justify-between group shadow-md active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-slate-700/40 border border-slate-600 flex items-center justify-center text-slate-300 font-black text-xs shrink-0">
+                    Suelo
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">Falta en el Suelo / Sin Tiro (0 pts)</div>
+                    <div className="text-[11px] text-slate-400 font-mono">Falta normal • Abre sistema con tiros si hay bonus o saque</div>
+                  </div>
+                </div>
+                <span className="text-slate-400 font-bold text-xs shrink-0">Bonus/Saque →</span>
+              </button>
+            </div>
+
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => setPendingFdPlayer(null)}
+                className="text-xs text-slate-400 hover:text-white font-mono underline"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -19,6 +19,8 @@ export interface FoulModalData {
   isOpponentFoul: boolean;
   player?: Player;
   foulType?: 'PF' | 'PFT' | 'UF' | 'TF' | 'DISQ' | 'OPP_FOUL';
+  initialFreeThrows?: 0 | 1 | 2 | 3;
+  title?: string;
 }
 
 interface FoulResolutionModalProps {
@@ -45,12 +47,18 @@ export const FoulResolutionModal: React.FC<FoulResolutionModalProps> = ({
     ? (game.awayQuarterFouls || 0) >= (game.settings.bonusFoulsLimit || 5)
     : (game.homeQuarterFouls || 0) >= (game.settings.bonusFoulsLimit || 5);
 
-  const [freeThrowType, setFreeThrowType] = useState<0 | 1 | 2 | 3>(isBonusActive ? 2 : 0);
-  const [hasSelectedOption, setHasSelectedOption] = useState<boolean>(isBonusActive);
+  const [freeThrowType, setFreeThrowType] = useState<0 | 1 | 2 | 3>(() => {
+    if (foulData.initialFreeThrows !== undefined) return foulData.initialFreeThrows;
+    return isBonusActive ? 2 : 0;
+  });
+  const [hasSelectedOption, setHasSelectedOption] = useState<boolean>(() => {
+    return foulData.initialFreeThrows !== undefined || isBonusActive;
+  });
 
   // Free throws tracking
   const [selectedShooterId, setSelectedShooterId] = useState<string>(() => {
     if (isOpponentFoul) {
+      if (player?.id) return player.id;
       const onCourt = game.players.filter(p => p.onCourt);
       return onCourt[0]?.id || game.players[0]?.id || '';
     }
@@ -92,7 +100,7 @@ export const FoulResolutionModal: React.FC<FoulResolutionModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white tracking-wide">
-                  Falta Señalada • Reloj Parado
+                  {foulData.title || 'Falta Señalada • Reloj Parado'}
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30">
                   TIEMPO DETENIDO

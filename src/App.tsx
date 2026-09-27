@@ -891,7 +891,8 @@ export default function App() {
   // Log Opponent Action (Quick Score or Foul)
   const handleLogOpponentAction = (
     actionType: 'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL',
-    opponentPlayerNumber?: number
+    opponentPlayerNumber?: number,
+    skipModal?: boolean
   ) => {
     // When match is finished and not in edit mode, registration is locked
     if (game.status === 'finished' && !isEditingFinishedGame) {
@@ -920,12 +921,14 @@ export default function App() {
     } else if (actionType === 'OPP_FOUL') {
       isFoul = true;
       label = `Falta Rival${dorsalSuffix}`;
-      setTimeout(() => {
-        setFoulResolutionData({
-          isOpponentFoul: true,
-          foulType: 'OPP_FOUL',
-        });
-      }, 100);
+      if (!skipModal) {
+        setTimeout(() => {
+          setFoulResolutionData({
+            isOpponentFoul: true,
+            foulType: 'OPP_FOUL',
+          });
+        }, 100);
+      }
     }
 
     setGame(prev => {
@@ -1511,6 +1514,7 @@ export default function App() {
           }}
           onOpenOfficialSheet={() => setShowOfficialSheet(true)}
           onOpenShotChartForBasket={handleOpenShotChartForBasket}
+          onOpenFoulResolutionModal={setFoulResolutionData}
           onOpenTutorial={() => setShowTutorialModal(true)}
         />
       ) : (
