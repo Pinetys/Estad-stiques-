@@ -20,7 +20,10 @@ import {
   HelpCircle,
   Maximize,
   Minimize,
+  Cloud,
+  Check,
 } from 'lucide-react';
+import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 
 interface CourtLandscapeHeaderProps {
   game: Game;
@@ -51,6 +54,7 @@ interface CourtLandscapeHeaderProps {
   onTriggerTimeout?: (team: 'home' | 'away') => void;
   onOpenProBenefits?: () => void;
   onOpenTutorial?: () => void;
+  onOpenCloudSync?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -82,9 +86,31 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onTriggerTimeout,
   onOpenProBenefits,
   onOpenTutorial,
+  onOpenCloudSync,
 }) => {
   const currentQuarterLabel = formatQuarterShort(game.currentQuarter);
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
+
+  // Cloud Sync status for real-time tablet-to-PC status
+  const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(syncEngine.currentStatus);
+  const [justSyncedToast, setJustSyncedToast] = useState(false);
+
+  useEffect(() => {
+    return syncEngine.subscribeStatus(st => setSyncStatus(st));
+  }, []);
+
+  const handleQuickCloudSync = async () => {
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    if (onOpenCloudSync) {
+      onOpenCloudSync();
+      return;
+    }
+    await syncEngine.pushAllLocalDataToServer();
+    syncEngine.saveAndSyncMatch(game, { immediate: true });
+    setJustSyncedToast(true);
+    setTimeout(() => setJustSyncedToast(false), 2000);
+  };
 
   // Tablet Fullscreen Mode State
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -230,6 +256,31 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           >
             {isWakeLockActive ? <Sun className="w-3 h-3 text-emerald-400" /> : <Moon className="w-3 h-3 text-slate-400" />}
             <span className="hidden xl:inline">{isWakeLockActive ? 'Pantalla Activa' : 'Auto Bloqueo'}</span>
+          </button>
+
+          {/* Cloud Sync Status & Action Button (Tablet to PC) */}
+          <button
+            type="button"
+            onClick={handleQuickCloudSync}
+            className={`px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
+              justSyncedToast
+                ? 'bg-emerald-900 border-emerald-400 text-emerald-200'
+                : syncStatus.status === 'syncing'
+                ? 'bg-amber-950/80 border-amber-500/70 text-amber-300'
+                : syncStatus.status === 'error'
+                ? 'bg-rose-950/80 border-rose-500/70 text-rose-300'
+                : 'bg-[#0E224A] hover:bg-[#16356E] border-sky-600/50 text-sky-300'
+            }`}
+            title="Sincronización en la nube con ordenador. Toca para sincronizar ahora."
+          >
+            {justSyncedToast ? (
+              <Check className="w-3 h-3 text-emerald-300" />
+            ) : (
+              <Cloud className={`w-3 h-3 ${syncStatus.status === 'syncing' ? 'animate-spin text-amber-400' : 'text-sky-400'}`} />
+            )}
+            <span className="hidden md:inline">
+              {justSyncedToast ? 'SINCRONIZADO' : syncStatus.status === 'syncing' ? 'SYNC...' : 'NUBE OK'}
+            </span>
           </button>
 
           {/* Shot Chart Modal */}

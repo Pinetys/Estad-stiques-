@@ -171,7 +171,7 @@ export interface GameSettings {
   vibrationEnabled: boolean;
   assistPromptEnabled: boolean; // Preguntar si hubo asistencia tras canasta
   courtMode: boolean; // Modo Pista: reduce intensidad de color y desactiva animaciones para ahorrar batería
-  shotChartAutoOpen?: 'baskets' | 'all' | 'off'; // Abrir carta de tiro al anotar canasta (default: 'baskets')
+  shotChartAutoOpen?: 'baskets' | 'all' | 'off'; // Abrir carta de tiro en canastas y tiros fallados (default: 'all')
   keepScreenAwake?: boolean; // Anti-bloqueo: mantener pantalla encendida en pista para no bloquear el móvil
   timingMode?: 'fiba_stop' | 'running_clock'; // 'fiba_stop' = Tiempo Parado (FIBA), 'running_clock' = Tiempo Corrido
   autoPauseOnFouls?: boolean; // Pausar reloj automáticamente en faltas (Regla FIBA)

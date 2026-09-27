@@ -15,5 +15,10 @@ service cloud.firestore {
     match /metadata/{docId} {
       allow read, write: if true;
     }
+
+    // Subscribers collection
+    match /subscribers/{subscriberId} {
+      allow read, write: if true;
+    }
   }
 }

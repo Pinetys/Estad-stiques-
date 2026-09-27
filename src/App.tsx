@@ -367,6 +367,37 @@ export default function App() {
       });
     });
 
+    // 5. Cloud Firestore live subscription (instant push between tablet and PC)
+    const unsubFirestoreMatches = subscribeToMatches(firestoreMatches => {
+      if (firestoreMatches && firestoreMatches.length > 0) {
+        mergeCloudMatches(firestoreMatches);
+        setLibraryGames(getSavedGamesFromStorage());
+
+        setGame(currentGame => {
+          const matchInCloud = firestoreMatches.find(m => m.id === currentGame.id);
+          if (matchInCloud) {
+            const remoteUpdated = matchInCloud.updatedAt ? new Date(matchInCloud.updatedAt).getTime() : 0;
+            const localUpdated = currentGame.updatedAt ? new Date(currentGame.updatedAt).getTime() : 0;
+            if (
+              (matchInCloud.events?.length || 0) > (currentGame.events?.length || 0) ||
+              remoteUpdated > localUpdated
+            ) {
+              isRemoteSyncInProgressRef.current = true;
+              return matchInCloud;
+            }
+          }
+          return currentGame;
+        });
+      }
+    });
+
+    // 6. Cloud Firestore active match metadata subscription
+    const unsubActiveMeta = subscribeToActiveMatchMetadata(meta => {
+      if (meta && meta.activeGameId) {
+        setActiveCloudMatchNotice(meta);
+      }
+    });
+
     // Initial sync fetch
     syncEngine.syncAll({ force: true }).then(res => {
       if (res.teams.length > 0) setTeams(res.teams);
@@ -409,6 +440,8 @@ export default function App() {
       unsubStatus();
       unsubMatchUpdate();
       unsubMatchDetected();
+      unsubFirestoreMatches();
+      unsubActiveMeta();
     };
   }, []);
 
@@ -578,11 +611,10 @@ export default function App() {
     if (remaining.length > 0) handleSelectTeam(remaining[0].id);
   };
 
-  // Set default selected player if none selected
+  // Clear selected player if they leave the court
   useEffect(() => {
-    const onCourt = game.players.filter(p => p.onCourt);
-    if (onCourt.length > 0 && (!selectedPlayerId || !game.players.some(p => p.id === selectedPlayerId && p.onCourt))) {
-      setSelectedPlayerId(onCourt[0].id);
+    if (selectedPlayerId && !game.players.some(p => p.id === selectedPlayerId && p.onCourt)) {
+      setSelectedPlayerId(null);
     }
   }, [game.players, selectedPlayerId]);
 
@@ -1516,6 +1548,7 @@ export default function App() {
           onOpenShotChartForBasket={handleOpenShotChartForBasket}
           onOpenFoulResolutionModal={setFoulResolutionData}
           onOpenTutorial={() => setShowTutorialModal(true)}
+          onOpenCloudSync={() => setShowCloudBackupModal(true)}
         />
       ) : (
         <>
@@ -1983,7 +2016,7 @@ export default function App() {
           </header>
 
           {/* Active Cloud Match Alert Banner (e.g. tablet is recording match) */}
-          {activeCloudMatchNotice && activeCloudMatchNotice.activeGameId !== game.id && activeCloudMatchNotice.status === 'live' && (
+          {activeCloudMatchNotice && activeCloudMatchNotice.activeGameId !== game.id && (
             <div className="bg-gradient-to-r from-blue-950 via-[#131A29] to-blue-950 border-b border-blue-500/50 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs text-blue-200 sticky top-14 z-40 shadow-lg animate-in slide-in-from-top duration-300">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="flex h-2.5 w-2.5 relative shrink-0">
@@ -1991,7 +2024,9 @@ export default function App() {
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
                 </span>
                 <span className="truncate">
-                  <strong className="text-white font-bold">Partido en directo en Tablet:</strong>{' '}
+                  <strong className="text-white font-bold">
+                    {activeCloudMatchNotice.status === 'live' ? 'Partido en directo en Tablet:' : 'Partido en la nube:'}
+                  </strong>{' '}
                   {activeCloudMatchNotice.homeTeamName} {activeCloudMatchNotice.homeScore} - {activeCloudMatchNotice.awayScore} {activeCloudMatchNotice.awayTeamName}{' '}
                   <span className="text-blue-400 font-mono font-bold">(Q{activeCloudMatchNotice.currentQuarter} • {formatGameTime(activeCloudMatchNotice.currentSecondsRemaining)})</span>
                 </span>
@@ -2003,7 +2038,7 @@ export default function App() {
                   className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition flex items-center gap-1.5 shadow active:scale-95"
                 >
                   <Cloud className="w-3.5 h-3.5" />
-                  <span>Sincronizar en móvil</span>
+                  <span>Cargar en este equipo</span>
                 </button>
                 <button
                   type="button"

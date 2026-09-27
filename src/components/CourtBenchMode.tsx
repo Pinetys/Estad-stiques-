@@ -75,6 +75,7 @@ interface CourtBenchModeProps {
   onOpenFoulResolutionModal?: (data: FoulModalData) => void;
   onCloseMatch?: () => void;
   onOpenTutorial?: () => void;
+  onOpenCloudSync?: () => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -98,6 +99,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onOpenFoulResolutionModal,
   onCloseMatch,
   onOpenTutorial,
+  onOpenCloudSync,
 }) => {
   // Direct In-Game Substitution handler
   const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
@@ -388,8 +390,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     const shouldOpenShotChart =
       isFieldGoal &&
       Boolean(onOpenShotChartForBasket) &&
-      (game.settings.shotChartAutoOpen === 'all' ||
-        (game.settings.shotChartAutoOpen !== 'off' && isBasket));
+      game.settings.shotChartAutoOpen !== 'off';
 
     if (shouldOpenShotChart && onOpenShotChartForBasket) {
       onOpenShotChartForBasket({
@@ -397,7 +398,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         playerName: player.name,
         playerNumber: player.number,
         actionType: actionType as '2PM' | '3PM' | '2PA' | '3PA',
-        points: actionDef.points,
+        points: actionType === '3PM' || actionType === '3PA' ? 3 : 2,
         isMade: isBasket,
       });
       return;
@@ -422,7 +423,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     }
   };
 
-  // 1. STEP 1: USER PRESSES ACTION BUTTON -> PROMPT FOR PLAYER OR EXECUTE ON SELECTED
+  // 1. STEP 1: USER PRESSES ACTION BUTTON -> PROMPT FOR PLAYER (FIRST ACTION, THEN PLAYER)
   const handleInitiateAction = (actionType: StatActionType) => {
     if (isActionsLocked) {
       playSound('error', game.settings.soundEnabled);
@@ -431,12 +432,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     playSound('click', game.settings.soundEnabled);
     triggerHaptic('light', game.settings.vibrationEnabled);
 
-    // If a player is already selected, execute immediately on that player
-    if (selectedPlayer) {
-      executeActionForPlayer(selectedPlayer, actionType);
-      return;
-    }
-
+    // Flow: primero se marca la acción y después el jugador que realiza la acción
     setPendingAction(actionType);
     setShowBenchInModal(false);
   };
@@ -978,6 +974,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               awayQuarterFouls: 0,
             }));
           }}
+          onOpenCloudSync={onOpenCloudSync}
         />
       ) : (
         <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
@@ -1303,7 +1300,17 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           selectedPlayerId={selectedPlayerId}
           isPreGame={isPreGame}
           isLandscape={false}
-          onSelectPlayer={onSelectPlayer}
+          onSelectPlayer={(id) => {
+            if (isActionsLocked) return;
+            if (pendingAction) {
+              const p = game.players.find(player => player.id === id);
+              if (p) {
+                executeActionForPlayer(p, pendingAction);
+                return;
+              }
+            }
+            onSelectPlayer(id);
+          }}
           onOpenSubstitutionModal={onOpenSubstitutionModal}
           onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
         />
@@ -1337,6 +1344,13 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               isPreGame={isPreGame}
               onSelectPlayer={(id) => {
                 if (isActionsLocked) return;
+                if (pendingAction) {
+                  const p = game.players.find(player => player.id === id);
+                  if (p) {
+                    executeActionForPlayer(p, pendingAction);
+                    return;
+                  }
+                }
                 onSelectPlayer(id);
               }}
               onPerformSubstitution={handlePerformDirectSub}
@@ -1364,23 +1378,26 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
               <div className="flex items-center justify-between px-2.5 py-1 bg-[#0E224A] border border-[#203a70] rounded-xl text-xs font-mono">
                 <div className="flex items-center gap-1.5 truncate">
-                  <span className="text-[10px] uppercase font-bold text-slate-300">Acción para:</span>
-                  {selectedPlayer ? (
-                    <span className="text-[#F5C542] font-black truncate">
-                      #{selectedPlayer.number} {selectedPlayer.name}
+                  <span className="text-[10px] uppercase font-bold text-[#F5C542]">Flujo de registro:</span>
+                  {pendingAction ? (
+                    <span className="text-white font-black truncate flex items-center gap-1">
+                      <span>Paso 2: Toca el jugador para</span>
+                      <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 font-black rounded text-[11px]">
+                        {pendingActionDef?.shortLabel || pendingAction}
+                      </span>
                     </span>
                   ) : (
-                    <span className="text-slate-400 italic text-[11px]">
-                      Toca un botón de acción o selecciona un jugador
+                    <span className="text-slate-300 text-[11px]">
+                      1º Pulsa la <span className="text-emerald-400 font-bold">Acción</span> → 2º Selecciona el <span className="text-amber-400 font-bold">Jugador</span>
                     </span>
                   )}
                 </div>
-                {selectedPlayer && (
+                {pendingAction && (
                   <button
-                    onClick={() => onSelectPlayer('')}
-                    className="text-[10px] text-slate-300 hover:text-white underline font-bold shrink-0 ml-1"
+                    onClick={() => setPendingAction(null)}
+                    className="text-[10px] text-rose-300 hover:text-white underline font-bold shrink-0 ml-1"
                   >
-                    Deseleccionar ✕
+                    Cancelar ✕
                   </button>
                 )}
               </div>
@@ -1404,7 +1421,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         </div>
       )}
 
-      {/* 8. MODAL / OVERLAY: ESCOGER JUGADOR TRAS MARCAR LA ACCIÓN */}
+      {/* 8. MODAL / OVERLAY: ESCOGER JUGADOR TRAS MARCAR LA ACCIÓN (SISTEMA ACCIÓN PRIMERO, LUEGO JUGADOR) */}
       {pendingAction && (() => {
         const isFoulConfirmation =
           pendingActionDef?.category === 'fouls' ||
@@ -1413,26 +1430,51 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           pendingAction === 'OF' ||
           pendingAction === 'UF' ||
           pendingAction === 'BF';
+        const isFoulDrawn = pendingAction === 'FD';
+
+        const actionModalTitle = isFoulDrawn
+          ? '¿Quién ha recibido la falta?'
+          : isFoulConfirmation
+          ? `¿Quién ha cometido la falta (${pendingActionDef?.shortLabel})?`
+          : pendingAction === '2PM' || pendingAction === '3PM'
+          ? `¿Quién ha anotado ${pendingActionDef?.shortLabel}?`
+          : pendingAction === '2PA' || pendingAction === '3PA'
+          ? `¿Quién ha lanzado (fallo) ${pendingActionDef?.shortLabel}?`
+          : pendingAction === 'FTM' || pendingAction === 'FTA'
+          ? `¿Quién lanza el Tiro Libre (${pendingActionDef?.shortLabel})?`
+          : `¿Quién ha hecho ${pendingActionDef?.shortLabel}?`;
+
+        const actionModalSubtitle = isFoulDrawn
+          ? 'Falta Personal Recibida o Provocada (+1 Val) • Preguntará si metió canasta'
+          : pendingActionDef?.label || 'Selecciona el jugador que realiza la acción';
 
         return (
           <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in select-none">
-            <div className={`bg-[#0B1C3D] border-2 rounded-2xl p-3 pb-safe max-w-md w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
-              isFoulConfirmation ? 'border-rose-500/80 space-y-2' : 'border-[#D4AF37] space-y-2.5'
+            <div className={`bg-[#0B1C3D] border-2 rounded-2xl p-3 sm:p-4 pb-safe max-w-lg sm:max-w-xl md:max-w-2xl w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
+              isFoulDrawn
+                ? 'border-emerald-500 space-y-2.5'
+                : isFoulConfirmation
+                ? 'border-rose-500/80 space-y-2'
+                : 'border-[#D4AF37] space-y-2.5'
             }`}>
               {/* Modal Header with Action badge */}
               <div className="flex items-center justify-between pb-1.5 border-b border-[#203a70]">
                 <div className="flex items-center gap-2">
                   <div className={`px-2.5 py-1 font-mono font-black text-xs uppercase rounded shadow ${
-                    isFoulConfirmation ? 'bg-red-500 text-white' : 'bg-[#D4AF37] text-[#0B1C3D]'
+                    isFoulDrawn
+                      ? 'bg-emerald-500 text-slate-950'
+                      : isFoulConfirmation
+                      ? 'bg-red-500 text-white'
+                      : 'bg-[#D4AF37] text-[#0B1C3D]'
                   }`}>
-                    {pendingActionDef?.shortLabel}
+                    {pendingActionDef?.shortLabel || pendingAction}
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-wide">
-                      ¿Quién ha hecho {pendingActionDef?.shortLabel}?
+                    <h3 className="font-extrabold text-xs sm:text-base text-white uppercase tracking-wide">
+                      {actionModalTitle}
                     </h3>
-                    <p className="text-[10px] text-slate-300">
-                      {pendingActionDef?.label}
+                    <p className="text-[10px] sm:text-xs text-slate-300">
+                      {actionModalSubtitle}
                     </p>
                   </div>
                 </div>

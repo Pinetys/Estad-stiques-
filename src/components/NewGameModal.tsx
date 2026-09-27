@@ -138,7 +138,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     currentGame.settings.assistPromptEnabled
   );
   const [shotChartAutoOpen, setShotChartAutoOpen] = useState<'baskets' | 'all' | 'off'>(
-    currentGame.settings.shotChartAutoOpen || 'baskets'
+    currentGame.settings.shotChartAutoOpen || 'all'
   );
   const [courtMode, setCourtMode] = useState(currentGame.settings.courtMode || false);
   const [keepScreenAwake, setKeepScreenAwake] = useState(currentGame.settings.keepScreenAwake ?? true);

@@ -52,6 +52,11 @@ export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestore
   : getFirestore(app);
 
 export const isFirebaseConfigured = Boolean(firebaseConfig.projectId && firebaseConfig.apiKey);
+export let isFirestoreQuotaExceeded = false;
+
+export function resetFirestoreQuotaExceeded(): void {
+  isFirestoreQuotaExceeded = false;
+}
 
 /**
  * Test connectivity with Cloud Firestore
@@ -97,7 +102,7 @@ function cleanForFirestore<T>(data: T): any {
  * Cloud Firestore Team operations
  */
 export async function syncTeamToCloud(team: TeamProfile): Promise<boolean> {
-  if (!isFirebaseConfigured || !team || !team.id) return false;
+  if (!isFirebaseConfigured || isFirestoreQuotaExceeded || !team || !team.id) return false;
   try {
     const docRef = doc(db, 'teams', team.id);
     const sanitized = cleanForFirestore({
@@ -106,7 +111,10 @@ export async function syncTeamToCloud(team: TeamProfile): Promise<boolean> {
     });
     await setDoc(docRef, sanitized, { merge: true });
     return true;
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
+      isFirestoreQuotaExceeded = true;
+    }
     handleFirestoreError(err, OperationType.WRITE, `teams/${team.id}`);
     return false;
   }
@@ -178,7 +186,7 @@ export function subscribeToTeams(onUpdate: (teams: TeamProfile[]) => void): Unsu
  * Cloud Firestore Match operations
  */
 export async function syncMatchToCloud(game: Game): Promise<boolean> {
-  if (!isFirebaseConfigured || !game || !game.id) return false;
+  if (!isFirebaseConfigured || isFirestoreQuotaExceeded || !game || !game.id) return false;
   try {
     const docRef = doc(db, 'matches', game.id);
     const sanitized = cleanForFirestore({
@@ -187,13 +195,22 @@ export async function syncMatchToCloud(game: Game): Promise<boolean> {
     });
     await setDoc(docRef, sanitized, { merge: true });
 
-    // Also update active match pointer in cloud if game is currently in session
-    if (game.status === 'live') {
+    // Also update active match pointer in cloud whenever match has data, is active or finished
+    if (
+      game.status === 'live' ||
+      game.status === 'finished' ||
+      (game.events && game.events.length > 0) ||
+      (game.homeScore || 0) > 0 ||
+      (game.awayScore || 0) > 0
+    ) {
       await updateActiveMatchMetadata(game);
     }
 
     return true;
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
+      isFirestoreQuotaExceeded = true;
+    }
     handleFirestoreError(err, OperationType.WRITE, `matches/${game.id}`);
     return false;
   }

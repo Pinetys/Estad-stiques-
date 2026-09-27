@@ -17,6 +17,7 @@ import {
   fetchAllMatchesFromCloud,
   fetchAllTeamsFromCloud,
   isFirebaseConfigured,
+  isFirestoreQuotaExceeded,
 } from './firebase';
 
 export interface SyncEngineStatus {
@@ -157,14 +158,18 @@ class AutoSyncManager {
       this.sseEventSource.onopen = () => {
         this.notifyStatus({
           status: 'connected',
-          engineMode: this.firestoreQuotaExceeded ? 'server-only' : 'dual',
+          engineMode: isFirestoreQuotaExceeded || this.firestoreQuotaExceeded ? 'server-only' : 'dual',
         });
+        // Immediately catch up on any updates from tablet or other devices
+        this.syncAll({ force: false });
       };
 
       this.sseEventSource.onmessage = (e) => {
         try {
           const payload = JSON.parse(e.data);
           if (payload.type === 'match_updated' && payload.data) {
+            this.handleRemoteMatchPush(payload.data);
+          } else if (payload.type === 'active_match_updated' && payload.data) {
             this.handleRemoteMatchPush(payload.data);
           } else if (payload.type === 'team_updated' && payload.data) {
             this.handleRemoteTeamPush(payload.data);
@@ -356,34 +361,42 @@ class AutoSyncManager {
     this.lastSavedGameHash = dataHash;
 
     const executePush = async () => {
+      let serverOk = false;
+      let cloudOk = false;
+
+      // 1. Post to Cloud Firestore (real-time cross-device sync)
+      if (isFirebaseConfigured && !this.firestoreQuotaExceeded) {
+        try {
+          cloudOk = await syncMatchToCloud(game);
+        } catch (err: any) {
+          if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
+            this.firestoreQuotaExceeded = true;
+          }
+        }
+      }
+
+      // 2. Post to autonomous server sync
       try {
-        // A. Post to primary server sync
         const res = await fetch('/api/sync/match', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ match: game }),
         });
-
-        if (!res.ok) {
-          throw new Error(`Server returned ${res.status}`);
+        if (res.ok) {
+          serverOk = true;
         }
+      } catch {
+        // Server unreachable, will queue
+      }
 
-        // B. Post to secondary Firestore (only if not quota exhausted)
-        if (isFirebaseConfigured && !this.firestoreQuotaExceeded) {
-          syncMatchToCloud(game).catch(err => {
-            if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
-              this.firestoreQuotaExceeded = true;
-            }
-          });
-        }
-
+      if (serverOk || cloudOk) {
         this.notifyStatus({
           status: 'connected',
           lastSyncTime: new Date(),
           pendingOfflineCount: getOfflineQueue().length,
         });
-      } catch (err) {
-        // Queue offline
+      } else {
+        // Queue offline for later flush
         this.queueOfflineMutation('match', game.id, game);
         this.notifyStatus({
           status: 'offline',
@@ -397,7 +410,7 @@ class AutoSyncManager {
       executePush();
     } else {
       if (this.debounceTimer) clearTimeout(this.debounceTimer);
-      this.debounceTimer = setTimeout(executePush, 1200);
+      this.debounceTimer = setTimeout(executePush, 400);
     }
   }
 

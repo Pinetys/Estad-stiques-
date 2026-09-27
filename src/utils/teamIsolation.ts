@@ -416,7 +416,7 @@ export function createInitialGameForTeam(team: TeamProfile): Game {
       vibrationEnabled: true,
       assistPromptEnabled: true,
       courtMode: false,
-      shotChartAutoOpen: 'baskets',
+      shotChartAutoOpen: 'all',
     },
     players: initialPlayers,
     events: [],

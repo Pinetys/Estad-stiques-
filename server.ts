@@ -253,14 +253,16 @@ async function startServer() {
       }
 
       const existing = serverDb.matches[match.id];
-      // Defensive merge: protect existing events if incoming has fewer
+      // Defensive guard: only protect if incoming is an accidental empty object overwriting a populated game
       if (existing) {
         const existingEvents = existing.events?.length || 0;
         const incomingEvents = match.events?.length || 0;
 
-        if (existingEvents > incomingEvents) {
-          // Keep existing events, merge scores and metadata if newer
+        // If incoming is totally empty but existing had real data, prevent accidental reset
+        if (existingEvents > 2 && incomingEvents === 0 && (match.homeScore || 0) === 0 && (match.awayScore || 0) === 0 && match.status === 'setup') {
           match.events = existing.events;
+          match.homeScore = existing.homeScore;
+          match.awayScore = existing.awayScore;
         }
       }
 
@@ -274,6 +276,9 @@ async function startServer() {
 
       saveServerSyncDb();
       broadcastSync({ type: 'match_updated', data: match });
+      if (serverDb.activeMatch?.id === match.id) {
+        broadcastSync({ type: 'active_match_updated', data: match });
+      }
 
       res.json({
         success: true,

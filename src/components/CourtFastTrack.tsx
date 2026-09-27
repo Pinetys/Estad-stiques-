@@ -136,7 +136,7 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
         playerName: activePlayer.name,
         playerNumber: activePlayer.number,
         actionType: actionType as '2PM' | '3PM' | '2PA' | '3PA',
-        points: actionDef.points,
+        points: actionType === '3PM' || actionType === '3PA' ? 3 : 2,
         isMade: isBasket,
       });
       return;
