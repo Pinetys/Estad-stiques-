@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { Game, PlayEvent, StatActionType, PendingShot, BasketOriginType, BASKET_ORIGIN_LABELS } from '../types';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import {
+  downloadShotChartPng,
+  downloadShotChartSvg,
+  copyShotChartToClipboard,
+  shareShotChartNative,
+  ShotChartExportOptions,
+} from '../utils/shotChartExport';
+import {
   Crosshair,
   X,
   Plus,
@@ -21,6 +28,13 @@ import {
   Users,
   Layers,
   Clock,
+  Download,
+  Share2,
+  Camera,
+  Copy,
+  Check,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface ShotChartModalProps {
@@ -126,6 +140,104 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
   const top3Stats = calculateZoneStats('top3');
   const cornerLeftStats = calculateZoneStats('corner3_left');
   const cornerRightStats = calculateZoneStats('corner3_right');
+
+  // Shot Chart Image Export State
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportToast, setExportToast] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportCustomTheme, setExportCustomTheme] = useState<'parquet' | 'dark'>(courtTheme);
+  const [exportCustomLayer, setExportCustomLayer] = useState<'shots' | 'zones' | 'both'>('both');
+
+  const getExportOptions = (
+    customTheme = exportCustomTheme,
+    customLayer = exportCustomLayer
+  ): ShotChartExportOptions => ({
+    game,
+    filteredShots,
+    filterTeam,
+    filterPlayerId,
+    filterQuarter,
+    filterResult,
+    courtTheme: customTheme,
+    displayLayer: customLayer,
+    zoneStats: {
+      paint: paintStats,
+      mid: midStats,
+      top3: top3Stats,
+      cornerLeft: cornerLeftStats,
+      cornerRight: cornerRightStats,
+    },
+  });
+
+  const handleDownloadPng = async (customTheme?: 'parquet' | 'dark', customLayer?: 'shots' | 'zones' | 'both') => {
+    setIsExporting(true);
+    playSound('click', game.settings.soundEnabled);
+    try {
+      await downloadShotChartPng(getExportOptions(customTheme || exportCustomTheme, customLayer || exportCustomLayer));
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('heavy', game.settings.vibrationEnabled);
+      setExportToast('¡Imagen PNG de alta resolución (1200x1200) descargada con éxito!');
+      setTimeout(() => setExportToast(null), 3500);
+    } catch (err: any) {
+      setExportToast('Error al generar imagen PNG: ' + (err?.message || 'Error'));
+      setTimeout(() => setExportToast(null), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadSvg = (customTheme?: 'parquet' | 'dark', customLayer?: 'shots' | 'zones' | 'both') => {
+    playSound('click', game.settings.soundEnabled);
+    try {
+      downloadShotChartSvg(getExportOptions(customTheme || exportCustomTheme, customLayer || exportCustomLayer));
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setExportToast('¡Archivo vectorial SVG descargado con éxito!');
+      setTimeout(() => setExportToast(null), 3500);
+    } catch (err: any) {
+      setExportToast('Error al generar SVG: ' + (err?.message || 'Error'));
+      setTimeout(() => setExportToast(null), 3000);
+    }
+  };
+
+  const handleCopyImage = async (customTheme?: 'parquet' | 'dark', customLayer?: 'shots' | 'zones' | 'both') => {
+    playSound('click', game.settings.soundEnabled);
+    setIsExporting(true);
+    try {
+      const ok = await copyShotChartToClipboard(getExportOptions(customTheme || exportCustomTheme, customLayer || exportCustomLayer));
+      if (ok) {
+        playSound('score', game.settings.soundEnabled);
+        triggerHaptic('medium', game.settings.vibrationEnabled);
+        setExportToast('¡Imagen copiada al portapapeles! Lista para pegar en WhatsApp o documentos.');
+      } else {
+        await downloadShotChartPng(getExportOptions(customTheme || exportCustomTheme, customLayer || exportCustomLayer));
+        setExportToast('Imagen descargada en PNG');
+      }
+      setTimeout(() => setExportToast(null), 3500);
+    } catch {
+      setExportToast('No se pudo copiar la imagen al portapapeles');
+      setTimeout(() => setExportToast(null), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleShareImage = async (customTheme?: 'parquet' | 'dark', customLayer?: 'shots' | 'zones' | 'both') => {
+    playSound('click', game.settings.soundEnabled);
+    setIsExporting(true);
+    try {
+      const res = await shareShotChartNative(getExportOptions(customTheme || exportCustomTheme, customLayer || exportCustomLayer));
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('heavy', game.settings.vibrationEnabled);
+      setExportToast(res === 'shared' ? '¡Carta de tiro compartida!' : '¡Imagen PNG descargada con éxito!');
+      setTimeout(() => setExportToast(null), 3500);
+    } catch {
+      setExportToast('Error al compartir imagen');
+      setTimeout(() => setExportToast(null), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Overall shooting stats
   const totalShotsCount = filteredShots.length;
@@ -887,9 +999,17 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-[#0B1C3D] border-2 border-[#D4AF37]/60 rounded-2xl max-w-5xl w-full p-3 sm:p-5 shadow-2xl space-y-3 my-auto animate-in zoom-in-95 max-h-[96vh] flex flex-col text-[#FFFDF7]"
+        className="bg-[#0B1C3D] border-2 border-[#D4AF37]/60 rounded-2xl max-w-5xl w-full p-3 sm:p-5 shadow-2xl space-y-3 my-auto animate-in zoom-in-95 max-h-[96vh] flex flex-col text-[#FFFDF7] relative"
         onClick={e => e.stopPropagation()}
       >
+        {/* Toast Notification */}
+        {exportToast && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-mono font-bold text-xs px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 border border-emerald-400 animate-in fade-in slide-in-from-top-2">
+            <Check className="w-4 h-4" />
+            <span>{exportToast}</span>
+          </div>
+        )}
+
         {/* HEADER */}
         <div className="flex items-center justify-between pb-2 border-b border-[#203a70] shrink-0">
           <div className="flex items-center gap-2.5">
@@ -908,13 +1028,29 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white border border-[#203a70] transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setExportCustomTheme(courtTheme);
+                setExportCustomLayer(displayLayer);
+                setShowExportModal(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#F5C542] hover:brightness-110 active:scale-95 text-[#0B1C3D] font-black text-xs font-mono shadow-md flex items-center gap-1.5 transition"
+              title="Generar y descargar imagen para redes sociales o informes técnicos"
+            >
+              <Camera className="w-4 h-4 text-[#0B1C3D]" />
+              <span className="hidden sm:inline">Exportar Imagen / Compartir</span>
+              <span className="sm:hidden">Exportar</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white border border-[#203a70] transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* FILTERS BAR */}
@@ -1086,6 +1222,30 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
                   >
                     <Layers className="w-2.5 h-2.5" />
                     <span>Ambos</span>
+                  </button>
+                </div>
+
+                {/* Quick Image Download Buttons */}
+                <div className="flex items-center gap-1 border-l border-[#203a70] pl-1 ml-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPng()}
+                    disabled={isExporting}
+                    className="px-2 py-0.5 rounded-lg bg-[#16356E] hover:bg-[#20458a] text-[#F5C542] border border-[#D4AF37]/50 transition flex items-center gap-1 font-bold shadow-sm"
+                    title="Descargar imagen PNG directa de la carta de tiro"
+                  >
+                    <Download className="w-2.5 h-2.5 text-[#F5C542]" />
+                    <span>PNG</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadSvg()}
+                    disabled={isExporting}
+                    className="px-2 py-0.5 rounded-lg bg-[#071328] hover:bg-[#16356E] text-sky-400 border border-[#203a70] transition flex items-center gap-1 font-bold"
+                    title="Descargar archivo vectorial SVG"
+                  >
+                    <FileText className="w-2.5 h-2.5 text-sky-400" />
+                    <span>SVG</span>
                   </button>
                 </div>
               </div>
@@ -1331,18 +1491,273 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
         </div>
 
         {/* FOOTER */}
-        <div className="flex items-center justify-between pt-2 border-t border-[#203a70] shrink-0 font-mono text-xs">
-          <span className="text-slate-300">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 border-t border-[#203a70] shrink-0 font-mono text-xs">
+          <div className="text-slate-300 text-xs">
             Partido: <strong className="text-[#F5C542]">{game.homeTeamName}</strong> vs <strong className="text-white">{game.awayTeamName}</strong>
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-[#D4AF37] hover:bg-[#F5C542] text-[#0B1C3D] font-black rounded-xl transition active:scale-95 shadow-md"
-          >
-            Cerrar Carta de Tiro
-          </button>
+            <span className="text-slate-400 ml-2 hidden sm:inline">({totalShotsCount} tiros registrados)</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end w-full sm:w-auto">
+            {/* Download PNG Button */}
+            <button
+              type="button"
+              onClick={() => handleDownloadPng()}
+              disabled={isExporting}
+              className="px-3 py-1.5 bg-[#D4AF37] hover:bg-[#F5C542] text-[#0B1C3D] font-black rounded-xl transition active:scale-95 shadow-md flex items-center gap-1.5 text-xs font-mono"
+              title="Descargar imagen PNG de alta resolución (1200x1200px)"
+            >
+              <Download className="w-3.5 h-3.5 text-[#0B1C3D]" />
+              <span>Descargar PNG</span>
+            </button>
+
+            {/* Download SVG Button */}
+            <button
+              type="button"
+              onClick={() => handleDownloadSvg()}
+              disabled={isExporting}
+              className="px-3 py-1.5 bg-[#0E224A] hover:bg-[#16356E] text-sky-300 border border-[#203a70] font-bold rounded-xl transition active:scale-95 flex items-center gap-1.5 text-xs font-mono"
+              title="Descargar vector SVG para informes técnicos e imprenta"
+            >
+              <FileText className="w-3.5 h-3.5 text-sky-400" />
+              <span>Descargar SVG</span>
+            </button>
+
+            {/* Native Mobile Share Button */}
+            <button
+              type="button"
+              onClick={() => handleShareImage()}
+              disabled={isExporting}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition active:scale-95 shadow flex items-center gap-1.5 text-xs font-mono"
+              title="Enviar directamente por WhatsApp o redes sociales"
+            >
+              <Share2 className="w-3.5 h-3.5 text-white" />
+              <span>Compartir</span>
+            </button>
+
+            {/* Copy Image Button */}
+            <button
+              type="button"
+              onClick={() => handleCopyImage()}
+              disabled={isExporting}
+              className="px-3 py-1.5 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 border border-[#203a70] font-bold rounded-xl transition active:scale-95 hidden md:flex items-center gap-1.5 text-xs font-mono"
+              title="Copiar imagen al portapapeles para pegar en WhatsApp Web o informes"
+            >
+              <Copy className="w-3.5 h-3.5 text-[#F5C542]" />
+              <span>Copiar Imagen</span>
+            </button>
+
+            {/* Close Modal Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-1.5 bg-[#071328] hover:bg-[#0E224A] text-slate-300 hover:text-white font-bold rounded-xl transition active:scale-95 text-xs border border-[#203a70] font-mono"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
+
+        {/* DEDICATED EXPORT & SHARING SUB-MODAL */}
+        {showExportModal && (
+          <div
+            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in"
+            onClick={() => setShowExportModal(false)}
+          >
+            <div
+              className="bg-[#0B1C3D] border-2 border-[#D4AF37] rounded-2xl max-w-lg w-full p-4 sm:p-5 shadow-2xl space-y-4 text-[#FFFDF7] animate-in zoom-in-95 font-mono"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-[#0E224A] rounded-xl border border-[#D4AF37]/50 text-[#F5C542]">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider">
+                      Exportar Mapa de Tiros
+                    </h3>
+                    <p className="text-[11px] text-slate-300">
+                      Listo para redes sociales (1200x1200px) e informes técnicos
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(false)}
+                  className="p-1 rounded-xl bg-[#0E224A] hover:bg-[#16356E] text-slate-300 hover:text-white border border-[#203a70]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Match Details Preview */}
+              <div className="bg-[#071328] p-3 rounded-xl border border-[#203a70] space-y-1.5 text-xs">
+                <div className="flex justify-between items-center text-slate-300">
+                  <span className="font-bold text-[#F5C542]">
+                    {game.homeTeamName} vs {game.awayTeamName}
+                  </span>
+                  <span className="bg-[#D4AF37]/20 text-[#F5C542] px-2 py-0.5 rounded font-black border border-[#D4AF37]/40">
+                    {game.homeScore} - {game.awayScore}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>
+                    Filtro: {filterTeam === 'away' ? 'Rival' : filterPlayerId !== 'all' ? game.players.find(p => p.id === filterPlayerId)?.name || 'Jugador' : 'Todo el Equipo'}
+                  </span>
+                  <span className="text-emerald-400 font-bold">
+                    {totalPct}% Acierto ({madeShotsCount}/{totalShotsCount})
+                  </span>
+                </div>
+              </div>
+
+              {/* Customization Options */}
+              <div className="space-y-3">
+                {/* Court Style Selection */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
+                    1. Estilo de Pista:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setExportCustomTheme('parquet')}
+                      className={`p-2.5 rounded-xl border transition flex items-center justify-center gap-1.5 font-bold ${
+                        exportCustomTheme === 'parquet'
+                          ? 'bg-amber-950/70 border-[#D4AF37] text-[#F5C542] shadow-inner'
+                          : 'bg-[#0E224A] border-[#203a70] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <span>🪵 Parquet Maple Real</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportCustomTheme('dark')}
+                      className={`p-2.5 rounded-xl border transition flex items-center justify-center gap-1.5 font-bold ${
+                        exportCustomTheme === 'dark'
+                          ? 'bg-blue-950/70 border-sky-400 text-sky-300 shadow-inner'
+                          : 'bg-[#0E224A] border-[#203a70] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <span>🏟️ Arena Euroliga</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Layer Display Selection */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
+                    2. Capas visibles en la imagen:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setExportCustomLayer('both')}
+                      className={`p-2 rounded-xl border transition text-center font-bold ${
+                        exportCustomLayer === 'both'
+                          ? 'bg-[#D4AF37] text-[#0B1C3D]'
+                          : 'bg-[#0E224A] border-[#203a70] text-slate-300'
+                      }`}
+                    >
+                      ✨ Tiros + % Zonas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportCustomLayer('shots')}
+                      className={`p-2 rounded-xl border transition text-center font-bold ${
+                        exportCustomLayer === 'shots'
+                          ? 'bg-[#D4AF37] text-[#0B1C3D]'
+                          : 'bg-[#0E224A] border-[#203a70] text-slate-300'
+                      }`}
+                    >
+                      🎯 Solo Tiros
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportCustomLayer('zones')}
+                      className={`p-2 rounded-xl border transition text-center font-bold ${
+                        exportCustomLayer === 'zones'
+                          ? 'bg-[#D4AF37] text-[#0B1C3D]'
+                          : 'bg-[#0E224A] border-[#203a70] text-slate-300'
+                      }`}
+                    >
+                      📊 Solo % Zonas
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2 border-t border-[#203a70]">
+                {/* 1. Download PNG */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDownloadPng(exportCustomTheme, exportCustomLayer);
+                    setShowExportModal(false);
+                  }}
+                  disabled={isExporting}
+                  className="w-full py-2.5 px-3 bg-gradient-to-r from-[#D4AF37] to-[#F5C542] hover:brightness-110 active:scale-95 text-[#0B1C3D] font-black rounded-xl text-xs uppercase shadow-lg flex items-center justify-center gap-2 transition"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  <span>Descargar Imagen PNG (1200x1200 • Redes Sociales)</span>
+                </button>
+
+                {/* 2. Download SVG */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDownloadSvg(exportCustomTheme, exportCustomLayer);
+                    setShowExportModal(false);
+                  }}
+                  disabled={isExporting}
+                  className="w-full py-2.5 px-3 bg-[#0E224A] hover:bg-[#16356E] active:scale-95 text-sky-300 border border-sky-500/40 font-bold rounded-xl text-xs uppercase flex items-center justify-center gap-2 transition"
+                >
+                  <FileText className="w-4 h-4 text-sky-400" />
+                  <span>Descargar Vector SVG (Informes Técnicos / Imprenta)</span>
+                </button>
+
+                {/* 3. Share or Copy */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleShareImage(exportCustomTheme, exportCustomLayer);
+                      setShowExportModal(false);
+                    }}
+                    disabled={isExporting}
+                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs uppercase shadow flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>WhatsApp / Móvil</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCopyImage(exportCustomTheme, exportCustomLayer);
+                      setShowExportModal(false);
+                    }}
+                    disabled={isExporting}
+                    className="py-2 px-3 bg-[#0E224A] hover:bg-[#16356E] active:scale-95 text-slate-200 border border-[#203a70] font-bold rounded-xl text-xs uppercase flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-[#F5C542]" />
+                    <span>Copiar Imagen</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="w-full py-2 bg-transparent hover:bg-[#0E224A] text-slate-400 hover:text-white rounded-xl text-xs transition"
+              >
+                Volver a la Carta de Tiro
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

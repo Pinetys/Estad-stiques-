@@ -11,30 +11,56 @@ export const CURATED_INITIAL_GAME_IDS = new Set(['game-brafa-gaudi', 'game-brafa
 
 /**
  * Robust JSON Validator and Normalizer for Game objects.
- * Handles legacy backups, different field names, and missing properties safely.
+ * Handles legacy backups, different field names, Spanish/English aliases, and missing properties safely.
  */
 export function validateAndNormalizeGame(raw: any): Game | null {
   if (!raw || typeof raw !== 'object') return null;
 
-  const rawId = raw.id || raw.gameId || raw._id;
+  // Check if this object is actually a Game/Match and not a Team or other random object
+  const hasGameIndicators = Boolean(
+    raw.homeTeamName ||
+    raw.awayTeamName ||
+    raw.homeTeam ||
+    raw.awayTeam ||
+    raw.equipoLocal ||
+    raw.equipoVisitante ||
+    raw.local ||
+    raw.rival ||
+    raw.opponent ||
+    (raw.title && typeof raw.title === 'string' && (raw.title.includes('vs') || raw.title.includes('VS') || raw.title.includes(' - ') || raw.title.includes('Jornada') || raw.title.includes('Partido'))) ||
+    raw.events ||
+    raw.plays ||
+    raw.jugadas ||
+    raw.quarterScores ||
+    raw.homeScore !== undefined ||
+    raw.awayScore !== undefined ||
+    raw.marcador ||
+    raw.score ||
+    raw.currentQuarter !== undefined
+  );
+  if (!hasGameIndicators) return null;
+
+  const rawId = raw.id || raw.gameId || raw._id || raw.matchId;
   const homeName = String(
-    raw.homeTeamName || raw.teamName || raw.home || raw.homeTeam || raw.local || 'Equipo Local'
+    raw.homeTeamName || raw.homeTeam || raw.equipoLocal || raw.local || raw.teamName || raw.home || 'Equipo Local'
   ).trim();
   const awayName = String(
-    raw.awayTeamName || raw.opponent || raw.away || raw.awayTeam || raw.rival || 'Rival'
+    raw.awayTeamName || raw.awayTeam || raw.equipoVisitante || raw.visitante || raw.rival || raw.opponent || raw.away || 'Rival'
   ).trim();
 
-  // If no names and no title and no id, reject
-  if (!homeName && !awayName && !raw.title && !rawId) return null;
+  // If no valid team names could be determined and no title and no id, reject
+  if ((!homeName || homeName === 'Equipo Local') && (!awayName || awayName === 'Rival') && !raw.title && !rawId && !raw.events) {
+    return null;
+  }
 
   const id = String(rawId || `game-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
-  const title = String(raw.title || `${homeName} vs ${awayName}`);
-  const date = String(raw.date || raw.fecha || new Date().toISOString().slice(0, 10));
+  const title = String(raw.title || raw.titulo || `${homeName} vs ${awayName}`);
+  const date = String(raw.date || raw.fecha || (raw.createdAt ? String(raw.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)));
   const category = raw.category || raw.categoria ? String(raw.category || raw.categoria).trim() : undefined;
   const teamId = raw.teamId ? String(raw.teamId).trim() : undefined;
 
   // Events mapping first so we can use them for score fallbacks if needed
-  const rawEvents = Array.isArray(raw.events) ? raw.events : Array.isArray(raw.plays) ? raw.plays : [];
+  const rawEvents = Array.isArray(raw.events) ? raw.events : Array.isArray(raw.plays) ? raw.plays : Array.isArray(raw.jugadas) ? raw.jugadas : Array.isArray(raw.acciones) ? raw.acciones : [];
   const events: PlayEvent[] = rawEvents.map((ev: any, idx: number) => {
     const isOpponent = Boolean(
       ev.isOpponentAction ||
@@ -44,17 +70,24 @@ export function validateAndNormalizeGame(raw: any): Game | null {
       String(ev.actionType || '').startsWith('OPP_')
     );
 
-    let rawActionType = String(ev.actionType || ev.type || '2PM').trim().toUpperCase();
+    let rawActionType = String(ev.actionType || ev.type || ev.action || '2PM').trim().toUpperCase();
     // Normalize aliases
-    if (rawActionType === '2P' || rawActionType === 'CANASTA_2') rawActionType = '2PM';
-    if (rawActionType === '3P' || rawActionType === 'TRIPLE') rawActionType = '3PM';
-    if (rawActionType === '1P' || rawActionType === 'TIRO_LIBRE' || rawActionType === 'TL') rawActionType = 'FTM';
-    if (rawActionType === 'FOUL' || rawActionType === 'FALTA') rawActionType = 'PF';
-    if (rawActionType === 'REB' || rawActionType === 'REBOTE') rawActionType = 'REB_DEF';
-    if (rawActionType === 'AST' || rawActionType === 'ASISTENCIA') rawActionType = 'AST';
-    if (rawActionType === 'STL' || rawActionType === 'ROBO') rawActionType = 'STL';
-    if (rawActionType === 'BLK' || rawActionType === 'TAPON') rawActionType = 'BLK';
-    if (rawActionType === 'TO' || rawActionType === 'PERDIDA') rawActionType = 'TO';
+    if (rawActionType === '2P' || rawActionType === 'CANASTA_2' || rawActionType === '2P_IN') rawActionType = '2PM';
+    if (rawActionType === 'FALLO_2' || rawActionType === '2P_OUT') rawActionType = '2PA';
+    if (rawActionType === '3P' || rawActionType === 'TRIPLE' || rawActionType === '3P_IN' || rawActionType === 'TRIPLE_ANOTADO') rawActionType = '3PM';
+    if (rawActionType === 'FALLO_3' || rawActionType === '3P_OUT') rawActionType = '3PA';
+    if (rawActionType === '1P' || rawActionType === 'TIRO_LIBRE' || rawActionType === 'TL' || rawActionType === 'TL_IN' || rawActionType === 'FT') rawActionType = 'FTM';
+    if (rawActionType === 'TL_OUT' || rawActionType === 'FALLO_TL') rawActionType = 'FTA';
+    if (rawActionType === 'FOUL' || rawActionType === 'FALTA' || rawActionType === 'FALTA_PERSONAL') rawActionType = 'PF';
+    if (rawActionType === 'REB' || rawActionType === 'REBOTE' || rawActionType === 'REB_DEF' || rawActionType === 'RD') rawActionType = 'REB_DEF';
+    if (rawActionType === 'REB_OFF' || rawActionType === 'RO' || rawActionType === 'REBOTE_OFENSIVO') rawActionType = 'REB_OFF';
+    if (rawActionType === 'AST' || rawActionType === 'ASISTENCIA' || rawActionType === 'ASSIST') rawActionType = 'AST';
+    if (rawActionType === 'STL' || rawActionType === 'ROBO' || rawActionType === 'RECUPERACION' || rawActionType === 'STEAL') rawActionType = 'STL';
+    if (rawActionType === 'BLK' || rawActionType === 'TAPON' || rawActionType === 'BLOCK') rawActionType = 'BLK';
+    if (rawActionType === 'TO' || rawActionType === 'PERDIDA' || rawActionType === 'TURNOVER') rawActionType = 'TO';
+    if (rawActionType === 'OPP_2PM') rawActionType = 'OPP_2P';
+    if (rawActionType === 'OPP_3PM') rawActionType = 'OPP_3P';
+    if (rawActionType === 'OPP_FTM') rawActionType = 'OPP_1P';
 
     let pointsAdded = Number(ev.pointsAdded ?? ev.points ?? ev.puntos ?? 0);
     if (isNaN(pointsAdded) || pointsAdded === 0) {
@@ -65,7 +98,20 @@ export function validateAndNormalizeGame(raw: any): Game | null {
 
     const quarter = Math.max(1, Number(ev.quarter || ev.cuarto || ev.period || 1));
     const gameSeconds = Number(ev.gameSeconds ?? ev.secondsRemaining ?? 600);
-    const gameTimeFormatted = ev.gameTimeFormatted || ev.formattedTime || '10:00';
+    const gameTimeFormatted = ev.gameTimeFormatted || ev.formattedTime || ev.tiempo || '10:00';
+
+    // Shot location normalization
+    let shotLocation = ev.shotLocation || ev.location || ev.coords || ev.shot;
+    if (shotLocation && typeof shotLocation === 'object') {
+      const x = Number(shotLocation.x || 50);
+      const y = Number(shotLocation.y || 20);
+      const made = Boolean(shotLocation.made ?? (rawActionType === '2PM' || rawActionType === '3PM' || rawActionType === 'OPP_2P' || rawActionType === 'OPP_3P'));
+      const points = Number(shotLocation.points || (rawActionType === '3PM' || rawActionType === 'OPP_3P' ? 3 : 2));
+      const zone = shotLocation.zone || (x <= 14 ? 'corner3_left' : x >= 86 ? 'corner3_right' : Math.hypot(x - 50, y - 11) >= 43 ? 'top3' : (x >= 34 && x <= 66 && y <= 42) ? 'paint' : 'mid');
+      shotLocation = { x, y, zone, made, points };
+    } else {
+      shotLocation = undefined;
+    }
 
     return {
       id: String(ev.id || `ev-${id}-${idx}-${Date.now()}`),
@@ -91,7 +137,8 @@ export function validateAndNormalizeGame(raw: any): Game | null {
         : ev.score && typeof ev.score === 'object'
         ? { home: Number(ev.score.home || 0), away: Number(ev.score.away || 0) }
         : undefined,
-      shotLocation: ev.shotLocation && typeof ev.shotLocation === 'object' ? ev.shotLocation : undefined,
+      shotLocation,
+      basketOrigin: ev.basketOrigin as any,
     };
   });
 
@@ -308,57 +355,145 @@ export function validateAndNormalizeGame(raw: any): Game | null {
 }
 
 /**
- * Normalizes all matches and teams from any JSON import bundle or array.
+ * Normalizes all matches and teams from any JSON import bundle, object, or array.
+ * Robustly parses single matches, nested games, Spanish/English structures, and full backup files.
  */
 export function extractAndNormalizeGamesFromImport(parsed: any): {
   matches: Game[];
   teams: TeamProfile[];
 } {
+  if (!parsed) return { matches: [], teams: [] };
+
+  // If parsed is a JSON string, try to parse it
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return { matches: [], teams: [] };
+    }
+  }
+
   let rawMatches: any[] = [];
   let rawTeams: any[] = [];
 
-  if (Array.isArray(parsed)) {
-    rawMatches = parsed;
-  } else if (parsed && typeof parsed === 'object') {
-    if (Array.isArray(parsed.matches)) rawMatches = parsed.matches;
-    else if (Array.isArray(parsed.games)) rawMatches = parsed.games;
-    else if (parsed.id && (parsed.homeTeamName || parsed.title)) rawMatches = [parsed];
+  const inspectObject = (obj: any) => {
+    if (!obj || typeof obj !== 'object') return;
 
-    if (Array.isArray(parsed.teams)) rawTeams = parsed.teams;
+    // Check matches / games arrays
+    if (Array.isArray(obj.matches)) rawMatches.push(...obj.matches);
+    if (Array.isArray(obj.games)) rawMatches.push(...obj.games);
+    if (Array.isArray(obj.partidos)) rawMatches.push(...obj.partidos);
+    if (Array.isArray(obj.encuentros)) rawMatches.push(...obj.encuentros);
+    if (Array.isArray(obj.items)) rawMatches.push(...obj.items);
+
+    // Check single match wrappers
+    if (obj.currentGame && typeof obj.currentGame === 'object') rawMatches.push(obj.currentGame);
+    if (obj.game && typeof obj.game === 'object') rawMatches.push(obj.game);
+    if (obj.partido && typeof obj.partido === 'object') rawMatches.push(obj.partido);
+    if (obj.match && typeof obj.match === 'object') rawMatches.push(obj.match);
+
+    // Check teams arrays
+    if (Array.isArray(obj.teams)) rawTeams.push(...obj.teams);
+    if (Array.isArray(obj.equipos)) rawTeams.push(...obj.equipos);
+
+    // If obj itself looks like a single match:
+    const looksLikeGame = Boolean(
+      obj.homeTeamName ||
+      obj.awayTeamName ||
+      obj.homeTeam ||
+      obj.awayTeam ||
+      obj.equipoLocal ||
+      obj.equipoVisitante ||
+      obj.local ||
+      obj.rival ||
+      obj.events ||
+      obj.plays ||
+      obj.jugadas ||
+      obj.quarterScores ||
+      obj.homeScore !== undefined ||
+      obj.awayScore !== undefined ||
+      obj.marcador ||
+      (obj.title && typeof obj.title === 'string' && (obj.title.includes('vs') || obj.title.includes(' - ')))
+    );
+
+    // If it looks like a team (has roster or plantilla, name or nombre, but NOT a game):
+    const looksLikeTeam = Boolean(
+      (obj.roster || obj.plantilla) && (obj.name || obj.nombre) && !looksLikeGame
+    );
+
+    if (looksLikeTeam) {
+      rawTeams.push(obj);
+    } else if (looksLikeGame) {
+      rawMatches.push(obj);
+    } else if (obj.data && typeof obj.data === 'object') {
+      inspectObject(obj.data);
+    } else if (obj.payload && typeof obj.payload === 'object') {
+      inspectObject(obj.payload);
+    }
+  };
+
+  if (Array.isArray(parsed)) {
+    parsed.forEach(item => {
+      if (item && typeof item === 'object') {
+        const looksLikeTeam = Boolean(
+          (item.roster || item.plantilla) && (item.name || item.nombre) && !item.homeTeamName && !item.local && !item.events
+        );
+        if (looksLikeTeam) {
+          rawTeams.push(item);
+        } else {
+          rawMatches.push(item);
+        }
+      }
+    });
+  } else if (parsed && typeof parsed === 'object') {
+    inspectObject(parsed);
   }
 
+  // Deduplicate rawMatches by reference or id
+  const seenIds = new Set<string>();
   const validMatches: Game[] = [];
+
   rawMatches.forEach(rm => {
+    if (!rm || typeof rm !== 'object') return;
     const normalized = validateAndNormalizeGame(rm);
     if (normalized && !isDemoGame(normalized)) {
-      validMatches.push(normalized);
+      if (!seenIds.has(normalized.id)) {
+        seenIds.add(normalized.id);
+        // Remove tombstone so imported game is never hidden
+        removeDeletedTombstone(normalized.id);
+        validMatches.push(normalized);
+      }
     }
   });
 
   const validTeams: TeamProfile[] = [];
+  const seenTeamIds = new Set<string>();
+
   rawTeams.forEach((rt: any, idx: number) => {
     if (rt && typeof rt === 'object') {
       const id = String(rt.id || `team-${Date.now()}-${idx}`);
-      const name = String(rt.name || `Equipo ${idx + 1}`).trim();
-      const roster: Player[] = Array.isArray(rt.roster)
-        ? rt.roster.map((p: any, pIdx: number) => ({
-            id: String(p.id || `p-${id}-${pIdx}`),
-            name: String(p.name || `Jugador ${pIdx + 1}`).trim(),
-            number: Number.isFinite(Number(p.number)) ? Number(p.number) : pIdx + 4,
-            position: ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B',
-            starter: Boolean(p.starter ?? (pIdx < 5)),
-            onCourt: Boolean(p.onCourt ?? (pIdx < 5)),
-            foulsCount: Math.max(0, Number(p.foulsCount || 0)),
-            isFouledOut: Boolean(p.isFouledOut),
-          }))
-        : [];
+      if (seenTeamIds.has(id)) return;
+      seenTeamIds.add(id);
+
+      const name = String(rt.name || rt.nombre || `Equipo ${idx + 1}`).trim();
+      const rawRoster = Array.isArray(rt.roster) ? rt.roster : Array.isArray(rt.plantilla) ? rt.plantilla : Array.isArray(rt.jugadores) ? rt.jugadores : [];
+      const roster: Player[] = rawRoster.map((p: any, pIdx: number) => ({
+        id: String(p.id || `p-${id}-${p.number ?? p.dorsal ?? pIdx + 4}`),
+        name: String(p.name || p.nombre || `Jugador ${pIdx + 1}`).trim(),
+        number: Number.isFinite(Number(p.number ?? p.dorsal)) ? Number(p.number ?? p.dorsal) : pIdx + 4,
+        position: ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B',
+        starter: Boolean(p.starter ?? p.titular ?? (pIdx < 5)),
+        onCourt: Boolean(p.onCourt ?? p.enPista ?? (pIdx < 5)),
+        foulsCount: Math.max(0, Number(p.foulsCount || p.faltas || 0)),
+        isFouledOut: Boolean(p.isFouledOut),
+      }));
 
       validTeams.push({
         id,
         name,
-        category: rt.category ? String(rt.category).trim() : undefined,
-        season: rt.season ? String(rt.season).trim() : '2025/2026',
-        primaryColor: rt.primaryColor || '#f97316',
+        category: rt.category ? String(rt.category).trim() : (rt.categoria ? String(rt.categoria).trim() : undefined),
+        season: rt.season ? String(rt.season).trim() : (rt.temporada ? String(rt.temporada).trim() : '2025/2026'),
+        primaryColor: rt.primaryColor || rt.color || '#f97316',
         logo: rt.logo || '🏀',
         roster,
         updatedAt: rt.updatedAt || new Date().toISOString(),
@@ -367,6 +502,37 @@ export function extractAndNormalizeGamesFromImport(parsed: any): {
   });
 
   return { matches: validMatches, teams: validTeams };
+}
+
+/**
+ * Merges newly imported matches with existing library matches without deleting existing user data,
+ * cleans tombstones, updates registered teams, and saves to storage.
+ */
+export function mergeAndSaveImportedGames(
+  incomingMatches: Game[],
+  existingLibrary?: Game[]
+): Game[] {
+  // 1. Remove tombstones for all incoming matches
+  incomingMatches.forEach(m => {
+    if (m.id) removeDeletedTombstone(m.id);
+  });
+
+  // 2. Load existing non-demo matches
+  const base = existingLibrary && existingLibrary.length > 0
+    ? existingLibrary.filter(g => !isDemoGame(g))
+    : getSavedGamesFromStorage().filter(g => !isDemoGame(g));
+
+  // 3. Merge: incoming matches replace existing matches with the same ID; new matches get added
+  const matchMap = new Map<string, Game>();
+  base.forEach(g => matchMap.set(g.id, g));
+  incomingMatches.forEach(g => matchMap.set(g.id, g));
+
+  const merged = Array.from(matchMap.values());
+
+  // 4. Save to localStorage
+  saveGamesToStorage(merged);
+
+  return merged;
 }
 
 /**

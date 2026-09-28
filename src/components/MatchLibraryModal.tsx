@@ -17,8 +17,9 @@ import {
   permanentlyDeleteFromTrash,
   purgeCuratedInitialGames,
   extractAndNormalizeGamesFromImport,
+  mergeAndSaveImportedGames,
 } from '../utils/libraryUtils';
-import { ensureTeamsForMatches, saveRegisteredTeams } from '../utils/teamStorage';
+import { ensureTeamsForMatches, saveRegisteredTeams, getRegisteredTeams } from '../utils/teamStorage';
 import { syncEngine } from '../lib/syncEngine';
 import { sanitizeAndIsolateLibraryGames } from '../utils/teamIsolation';
 import { TeamLogoDisplay } from './TeamLogoPicker';
@@ -67,6 +68,7 @@ interface MatchLibraryModalProps {
   onClose: () => void;
   onDeleteGame?: (deletedGameId: string) => void;
   onOpenRecoveryModal?: () => void;
+  onMatchesUpdated?: (matches: Game[]) => void;
 }
 
 export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
@@ -78,6 +80,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   onClose,
   onDeleteGame,
   onOpenRecoveryModal,
+  onMatchesUpdated,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'matches' | 'seasonStats' | 'aiPlan' | 'trash'>('matches');
   const [library, setLibrary] = useState<Game[]>([]);
@@ -237,10 +240,19 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   };
 
   const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(library, null, 2));
+    const payload = {
+      version: 'BasketStats-Pro-v3',
+      exportDate: new Date().toISOString(),
+      teamsCount: getRegisteredTeams().length,
+      matchesCount: library.length,
+      teams: getRegisteredTeams(),
+      matches: library,
+      currentGame: currentGame,
+    };
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
     const link = document.createElement('a');
     link.href = dataStr;
-    link.download = `BasketStats_Biblioteca_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `BasketStats_Temporada_Backup_${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     playSound('click', currentGame.settings.soundEnabled);
   };
@@ -251,7 +263,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
     const reader = new FileReader();
     reader.onload = async event => {
       try {
-        const parsed = JSON.parse(event.target?.result as string);
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
         const { matches: incomingMatches, teams: incomingTeams } = extractAndNormalizeGamesFromImport(parsed);
 
         if (incomingMatches.length === 0 && incomingTeams.length === 0) {
@@ -264,8 +277,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
           saveRegisteredTeams(incomingTeams);
         }
 
+        // Merge incoming matches with existing library so NO previous games are deleted
+        const mergedMatches = mergeAndSaveImportedGames(incomingMatches, library);
+
         // Ensure every match has a registered team so team cards in Hub and library work properly
-        const { updatedMatches, teams: updatedTeams } = ensureTeamsForMatches(incomingMatches);
+        const { updatedMatches, teams: updatedTeams } = ensureTeamsForMatches(mergedMatches);
 
         // Purge initial dummy sample games so they don't overwrite or pollute the user's real season
         purgeCuratedInitialGames();
@@ -273,16 +289,17 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
         // Save imported matches
         saveGamesToStorage(updatedMatches);
         refreshLibrary(updatedMatches);
+        onMatchesUpdated?.(updatedMatches);
 
         // Push everything immediately to Server and Cloud Firestore!
         setIsCloudRefreshing(true);
-        const syncRes = await syncEngine.pushAllLocalDataToServer();
+        await syncEngine.pushAllLocalDataToServer();
         setIsCloudRefreshing(false);
 
         playSound('score', currentGame.settings.soundEnabled);
         triggerHaptic('heavy', currentGame.settings.vibrationEnabled);
 
-        alert(`¡${updatedMatches.length} partidos y ${updatedTeams.length} equipos importados, validados y grabados en la nube con éxito!`);
+        alert(`¡${incomingMatches.length} partidos y ${updatedTeams.length} equipos importados y fusionados con éxito en tu biblioteca y en la nube!`);
       } catch (err: any) {
         setIsCloudRefreshing(false);
         alert('Error al importar el archivo JSON: ' + (err?.message || 'Formato corrupto'));

@@ -2467,10 +2467,16 @@ export default function App() {
           onOpenRecoveryModal={() => setShowRecoveryModal(true)}
           onLoadGame={loadedGame => {
             setGame(loadedGame);
+            setLibraryGames(getSavedGamesFromStorage());
+            setTeams(getRegisteredTeams());
             setShowLibraryModal(false);
             setActiveTab('live');
           }}
           onDeleteGame={handleDeleteMatchEverywhere}
+          onMatchesUpdated={updatedMatches => {
+            setLibraryGames(updatedMatches);
+            setTeams(getRegisteredTeams());
+          }}
         />
       )}
 

@@ -6,6 +6,7 @@ import {
   saveGameToLibrary,
   purgeCuratedInitialGames,
   extractAndNormalizeGamesFromImport,
+  mergeAndSaveImportedGames,
 } from '../utils/libraryUtils';
 import { getRegisteredTeams, saveRegisteredTeams, ensureTeamsForMatches } from '../utils/teamStorage';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -249,8 +250,11 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
         saveRegisteredTeams(incomingTeams);
       }
 
+      // Merge incoming matches with existing matches so no user games are deleted
+      const mergedMatches = mergeAndSaveImportedGames(incomingMatches, allMatches);
+
       // Ensure every match has a corresponding team profile in registered teams
-      const { updatedMatches, teams: allUpdatedTeams } = ensureTeamsForMatches(incomingMatches);
+      const { updatedMatches, teams: allUpdatedTeams } = ensureTeamsForMatches(mergedMatches);
 
       // Clean out initial sample games so they don't pollute or overwrite real matches
       purgeCuratedInitialGames();

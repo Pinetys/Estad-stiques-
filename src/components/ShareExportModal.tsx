@@ -3,7 +3,7 @@ import { Game } from '../types';
 import { calculatePlayerStats, calculateTeamStats, exportGameToCSV, generateShareText } from '../utils/statsCalculator';
 import { downloadActaPdf, shareActaPdf } from '../utils/actaPdfGenerator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { Share2, Copy, Download, Printer, Check, MessageCircle, FileText } from 'lucide-react';
+import { Share2, Copy, Download, Printer, Check, MessageCircle, FileText, FileJson } from 'lucide-react';
 
 interface ShareExportModalProps {
   game: Game;
@@ -68,6 +68,24 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadJSON = () => {
+    const payload = {
+      version: 'BasketStats-Pro-v3',
+      exportDate: new Date().toISOString(),
+      game: game,
+      matches: [game],
+    };
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const link = document.createElement('a');
+    link.href = dataStr;
+    link.download = `Partido_${game.homeTeamName}_vs_${game.awayTeamName}_${game.date}.json`.replace(/\s+/g, '_');
+    link.click();
+    playSound('score', game.settings.soundEnabled);
+    triggerHaptic('medium', game.settings.vibrationEnabled);
+    setPdfToast('¡Partido descargado en JSON!');
+    setTimeout(() => setPdfToast(null), 2500);
   };
 
   return (
@@ -150,6 +168,16 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
           >
             <Download className="w-3.5 h-3.5 text-[#F5C542]" />
             <span>Descargar CSV</span>
+          </button>
+
+          {/* Download JSON */}
+          <button
+            onClick={handleDownloadJSON}
+            className="p-2 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-600/40 font-semibold rounded-xl flex items-center justify-center gap-1.5 text-[11px] transition"
+            title="Exportar archivo de datos JSON completo de este partido"
+          >
+            <FileJson className="w-3.5 h-3.5 text-amber-400" />
+            <span>Exportar JSON</span>
           </button>
 
           {/* Print Sheet */}
