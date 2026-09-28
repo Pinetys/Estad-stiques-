@@ -16,6 +16,7 @@ import {
   restoreGameFromTrash,
   permanentlyDeleteFromTrash,
   purgeCuratedInitialGames,
+  extractAndNormalizeGamesFromImport,
 } from '../utils/libraryUtils';
 import { ensureTeamsForMatches, saveRegisteredTeams } from '../utils/teamStorage';
 import { syncEngine } from '../lib/syncEngine';
@@ -251,21 +252,10 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
     reader.onload = async event => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        let incomingMatches: Game[] = [];
-        let incomingTeams: TeamProfile[] = [];
-
-        if (Array.isArray(parsed)) {
-          incomingMatches = parsed;
-        } else if (parsed && typeof parsed === 'object') {
-          if (Array.isArray(parsed.matches)) incomingMatches = parsed.matches;
-          else if (Array.isArray(parsed.games)) incomingMatches = parsed.games;
-          else if (parsed.id && (parsed.homeTeamName || parsed.title)) incomingMatches = [parsed];
-
-          if (Array.isArray(parsed.teams)) incomingTeams = parsed.teams;
-        }
+        const { matches: incomingMatches, teams: incomingTeams } = extractAndNormalizeGamesFromImport(parsed);
 
         if (incomingMatches.length === 0 && incomingTeams.length === 0) {
-          alert('El archivo JSON no contiene partidos ni equipos válidos.');
+          alert('El archivo JSON no contiene partidos ni equipos con estructura reconocible.');
           return;
         }
 
@@ -292,7 +282,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
         playSound('score', currentGame.settings.soundEnabled);
         triggerHaptic('heavy', currentGame.settings.vibrationEnabled);
 
-        alert(`¡${updatedMatches.length} partidos y ${updatedTeams.length} equipos importados y grabados en la nube con éxito!`);
+        alert(`¡${updatedMatches.length} partidos y ${updatedTeams.length} equipos importados, validados y grabados en la nube con éxito!`);
       } catch (err: any) {
         setIsCloudRefreshing(false);
         alert('Error al importar el archivo JSON: ' + (err?.message || 'Formato corrupto'));

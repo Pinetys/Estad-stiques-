@@ -1,4 +1,4 @@
-import { Game, PlayerAccumulatedStats, SeasonAggregatedStats } from '../types';
+import { Game, PlayerAccumulatedStats, SeasonAggregatedStats, TeamProfile, Player, PlayEvent } from '../types';
 import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed } from './statsCalculator';
 import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from '../lib/firebase';
 import { isMasterAdmin } from './accessControl';
@@ -8,6 +8,366 @@ export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
 
 export const DEMO_GAME_IDS = new Set(['game-sample-01', 'game-sample-02', 'sample-game-1', 'sample-game-2']);
 export const CURATED_INITIAL_GAME_IDS = new Set(['game-brafa-gaudi', 'game-brafa-bam', 'game-brafa-ubsa']);
+
+/**
+ * Robust JSON Validator and Normalizer for Game objects.
+ * Handles legacy backups, different field names, and missing properties safely.
+ */
+export function validateAndNormalizeGame(raw: any): Game | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const rawId = raw.id || raw.gameId || raw._id;
+  const homeName = String(
+    raw.homeTeamName || raw.teamName || raw.home || raw.homeTeam || raw.local || 'Equipo Local'
+  ).trim();
+  const awayName = String(
+    raw.awayTeamName || raw.opponent || raw.away || raw.awayTeam || raw.rival || 'Rival'
+  ).trim();
+
+  // If no names and no title and no id, reject
+  if (!homeName && !awayName && !raw.title && !rawId) return null;
+
+  const id = String(rawId || `game-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+  const title = String(raw.title || `${homeName} vs ${awayName}`);
+  const date = String(raw.date || raw.fecha || new Date().toISOString().slice(0, 10));
+  const category = raw.category || raw.categoria ? String(raw.category || raw.categoria).trim() : undefined;
+  const teamId = raw.teamId ? String(raw.teamId).trim() : undefined;
+
+  // Events mapping first so we can use them for score fallbacks if needed
+  const rawEvents = Array.isArray(raw.events) ? raw.events : Array.isArray(raw.plays) ? raw.plays : [];
+  const events: PlayEvent[] = rawEvents.map((ev: any, idx: number) => {
+    const isOpponent = Boolean(
+      ev.isOpponentAction ||
+      ev.isOpponent ||
+      ev.opponent ||
+      ev.rival ||
+      String(ev.actionType || '').startsWith('OPP_')
+    );
+
+    let rawActionType = String(ev.actionType || ev.type || '2PM').trim().toUpperCase();
+    // Normalize aliases
+    if (rawActionType === '2P' || rawActionType === 'CANASTA_2') rawActionType = '2PM';
+    if (rawActionType === '3P' || rawActionType === 'TRIPLE') rawActionType = '3PM';
+    if (rawActionType === '1P' || rawActionType === 'TIRO_LIBRE' || rawActionType === 'TL') rawActionType = 'FTM';
+    if (rawActionType === 'FOUL' || rawActionType === 'FALTA') rawActionType = 'PF';
+    if (rawActionType === 'REB' || rawActionType === 'REBOTE') rawActionType = 'REB_DEF';
+    if (rawActionType === 'AST' || rawActionType === 'ASISTENCIA') rawActionType = 'AST';
+    if (rawActionType === 'STL' || rawActionType === 'ROBO') rawActionType = 'STL';
+    if (rawActionType === 'BLK' || rawActionType === 'TAPON') rawActionType = 'BLK';
+    if (rawActionType === 'TO' || rawActionType === 'PERDIDA') rawActionType = 'TO';
+
+    let pointsAdded = Number(ev.pointsAdded ?? ev.points ?? ev.puntos ?? 0);
+    if (isNaN(pointsAdded) || pointsAdded === 0) {
+      if (rawActionType === '3PM' || rawActionType === 'OPP_3P') pointsAdded = 3;
+      else if (rawActionType === '2PM' || rawActionType === 'OPP_2P') pointsAdded = 2;
+      else if (rawActionType === 'FTM' || rawActionType === 'OPP_1P') pointsAdded = 1;
+    }
+
+    const quarter = Math.max(1, Number(ev.quarter || ev.cuarto || ev.period || 1));
+    const gameSeconds = Number(ev.gameSeconds ?? ev.secondsRemaining ?? 600);
+    const gameTimeFormatted = ev.gameTimeFormatted || ev.formattedTime || '10:00';
+
+    return {
+      id: String(ev.id || `ev-${id}-${idx}-${Date.now()}`),
+      gameId: id,
+      timestamp: Number(ev.timestamp || Date.now()),
+      quarter,
+      gameSeconds,
+      gameTimeFormatted,
+      playerId: ev.playerId ? String(ev.playerId) : undefined,
+      playerName: ev.playerName ? String(ev.playerName) : undefined,
+      playerNumber: ev.playerNumber !== undefined ? Number(ev.playerNumber) : (ev.dorsal !== undefined ? Number(ev.dorsal) : undefined),
+      actionType: rawActionType as any,
+      actionLabel: String(ev.actionLabel || ev.label || rawActionType),
+      pointsAdded,
+      assistedByPlayerId: ev.assistedByPlayerId ? String(ev.assistedByPlayerId) : undefined,
+      assistedByPlayerName: ev.assistedByPlayerName ? String(ev.assistedByPlayerName) : undefined,
+      assistedByPlayerNumber: ev.assistedByPlayerNumber !== undefined ? Number(ev.assistedByPlayerNumber) : undefined,
+      isOpponentAction: isOpponent,
+      opponentPlayerNumber: ev.opponentPlayerNumber !== undefined ? Number(ev.opponentPlayerNumber) : undefined,
+      playersOnCourtIds: Array.isArray(ev.playersOnCourtIds) ? ev.playersOnCourtIds.map(String) : [],
+      scoreSnapshot: ev.scoreSnapshot && typeof ev.scoreSnapshot === 'object'
+        ? { home: Number(ev.scoreSnapshot.home || 0), away: Number(ev.scoreSnapshot.away || 0) }
+        : ev.score && typeof ev.score === 'object'
+        ? { home: Number(ev.score.home || 0), away: Number(ev.score.away || 0) }
+        : undefined,
+      shotLocation: ev.shotLocation && typeof ev.shotLocation === 'object' ? ev.shotLocation : undefined,
+    };
+  });
+
+  // Safe numerical scores (with fallback calculation from events)
+  let homeScore = Number(
+    raw.homeScore ??
+    raw.scoreHome ??
+    raw.pointsHome ??
+    (raw.score && typeof raw.score === 'object' ? raw.score.home : undefined) ??
+    (raw.marcador && typeof raw.marcador === 'object' ? raw.marcador.local : undefined)
+  );
+  let awayScore = Number(
+    raw.awayScore ??
+    raw.scoreAway ??
+    raw.pointsAway ??
+    (raw.score && typeof raw.score === 'object' ? raw.score.away : undefined) ??
+    (raw.marcador && typeof raw.marcador === 'object' ? raw.marcador.visitante : undefined)
+  );
+
+  // If score is NaN or 0 but we have events with points, calculate score from events
+  if ((isNaN(homeScore) || homeScore === 0) && (isNaN(awayScore) || awayScore === 0) && events.length > 0) {
+    const calcHome = events.filter(e => !e.isOpponentAction).reduce((acc, e) => acc + (e.pointsAdded || 0), 0);
+    const calcAway = events.filter(e => e.isOpponentAction).reduce((acc, e) => acc + (e.pointsAdded || 0), 0);
+    if (calcHome > 0 || calcAway > 0) {
+      homeScore = calcHome;
+      awayScore = calcAway;
+    }
+  }
+
+  homeScore = Math.max(0, Number(homeScore) || 0);
+  awayScore = Math.max(0, Number(awayScore) || 0);
+
+  // Status determination
+  let status: 'setup' | 'live' | 'finished' = 'finished';
+  if (raw.status === 'live' || raw.status === 'setup' || raw.status === 'finished') {
+    status = raw.status;
+  } else if (homeScore === 0 && awayScore === 0 && events.length === 0) {
+    status = 'setup';
+  }
+
+  const currentQuarter = Math.max(1, Number(raw.currentQuarter || raw.quarter || (status === 'finished' ? 4 : 1)));
+  const currentSecondsRemaining = Number.isFinite(Number(raw.currentSecondsRemaining))
+    ? Math.max(0, Number(raw.currentSecondsRemaining))
+    : (status === 'finished' ? 0 : 600);
+  const isClockRunning = Boolean(raw.isClockRunning && status === 'live');
+
+  // Players / Roster mapping
+  const rawPlayers = Array.isArray(raw.players)
+    ? raw.players
+    : Array.isArray(raw.roster)
+    ? raw.roster
+    : Array.isArray(raw.homePlayers)
+    ? raw.homePlayers
+    : Array.isArray(raw.jugadores)
+    ? raw.jugadores
+    : [];
+
+  const players: Player[] = rawPlayers.map((p: any, idx: number) => {
+    const pNumber = Number.isFinite(Number(p.number ?? p.dorsal ?? p.jerseyNumber))
+      ? Number(p.number ?? p.dorsal ?? p.jerseyNumber)
+      : idx + 4;
+    const pId = String(p.id || p.playerId || `p-${id}-${pNumber}`);
+    const name = String(p.name || p.playerName || p.nombre || `Jugador #${pNumber}`).trim();
+    const position = ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B';
+    const foulsCount = Math.max(0, Number(p.foulsCount ?? p.fouls ?? p.faltas ?? 0));
+    const foulOutLimit = Number(raw.settings?.foulOutLimit || 5);
+    return {
+      id: pId,
+      name,
+      number: pNumber,
+      position,
+      starter: Boolean(p.starter ?? p.isStarter ?? p.titular ?? (idx < 5)),
+      onCourt: Boolean(p.onCourt ?? p.isOnCourt ?? p.enPista ?? (idx < 5)),
+      foulsCount,
+      isFouledOut: Boolean(p.isFouledOut ?? (foulsCount >= foulOutLimit)),
+      minutesPlayedSeconds: Number(p.minutesPlayedSeconds ?? p.minutos ?? 0),
+      quarterSeconds: p.quarterSeconds && typeof p.quarterSeconds === 'object' ? p.quarterSeconds : {},
+    };
+  });
+
+  // If players list was empty, extract players from recorded events or generate default 5
+  if (players.length === 0) {
+    const extractedMap = new Map<string, { id: string; name: string; number: number }>();
+    if (events.length > 0) {
+      events.forEach((ev: any) => {
+        if (!ev.isOpponentAction && (ev.playerId || ev.playerName || ev.playerNumber !== undefined)) {
+          const pnum = ev.playerNumber !== undefined ? Number(ev.playerNumber) : extractedMap.size + 4;
+          const pid = String(ev.playerId || `p-${id}-${pnum}`);
+          if (!extractedMap.has(pid)) {
+            extractedMap.set(pid, {
+              id: pid,
+              name: String(ev.playerName || `Jugador #${pnum}`).trim(),
+              number: pnum,
+            });
+          }
+        }
+      });
+    }
+
+    if (extractedMap.size > 0) {
+      Array.from(extractedMap.values()).forEach((ep, i) => {
+        players.push({
+          id: ep.id,
+          name: ep.name,
+          number: ep.number,
+          position: 'B',
+          starter: i < 5,
+          onCourt: i < 5,
+          foulsCount: 0,
+          isFouledOut: false,
+          minutesPlayedSeconds: 0,
+          quarterSeconds: {},
+        });
+      });
+    } else {
+      for (let i = 1; i <= 5; i++) {
+        players.push({
+          id: `p-${id}-${i}`,
+          name: `Jugador ${i}`,
+          number: i * 2,
+          position: 'B',
+          starter: true,
+          onCourt: true,
+          foulsCount: 0,
+          isFouledOut: false,
+          minutesPlayedSeconds: 0,
+          quarterSeconds: {},
+        });
+      }
+    }
+  }
+
+  // Quarter scores mapping
+  let quarterScores: any[] = [];
+  if (Array.isArray(raw.quarterScores) && raw.quarterScores.length > 0) {
+    quarterScores = raw.quarterScores.map((qs: any, i: number) => ({
+      quarter: Number(qs.quarter || i + 1),
+      quarterLabel: qs.quarterLabel || `${i + 1}C`,
+      home: Number(qs.home || 0),
+      away: Number(qs.away || 0),
+    }));
+  } else {
+    const qCount = Math.max(4, currentQuarter);
+    quarterScores = Array.from({ length: qCount }, (_, i) => ({
+      quarter: i + 1,
+      quarterLabel: `${i + 1}C`,
+      home: 0,
+      away: 0,
+    }));
+    if (events.length > 0) {
+      events.forEach(ev => {
+        const qIdx = Math.max(0, Math.min(qCount - 1, (ev.quarter || 1) - 1));
+        if (ev.isOpponentAction) {
+          quarterScores[qIdx].away += ev.pointsAdded || 0;
+        } else {
+          quarterScores[qIdx].home += ev.pointsAdded || 0;
+        }
+      });
+    } else {
+      quarterScores[0].home = homeScore;
+      quarterScores[0].away = awayScore;
+    }
+  }
+
+  // Settings
+  const settings = {
+    quarterDurationMinutes: Number(raw.settings?.quarterDurationMinutes || 10),
+    totalQuarters: Number(raw.settings?.totalQuarters || 4),
+    foulOutLimit: Number(raw.settings?.foulOutLimit || 5),
+    bonusFoulsLimit: Number(raw.settings?.bonusFoulsLimit || 5),
+    soundEnabled: Boolean(raw.settings?.soundEnabled ?? true),
+    vibrationEnabled: Boolean(raw.settings?.vibrationEnabled ?? true),
+    assistPromptEnabled: Boolean(raw.settings?.assistPromptEnabled ?? true),
+    courtMode: Boolean(raw.settings?.courtMode ?? false),
+    timingMode: (raw.settings?.timingMode as any) || 'fiba_stop',
+    shotClockEnabled: Boolean(raw.settings?.shotClockEnabled ?? true),
+    shotClockDurationSeconds: Number(raw.settings?.shotClockDurationSeconds || 24),
+    shotClockOffensiveReboundSeconds: Number(raw.settings?.shotClockOffensiveReboundSeconds || 14),
+    shotChartAutoOpen: (raw.settings?.shotChartAutoOpen as any) || 'all',
+    autoResetShotClockOnOreb: Boolean(raw.settings?.autoResetShotClockOnOreb ?? true),
+    keepScreenAwake: Boolean(raw.settings?.keepScreenAwake ?? true),
+  };
+
+  return {
+    id,
+    title,
+    date,
+    category,
+    teamId,
+    homeTeamName: homeName,
+    awayTeamName: awayName,
+    homeTeamLogo: raw.homeTeamLogo || '🏀',
+    awayTeamLogo: raw.awayTeamLogo || '🛡️',
+    homeTeamColor: raw.homeTeamColor || '#f97316',
+    awayTeamColor: raw.awayTeamColor || '#2563eb',
+    homeScore,
+    awayScore,
+    currentQuarter,
+    currentSecondsRemaining,
+    isClockRunning,
+    homeTimeouts: Number(raw.homeTimeouts || 0),
+    awayTimeouts: Number(raw.awayTimeouts || 0),
+    homeQuarterFouls: Number(raw.homeQuarterFouls || 0),
+    awayQuarterFouls: Number(raw.awayQuarterFouls || 0),
+    status,
+    settings,
+    players,
+    events,
+    quarterScores,
+    shotClockSeconds: Number(raw.shotClockSeconds || 24),
+    isShotClockRunning: Boolean(raw.isShotClockRunning),
+    updatedAt: raw.updatedAt || new Date().toISOString(),
+  };
+}
+
+/**
+ * Normalizes all matches and teams from any JSON import bundle or array.
+ */
+export function extractAndNormalizeGamesFromImport(parsed: any): {
+  matches: Game[];
+  teams: TeamProfile[];
+} {
+  let rawMatches: any[] = [];
+  let rawTeams: any[] = [];
+
+  if (Array.isArray(parsed)) {
+    rawMatches = parsed;
+  } else if (parsed && typeof parsed === 'object') {
+    if (Array.isArray(parsed.matches)) rawMatches = parsed.matches;
+    else if (Array.isArray(parsed.games)) rawMatches = parsed.games;
+    else if (parsed.id && (parsed.homeTeamName || parsed.title)) rawMatches = [parsed];
+
+    if (Array.isArray(parsed.teams)) rawTeams = parsed.teams;
+  }
+
+  const validMatches: Game[] = [];
+  rawMatches.forEach(rm => {
+    const normalized = validateAndNormalizeGame(rm);
+    if (normalized && !isDemoGame(normalized)) {
+      validMatches.push(normalized);
+    }
+  });
+
+  const validTeams: TeamProfile[] = [];
+  rawTeams.forEach((rt: any, idx: number) => {
+    if (rt && typeof rt === 'object') {
+      const id = String(rt.id || `team-${Date.now()}-${idx}`);
+      const name = String(rt.name || `Equipo ${idx + 1}`).trim();
+      const roster: Player[] = Array.isArray(rt.roster)
+        ? rt.roster.map((p: any, pIdx: number) => ({
+            id: String(p.id || `p-${id}-${pIdx}`),
+            name: String(p.name || `Jugador ${pIdx + 1}`).trim(),
+            number: Number.isFinite(Number(p.number)) ? Number(p.number) : pIdx + 4,
+            position: ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B',
+            starter: Boolean(p.starter ?? (pIdx < 5)),
+            onCourt: Boolean(p.onCourt ?? (pIdx < 5)),
+            foulsCount: Math.max(0, Number(p.foulsCount || 0)),
+            isFouledOut: Boolean(p.isFouledOut),
+          }))
+        : [];
+
+      validTeams.push({
+        id,
+        name,
+        category: rt.category ? String(rt.category).trim() : undefined,
+        season: rt.season ? String(rt.season).trim() : '2025/2026',
+        primaryColor: rt.primaryColor || '#f97316',
+        logo: rt.logo || '🏀',
+        roster,
+        updatedAt: rt.updatedAt || new Date().toISOString(),
+      });
+    }
+  });
+
+  return { matches: validMatches, teams: validTeams };
+}
 
 /**
  * Purges the 3 initial seed matches from storage, Server DB, and Cloud

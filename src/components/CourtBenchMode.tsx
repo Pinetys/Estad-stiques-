@@ -1366,6 +1366,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 if (isActionsLocked) return;
                 if (onOpenRosterModal) onOpenRosterModal();
               }}
+              onUndoLastAction={onUndoLastAction}
+              onDeleteEvent={onDeleteEvent}
+              recentEvent={recentEvent}
+              isActionsLocked={isActionsLocked}
             />
           </div>
 

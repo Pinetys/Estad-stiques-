@@ -40,6 +40,7 @@ import { detectAndInitUserRole, isMasterAdmin, UserRole } from './utils/accessCo
 import {
   saveGameToLibrary,
   saveOrUpdateGameInLibrary,
+  deleteGameFromLibrary,
   syncMatchesFromCloud,
   mergeCloudMatches,
   getSavedGamesFromStorage,
@@ -491,6 +492,16 @@ export default function App() {
     }
   };
 
+  const handleDeleteMatchEverywhere = (deletedId: string) => {
+    deleteGameFromLibrary(deletedId);
+    syncEngine.deleteMatch(deletedId).catch(() => {});
+    setLibraryGames(getSavedGamesFromStorage());
+    if (deletedId === game.id) {
+      const freshGame = createInitialGame();
+      setGame(freshGame);
+    }
+  };
+
   // Modals
   const [showSubModal, setShowSubModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -744,6 +755,7 @@ export default function App() {
         players: updatedPlayers,
         events: [newEvent, ...prev.events],
         quarterScores: updatedQuarterScores,
+        updatedAt: new Date().toISOString(),
       };
     });
   };
@@ -1022,6 +1034,7 @@ export default function App() {
         awayQuarterFouls: newAwayQuarterFouls,
         events: [newEvent, ...prev.events],
         quarterScores: updatedQuarterScores,
+        updatedAt: new Date().toISOString(),
       };
     });
   };
@@ -1239,6 +1252,7 @@ export default function App() {
         players: updatedPlayers,
         events: remainingEvents,
         quarterScores: updatedQuarterScores,
+        updatedAt: new Date().toISOString(),
       };
     });
   };
@@ -1306,6 +1320,7 @@ export default function App() {
         players: updatedPlayers,
         events: remainingEvents,
         quarterScores: updatedQuarterScores,
+        updatedAt: new Date().toISOString(),
       };
     });
   };
@@ -2139,6 +2154,7 @@ export default function App() {
                 onSelectTeam={id => handleSelectTeam(id)}
                 onSaveTeam={handleSaveTeam}
                 onDeleteTeam={handleDeleteTeam}
+                onDeleteGame={handleDeleteMatchEverywhere}
                 onCreateMatchForTeam={team => {
                   handleSelectTeam(team.id, team);
                   setShowNewGameModal(true);
@@ -2443,19 +2459,18 @@ export default function App() {
           recordedTeams={teams}
           activeTeamId={activeTeamId}
           onSelectTeam={handleSelectTeam}
-          onClose={() => setShowLibraryModal(false)}
+          onClose={() => {
+            setShowLibraryModal(false);
+            setLibraryGames(getSavedGamesFromStorage());
+            setTeams(getRegisteredTeams());
+          }}
           onOpenRecoveryModal={() => setShowRecoveryModal(true)}
           onLoadGame={loadedGame => {
             setGame(loadedGame);
             setShowLibraryModal(false);
             setActiveTab('live');
           }}
-          onDeleteGame={deletedId => {
-            if (deletedId === game.id) {
-              const freshGame = createInitialGame();
-              setGame(freshGame);
-            }
-          }}
+          onDeleteGame={handleDeleteMatchEverywhere}
         />
       )}
 
@@ -2465,9 +2480,15 @@ export default function App() {
           teams={teams}
           activeTeamId={activeTeamId}
           currentGame={game}
+          libraryGames={libraryGames}
           onSelectTeam={handleSelectTeam}
           onSaveTeam={handleSaveTeam}
           onDeleteTeam={handleDeleteTeam}
+          onDeleteGame={handleDeleteMatchEverywhere}
+          onLoadGame={loadedGame => {
+            setGame(loadedGame);
+            setActiveTab('live');
+          }}
           onClose={() => setShowTeamModal(false)}
         />
       )}

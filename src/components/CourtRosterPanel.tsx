@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Game, Player } from '../types';
+import { Game, Player, PlayEvent } from '../types';
 import { calculatePlayerStats } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { ArrowRightLeft, Users, AlertCircle, Check, X, UserCheck } from 'lucide-react';
+import { ArrowRightLeft, Users, AlertCircle, Check, X, UserCheck, Trash2, Undo2, History } from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 
 interface CourtRosterPanelProps {
@@ -16,6 +16,10 @@ interface CourtRosterPanelProps {
   onOpenSubstitutionModal: () => void;
   onOpenStartingFiveModal: () => void;
   onOpenRosterModal?: () => void;
+  onUndoLastAction?: () => void;
+  onDeleteEvent?: (eventId: string) => void;
+  recentEvent?: PlayEvent | null;
+  isActionsLocked?: boolean;
 }
 
 export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
@@ -29,6 +33,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   onOpenSubstitutionModal,
   onOpenStartingFiveModal,
   onOpenRosterModal,
+  onUndoLastAction,
+  onDeleteEvent,
+  recentEvent,
+  isActionsLocked = false,
 }) => {
   // Direct In-Game Substitution State (Ultra-Fast 2-Tap Swap)
   const [pendingOutId, setPendingOutId] = useState<string | null>(null);
@@ -399,7 +407,110 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
         </div>
       </div>
 
-      {/* 4. FOOTER NOTE */}
+      {/* 4. BOTÓN DESHACER DEBAJO DE LOS JUGADORES */}
+      {onUndoLastAction && (
+        <div className="pt-1.5 pb-1 border-t border-[#203a70] shrink-0 space-y-1">
+          <button
+            onClick={() => {
+              if (isActionsLocked) return;
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('undo', game.settings.vibrationEnabled);
+              onUndoLastAction();
+            }}
+            disabled={isActionsLocked || !recentEvent}
+            className="w-full py-2 px-3 bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 active:bg-rose-800 text-white font-black text-xs uppercase rounded-xl flex items-center justify-between shadow-lg disabled:opacity-30 disabled:pointer-events-none transition active:scale-[0.99] border border-rose-500/50"
+            title={isActionsLocked ? 'Partido bloqueado' : 'Deshacer la última acción registrada'}
+          >
+            <div className="flex items-center gap-2">
+              <Undo2 className="w-4 h-4 text-white" />
+              <span className="font-extrabold tracking-wide">DESHACER ÚLTIMA</span>
+            </div>
+            {recentEvent ? (
+              <span className="text-[10px] font-mono text-amber-200 truncate max-w-[150px] font-bold">
+                {recentEvent.isOpponentAction
+                  ? recentEvent.actionLabel
+                  : `#${recentEvent.playerNumber} ${recentEvent.playerName?.split(' ')[0]} - ${recentEvent.actionLabel}`}
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono text-rose-200/70">Sin acciones</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* 5. HISTORIAL DE ACCIONES DEBAJO DE LOS JUGADORES */}
+      <div className="border-t border-[#203a70] pt-1 flex-1 min-h-[140px] max-h-[38vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between pb-1 text-[10px] font-mono font-bold text-amber-300 uppercase shrink-0">
+          <div className="flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5 text-amber-400" />
+            <span>Historial de Jugadas ({game.events.length})</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-normal">Toca 🗑️ para borrar</span>
+        </div>
+
+        {/* Scrollable actions list */}
+        <div className="overflow-y-auto space-y-1 grow pr-0.5">
+          {game.events.length === 0 ? (
+            <div className="text-center py-4 text-slate-500 text-xs italic font-mono">
+              Esperando primera jugada...
+            </div>
+          ) : (
+            game.events.map(event => {
+              return (
+                <div
+                  key={event.id}
+                  className="p-1.5 bg-[#0E224A] hover:bg-[#16356E] rounded-lg border border-[#203a70] flex items-center justify-between gap-1.5 text-xs font-mono transition"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[10px] text-slate-400 shrink-0 font-bold">
+                      Q{event.quarter} {event.gameTimeFormatted || '10:00'}
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span className="font-bold text-slate-200 truncate text-[11px]">
+                      {event.isOpponentAction
+                        ? `Rival ${event.opponentPlayerNumber ? '#' + event.opponentPlayerNumber : ''}`
+                        : `#${event.playerNumber} ${event.playerName?.split(' ')[0]}`}
+                    </span>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black uppercase shrink-0 ${
+                      event.pointsAdded > 0
+                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/40'
+                        : event.actionType?.includes('FOUL') || event.actionType === 'PF' || event.actionType === 'OPP_FOUL'
+                        ? 'bg-rose-950/80 text-rose-300 border border-rose-600/40'
+                        : 'bg-blue-950/80 text-blue-300 border border-blue-600/40'
+                    }`}>
+                      {event.actionLabel}
+                    </span>
+                    {event.scoreSnapshot && (
+                      <span className="text-[10px] text-orange-400 font-bold shrink-0">
+                        ({event.scoreSnapshot.home}-{event.scoreSnapshot.away})
+                      </span>
+                    )}
+                  </div>
+
+                  {onDeleteEvent && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isActionsLocked) return;
+                        playSound('click', game.settings.soundEnabled);
+                        triggerHaptic('medium', game.settings.vibrationEnabled);
+                        onDeleteEvent(event.id);
+                      }}
+                      disabled={isActionsLocked}
+                      className="p-1 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 rounded transition shrink-0 active:scale-95"
+                      title="Borrar esta acción"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* 6. FOOTER NOTE */}
       <div className="pt-1 border-t border-neutral-800/60 text-[9px] font-mono text-neutral-500 flex items-center justify-between shrink-0">
         <span>Sistema de cambio rápido: 2 toques</span>
         <button

@@ -23,30 +23,38 @@ interface TeamSelectorModalProps {
   teams: TeamProfile[];
   activeTeamId: string;
   currentGame?: Game;
+  libraryGames?: Game[];
   onSelectTeam: (teamId: string) => void;
   onSaveTeam: (team: TeamProfile) => void;
   onDeleteTeam: (teamId: string) => void;
   onClose: () => void;
+  onDeleteGame?: (deletedGameId: string) => void;
+  onLoadGame?: (game: Game) => void;
 }
 
 export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
   teams,
   activeTeamId,
   currentGame,
+  libraryGames,
   onSelectTeam,
   onSaveTeam,
   onDeleteTeam,
   onClose,
+  onDeleteGame,
+  onLoadGame,
 }) => {
   const [editingTeam, setEditingTeam] = useState<TeamProfile | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const [formActiveTab, setFormActiveTab] = useState<'roster' | 'club'>('roster');
   const [filterPendingOnly, setFilterPendingOnly] = useState(false);
+  const [selectedTeamForMatches, setSelectedTeamForMatches] = useState<TeamProfile | null>(null);
+  const [matchesVersion, setMatchesVersion] = useState(0);
 
   // Helper to determine pending or live (unfinished) matches for each team
   const getTeamPendingMatches = (teamId: string) => {
-    const matches = getTeamMatches(teamId);
+    const matches = getTeamMatches(teamId, libraryGames);
     const pending = matches.filter(m => m.status !== 'finished');
     const team = teams.find(t => t.id === teamId);
     if (
@@ -389,6 +397,21 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
 
                         {/* Right: Actions */}
                         <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              setSelectedTeamForMatches(team);
+                            }}
+                            className="px-2.5 py-1.5 bg-[#102550] hover:bg-[#16356e] text-cyan-300 hover:text-cyan-200 rounded-lg border border-cyan-500/40 transition text-xs font-mono font-bold flex items-center gap-1.5 shadow-sm"
+                            title="Ver y eliminar partidos de este equipo"
+                          >
+                            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="hidden xs:inline">Partidos</span>
+                            <span className="text-[10px] bg-cyan-950 px-1.5 py-0.2 rounded font-mono text-cyan-300">
+                              {matches.length}
+                            </span>
+                          </button>
+
                           <button
                             onClick={e => handleOpenEdit(team, e, 'roster')}
                             className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-orange-400 hover:text-orange-300 rounded-lg border border-gray-700 transition text-xs font-mono font-bold flex items-center gap-1.5 shadow-sm"
@@ -754,6 +777,152 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
           }}
           onClose={() => setLogoPickerOpen(false)}
         />
+      )}
+
+      {/* Selected Team Matches Sub-Modal */}
+      {selectedTeamForMatches && (
+        <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in">
+          <div className="bg-[#0B1C3D] border border-cyan-500/50 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 bg-gradient-to-r from-[#102550] to-[#0B1C3D] border-b border-[#203a70] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <TeamLogoDisplay logo={selectedTeamForMatches.logo} teamName={selectedTeamForMatches.name} size="sm" />
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wide flex items-center gap-2">
+                    <span>Partidos de {selectedTeamForMatches.name}</span>
+                    {selectedTeamForMatches.category && (
+                      <span className="text-xs font-mono bg-orange-600/30 text-orange-300 px-2 py-0.5 rounded border border-orange-500/40">
+                        {selectedTeamForMatches.category}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Historial de partidos y gestión de eliminación sincronizada con la nube
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedTeamForMatches(null)}
+                className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full font-mono transition"
+                title="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Sub-header stats */}
+            {(() => {
+              const teamMatches = getTeamMatches(selectedTeamForMatches.id, libraryGames);
+              const wins = teamMatches.filter(m => m.homeScore > m.awayScore).length;
+              const losses = teamMatches.filter(m => m.homeScore < m.awayScore).length;
+
+              return (
+                <>
+                  <div className="px-4 py-2.5 bg-[#0E224A] border-b border-[#203a70] flex items-center justify-between text-xs font-mono text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span>Total:</span>
+                      <strong className="text-white font-bold">{teamMatches.length} partidos</strong>
+                      <span>•</span>
+                      <span className="text-emerald-400 font-bold">{wins}V</span>
+                      <span>-</span>
+                      <span className="text-rose-400 font-bold">{losses}D</span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 overflow-y-auto space-y-2.5 grow">
+                    {teamMatches.length === 0 ? (
+                      <div className="text-center py-10 text-slate-400 space-y-2">
+                        <Trophy className="w-10 h-10 mx-auto text-slate-600" />
+                        <p className="text-sm font-bold text-slate-300">No hay partidos registrados para este equipo</p>
+                        <p className="text-xs text-slate-500">Los partidos que juegues con este equipo aparecerán aquí automáticamente.</p>
+                      </div>
+                    ) : (
+                      teamMatches.map(match => {
+                        const isHome = match.homeTeamName.toLowerCase().trim() === selectedTeamForMatches.name.toLowerCase().trim();
+                        const myScore = isHome ? match.homeScore : match.awayScore;
+                        const oppScore = isHome ? match.awayScore : match.homeScore;
+                        const oppName = isHome ? match.awayTeamName : match.homeTeamName;
+                        const isWin = myScore > oppScore;
+                        const isTie = myScore === oppScore;
+
+                        return (
+                          <div
+                            key={match.id}
+                            className="p-3 rounded-xl bg-[#0E224A] border border-[#203a70] hover:border-cyan-500/50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                                    isWin
+                                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/40'
+                                      : isTie
+                                      ? 'bg-[#071328] text-slate-300 border border-[#203a70]'
+                                      : 'bg-rose-950/80 text-rose-300 border border-rose-600/40'
+                                  }`}
+                                >
+                                  {isWin ? 'Victoria' : isTie ? 'Empate' : 'Derrota'}
+                                </span>
+                                <span className="text-xs font-bold text-white">vs {oppName}</span>
+                                <span className="text-xs font-mono font-bold text-orange-400 bg-neutral-900 px-2 py-0.5 rounded border border-gray-800">
+                                  {match.homeScore} - {match.awayScore}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-3 text-[11px] font-mono text-gray-400 flex-wrap">
+                                <span>Fecha: {match.date}</span>
+                                <span>{match.events?.length || 0} acciones</span>
+                                {match.category && <span>Cat: {match.category}</span>}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {onLoadGame && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTeamForMatches(null);
+                                    onSelectTeam(selectedTeamForMatches.id);
+                                    onLoadGame(match);
+                                    onClose();
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 border border-orange-500/40 text-xs font-bold font-mono transition flex items-center gap-1 active:scale-95"
+                                  title="Cargar y abrir este partido"
+                                >
+                                  <span>Cargar</span>
+                                </button>
+                              )}
+
+                              {onDeleteGame && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm(`¿Estás seguro de eliminar el partido "${match.homeTeamName} vs ${match.awayTeamName}"? Esta acción se sincronizará con la nube y no se puede deshacer.`)) {
+                                      onDeleteGame(match.id);
+                                      setMatchesVersion(v => v + 1);
+                                      playSound('click', true);
+                                      triggerHaptic('medium', true);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/80 transition active:scale-95 flex items-center gap-1 text-xs font-mono font-bold"
+                                  title="Eliminar partido"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                                  <span className="hidden sm:inline">Eliminar</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
       )}
     </div>
   );

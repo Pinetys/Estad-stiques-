@@ -1,6 +1,6 @@
 import { Player, TeamProfile, Game } from '../types';
 import { DEFAULT_ROSTER, OPPONENT_TEAMS } from '../data/defaultData';
-import { getSavedGamesFromStorage, saveGamesToStorage } from './libraryUtils';
+import { getSavedGamesFromStorage, saveGamesToStorage, isDemoGame } from './libraryUtils';
 import { getMatchesForTeam } from './teamIsolation';
 import {
   syncTeamToCloud,
@@ -289,14 +289,28 @@ export function deleteTeamProfile(teamId: string): TeamProfile[] {
 }
 
 /**
- * Filter all saved matches for a specific team (strictly respecting teamId, category and roster)
+ * Filter all saved matches for a specific team reliably and in sync with the general library.
  */
-export function getTeamMatches(teamIdOrName: string): Game[] {
-  const allMatches = getSavedGamesFromStorage();
+export function getTeamMatches(teamIdOrName: string, customMatches?: Game[]): Game[] {
+  const allMatches = customMatches || getSavedGamesFromStorage();
   const teams = getRegisteredTeams();
   const team = teams.find(t => t.id === teamIdOrName || t.name.toLowerCase().trim() === teamIdOrName.toLowerCase().trim());
   if (!team) return [];
-  return getMatchesForTeam(team, allMatches, undefined, teams);
+
+  const tId = team.id;
+  const tName = team.name.toLowerCase().trim();
+
+  return allMatches.filter(g => {
+    if (isDemoGame(g)) return false;
+    if (g.teamId === tId) return true;
+    if (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) return true;
+    if (!g.teamId && g.title && g.title.toLowerCase().includes(tName)) return true;
+    return false;
+  }).sort((a, b) => {
+    const timeA = a.events?.[0]?.timestamp || (a.date ? new Date(a.date).getTime() : 0);
+    const timeB = b.events?.[0]?.timestamp || (b.date ? new Date(b.date).getTime() : 0);
+    return timeB - timeA;
+  });
 }
 
 export interface RecordedOpponent {

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { TeamProfile, Game } from '../types';
-import { playSound } from '../utils/soundHaptics';
+import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { getTeamMatches } from '../utils/teamStorage';
 import { formatGameTime } from '../utils/statsCalculator';
 import { TeamLogoDisplay } from './TeamLogoPicker';
@@ -42,6 +42,7 @@ interface TeamsHubViewProps {
   onOpenCloudBackup: () => void;
   onOpenTeamEditor: (team: TeamProfile | null) => void;
   onOpenTutorial?: () => void;
+  onDeleteGame?: (deletedGameId: string) => void;
   cloudSyncStatus?: { status: 'connected' | 'syncing' | 'offline' | 'error'; lastSyncTime?: Date; errorMessage?: string };
   onForceCloudSync?: () => void;
   soundEnabled?: boolean;
@@ -62,6 +63,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   onOpenTeamStatsReport,
   onOpenTeamEditor,
   onOpenTutorial,
+  onDeleteGame,
   cloudSyncStatus,
   onForceCloudSync,
   soundEnabled = true,
@@ -743,6 +745,24 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                                 <Play className="w-3 h-3 fill-orange-300" />
                                 <span>Ver / Abrir</span>
                               </button>
+
+                              {onDeleteGame && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`¿Estás seguro de eliminar el partido "${match.homeTeamName} vs ${match.awayTeamName}"? Esta acción no se puede deshacer.`)) {
+                                      onDeleteGame(match.id);
+                                      playSound('click', soundEnabled);
+                                      triggerHaptic('medium', true);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/80 transition active:scale-95"
+                                  title="Eliminar este partido permanentemente de la biblioteca y la nube"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );

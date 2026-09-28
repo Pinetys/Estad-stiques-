@@ -5,6 +5,7 @@ import {
   saveAllGamesToStorage,
   saveGameToLibrary,
   purgeCuratedInitialGames,
+  extractAndNormalizeGamesFromImport,
 } from '../utils/libraryUtils';
 import { getRegisteredTeams, saveRegisteredTeams, ensureTeamsForMatches } from '../utils/teamStorage';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -237,21 +238,10 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
   // Restore data from payload (supports array, object with matches, or full backup)
   const handleRestoreFromParsed = async (parsed: any) => {
     try {
-      let incomingMatches: Game[] = [];
-      let incomingTeams: TeamProfile[] = [];
-
-      if (Array.isArray(parsed)) {
-        incomingMatches = parsed;
-      } else if (parsed && typeof parsed === 'object') {
-        if (Array.isArray(parsed.matches)) incomingMatches = parsed.matches;
-        else if (Array.isArray(parsed.games)) incomingMatches = parsed.games;
-        else if (parsed.id && (parsed.homeTeamName || parsed.title)) incomingMatches = [parsed];
-
-        if (Array.isArray(parsed.teams)) incomingTeams = parsed.teams;
-      }
+      const { matches: incomingMatches, teams: incomingTeams } = extractAndNormalizeGamesFromImport(parsed);
 
       if (incomingMatches.length === 0 && incomingTeams.length === 0) {
-        throw new Error('El archivo no contiene partidos ni equipos válidos.');
+        throw new Error('El archivo no contiene partidos ni equipos reconocibles.');
       }
 
       // If teams are provided in backup, save them
@@ -275,7 +265,7 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
       triggerHaptic('heavy', true);
 
       setStatusMessage({
-        text: `¡${updatedMatches.length} partidos y ${allUpdatedTeams.length} equipos importados y grabados en la nube con éxito!`,
+        text: `¡${updatedMatches.length} partidos y ${allUpdatedTeams.length} equipos importados, validados y grabados en la nube con éxito!`,
         type: 'success',
       });
 

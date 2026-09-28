@@ -199,6 +199,7 @@ export interface TeamProfile {
   logo?: string;
   roster: Player[];
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Game {
