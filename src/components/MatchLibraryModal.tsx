@@ -21,7 +21,7 @@ import {
 } from '../utils/libraryUtils';
 import { ensureTeamsForMatches, saveRegisteredTeams, getRegisteredTeams } from '../utils/teamStorage';
 import { syncEngine } from '../lib/syncEngine';
-import { sanitizeAndIsolateLibraryGames } from '../utils/teamIsolation';
+import { sanitizeAndIsolateLibraryGames, isGameForTeam } from '../utils/teamIsolation';
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
@@ -87,6 +87,24 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const [trashedGames, setTrashedGames] = useState<Game[]>(() => getTrashedGamesFromStorage());
   const [trashToast, setTrashToast] = useState<string | null>(null);
   const [seasonStats, setSeasonStats] = useState<SeasonAggregatedStats | null>(null);
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>(() => activeTeamId || 'ALL');
+
+  // Keep selectedTeamFilter in sync when activeTeamId changes
+  useEffect(() => {
+    if (activeTeamId && recordedTeams.some(t => t.id === activeTeamId)) {
+      setSelectedTeamFilter(activeTeamId);
+    }
+  }, [activeTeamId, recordedTeams]);
+
+  // Filter library matches so only the selected team's matches appear, or ALL if selected
+  const filteredLibrary = React.useMemo(() => {
+    if (selectedTeamFilter === 'ALL' || !recordedTeams || recordedTeams.length === 0) {
+      return library;
+    }
+    const targetTeam = recordedTeams.find(t => t.id === selectedTeamFilter);
+    if (!targetTeam) return library;
+    return library.filter(g => isGameForTeam(g, targetTeam, recordedTeams));
+  }, [library, selectedTeamFilter, recordedTeams]);
 
   // Deletion modal states (replaces window.confirm for reliable mobile & iframe execution)
   const [gameToDelete, setGameToDelete] = useState<Game | null>(null);
@@ -662,6 +680,67 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                 </div>
               </div>
 
+              {/* Team Filter selector when multiple teams exist */}
+              {recordedTeams && recordedTeams.length > 0 && library.length > 0 && (
+                <div className="bg-[#0E224A]/90 border border-[#203a70] rounded-xl p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-mono text-slate-300">
+                    <span className="font-bold uppercase tracking-wider text-[#F5C542] flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-[#F5C542]" />
+                      Filtrar por Equipo:
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Mostrando {filteredLibrary.length} de {library.length} partidos
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTeamFilter('ALL');
+                        playSound('click', currentGame.settings.soundEnabled);
+                      }}
+                      className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap border ${
+                        selectedTeamFilter === 'ALL'
+                          ? 'bg-[#D4AF37] text-[#0B1C3D] border-[#F5C542] font-black shadow-md'
+                          : 'bg-[#071328] text-slate-300 border-[#203a70] hover:bg-[#16356E]'
+                      }`}
+                    >
+                      Todos los equipos ({library.length})
+                    </button>
+
+                    {recordedTeams.map(t => {
+                      const isSelected = selectedTeamFilter === t.id;
+                      const count = library.filter(g => isGameForTeam(g, t, recordedTeams)).length;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTeamFilter(t.id);
+                            playSound('click', currentGame.settings.soundEnabled);
+                          }}
+                          className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 border ${
+                            isSelected
+                              ? 'bg-[#D4AF37] text-[#0B1C3D] border-[#F5C542] font-black shadow-md'
+                              : 'bg-[#071328] text-slate-300 border-[#203a70] hover:bg-[#16356E]'
+                          }`}
+                        >
+                          <span className="text-xs">{t.logo || '🏀'}</span>
+                          <span>{t.name}</span>
+                          {t.category && <span className="opacity-75 text-[10px]">({t.category})</span>}
+                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                            isSelected ? 'bg-[#0B1C3D] text-[#F5C542]' : 'bg-[#0E224A] text-slate-300'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Empty state when no games */}
               {library.length === 0 && (
                 <div className="bg-[#0E224A] border border-[#203a70] rounded-xl p-8 text-center space-y-4">
@@ -699,9 +778,25 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                 </div>
               )}
 
+              {/* Empty state when filtered team has no games */}
+              {library.length > 0 && filteredLibrary.length === 0 && (
+                <div className="bg-[#0E224A] border border-[#203a70] rounded-xl p-8 text-center space-y-3">
+                  <p className="text-slate-300 text-xs">
+                    No hay partidos registrados para el equipo seleccionado.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTeamFilter('ALL')}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#071328] hover:bg-[#16356E] text-white text-xs font-mono border border-[#203a70]"
+                  >
+                    Mostrar todos los partidos ({library.length})
+                  </button>
+                </div>
+              )}
+
               {/* Match Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {library.map(game => {
+                {filteredLibrary.map(game => {
                   const isCurrent = game.id === currentGame.id;
                   const isWin = game.homeScore > game.awayScore;
                   const teamBox = calculateTeamStats(game.players, game.events, game.homeTeamName);

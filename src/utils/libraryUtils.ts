@@ -10,6 +10,77 @@ export const DEMO_GAME_IDS = new Set(['game-sample-01', 'game-sample-02', 'sampl
 export const CURATED_INITIAL_GAME_IDS = new Set(['game-brafa-gaudi', 'game-brafa-bam', 'game-brafa-ubsa']);
 
 /**
+ * Helper to safely extract total minutes played in seconds from varied formats (strings, decimals, null, NaN).
+ */
+export function parsePlayerMinutesPlayedSeconds(rawMinutes: any, rawQuarterSecs?: any): number {
+  if (rawMinutes !== undefined && rawMinutes !== null) {
+    if (typeof rawMinutes === 'number') {
+      if (Number.isFinite(rawMinutes) && rawMinutes >= 0) {
+        return Math.round(rawMinutes);
+      }
+    } else if (typeof rawMinutes === 'string') {
+      const trimmed = rawMinutes.trim();
+      if (trimmed.includes(':')) {
+        const parts = trimmed.split(':');
+        const m = Number(parts[0]) || 0;
+        const s = Number(parts[1]) || 0;
+        if (Number.isFinite(m) && Number.isFinite(s) && m >= 0 && s >= 0) {
+          return Math.round(m * 60 + s);
+        }
+      }
+      const num = Number(trimmed);
+      if (Number.isFinite(num) && num >= 0) {
+        return Math.round(num);
+      }
+    }
+  }
+
+  // Fallback: If minutesPlayedSeconds is 0 or missing, check quarterSeconds sum!
+  if (rawQuarterSecs && typeof rawQuarterSecs === 'object') {
+    let sum = 0;
+    Object.values(rawQuarterSecs).forEach((val: any) => {
+      const n = Number(val);
+      if (Number.isFinite(n) && n > 0) sum += n;
+    });
+    if (sum > 0) return Math.round(sum);
+  }
+
+  return 0;
+}
+
+/**
+ * Helper to safely normalize quarterSeconds into a Record<number, number> map.
+ */
+export function parsePlayerQuarterSeconds(rawQuarterSecs: any, totalMinutesSeconds?: number): Record<number, number> {
+  const result: Record<number, number> = {};
+  if (rawQuarterSecs && typeof rawQuarterSecs === 'object') {
+    if (Array.isArray(rawQuarterSecs)) {
+      rawQuarterSecs.forEach((val, idx) => {
+        const n = Number(val);
+        if (Number.isFinite(n) && n >= 0) {
+          result[idx + 1] = Math.round(n);
+        }
+      });
+    } else {
+      Object.entries(rawQuarterSecs).forEach(([k, val]) => {
+        const qNum = parseInt(k, 10);
+        const secVal = Number(val);
+        if (Number.isFinite(qNum) && qNum >= 1 && Number.isFinite(secVal) && secVal >= 0) {
+          result[qNum] = Math.round(secVal);
+        }
+      });
+    }
+  }
+
+  // If quarterSeconds was empty but player has total minutes, initialize Q1
+  if (Object.keys(result).length === 0 && totalMinutesSeconds && totalMinutesSeconds > 0) {
+    result[1] = Math.round(totalMinutesSeconds);
+  }
+
+  return result;
+}
+
+/**
  * Robust JSON Validator and Normalizer for Game objects.
  * Handles legacy backups, different field names, Spanish/English aliases, and missing properties safely.
  */
@@ -203,8 +274,12 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     const pId = String(p.id || p.playerId || `p-${id}-${pNumber}`);
     const name = String(p.name || p.playerName || p.nombre || `Jugador #${pNumber}`).trim();
     const position = ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B';
-    const foulsCount = Math.max(0, Number(p.foulsCount ?? p.fouls ?? p.faltas ?? 0));
-    const foulOutLimit = Number(raw.settings?.foulOutLimit || 5);
+    const foulsCount = Math.max(0, Number.isFinite(Number(p.foulsCount ?? p.fouls ?? p.faltas)) ? Number(p.foulsCount ?? p.fouls ?? p.faltas) : 0);
+    const foulOutLimit = Number.isFinite(Number(raw.settings?.foulOutLimit)) ? Number(raw.settings.foulOutLimit) : 5;
+    const rawMinutes = p.minutesPlayedSeconds ?? p.minutos ?? p.minutes ?? p.playingTime ?? p.secondsPlayed;
+    const minutesPlayedSeconds = parsePlayerMinutesPlayedSeconds(rawMinutes, p.quarterSeconds);
+    const quarterSeconds = parsePlayerQuarterSeconds(p.quarterSeconds, minutesPlayedSeconds);
+
     return {
       id: pId,
       name,
@@ -214,8 +289,8 @@ export function validateAndNormalizeGame(raw: any): Game | null {
       onCourt: Boolean(p.onCourt ?? p.isOnCourt ?? p.enPista ?? (idx < 5)),
       foulsCount,
       isFouledOut: Boolean(p.isFouledOut ?? (foulsCount >= foulOutLimit)),
-      minutesPlayedSeconds: Number(p.minutesPlayedSeconds ?? p.minutos ?? 0),
-      quarterSeconds: p.quarterSeconds && typeof p.quarterSeconds === 'object' ? p.quarterSeconds : {},
+      minutesPlayedSeconds,
+      quarterSeconds,
     };
   });
 
@@ -477,16 +552,23 @@ export function extractAndNormalizeGamesFromImport(parsed: any): {
 
       const name = String(rt.name || rt.nombre || `Equipo ${idx + 1}`).trim();
       const rawRoster = Array.isArray(rt.roster) ? rt.roster : Array.isArray(rt.plantilla) ? rt.plantilla : Array.isArray(rt.jugadores) ? rt.jugadores : [];
-      const roster: Player[] = rawRoster.map((p: any, pIdx: number) => ({
-        id: String(p.id || `p-${id}-${p.number ?? p.dorsal ?? pIdx + 4}`),
-        name: String(p.name || p.nombre || `Jugador ${pIdx + 1}`).trim(),
-        number: Number.isFinite(Number(p.number ?? p.dorsal)) ? Number(p.number ?? p.dorsal) : pIdx + 4,
-        position: ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B',
-        starter: Boolean(p.starter ?? p.titular ?? (pIdx < 5)),
-        onCourt: Boolean(p.onCourt ?? p.enPista ?? (pIdx < 5)),
-        foulsCount: Math.max(0, Number(p.foulsCount || p.faltas || 0)),
-        isFouledOut: Boolean(p.isFouledOut),
-      }));
+      const roster: Player[] = rawRoster.map((p: any, pIdx: number) => {
+        const rawMinutes = p.minutesPlayedSeconds ?? p.minutos ?? p.minutes;
+        const minutesPlayedSeconds = parsePlayerMinutesPlayedSeconds(rawMinutes, p.quarterSeconds);
+        const quarterSeconds = parsePlayerQuarterSeconds(p.quarterSeconds, minutesPlayedSeconds);
+        return {
+          id: String(p.id || `p-${id}-${p.number ?? p.dorsal ?? pIdx + 4}`),
+          name: String(p.name || p.nombre || `Jugador ${pIdx + 1}`).trim(),
+          number: Number.isFinite(Number(p.number ?? p.dorsal)) ? Number(p.number ?? p.dorsal) : pIdx + 4,
+          position: ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B',
+          starter: Boolean(p.starter ?? p.titular ?? (pIdx < 5)),
+          onCourt: Boolean(p.onCourt ?? p.enPista ?? (pIdx < 5)),
+          foulsCount: Math.max(0, Number(p.foulsCount || p.faltas || 0)),
+          isFouledOut: Boolean(p.isFouledOut),
+          minutesPlayedSeconds,
+          quarterSeconds,
+        };
+      });
 
       validTeams.push({
         id,

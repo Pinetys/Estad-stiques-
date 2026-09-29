@@ -32,6 +32,8 @@ import {
   Sparkles,
   Info,
   Check,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 
 interface TeamStatsReportModalProps {
@@ -42,6 +44,25 @@ interface TeamStatsReportModalProps {
   allGames: Game[];
   soundEnabled?: boolean;
 }
+
+const getDiscardedGameIdsForTeam = (teamId: string): Set<string> => {
+  if (!teamId) return new Set();
+  try {
+    const raw = localStorage.getItem(`basketstats_discarded_games_${teamId}`);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+};
+
+const saveDiscardedGameIdsForTeam = (teamId: string, ids: Set<string>): void => {
+  if (!teamId) return;
+  try {
+    localStorage.setItem(`basketstats_discarded_games_${teamId}`, JSON.stringify(Array.from(ids)));
+  } catch {}
+};
 
 export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
   isOpen,
@@ -55,16 +76,46 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
     return initialTeamId || (teams.length > 0 ? teams[0].id : '');
   });
 
-  // Sync selectedTeamId when initialTeamId changes
+  const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(() => {
+    const initId = initialTeamId || (teams.length > 0 ? teams[0].id : '');
+    return getDiscardedGameIdsForTeam(initId);
+  });
+
+  // Sync selectedTeamId when initialTeamId changes, preserving saved filter exclusions
   useEffect(() => {
-    if (initialTeamId && teams.some(t => t.id === initialTeamId)) {
+    if (initialTeamId && teams.some(t => t.id === initialTeamId) && initialTeamId !== selectedTeamId) {
       setSelectedTeamId(initialTeamId);
-      setDiscardedGameIds(new Set());
+      setDiscardedGameIds(getDiscardedGameIdsForTeam(initialTeamId));
     }
-  }, [initialTeamId, teams]);
+  }, [initialTeamId]);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'shots' | 'players' | 'filter'>('players');
-  const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(new Set());
+  const [previousStatsTab, setPreviousStatsTab] = useState<'overview' | 'shots' | 'players'>('players');
+
+  const handleSwitchTab = (tab: 'overview' | 'shots' | 'players' | 'filter') => {
+    playSound('click', soundEnabled);
+    if (tab !== 'filter') {
+      setPreviousStatsTab(tab);
+    }
+    setActiveTab(tab);
+  };
+
+  const handleBackToStats = () => {
+    playSound('click', soundEnabled);
+    setActiveTab(previousStatsTab);
+  };
+
+  const handleHeaderClose = () => {
+    playSound('click', soundEnabled);
+    if (activeTab === 'filter') {
+      // In filter mode, X returns to the statistics view of selected matches
+      setActiveTab(previousStatsTab);
+    } else {
+      // In stats views, X closes the modal and returns to main screen
+      onClose();
+    }
+  };
+
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [shareSuccessMsg, setShareSuccessMsg] = useState<string | null>(null);
 
@@ -204,7 +255,7 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
     return list;
   }, [playerRows, playerSortKey, playerSortAsc]);
 
-  // Match Discard Toggles
+  // Match Discard Toggles with persistence
   const handleToggleGameDiscard = (gameId: string) => {
     playSound('click', soundEnabled);
     setDiscardedGameIds(prev => {
@@ -214,18 +265,23 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
       } else {
         next.add(gameId);
       }
+      saveDiscardedGameIdsForTeam(selectedTeamId, next);
       return next;
     });
   };
 
   const handleIncludeAllGames = () => {
     playSound('click', soundEnabled);
-    setDiscardedGameIds(new Set());
+    const emptySet = new Set<string>();
+    saveDiscardedGameIdsForTeam(selectedTeamId, emptySet);
+    setDiscardedGameIds(emptySet);
   };
 
   const handleDiscardAllGames = () => {
     playSound('click', soundEnabled);
-    setDiscardedGameIds(new Set(teamAllMatches.map(m => m.id)));
+    const allSet = new Set(teamAllMatches.map(m => m.id));
+    saveDiscardedGameIdsForTeam(selectedTeamId, allSet);
+    setDiscardedGameIds(allSet);
   };
 
   const handleKeepOnlyWins = () => {
@@ -239,6 +295,7 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
         winsSet.add(g.id); // discard losses and draws
       }
     });
+    saveDiscardedGameIdsForTeam(selectedTeamId, winsSet);
     setDiscardedGameIds(winsSet);
   };
 
@@ -253,6 +310,7 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
         lossesSet.add(g.id); // discard wins
       }
     });
+    saveDiscardedGameIdsForTeam(selectedTeamId, lossesSet);
     setDiscardedGameIds(lossesSet);
   };
 
@@ -346,7 +404,10 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-[#14161B] border border-gray-800 w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[96vh] overflow-hidden my-auto text-white">
+      <div
+        className="bg-[#14161B] border border-gray-800 w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[96vh] overflow-hidden my-auto text-white"
+        onClick={e => e.stopPropagation()}
+      >
         {/* ========================================= */}
         {/* MODAL HEADER: TEAM INFO & QUICK ACTIONS */}
         {/* ========================================= */}
@@ -363,8 +424,9 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                     <select
                       value={selectedTeamId}
                       onChange={e => {
-                        setSelectedTeamId(e.target.value);
-                        setDiscardedGameIds(new Set());
+                        const newId = e.target.value;
+                        setSelectedTeamId(newId);
+                        setDiscardedGameIds(getDiscardedGameIdsForTeam(newId));
                       }}
                       className="text-sm sm:text-base font-black text-white bg-neutral-800/80 hover:bg-neutral-800 border border-gray-700 rounded-lg px-2 py-0.5 pr-6 cursor-pointer focus:outline-none focus:border-orange-500 transition appearance-none"
                     >
@@ -394,6 +456,22 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                 <span className="text-[10px] font-mono text-gray-400">
                   {currentTeam.season || '2025/2026'}
                 </span>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === 'filter') {
+                      handleBackToStats();
+                    } else {
+                      handleSwitchTab('filter');
+                    }
+                  }}
+                  className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-600/40 hover:bg-emerald-900 transition flex items-center gap-1"
+                  title="Configurar partidos incluidos o descartados"
+                >
+                  <Filter className="w-3 h-3 text-emerald-400" />
+                  <span>{includedGames.length}/{teamAllMatches.length} partidos</span>
+                </button>
               </div>
 
               <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
@@ -412,6 +490,18 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
 
           {/* Export / Share Actions for Mobile & Desktop */}
           <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap justify-end">
+            {activeTab === 'filter' && (
+              <button
+                type="button"
+                onClick={handleBackToStats}
+                className="px-3 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md transition active:scale-95 shrink-0"
+                title="Volver a las estadísticas de los partidos seleccionados"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Ver Estadísticas ({includedGames.length})</span>
+              </button>
+            )}
+
             <button
               id="team-report-share-btn"
               type="button"
@@ -448,9 +538,13 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
 
             <button
               type="button"
-              onClick={onClose}
-              className="p-1.5 sm:p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition"
-              title="Cerrar"
+              onClick={handleHeaderClose}
+              className={`p-1.5 sm:p-2 rounded-xl transition flex items-center gap-1 ${
+                activeTab === 'filter'
+                  ? 'bg-neutral-800 hover:bg-neutral-700 text-amber-300 border border-amber-500/50'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+              title={activeTab === 'filter' ? 'Cerrar filtro y volver a estadísticas' : 'Cerrar informe'}
             >
               <X className="w-5 h-5" />
             </button>
@@ -521,14 +615,20 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('filter')}
+              onClick={() => {
+                if (activeTab === 'filter') {
+                  handleBackToStats();
+                } else {
+                  handleSwitchTab('filter');
+                }
+              }}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition ${
                 activeTab === 'filter'
                   ? 'bg-orange-600 text-white shadow'
                   : 'bg-neutral-900 text-orange-400 border border-orange-500/40 hover:bg-neutral-800'
               }`}
             >
-              <span>Ver Lista Completa</span>
+              <span>{activeTab === 'filter' ? '← Volver a Estadísticas' : 'Ver Lista Completa'}</span>
               <span>({teamAllMatches.length})</span>
             </button>
           </div>
@@ -540,7 +640,7 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
         <div className="flex items-center gap-1 px-3 sm:px-4 pt-2.5 pb-2 border-b border-gray-800 bg-[#14161B] text-xs font-mono overflow-x-auto shrink-0">
           <button
             type="button"
-            onClick={() => setActiveTab('overview')}
+            onClick={() => handleSwitchTab('overview')}
             className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
               activeTab === 'overview'
                 ? 'bg-orange-600 text-white shadow-md'
@@ -553,7 +653,7 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveTab('shots')}
+            onClick={() => handleSwitchTab('shots')}
             className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
               activeTab === 'shots'
                 ? 'bg-orange-600 text-white shadow-md'
@@ -566,7 +666,7 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveTab('players')}
+            onClick={() => handleSwitchTab('players')}
             className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
               activeTab === 'players'
                 ? 'bg-orange-600 text-white shadow-md'
@@ -579,7 +679,13 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveTab('filter')}
+            onClick={() => {
+              if (activeTab === 'filter') {
+                handleBackToStats();
+              } else {
+                handleSwitchTab('filter');
+              }
+            }}
             className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
               activeTab === 'filter'
                 ? 'bg-orange-600 text-white shadow-md'
@@ -1255,13 +1361,48 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
           {/* ========================================= */}
           {activeTab === 'filter' && (
             <div className="space-y-4">
+              {/* Quick return / apply banner at top of filter */}
+              <div className="bg-gradient-to-r from-orange-950/80 via-[#181c26] to-[#101218] border border-orange-500/50 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-orange-600/20 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0">
+                    <Filter className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-white text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+                      <span>Muestra Seleccionada:</span>
+                      <span className="text-orange-400 font-scoreboard text-base sm:text-lg font-black">
+                        {includedGames.length} de {teamAllMatches.length} partidos
+                      </span>
+                      {discardedGames.length > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800 font-mono">
+                          {discardedGames.length} descartados
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      Toca en cada partido para incluirlo o descartarlo de las estadísticas y mapa de tiro.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleBackToStats}
+                  className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition shrink-0"
+                  title="Ver las estadísticas con los partidos seleccionados"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Ver Estadísticas ({includedGames.length})</span>
+                </button>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-bold text-gray-200">
-                    Seleccionar o Descartar Partidos de la Muestra
+                    Lista de Partidos ({teamAllMatches.length})
                   </h3>
                   <p className="text-xs text-gray-400">
-                    Marca o desmarca los partidos para incluirlos o descartarlos de las estadísticas y el mapa de tiro.
+                    Los partidos con casilla naranja están incluidos en la muestra estadística.
                   </p>
                 </div>
 
@@ -1368,6 +1509,19 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Sticky bottom Apply & View Stats Button */}
+              <div className="sticky bottom-0 pt-3 pb-1 bg-gradient-to-t from-[#14161B] via-[#14161B]/95 to-transparent z-10">
+                <button
+                  type="button"
+                  onClick={handleBackToStats}
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 active:scale-[0.99] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-2xl flex items-center justify-center gap-2 border border-orange-400/50 transition"
+                  title="Aplicar selección y ver estadísticas de los partidos marcados"
+                >
+                  <Check className="w-5 h-5 stroke-[3]" />
+                  <span>Ver Estadísticas de Partidos Seleccionados ({includedGames.length})</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1390,24 +1544,45 @@ export const TeamStatsReportModal: React.FC<TeamStatsReportModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleSharePdf}
-              className="px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold flex items-center gap-1.5 shadow"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Enviar PDF</span>
-            </button>
+          {activeTab === 'filter' ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleBackToStats}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition"
+              >
+                <Check className="w-4 h-4 stroke-[2.5]" />
+                <span>Ver Estadísticas ({includedGames.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs transition"
+                title="Cerrar el informe y volver al menú principal"
+              >
+                Cerrar Informe
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleSharePdf}
+                className="px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold flex items-center gap-1.5 shadow"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Enviar PDF</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold"
-            >
-              Cerrar
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

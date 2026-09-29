@@ -234,182 +234,123 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
         </div>
       )}
 
-      {/* 3. SCROLLABLE ROSTER CONTAINER (FIT FOR TABLET LANDSCAPE) */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 pr-0.5 py-1">
-        {/* SECTION A: EN PISTA (5 JUGADORES) */}
-        <div>
-          <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 mb-1 px-0.5">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              En Pista ({playersOnCourt.length}/5)
-            </span>
-            <span className="text-neutral-500 text-[9px]">Toca ⇄ para cambiar</span>
-          </div>
-
-          <div className="space-y-1">
-            {playersOnCourt.map(player => {
-              const stats = calculatePlayerStats(player, game.events);
-              const isSelectedForAction = selectedPlayerId === player.id;
-              const isPendingOut = pendingOutId === player.id;
-              const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
-              const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
-
-              return (
-                <div
-                  key={player.id}
-                  onClick={() => handleCourtPlayerClick(player)}
-                  className={`w-full p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
-                    isPendingOut
-                      ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/60 text-white shadow-lg'
-                      : pendingInId
-                      ? 'bg-[#0E224A] hover:bg-rose-950/60 border-rose-500/70 text-rose-200 animate-pulse'
-                      : isSelectedForAction
-                      ? 'bg-[#D4AF37]/25 border-[#D4AF37] ring-2 ring-[#D4AF37]/60 text-white shadow-md'
-                      : isFouledOut
-                      ? 'bg-red-950/30 border-red-800 text-red-300'
-                      : isFoulDanger
-                      ? 'bg-amber-950/30 border-amber-700/80 text-slate-200 hover:border-[#D4AF37]'
-                      : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
-                  }`}
-                >
-                  {/* Left: Dorsal + Name + Status */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-scoreboard font-black text-lg lg:text-xl text-amber-400 shrink-0 w-8 text-center leading-none">
-                      #{player.number}
-                    </span>
-                    <div className="flex flex-col min-w-0 text-left">
-                      <span className="text-xs font-bold text-slate-200 truncate leading-tight">
-                        {player.name}
-                      </span>
-                      <span className="text-[9px] text-slate-400 font-medium">
-                        ⏱ {stats.minutesPlayedFormatted} · {player.position || 'JUG'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Right: Stats & Swap Action Button */}
-                  <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                    {/* Points & Fouls */}
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold">
-                      <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-700/50">
-                        {stats.points}p
-                      </span>
-                      <PlayerFoulsIndicator
-                        fouls={stats.foulsPersonal}
-                        limit={game.settings.foulOutLimit || 5}
-                        compact={false}
-                        showDots={true}
-                      />
-                    </div>
-
-                    {/* Instant Swap Button */}
-                    <button
-                      type="button"
-                      onClick={e => handleTriggerSubOut(e, player.id)}
-                      className={`p-1.5 rounded-lg border transition active:scale-90 flex items-center gap-1 ${
-                        isPendingOut
-                          ? 'bg-rose-600 text-white border-rose-400 shadow'
-                          : pendingInId
-                          ? 'bg-rose-950 hover:bg-rose-800 text-rose-200 border-rose-600'
-                          : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border-amber-500/50'
-                      }`}
-                      title="Sustituir a este jugador"
-                    >
-                      <ArrowRightLeft className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span className="text-[9px] font-black uppercase">
-                        {isPendingOut ? 'SALE' : pendingInId ? 'CAMBIAR' : 'CAMBIO'}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* 3. ROSTER CONTAINER: PLAYERS ON COURT (ALWAYS VISIBLE & PROMINENT) */}
+      <div className="shrink-0 space-y-1.5 py-1">
+        <div className="flex items-center justify-between text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 px-0.5">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Quinteto en Pista ({playersOnCourt.length}/5)
+          </span>
+          <span className="text-slate-400 text-[10px] font-normal">Toca para seleccionar</span>
         </div>
 
-        {/* SECTION B: BANQUILLO (SUPLENTES) */}
-        <div className="pt-1">
-          <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1 px-0.5">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-              Banquillo ({benchPlayers.length})
-            </span>
-            <span className="text-slate-400 text-[9px]">
-              {pendingOutId ? 'Toca quién entra ⏎' : 'Toca para meter a pista'}
-            </span>
-          </div>
+        {/* 5 On-Court Players List */}
+        <div className="space-y-1">
+          {playersOnCourt.map(player => {
+            const stats = calculatePlayerStats(player, game.events);
+            const isSelectedForAction = selectedPlayerId === player.id;
+            const isPendingOut = pendingOutId === player.id;
+            const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
+            const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-            {benchPlayers.map(player => {
-              const stats = calculatePlayerStats(player, game.events);
-              const isPendingIn = pendingInId === player.id;
-              const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
-              const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
-
-              return (
-                <div
-                  key={player.id}
-                  onClick={() => handleBenchPlayerClick(player)}
-                  className={`p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
-                    isFouledOut
-                      ? 'bg-red-950/20 border-red-900/60 text-red-400/80 opacity-60 cursor-not-allowed'
-                      : isPendingIn
-                      ? 'bg-emerald-950/90 border-emerald-500 ring-2 ring-emerald-500/60 text-white shadow-lg'
-                      : pendingOutId
-                      ? 'bg-emerald-950/40 hover:bg-emerald-900/80 border-emerald-500/70 text-emerald-200 animate-pulse'
-                      : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
-                  }`}
-                >
-                  {/* Left: Dorsal + Name */}
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-scoreboard font-black text-base text-[#F5C542] shrink-0 w-6 text-center leading-none">
-                      #{player.number}
+            return (
+              <div
+                key={player.id}
+                onClick={() => handleCourtPlayerClick(player)}
+                className={`w-full p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
+                  isPendingOut
+                    ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/60 text-white shadow-lg'
+                    : pendingInId
+                    ? 'bg-[#0E224A] hover:bg-rose-950/60 border-rose-500/70 text-rose-200 animate-pulse'
+                    : isSelectedForAction
+                    ? 'bg-[#D4AF37]/25 border-[#D4AF37] ring-2 ring-[#D4AF37]/60 text-white shadow-md'
+                    : isFouledOut
+                    ? 'bg-red-950/30 border-red-800 text-red-300'
+                    : isFoulDanger
+                    ? 'bg-amber-950/30 border-amber-700/80 text-slate-200 hover:border-[#D4AF37]'
+                    : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
+                }`}
+              >
+                {/* Left: Dorsal + Name + Status */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-scoreboard font-black text-lg lg:text-xl text-amber-400 shrink-0 w-8 text-center leading-none">
+                    #{player.number}
+                  </span>
+                  <div className="flex flex-col min-w-0 text-left">
+                    <span className="text-xs font-bold text-slate-200 truncate leading-tight">
+                      {player.name}
                     </span>
-                    <div className="flex flex-col min-w-0 text-left">
-                      <span className="text-xs font-semibold text-slate-200 truncate leading-tight">
-                        {player.name.split(' ')[0]}
-                      </span>
-                      <span className="text-[8px] text-slate-400">
-                        {stats.minutesPlayedFormatted}
-                      </span>
-                    </div>
+                    <span className="text-[9px] text-slate-400 font-medium">
+                      ⏱ {stats.minutesPlayedFormatted} · {player.position || 'JUG'}
+                    </span>
                   </div>
+                </div>
 
-                  {/* Right: Stats & Enter Badge */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-bold text-slate-200 bg-[#08152e] px-1 py-0.5 rounded border border-[#203a70]">
+                {/* Right: Stats & Swap Action Button */}
+                <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                  {/* Points & Fouls */}
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-700/50">
                       {stats.points}p
                     </span>
                     <PlayerFoulsIndicator
                       fouls={stats.foulsPersonal}
                       limit={game.settings.foulOutLimit || 5}
-                      compact={true}
+                      compact={false}
                       showDots={true}
                     />
-
-                    {/* Quick Enter Indicator when swap is pending */}
-                    {pendingOutId && !isFouledOut && (
-                      <span className="px-1.5 py-0.5 bg-emerald-600 text-white font-black text-[8px] rounded uppercase shadow-sm animate-bounce">
-                        ENTRA
-                      </span>
-                    )}
-
-                    {isFouledOut && (
-                      <span className="px-1.5 py-0.5 bg-red-950 text-red-300 border border-red-700 font-black text-[8px] rounded uppercase">
-                        ELIM
-                      </span>
-                    )}
                   </div>
+
+                  {/* Direct Change Button (opens substitution screen) */}
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (isActionsLocked) return;
+                      onOpenSubstitutionModal();
+                    }}
+                    className="p-1 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50 transition active:scale-90 flex items-center gap-1 text-[10px] font-bold"
+                    title="Abrir ventana de cambios"
+                  >
+                    <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
+                    <span>CAMBIO</span>
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
+
+        {/* PROMINENT SUBSTITUTION BUTTON THAT OPENS MULTIPLE SUBSTITUTION SCREEN */}
+        <button
+          type="button"
+          onClick={() => {
+            if (isActionsLocked) return;
+            playSound('click', game.settings.soundEnabled);
+            triggerHaptic('light', game.settings.vibrationEnabled);
+            onOpenSubstitutionModal();
+          }}
+          disabled={isActionsLocked}
+          className="w-full py-2 px-3 bg-[#D4AF37] hover:bg-[#F5C542] text-[#0B1C3D] font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 shadow-md transition active:scale-[0.99] border border-[#F5C542] disabled:opacity-30 disabled:pointer-events-none mt-1"
+          title="Abrir ventana de cambios para sustituir jugadores de banquillo"
+        >
+          <ArrowRightLeft className="w-4 h-4 stroke-[2.5]" />
+          <span>Cambiar Jugadores ({benchPlayers.length} en banquillo)</span>
+        </button>
       </div>
 
-      {/* 4. BOTÓN DESHACER DEBAJO DE LOS JUGADORES */}
-      {onUndoLastAction && (
-        <div className="pt-1.5 pb-1 border-t border-[#203a70] shrink-0 space-y-1">
+      {/* 4. HISTORIAL DE JUGADAS DEL PARTIDO CON BOTÓN DESHACER INTEGRADO */}
+      <div className="border-t border-[#203a70] pt-1.5 flex-1 min-h-[160px] flex flex-col overflow-hidden space-y-1.5">
+        <div className="flex items-center justify-between text-[11px] font-mono font-bold text-amber-300 uppercase shrink-0">
+          <div className="flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5 text-amber-400" />
+            <span>Historial de Jugadas ({game.events.length})</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-normal">Toca 🗑️ para borrar</span>
+        </div>
+
+        {/* BOTÓN DESHACER DENTRO DEL HISTORIAL */}
+        {onUndoLastAction && (
           <button
             onClick={() => {
               if (isActionsLocked) return;
@@ -418,12 +359,12 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
               onUndoLastAction();
             }}
             disabled={isActionsLocked || !recentEvent}
-            className="w-full py-2 px-3 bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 active:bg-rose-800 text-white font-black text-xs uppercase rounded-xl flex items-center justify-between shadow-lg disabled:opacity-30 disabled:pointer-events-none transition active:scale-[0.99] border border-rose-500/50"
+            className="w-full py-2 px-3 bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 active:bg-rose-800 text-white font-black text-xs uppercase rounded-xl flex items-center justify-between shadow-lg disabled:opacity-30 disabled:pointer-events-none transition active:scale-[0.99] border border-rose-500/50 shrink-0"
             title={isActionsLocked ? 'Partido bloqueado' : 'Deshacer la última acción registrada'}
           >
             <div className="flex items-center gap-2">
               <Undo2 className="w-4 h-4 text-white" />
-              <span className="font-extrabold tracking-wide">DESHACER ÚLTIMA</span>
+              <span className="font-extrabold tracking-wide">DESHACER ÚLTIMA JUGADA</span>
             </div>
             {recentEvent ? (
               <span className="text-[10px] font-mono text-amber-200 truncate max-w-[150px] font-bold">
@@ -435,23 +376,12 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
               <span className="text-[10px] font-mono text-rose-200/70">Sin acciones</span>
             )}
           </button>
-        </div>
-      )}
-
-      {/* 5. HISTORIAL DE ACCIONES DEBAJO DE LOS JUGADORES */}
-      <div className="border-t border-[#203a70] pt-1 flex-1 min-h-[140px] max-h-[38vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between pb-1 text-[10px] font-mono font-bold text-amber-300 uppercase shrink-0">
-          <div className="flex items-center gap-1.5">
-            <History className="w-3.5 h-3.5 text-amber-400" />
-            <span>Historial de Jugadas ({game.events.length})</span>
-          </div>
-          <span className="text-[9px] text-slate-400 font-normal">Toca 🗑️ para borrar</span>
-        </div>
+        )}
 
         {/* Scrollable actions list */}
         <div className="overflow-y-auto space-y-1 grow pr-0.5">
           {game.events.length === 0 ? (
-            <div className="text-center py-4 text-slate-500 text-xs italic font-mono">
+            <div className="text-center py-6 text-slate-500 text-xs italic font-mono">
               Esperando primera jugada...
             </div>
           ) : (

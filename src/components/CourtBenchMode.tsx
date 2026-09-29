@@ -815,19 +815,23 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       <div className={`bg-[#0e224a]/95 ${compact ? 'p-1' : 'border-t border-[#203a70] px-2 sm:px-4 py-0.5 sm:py-1 pb-[max(0.3rem,env(safe-area-inset-bottom))]'} z-40 shrink-0 select-none`}>
         <div className="max-w-3xl md:max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Recent Action Tag & Drawer Toggle */}
-          <div className="flex items-center gap-1.5 grow overflow-hidden">
+          <div className="flex items-center gap-2 grow overflow-hidden">
             <button
               onClick={() => setShowHistoryDrawer(!showHistoryDrawer)}
-              className="p-1 bg-[#132a58] text-slate-200 border border-[#28498f] rounded-lg text-xs font-mono flex items-center gap-1 shrink-0 active:scale-95"
-              title="Ver o borrar últimas jugadas"
+              className={`p-1 px-2 text-slate-200 border rounded-lg text-xs font-mono flex items-center gap-1.5 shrink-0 active:scale-95 transition ${
+                showHistoryDrawer
+                  ? 'bg-amber-500 text-slate-950 font-black border-amber-400'
+                  : 'bg-[#132a58] hover:bg-[#1c3f84] border-[#28498f]'
+              }`}
+              title="Abrir historial de jugadas y botón deshacer"
             >
-              <History className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[10px] font-bold">({game.events.length})</span>
+              <History className={`w-3.5 h-3.5 ${showHistoryDrawer ? 'text-slate-950' : 'text-amber-400'}`} />
+              <span className="text-[11px] font-bold">Historial ({game.events.length})</span>
             </button>
 
             {recentEvent ? (
               <div className="truncate text-[11px] sm:text-xs font-mono text-slate-200">
-                <span className="text-slate-400 text-[9px] sm:text-[10px]">Última:</span>{' '}
+                <span className="text-slate-400 text-[9px] sm:text-[10px]">Última jugada:</span>{' '}
                 <strong className="text-amber-300 font-bold">
                   {recentEvent.isOpponentAction
                     ? recentEvent.actionLabel
@@ -835,55 +839,74 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 </strong>
               </div>
             ) : (
-              <div className="text-[11px] sm:text-xs text-slate-400 italic">Esperando jugada...</div>
+              <div className="text-[11px] sm:text-xs text-slate-400 italic font-mono">Esperando jugada...</div>
             )}
           </div>
-
-          {/* BIG UNDO BUTTON */}
-          <button
-            onClick={() => {
-              if (isActionsLocked) return;
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('undo', game.settings.vibrationEnabled);
-              onUndoLastAction();
-            }}
-            disabled={isActionsLocked || !recentEvent}
-            className="px-3.5 sm:px-5 py-2 min-h-[46px] sm:min-h-[50px] bg-rose-700 hover:bg-rose-600 active:bg-rose-800 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-2 shrink-0 shadow-lg disabled:opacity-25 disabled:pointer-events-none transition active:scale-95 border border-rose-500/50"
-            title={isActionsLocked ? 'Partido bloqueado (Activa Modo Edición para retocar)' : 'Deshacer última acción'}
-          >
-            <Undo2 className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-xs sm:text-sm font-black tracking-wider">DESHACER</span>
-          </button>
         </div>
 
-        {/* History Drawer Modal Overlay */}
+        {/* History Drawer Modal Overlay with integrated UNDO button */}
         {showHistoryDrawer && (
-          <div className="bg-[#102550] border border-[#203a70] p-2 mt-1.5 rounded-lg max-h-40 overflow-y-auto space-y-1 animate-in slide-in-from-bottom">
-            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-300 pb-1 border-b border-[#203a70]">
-              <span>Últimas jugadas (pulsa icono para borrar):</span>
+          <div className="bg-[#102550] border border-[#203a70] p-2.5 mt-1.5 rounded-xl max-h-52 overflow-y-auto space-y-2 animate-in slide-in-from-bottom shadow-2xl">
+            <div className="flex items-center justify-between text-[11px] uppercase font-bold text-amber-300 pb-1 border-b border-[#203a70]">
+              <div className="flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-amber-400" />
+                <span>Historial de Jugadas ({game.events.length})</span>
+              </div>
               <button
                 onClick={() => setShowHistoryDrawer(false)}
-                className="text-slate-300 hover:text-white px-1 font-mono"
+                className="text-slate-300 hover:text-white px-1.5 py-0.5 rounded bg-[#132a58] text-xs font-mono"
               >
                 ✕
               </button>
             </div>
 
+            {/* BOTÓN DESHACER DENTRO DEL HISTORIAL */}
+            <button
+              onClick={() => {
+                if (isActionsLocked) return;
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('undo', game.settings.vibrationEnabled);
+                onUndoLastAction();
+              }}
+              disabled={isActionsLocked || !recentEvent}
+              className="w-full py-2 px-3 bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 active:bg-rose-800 text-white font-black text-xs uppercase rounded-xl flex items-center justify-between shadow-lg disabled:opacity-30 disabled:pointer-events-none transition active:scale-[0.99] border border-rose-500/50"
+              title={isActionsLocked ? 'Partido bloqueado' : 'Deshacer la última acción registrada'}
+            >
+              <div className="flex items-center gap-2">
+                <Undo2 className="w-4 h-4 text-white" />
+                <span className="font-extrabold tracking-wide">DESHACER ÚLTIMA JUGADA</span>
+              </div>
+              {recentEvent ? (
+                <span className="text-[10px] font-mono text-amber-200 truncate max-w-[160px] font-bold">
+                  {recentEvent.isOpponentAction
+                    ? recentEvent.actionLabel
+                    : `#${recentEvent.playerNumber} ${recentEvent.playerName?.split(' ')[0]} - ${recentEvent.actionLabel}`}
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono text-rose-200/70">Sin acciones</span>
+              )}
+            </button>
+
             {game.events.length === 0 ? (
-              <div className="text-xs text-slate-400 italic py-2 text-center">
-                No hay jugadas registradas
+              <div className="text-xs text-slate-400 italic py-2 text-center font-mono">
+                No hay jugadas registradas en este partido
               </div>
             ) : (
-              game.events.slice(0, 5).map(event => (
+              game.events.slice(0, 10).map(event => (
                 <div
                   key={event.id}
-                  className="bg-[#16336e] p-1.5 rounded border border-[#254d9b] flex items-center justify-between text-xs"
+                  className="bg-[#16336e] p-1.5 rounded-lg border border-[#254d9b] flex items-center justify-between text-xs font-mono"
                 >
-                  <span className="text-slate-200 truncate">
-                    {event.isOpponentAction
-                      ? event.actionLabel
-                      : `#${event.playerNumber} ${event.playerName?.split(' ')[0]} - ${event.actionLabel}`}
-                  </span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[10px] text-slate-400 shrink-0">
+                      Q{event.quarter} {event.gameTimeFormatted || '10:00'}
+                    </span>
+                    <span className="text-slate-200 truncate">
+                      {event.isOpponentAction
+                        ? `Rival ${event.opponentPlayerNumber ? '#' + event.opponentPlayerNumber : ''} - ${event.actionLabel}`
+                        : `#${event.playerNumber} ${event.playerName?.split(' ')[0]} - ${event.actionLabel}`}
+                    </span>
+                  </div>
                   <button
                     onClick={() => {
                       if (isActionsLocked) return;
@@ -894,10 +917,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                       }
                     }}
                     disabled={isActionsLocked}
-                    className="p-1 bg-rose-900/80 text-rose-200 rounded border border-rose-600 disabled:opacity-30 disabled:pointer-events-none"
+                    className="p-1 bg-rose-900/80 hover:bg-rose-800 text-rose-200 rounded border border-rose-600 disabled:opacity-30 disabled:pointer-events-none transition active:scale-95 shrink-0 ml-1.5"
                     title={isActionsLocked ? 'Desbloquea en modo edición para borrar' : 'Eliminar jugada'}
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3 h-3 text-rose-300" />
                   </button>
                 </div>
               ))

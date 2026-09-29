@@ -1,7 +1,7 @@
 import { Player, TeamProfile, Game } from '../types';
 import { DEFAULT_ROSTER, OPPONENT_TEAMS } from '../data/defaultData';
 import { getSavedGamesFromStorage, saveGamesToStorage, isDemoGame } from './libraryUtils';
-import { getMatchesForTeam } from './teamIsolation';
+import { getMatchesForTeam, isGameForTeam } from './teamIsolation';
 import {
   syncTeamToCloud,
   deleteTeamFromCloud,
@@ -297,15 +297,9 @@ export function getTeamMatches(teamIdOrName: string, customMatches?: Game[]): Ga
   const team = teams.find(t => t.id === teamIdOrName || t.name.toLowerCase().trim() === teamIdOrName.toLowerCase().trim());
   if (!team) return [];
 
-  const tId = team.id;
-  const tName = team.name.toLowerCase().trim();
-
   return allMatches.filter(g => {
     if (isDemoGame(g)) return false;
-    if (g.teamId === tId) return true;
-    if (g.homeTeamName && g.homeTeamName.toLowerCase().trim() === tName) return true;
-    if (!g.teamId && g.title && g.title.toLowerCase().includes(tName)) return true;
-    return false;
+    return isGameForTeam(g, team, teams);
   }).sort((a, b) => {
     const timeA = a.events?.[0]?.timestamp || (a.date ? new Date(a.date).getTime() : 0);
     const timeB = b.events?.[0]?.timestamp || (b.date ? new Date(b.date).getTime() : 0);

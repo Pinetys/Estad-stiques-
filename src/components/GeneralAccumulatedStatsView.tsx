@@ -34,6 +34,25 @@ import {
   Activity,
 } from 'lucide-react';
 
+const getDiscardedGameIdsForTeam = (teamId: string): Set<string> => {
+  if (!teamId) return new Set();
+  try {
+    const raw = localStorage.getItem(`basketstats_discarded_games_${teamId}`);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+};
+
+const saveDiscardedGameIdsForTeam = (teamId: string, ids: Set<string>): void => {
+  if (!teamId) return;
+  try {
+    localStorage.setItem(`basketstats_discarded_games_${teamId}`, JSON.stringify(Array.from(ids)));
+  } catch {}
+};
+
 export interface GeneralAccumulatedStatsViewProps {
   games: Game[];
   recordedTeams?: TeamProfile[];
@@ -73,11 +92,21 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
   useEffect(() => {
     if (activeTeamId && recordedTeams.some(t => t.id === activeTeamId)) {
       setSelectedTeamId(activeTeamId);
+      setDiscardedGameIds(getDiscardedGameIdsForTeam(activeTeamId));
     }
   }, [activeTeamId, recordedTeams]);
 
-  // Discarded game IDs for accumulated team stats
-  const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(new Set());
+  // Discarded game IDs for accumulated team stats, initialized from localStorage
+  const [discardedGameIds, setDiscardedGameIds] = useState<Set<string>>(() => {
+    const initId = (activeTeamId && recordedTeams.some(t => t.id === activeTeamId))
+      ? activeTeamId
+      : currentGame?.teamId && recordedTeams.some(t => t.id === currentGame.teamId)
+      ? currentGame.teamId
+      : recordedTeams.length > 0
+      ? recordedTeams[0].id
+      : 'default-team';
+    return getDiscardedGameIdsForTeam(initId);
+  });
 
   // Sharing & feedback state
   const [isSharing, setIsSharing] = useState<boolean>(false);
@@ -231,6 +260,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
       } else {
         next.add(gameId);
       }
+      saveDiscardedGameIdsForTeam(selectedTeamId, next);
       return next;
     });
   };
@@ -238,7 +268,9 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
   const handleIncludeAllGames = () => {
     triggerHaptic('medium');
     playSound('click', soundEnabled);
-    setDiscardedGameIds(new Set());
+    const next = new Set<string>();
+    saveDiscardedGameIdsForTeam(selectedTeamId, next);
+    setDiscardedGameIds(next);
   };
 
   const handleFilterWinsOnly = () => {
@@ -253,6 +285,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
         newDiscarded.add(g.id);
       }
     });
+    saveDiscardedGameIdsForTeam(selectedTeamId, newDiscarded);
     setDiscardedGameIds(newDiscarded);
   };
 
@@ -268,6 +301,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
         newDiscarded.add(g.id);
       }
     });
+    saveDiscardedGameIdsForTeam(selectedTeamId, newDiscarded);
     setDiscardedGameIds(newDiscarded);
   };
 
@@ -406,7 +440,7 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
                       playSound('click', soundEnabled);
                       const newId = e.target.value;
                       setSelectedTeamId(newId);
-                      setDiscardedGameIds(new Set()); // Reset exclusions on team switch
+                      setDiscardedGameIds(getDiscardedGameIdsForTeam(newId));
                       onSelectTeam?.(newId);
                     }}
                     className="bg-[#0a1835] text-white font-bold text-base sm:text-lg rounded-xl px-3 py-1 pr-8 border border-[#203a70] focus:border-amber-400 focus:outline-none cursor-pointer appearance-none shadow-sm"
