@@ -100,7 +100,13 @@ import {
   FolderKanban,
   FileText,
   Tv,
+  Laptop,
+  Radio,
+  QrCode,
 } from 'lucide-react';
+import { DeviceRole, getDeviceRole, setDeviceRole as persistDeviceRole } from './utils/deviceRole';
+import { SyncStatusBar } from './components/SyncStatusBar';
+import { SyncPairingModal } from './components/SyncPairingModal';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
 
@@ -211,6 +217,10 @@ export default function App() {
   };
   const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
 
+  // Device Role: 'recorder' (Anotador en pista) vs 'monitor' (Recepción / Live Board en PC)
+  const [deviceRole, setDeviceRoleState] = useState<DeviceRole>(() => getDeviceRole());
+  const [showSyncPairingModal, setShowSyncPairingModal] = useState<boolean>(false);
+
   // Central Game Clock & Automatic Player Minutes on Court Tracking Engine
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -248,21 +258,26 @@ export default function App() {
             nextShotRunning = false;
           }
 
-          // Automatically increment minutes played for all players currently on court
+          // Automatically increment minutes played and consecutive stint seconds for all players currently on court
           const updatedPlayers = prev.players.map(player => {
             if (player.onCourt) {
               const currentTotal = player.minutesPlayedSeconds || 0;
+              const currentStint = player.currentStintSeconds ?? currentTotal;
               const currentQSeconds = (player.quarterSeconds && player.quarterSeconds[currentQ]) || 0;
               return {
                 ...player,
                 minutesPlayedSeconds: currentTotal + 1,
+                currentStintSeconds: currentStint + 1,
                 quarterSeconds: {
                   ...(player.quarterSeconds || {}),
                   [currentQ]: currentQSeconds + 1,
                 },
               };
             }
-            return player;
+            return {
+              ...player,
+              currentStintSeconds: 0,
+            };
           });
 
           return {
@@ -298,6 +313,34 @@ export default function App() {
   useEffect(() => {
     // 1. Start engine
     syncEngine.start();
+
+    // Check URL parameters for instant pairing or monitor mode
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const pairCode = params.get('pair') || params.get('code');
+      const urlMode = params.get('mode') || params.get('role');
+
+      if (urlMode === 'monitor') {
+        setDeviceRoleState('monitor');
+        persistDeviceRole('monitor');
+      }
+
+      if (pairCode) {
+        syncEngine.fetchGameByTransferCode(pairCode).then(loadedGame => {
+          saveGameToLibrary(loadedGame);
+          setGame(loadedGame);
+          setDeviceRoleState('monitor');
+          persistDeviceRole('monitor');
+          setActiveTab('live');
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, '', cleanUrl);
+        }).catch(err => {
+          console.warn('Auto pair error from URL:', err);
+        });
+      }
+    } catch (e) {
+      console.warn('URL pair check error:', e);
+    }
 
     // 2. Subscribe to sync status
     const unsubStatus = syncEngine.subscribeStatus(st => {
@@ -1329,8 +1372,8 @@ export default function App() {
   const handlePerformSubstitution = (playerOutId: string, playerInId: string) => {
     setGame(prev => {
       const updated = prev.players.map(p => {
-        if (p.id === playerOutId) return { ...p, onCourt: false };
-        if (p.id === playerInId) return { ...p, onCourt: true };
+        if (p.id === playerOutId) return { ...p, onCourt: false, currentStintSeconds: 0 };
+        if (p.id === playerInId) return { ...p, onCourt: true, currentStintSeconds: 0 };
         return p;
       });
       return { ...prev, players: updated };
@@ -1345,8 +1388,8 @@ export default function App() {
       const outSet = new Set(subs.map(s => s.playerOutId));
       const inSet = new Set(subs.map(s => s.playerInId));
       const updated = prev.players.map(p => {
-        if (outSet.has(p.id)) return { ...p, onCourt: false };
-        if (inSet.has(p.id)) return { ...p, onCourt: true };
+        if (outSet.has(p.id)) return { ...p, onCourt: false, currentStintSeconds: 0 };
+        if (inSet.has(p.id)) return { ...p, onCourt: true, currentStintSeconds: 0 };
         return p;
       });
       return { ...prev, players: updated };
@@ -1563,7 +1606,7 @@ export default function App() {
           onOpenShotChartForBasket={handleOpenShotChartForBasket}
           onOpenFoulResolutionModal={setFoulResolutionData}
           onOpenTutorial={() => setShowTutorialModal(true)}
-          onOpenCloudSync={() => setShowCloudBackupModal(true)}
+          onOpenCloudSync={() => setShowSyncPairingModal(true)}
         />
       ) : (
         <>
@@ -1699,45 +1742,24 @@ export default function App() {
               )}
             </nav>
 
-            {/* Right: Cloud Sync, Court Mode Button & Quick Actions Menu */}
+            {/* Right: Cloud Sync Traffic Light, Pairing QR, Court Mode Button & Quick Actions Menu */}
             <div className="flex items-center gap-1.5 shrink-0">
-              {/* Quick Cloud Sync Badge & Trigger */}
+              {/* Traffic Light Semáforo de Sincronización */}
+              <SyncStatusBar
+                deviceRole={deviceRole}
+                onOpenSyncModal={() => setShowSyncPairingModal(true)}
+              />
+
+              {/* Botón rápido Vincular Tablet / Ordenador por QR */}
               <button
-                id="cloud-sync-status-btn"
                 type="button"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  setShowCloudBackupModal(true);
-                }}
-                className={`px-2 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 ${
-                  cloudSyncState.status === 'connected'
-                    ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/50'
-                    : cloudSyncState.status === 'syncing'
-                    ? 'bg-amber-950/40 border-amber-500/30 text-amber-300 animate-pulse'
-                    : cloudSyncState.status === 'error'
-                    ? 'bg-rose-950/40 border-rose-500/30 text-rose-300 hover:bg-rose-900/50'
-                    : 'bg-neutral-900 border-gray-700 text-gray-400'
-                }`}
-                title={
-                  cloudSyncState.status === 'connected'
-                    ? '🟢 Sincronizado en tiempo real (Toca para ver opciones de tablet, PC y móvil)'
-                    : cloudSyncState.status === 'syncing'
-                    ? '🟡 Sincronizando con el servidor y la nube...'
-                    : cloudSyncState.status === 'error'
-                    ? `🔴 ${cloudSyncState.errorMessage || 'Sin conexión'}. Toca para abrir sincronización.`
-                    : '⚪ Sincronización Automática'
-                }
+                id="header-quick-pair-btn"
+                onClick={() => setShowSyncPairingModal(true)}
+                className="hidden sm:flex px-2 py-1.5 rounded-lg bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 border border-cyan-500/50 text-xs font-mono font-bold items-center gap-1 transition active:scale-95 shadow-sm"
+                title="Vincular Tablet con Ordenador mediante Código QR o PIN"
               >
-                <Cloud className={`w-3.5 h-3.5 ${cloudSyncState.status === 'syncing' ? 'animate-spin' : ''}`} />
-                <span className="hidden md:inline text-[11px]">
-                  {cloudSyncState.status === 'connected'
-                    ? 'Sincronizado'
-                    : cloudSyncState.status === 'syncing'
-                    ? 'Sincronizando'
-                    : cloudSyncState.status === 'error'
-                    ? 'Revisar Sync'
-                    : 'Sync'}
-                </span>
+                <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[11px]">Vincular QR</span>
               </button>
 
               {/* Multi-Device Access Management Button */}
@@ -1965,6 +1987,18 @@ export default function App() {
                         </div>
                         <div className="grid grid-cols-1 gap-0.5">
                           <button
+                            id="menu-sync-pairing-btn"
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowSyncPairingModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-cyan-300 text-xs font-bold text-left transition"
+                          >
+                            <QrCode className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>Vincular Tablet ↔ Ordenador (QR)</span>
+                          </button>
+
+                          <button
                             onClick={() => {
                               setShowMobileHeaderMenu(false);
                               setShowCloudBackupModal(true);
@@ -2030,6 +2064,45 @@ export default function App() {
             </div>
           </header>
 
+          {/* Monitor Mode Alert Banner (PC Reception / Read-Only View) */}
+          {deviceRole === 'monitor' && (
+            <div className="bg-gradient-to-r from-sky-950 via-[#0c1833] to-sky-950 border-b border-sky-500/60 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs text-sky-200 sticky top-14 z-35 shadow-lg animate-in slide-in-from-top duration-200">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-lg bg-sky-600/20 border border-sky-400/40 text-sky-400 shrink-0">
+                  <Laptop className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="font-black text-white uppercase tracking-wider block sm:inline">
+                    🖥️ Modo Monitor Activo (Ordenador)
+                  </span>
+                  <span className="text-[11px] text-sky-300/80 sm:ml-2">
+                    Recibiendo en directo desde la tablet de pista • Solo lectura para no sobreescribir datos
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeviceRoleState('recorder');
+                    persistDeviceRole('recorder');
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-mono font-bold text-[11px] transition active:scale-95 shadow-sm"
+                  title="Tomar el control de anotación en este dispositivo"
+                >
+                  Tomar Control (Anotar)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSyncPairingModal(true)}
+                  className="px-2 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-300 border border-gray-700 font-mono text-[11px] transition active:scale-95"
+                >
+                  Ajustes Sync
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Active Cloud Match Alert Banner (e.g. tablet is recording match) */}
           {activeCloudMatchNotice && activeCloudMatchNotice.activeGameId !== game.id && (
             <div className="bg-gradient-to-r from-blue-950 via-[#131A29] to-blue-950 border-b border-blue-500/50 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs text-blue-200 sticky top-14 z-40 shadow-lg animate-in slide-in-from-top duration-300">
@@ -2082,6 +2155,8 @@ export default function App() {
               onOpenOfficialSheet={() => setShowOfficialSheet(true)}
               isEditingFinishedGame={isEditingFinishedGame}
               onToggleEditFinishedGame={() => setIsEditingFinishedGame(prev => !prev)}
+              deviceRole={deviceRole}
+              onOpenSyncModal={() => setShowSyncPairingModal(true)}
             />
           )}
 
@@ -2622,6 +2697,21 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Sync Pairing Modal (QR Code, 6-digit PIN, Device Role Switcher) */}
+      <SyncPairingModal
+        isOpen={showSyncPairingModal}
+        onClose={() => setShowSyncPairingModal(false)}
+        currentGame={game}
+        deviceRole={deviceRole}
+        onChangeDeviceRole={setDeviceRoleState}
+        onLoadGame={loadedGame => {
+          setGame(loadedGame);
+          saveGameToLibrary(loadedGame);
+          setLibraryGames(getSavedGamesFromStorage());
+          setActiveTab('live');
+        }}
+      />
     </div>
   );
 }

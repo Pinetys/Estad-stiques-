@@ -38,6 +38,117 @@ export function formatQuarterShort(quarter: number): string {
   return `PR${quarter - 4}`;
 }
 
+/**
+ * Límite estándar de minutos consecutivos en pista sin ser sustituido (6 minutos = 360 segundos).
+ * Ayuda al cuerpo técnico a gestionar la fatiga y prevenir sobrecargas físicas.
+ */
+export const CONTINUOUS_FATIGUE_LIMIT_SECONDS = 6 * 60; // 360 segundos (6 minutos)
+
+/**
+ * Obtiene los segundos consecutivos que un jugador lleva en pista en su tanda actual sin ser sustituido.
+ */
+export function getPlayerConsecutiveCourtSeconds(player: Player): number {
+  if (!player.onCourt) return 0;
+  if (typeof player.currentStintSeconds === 'number') {
+    return player.currentStintSeconds;
+  }
+  // Si aún no está inicializado stint específico, usar minutos jugados como aproximación inicial
+  return player.minutesPlayedSeconds || 0;
+}
+
+/**
+ * Comprueba si un jugador en pista lleva más de 6 minutos seguidos sin ser sustituido.
+ */
+export function isPlayerFatigued(
+  player: Player,
+  limitSeconds: number = CONTINUOUS_FATIGUE_LIMIT_SECONDS
+): boolean {
+  if (!player.onCourt) return false;
+  return getPlayerConsecutiveCourtSeconds(player) >= limitSeconds;
+}
+
+export interface TeamMinutesStats {
+  totalSeconds: number;
+  avgSeconds: number;
+  targetSecondsPerPlayer: number;
+  lowMinutesThreshold: number;
+  playersWithFewMinutes: Player[];
+  playersWithHighMinutes: Player[];
+  playersBalanced: Player[];
+}
+
+/**
+ * Calcula las estadísticas globales de reparto de minutos de la plantilla.
+ * Ayuda al entrenador a equilibrar el tiempo de juego entre todos los convocados y gestionar el cansancio.
+ */
+export function calculateTeamMinutesDistribution(
+  players: Player[],
+  quarterMinutes: number = 10,
+  totalQuarters: number = 4
+): TeamMinutesStats {
+  if (!players || players.length === 0) {
+    return {
+      totalSeconds: 0,
+      avgSeconds: 0,
+      targetSecondsPerPlayer: 0,
+      lowMinutesThreshold: 0,
+      playersWithFewMinutes: [],
+      playersWithHighMinutes: [],
+      playersBalanced: [],
+    };
+  }
+
+  const secondsList = players.map(p => p.minutesPlayedSeconds || 0);
+  const totalSeconds = secondsList.reduce((sum, s) => sum + s, 0);
+  const avgSeconds = Math.round(totalSeconds / players.length);
+
+  // Minutos teóricos ideales si se reparten al 100% equitativamente en el tiempo total del partido
+  const totalMatchPlayerSeconds = totalQuarters * quarterMinutes * 60 * 5;
+  const targetSecondsPerPlayer = Math.round(totalMatchPlayerSeconds / Math.max(1, players.length));
+
+  // Umbral para considerar "pocos minutos":
+  // Si el partido ya ha comenzado y la media supera 2.5 minutos (150 seg),
+  // o si algún jugador ya lleva >4 minutos (240 seg) y otro jugador tiene muy pocos minutos.
+  let lowMinutesThreshold = 0;
+  if (avgSeconds >= 150) {
+    lowMinutesThreshold = Math.max(90, Math.round(avgSeconds * 0.55));
+  } else if (totalSeconds > 0 && players.some(p => (p.minutesPlayedSeconds || 0) >= 240)) {
+    lowMinutesThreshold = 120; // 2 minutos
+  }
+
+  const playersWithFewMinutes = players.filter(p => {
+    const s = p.minutesPlayedSeconds || 0;
+    return lowMinutesThreshold > 0 && s <= lowMinutesThreshold;
+  });
+
+  const playersWithHighMinutes = players.filter(p => {
+    const s = p.minutesPlayedSeconds || 0;
+    return avgSeconds >= 240 && s >= Math.round(avgSeconds * 1.35);
+  });
+
+  const playersBalanced = players.filter(
+    p => !playersWithFewMinutes.includes(p) && !playersWithHighMinutes.includes(p)
+  );
+
+  return {
+    totalSeconds,
+    avgSeconds,
+    targetSecondsPerPlayer,
+    lowMinutesThreshold,
+    playersWithFewMinutes,
+    playersWithHighMinutes,
+    playersBalanced,
+  };
+}
+
+/**
+ * Determina si un jugador lleva muy pocos minutos jugados comparado con el equipo.
+ */
+export function isPlayerLowMinutes(player: Player, teamStats: TeamMinutesStats): boolean {
+  if (teamStats.lowMinutesThreshold <= 0) return false;
+  return (player.minutesPlayedSeconds || 0) <= teamStats.lowMinutesThreshold;
+}
+
 export function calculatePlayerStats(
   player: Player,
   events: PlayEvent[],

@@ -26,6 +26,8 @@ import {
   CheckCircle2,
   Save,
 } from 'lucide-react';
+import { DeviceRole } from '../utils/deviceRole';
+import { SyncStatusBar } from './SyncStatusBar';
 
 interface ScoreHeaderProps {
   game: Game;
@@ -40,6 +42,8 @@ interface ScoreHeaderProps {
   onOpenOfficialSheet?: () => void;
   isEditingFinishedGame?: boolean;
   onToggleEditFinishedGame?: () => void;
+  deviceRole?: DeviceRole;
+  onOpenSyncModal?: () => void;
 }
 
 export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
@@ -55,6 +59,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onOpenOfficialSheet,
   isEditingFinishedGame = false,
   onToggleEditFinishedGame,
+  deviceRole = 'recorder',
+  onOpenSyncModal,
 }) => {
   const [showClockAdjust, setShowClockAdjust] = useState(false);
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
@@ -430,6 +436,15 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                 <AlertTriangle className="w-2.5 h-2.5 text-red-400" />
                 <span>Bonus Riv (5F)</span>
               </span>
+            )}
+
+            {/* Live Traffic Light Sync Indicator */}
+            {onOpenSyncModal && (
+              <SyncStatusBar
+                deviceRole={deviceRole}
+                onOpenSyncModal={onOpenSyncModal}
+                compact={true}
+              />
             )}
           </div>
         </div>

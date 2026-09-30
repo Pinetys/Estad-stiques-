@@ -1,8 +1,28 @@
 import React, { useState } from 'react';
 import { Game, Player, PlayEvent } from '../types';
-import { calculatePlayerStats } from '../utils/statsCalculator';
+import {
+  calculatePlayerStats,
+  isPlayerFatigued,
+  getPlayerConsecutiveCourtSeconds,
+  formatMinutesPlayed,
+  calculateTeamMinutesDistribution,
+  isPlayerLowMinutes,
+} from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { ArrowRightLeft, Users, AlertCircle, Check, X, UserCheck, Trash2, Undo2, History } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Users,
+  AlertCircle,
+  Check,
+  X,
+  UserCheck,
+  Trash2,
+  Undo2,
+  History,
+  Flame,
+  Scale,
+  Zap,
+} from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 
 interface CourtRosterPanelProps {
@@ -16,6 +36,7 @@ interface CourtRosterPanelProps {
   onOpenSubstitutionModal: () => void;
   onOpenStartingFiveModal: () => void;
   onOpenRosterModal?: () => void;
+  onOpenMinutesBalanceModal?: () => void;
   onUndoLastAction?: () => void;
   onDeleteEvent?: (eventId: string) => void;
   recentEvent?: PlayEvent | null;
@@ -33,6 +54,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   onOpenSubstitutionModal,
   onOpenStartingFiveModal,
   onOpenRosterModal,
+  onOpenMinutesBalanceModal,
   onUndoLastAction,
   onDeleteEvent,
   recentEvent,
@@ -172,6 +194,18 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             </button>
           )}
 
+          {onOpenMinutesBalanceModal && (
+            <button
+              type="button"
+              onClick={onOpenMinutesBalanceModal}
+              className="px-2 py-0.5 rounded bg-[#0E224A] hover:bg-[#16356E] text-sky-300 hover:text-white border border-[#203a70] text-[10px] font-mono font-bold flex items-center gap-1 transition"
+              title="Ver estadísticas y reparto equitativo de minutos de la plantilla"
+            >
+              <Scale className="w-3 h-3 text-sky-400" />
+              <span>Reparto</span>
+            </button>
+          )}
+
           {isPreGame && (
             <button
               type="button"
@@ -205,17 +239,61 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
               <span className="truncate">{swapToast}</span>
             </div>
           ) : pendingOutPlayer ? (
-            <div className="p-1 px-2 rounded-lg bg-amber-950/90 border border-amber-500 text-amber-200 text-[10px] font-mono font-bold flex items-center justify-between shadow-md">
-              <div className="flex items-center gap-1 truncate">
-                <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />
-                <span>SALE #{pendingOutPlayer.number} {pendingOutPlayer.name.split(' ')[0]} ➔ Toca quién ENTRA</span>
+            <div className="space-y-1">
+              <div className="p-1 px-2 rounded-lg bg-amber-950/90 border border-amber-500 text-amber-200 text-[10px] font-mono font-bold flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-1 truncate">
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />
+                  <span>SALE #{pendingOutPlayer.number} {pendingOutPlayer.name.split(' ')[0]} ➔ Toca quién ENTRA</span>
+                </div>
+                <button
+                  onClick={cancelSwap}
+                  className="px-1.5 py-0.5 bg-[#0B1C3D] hover:bg-[#16356E] text-slate-200 hover:text-white rounded border border-[#203a70] text-[9px] shrink-0 ml-1 font-bold"
+                >
+                  Cancelar ✕
+                </button>
               </div>
-              <button
-                onClick={cancelSwap}
-                className="px-1.5 py-0.5 bg-[#0B1C3D] hover:bg-[#16356E] text-slate-200 hover:text-white rounded border border-[#203a70] text-[9px] shrink-0 ml-1 font-bold"
-              >
-                Cancelar ✕
-              </button>
+
+              {/* Tira rápida de suplentes para cambio directo en 1 toque */}
+              <div className="p-1.5 bg-[#071328] border border-[#203a70] rounded-xl flex items-center gap-1.5 overflow-x-auto shadow-inner">
+                {[...benchPlayers]
+                  .sort((a, b) => (a.minutesPlayedSeconds || 0) - (b.minutesPlayedSeconds || 0))
+                  .map(bp => {
+                    const bpStats = calculatePlayerStats(bp, game.events);
+                    const bpIsFouledOut = bpStats.foulsPersonal >= (game.settings.foulOutLimit || 5);
+                    const bpTeamStats = calculateTeamMinutesDistribution(
+                      game.players,
+                      game.settings.quarterDurationMinutes,
+                      game.settings.totalQuarters
+                    );
+                    const bpIsLow = isPlayerLowMinutes(bp, bpTeamStats);
+
+                    return (
+                      <button
+                        key={bp.id}
+                        type="button"
+                        disabled={bpIsFouledOut}
+                        onClick={() => handleExecuteSwap(pendingOutPlayer.id, bp.id)}
+                        className={`p-1 px-2 rounded-lg border text-left flex flex-col shrink-0 min-w-[70px] transition active:scale-95 ${
+                          bpIsLow
+                            ? 'bg-sky-950/80 border-sky-500/70 text-sky-200 hover:bg-sky-900 shadow'
+                            : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-slate-200'
+                        } disabled:opacity-30 disabled:pointer-events-none`}
+                        title={`Tocar para dar entrada a #${bp.number} ${bp.name}`}
+                      >
+                        <div className="flex items-center justify-between text-[9px]">
+                          <span className="font-bold text-amber-400">#{bp.number}</span>
+                          <span className="text-[8px] text-slate-400 font-mono">
+                            {formatMinutesPlayed(bp.minutesPlayedSeconds || 0)}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold truncate max-w-[65px]">
+                          {bp.name.split(' ')[0]}
+                        </span>
+                        {bpIsLow && <span className="text-[7.5px] text-sky-300 font-bold">⚖️ Pocos min</span>}
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
           ) : pendingInPlayer ? (
             <div className="p-1 px-2 rounded-lg bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-[10px] font-mono font-bold flex items-center justify-between shadow-md">
@@ -244,6 +322,66 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
           <span className="text-slate-400 text-[10px] font-normal">Toca para seleccionar</span>
         </div>
 
+        {/* Rotations & Equal Minutes Alert for Coach */}
+        {(() => {
+          const teamStats = calculateTeamMinutesDistribution(
+            game.players,
+            game.settings.quarterDurationMinutes,
+            game.settings.totalQuarters
+          );
+          const fatiguedPlayers = playersOnCourt.filter(p => isPlayerFatigued(p));
+          const lowMinuteBench = benchPlayers.filter(p => isPlayerLowMinutes(p, teamStats));
+
+          if (fatiguedPlayers.length === 0 && lowMinuteBench.length === 0) return null;
+
+          return (
+            <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-gradient-to-r from-amber-950/80 via-[#0E224A] to-sky-950/80 border border-amber-500/50 text-amber-200 text-[10px] font-mono shadow-sm animate-in fade-in">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                {fatiguedPlayers.length > 0 ? (
+                  <Flame className="w-3 h-3 text-amber-400 animate-pulse shrink-0" />
+                ) : (
+                  <Scale className="w-3 h-3 text-sky-400 shrink-0" />
+                )}
+                <span className="truncate text-slate-200">
+                  {fatiguedPlayers.length > 0 && lowMinuteBench.length > 0 ? (
+                    <>
+                      <strong className="text-amber-300">Rotación:</strong> #{fatiguedPlayers[0].number} (&gt;6') ➔ Entra #{lowMinuteBench[0].number} {lowMinuteBench[0].name.split(' ')[0]} ({formatMinutesPlayed(lowMinuteBench[0].minutesPlayedSeconds || 0)})
+                    </>
+                  ) : fatiguedPlayers.length > 0 ? (
+                    <>
+                      <strong className="text-amber-300">Fatiga (&gt;6'):</strong> {fatiguedPlayers.map(p => `#${p.number}`).join(', ')}
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-sky-300">Reparto:</strong> {lowMinuteBench.length} suplentes con pocos minutos ({lowMinuteBench.map(p => `#${p.number}`).join(', ')})
+                    </>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 ml-1">
+                {onOpenMinutesBalanceModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenMinutesBalanceModal}
+                    className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-sky-300 hover:text-white rounded border border-sky-500/40 text-[9px] font-bold transition"
+                    title="Ver reparto completo de minutos"
+                  >
+                    Reparto
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onOpenSubstitutionModal}
+                  className="px-1.5 py-0.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded text-[9px] uppercase transition active:scale-95"
+                  title="Abrir ventana de sustituciones"
+                >
+                  Rotar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 5 On-Court Players List */}
         <div className="space-y-1">
           {playersOnCourt.map(player => {
@@ -252,6 +390,15 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             const isPendingOut = pendingOutId === player.id;
             const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
             const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
+            const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
+            const isFatigued = isPlayerFatigued(player);
+            const teamStats = calculateTeamMinutesDistribution(
+              game.players,
+              game.settings.quarterDurationMinutes,
+              game.settings.totalQuarters
+            );
+            const isLow = isPlayerLowMinutes(player, teamStats);
+            const consecutiveMinsFormatted = formatMinutesPlayed(consecutiveSeconds);
 
             return (
               <div
@@ -268,6 +415,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                     ? 'bg-red-950/30 border-red-800 text-red-300'
                     : isFoulDanger
                     ? 'bg-amber-950/30 border-amber-700/80 text-slate-200 hover:border-[#D4AF37]'
+                    : isFatigued
+                    ? 'bg-[#0E224A] hover:bg-[#16356E] border-amber-500/70 ring-1 ring-amber-500/50 text-[#FFFDF7]'
+                    : isLow
+                    ? 'bg-[#0E224A] hover:bg-[#16356E] border-sky-600/70 text-[#FFFDF7]'
                     : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
                 }`}
               >
@@ -277,11 +428,37 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                     #{player.number}
                   </span>
                   <div className="flex flex-col min-w-0 text-left">
-                    <span className="text-xs font-bold text-slate-200 truncate leading-tight">
-                      {player.name}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-bold text-slate-200 truncate leading-tight">
+                        {player.name}
+                      </span>
+                      {isFatigued && (
+                        <span
+                          className="px-1.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[8.5px] font-mono font-black flex items-center gap-1 shrink-0 animate-pulse"
+                          title={`Alerta de cansancio: Lleva ${consecutiveMinsFormatted} seguidos en pista sin ser sustituido (>6 min)`}
+                        >
+                          <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                          <span>&gt;6m</span>
+                        </span>
+                      )}
+                      {isLow && !isFatigued && (
+                        <span
+                          className="px-1.5 py-0.5 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8.5px] font-mono font-bold flex items-center gap-1 shrink-0"
+                          title={`Pocos minutos acumulados (${stats.minutesPlayedFormatted}). Jugador fresco.`}
+                        >
+                          <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                          <span>Fresco</span>
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[9px] text-slate-400 font-medium">
-                      ⏱ {stats.minutesPlayedFormatted} · {player.position || 'JUG'}
+                      ⏱ {stats.minutesPlayedFormatted}
+                      {isFatigued && (
+                        <span className="text-amber-400 font-bold ml-1">
+                          ({consecutiveMinsFormatted} seg)
+                        </span>
+                      )}
+                      {' · '}{player.position || 'JUG'}
                     </span>
                   </div>
                 </div>
@@ -309,11 +486,15 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       if (isActionsLocked) return;
                       onOpenSubstitutionModal();
                     }}
-                    className="p-1 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50 transition active:scale-90 flex items-center gap-1 text-[10px] font-bold"
-                    title="Abrir ventana de cambios"
+                    className={`p-1 px-2 rounded-lg transition active:scale-90 flex items-center gap-1 text-[10px] font-bold ${
+                      isFatigued
+                        ? 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300 shadow-sm animate-pulse'
+                        : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50'
+                    }`}
+                    title={isFatigued ? `Sustituir a ${player.name} (lleva >6 min seguidos)` : 'Abrir ventana de cambios'}
                   >
                     <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
-                    <span>CAMBIO</span>
+                    <span>{isFatigued ? 'ROTAR' : 'CAMBIO'}</span>
                   </button>
                 </div>
               </div>

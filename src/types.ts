@@ -10,6 +10,7 @@ export interface Player {
   foulsCount: number;
   isFouledOut: boolean;
   minutesPlayedSeconds?: number; // Total seconds played on court
+  currentStintSeconds?: number; // Consecutive seconds on court without being substituted (for fatigue/rotation management)
   quarterSeconds?: Record<number, number>; // Seconds on court broken down by quarter (1, 2, 3, 4...)
   photoUrl?: string;
   notes?: string;

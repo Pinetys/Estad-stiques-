@@ -1,8 +1,26 @@
 import React, { useState } from 'react';
 import { Game, Player } from '../types';
-import { calculatePlayerStats } from '../utils/statsCalculator';
+import {
+  calculatePlayerStats,
+  isPlayerFatigued,
+  getPlayerConsecutiveCourtSeconds,
+  formatMinutesPlayed,
+  calculateTeamMinutesDistribution,
+  isPlayerLowMinutes,
+} from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { ArrowRightLeft, Check, Users, AlertTriangle, Trash2, ArrowRight, CornerDownRight } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Check,
+  Users,
+  AlertTriangle,
+  Trash2,
+  ArrowRight,
+  CornerDownRight,
+  Flame,
+  Scale,
+  Zap,
+} from 'lucide-react';
 
 interface PlannedSub {
   playerInId: string;
@@ -24,6 +42,12 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 }) => {
   const playersOnCourt = game.players.filter(p => p.onCourt);
   const benchPlayers = game.players.filter(p => !p.onCourt);
+
+  const teamStats = calculateTeamMinutesDistribution(
+    game.players,
+    game.settings.quarterDurationMinutes,
+    game.settings.totalQuarters
+  );
 
   // Planned batch substitutions: pairs of { playerInId, playerOutId }
   const [plannedSubs, setPlannedSubs] = useState<PlannedSub[]>([]);
@@ -221,7 +245,14 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                 1. Banquillo (Quién ENTRA)
               </span>
-              <span className="text-neutral-500 text-[10px]">{benchPlayers.length} suplentes</span>
+              <span className="text-neutral-500 text-[10px]">
+                {benchPlayers.length} suplentes
+                {teamStats.playersWithFewMinutes.length > 0 && (
+                  <span className="text-sky-400 font-bold ml-1">
+                    (⚖️ {teamStats.playersWithFewMinutes.length} con pocos min)
+                  </span>
+                )}
+              </span>
             </div>
 
             {benchPlayers.length === 0 ? (
@@ -237,6 +268,7 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                   const isPendingIn = pendingInId === player.id;
                   const subIndex = plannedSubs.findIndex(s => s.playerInId === player.id);
                   const isPlannedIn = subIndex >= 0;
+                  const isLow = isPlayerLowMinutes(player, teamStats);
 
                   return (
                     <button
@@ -250,6 +282,8 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                           ? 'bg-emerald-950/70 border-emerald-500 text-emerald-100'
                           : isFouledOut
                           ? 'bg-red-950/20 border-red-900/30 opacity-40 cursor-not-allowed text-red-400'
+                          : isLow
+                          ? 'bg-sky-950/40 hover:bg-sky-900/60 border-sky-500/70 text-sky-100 ring-1 ring-sky-400/40 shadow'
                           : 'bg-[#181a24] hover:bg-neutral-800 border-neutral-700/80 text-neutral-200 hover:border-emerald-500/60'
                       }`}
                     >
@@ -263,12 +297,19 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                       {/* Header stats */}
                       <div className="w-full flex items-center justify-between text-[7.5px] font-mono text-neutral-400 leading-none">
                         <span className="text-orange-400 font-bold">{stats.points}p</span>
-                        <span>{stats.foulsPersonal}F</span>
+                        {isLow ? (
+                          <span className="text-sky-300 font-bold flex items-center gap-0.5">
+                            <Zap className="w-2 h-2 text-sky-400" />
+                            <span>Pocos</span>
+                          </span>
+                        ) : (
+                          <span>{stats.foulsPersonal}F</span>
+                        )}
                       </div>
 
                       {/* Dorsal */}
                       <span className={`font-scoreboard text-xl font-black leading-none drop-shadow-sm ${
-                        isPendingIn ? 'text-white' : 'text-emerald-400'
+                        isPendingIn ? 'text-white' : isLow ? 'text-sky-300' : 'text-emerald-400'
                       }`}>
                         #{player.number}
                       </span>
@@ -280,7 +321,15 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 
                       {/* Status indicator */}
                       <span className="text-[7.5px] font-mono text-neutral-400 mt-0.5 leading-none">
-                        {isPendingIn ? '➔ SELECCIONADO' : isPlannedIn ? 'LISTO' : isFouledOut ? '5 FALTAS' : `⏱ ${stats.minutesPlayedFormatted}`}
+                        {isPendingIn
+                          ? '➔ SELECCIONADO'
+                          : isPlannedIn
+                          ? 'LISTO'
+                          : isFouledOut
+                          ? '5 FALTAS'
+                          : isLow
+                          ? `⚖️ ${stats.minutesPlayedFormatted}`
+                          : `⏱ ${stats.minutesPlayedFormatted}`}
                       </span>
                     </button>
                   );
@@ -306,6 +355,9 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                 const isFouledOut = stats.foulsPersonal >= foulLimit;
                 const subIndex = plannedSubs.findIndex(s => s.playerOutId === player.id);
                 const isPlannedOut = subIndex >= 0;
+                const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
+                const isFatigued = isPlayerFatigued(player);
+                const consecutiveMinsFormatted = formatMinutesPlayed(consecutiveSeconds);
 
                 return (
                   <button
@@ -318,6 +370,8 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                         ? 'bg-[#181a24] hover:bg-rose-950/40 border-neutral-700 hover:border-rose-400 text-neutral-100 ring-1 ring-amber-400/30'
                         : isFouledOut
                         ? 'bg-red-950/40 border-red-800 text-red-300'
+                        : isFatigued
+                        ? 'bg-[#181a24] hover:bg-amber-950/40 border-amber-500/70 text-neutral-200 ring-1 ring-amber-500/40'
                         : 'bg-[#181a24] hover:bg-neutral-800 border-neutral-700/80 text-neutral-200'
                     }`}
                   >
@@ -331,7 +385,17 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                     {/* Header stats */}
                     <div className="w-full flex items-center justify-between text-[7.5px] font-mono text-neutral-400 leading-none">
                       <span className="text-orange-400 font-bold">{stats.points}p</span>
-                      <span>{stats.foulsPersonal}F</span>
+                      {isFatigued ? (
+                        <span
+                          className="flex items-center gap-0.5 text-amber-300 font-bold"
+                          title={`Cansancio: ${consecutiveMinsFormatted} seguidos`}
+                        >
+                          <Flame className="w-2.5 h-2.5 text-amber-400 animate-pulse" />
+                          <span>&gt;6'</span>
+                        </span>
+                      ) : (
+                        <span>{stats.foulsPersonal}F</span>
+                      )}
                     </div>
 
                     {/* Dorsal */}
@@ -346,7 +410,11 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 
                     {/* Status indicator */}
                     <span className="text-[7.5px] font-mono text-neutral-400 mt-0.5 leading-none">
-                      {isPlannedOut ? '➔ SALE' : `⏱ ${stats.minutesPlayedFormatted}`}
+                      {isPlannedOut
+                        ? '➔ SALE'
+                        : isFatigued
+                        ? `🔥 ${consecutiveMinsFormatted}`
+                        : `⏱ ${stats.minutesPlayedFormatted}`}
                     </span>
                   </button>
                 );

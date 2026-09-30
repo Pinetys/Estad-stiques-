@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Game, PlayEvent, Player, StatActionType, PendingShot } from '../types';
 import { ACTION_DEFINITIONS } from '../data/defaultData';
-import { calculatePlayerStats, formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
+import {
+  calculatePlayerStats,
+  formatGameTime,
+  formatQuarterShort,
+  formatMinutesPlayed,
+  isPlayerFatigued,
+  getPlayerConsecutiveCourtSeconds,
+  calculateTeamMinutesDistribution,
+  isPlayerLowMinutes,
+} from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { saveGameToLibrary } from '../utils/libraryUtils';
 import {
@@ -34,6 +43,7 @@ import {
   Clock,
   Maximize,
   Minimize,
+  Scale,
 } from 'lucide-react';
 import { toggleFullscreen, isFullscreenActive } from '../utils/fullscreen';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
@@ -49,6 +59,7 @@ import { QuickTimeAdjustModal } from './QuickTimeAdjustModal';
 import { TimeoutCountdownModal } from './TimeoutCountdownModal';
 import { ProSubscriptionBenefitsModal } from './ProSubscriptionBenefitsModal';
 import { FoulModalData } from './FoulResolutionModal';
+import { TeamMinutesBalanceModal } from './TeamMinutesBalanceModal';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -110,8 +121,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       onUpdateGame(prev => ({
         ...prev,
         players: prev.players.map(p => {
-          if (p.id === playerOutId) return { ...p, onCourt: false };
-          if (p.id === playerInId) return { ...p, onCourt: true };
+          if (p.id === playerOutId) return { ...p, onCourt: false, currentStintSeconds: 0 };
+          if (p.id === playerInId) return { ...p, onCourt: true, currentStintSeconds: 0 };
           return p;
         }),
       }));
@@ -133,6 +144,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showQuickTimeAdjustModal, setShowQuickTimeAdjustModal] = useState(false);
   const [timeoutModalTeam, setTimeoutModalTeam] = useState<'home' | 'away' | null>(null);
   const [showProBenefitsModal, setShowProBenefitsModal] = useState(false);
+  const [showMinutesBalanceModal, setShowMinutesBalanceModal] = useState(false);
 
   const isGameFinished = game.status === 'finished';
   const isActionsLocked = isGameFinished && !isEditingFinishedGame;
@@ -1053,36 +1065,6 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </button>
           </div>
 
-          {/* Direct Opponent Foul Button in Portrait Top Bar - Always Visible on Tablets */}
-          <button
-            type="button"
-            id="portrait-top-away-foul-btn"
-            onClick={() => {
-              handleLogOpponentActionGuarded('OPP_FOUL');
-              const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
-              if (nextAwayFouls >= bonusLimit) {
-                setBonusFreeThrowPrompt({ team: 'away', count: nextAwayFouls });
-              }
-            }}
-            disabled={isActionsLocked}
-            className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-black flex items-center gap-1 transition active:scale-95 border shadow-sm shrink-0 ${
-              awayIsBonus
-                ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
-                : 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400'
-            }`}
-            title="Sumar falta al equipo rival en la parte superior"
-          >
-            <span>+FALTA RIVAL</span>
-            <span className="bg-red-900 text-white px-1.5 py-0.2 rounded font-black text-xs border border-red-300">
-              {game.awayQuarterFouls || 0}
-            </span>
-            {awayIsBonus && (
-              <span className="text-[8px] bg-white text-red-600 px-1 rounded font-black animate-pulse">
-                BONUS
-              </span>
-            )}
-          </button>
-
           {/* Anti-Bloqueo Móvil (Keep Screen Awake) */}
           <button
             type="button"
@@ -1314,6 +1296,91 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       {!isLandscapeTablet && bonusFreeThrowPrompt && renderBonusAssistant()}
       {!isLandscapeTablet && assistPromptForEvent && renderAssistPrompt()}
 
+      {/* 3.1 SUBTLE ROTATION & EQUAL MINUTES ALERT (PORTRAIT) */}
+      {(() => {
+        const teamMinutesStats = calculateTeamMinutesDistribution(
+          game.players,
+          game.settings.quarterDurationMinutes,
+          game.settings.totalQuarters
+        );
+        const fatiguedPlayersOnCourt = playersOnCourt.filter(p => isPlayerFatigued(p));
+        const lowMinuteBenchPlayers = benchPlayers.filter(p => isPlayerLowMinutes(p, teamMinutesStats));
+
+        if (
+          isLandscapeTablet ||
+          (fatiguedPlayersOnCourt.length === 0 && lowMinuteBenchPlayers.length === 0) ||
+          isActionsLocked
+        ) {
+          return null;
+        }
+
+        return (
+          <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-1 select-none animate-in fade-in shrink-0">
+            <div className="flex items-center justify-between px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-950/80 via-[#0E224A] to-sky-950/80 border border-amber-500/40 text-amber-200 text-[10px] sm:text-xs font-mono shadow-sm">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                {fatiguedPlayersOnCourt.length > 0 ? (
+                  <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse shrink-0" />
+                ) : (
+                  <Scale className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                )}
+                <span className="truncate text-slate-200">
+                  {fatiguedPlayersOnCourt.length > 0 && lowMinuteBenchPlayers.length > 0 ? (
+                    <>
+                      <strong className="text-amber-300">Rotación y Reparto:</strong> #{fatiguedPlayersOnCourt[0].number} (&gt;6' en pista) ➔ Dar entrada a #{lowMinuteBenchPlayers[0].number} {lowMinuteBenchPlayers[0].name.split(' ')[0]} ({formatMinutesPlayed(lowMinuteBenchPlayers[0].minutesPlayedSeconds || 0)})
+                    </>
+                  ) : fatiguedPlayersOnCourt.length > 0 ? (
+                    <>
+                      <strong className="text-amber-300">Fatiga (&gt;6'):</strong>{' '}
+                      {fatiguedPlayersOnCourt
+                        .map(
+                          p =>
+                            `#${p.number} ${p.name.split(' ')[0]} (${formatMinutesPlayed(
+                              getPlayerConsecutiveCourtSeconds(p)
+                            )})`
+                        )
+                        .join(', ')}{' '}
+                      &gt;6 min seguidos
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-sky-300">Reparto de Minutos:</strong> {lowMinuteBenchPlayers.length} suplentes llevan muy pocos minutos ({lowMinuteBenchPlayers.map(p => '#' + p.number).join(', ')})
+                    </>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('light', game.settings.vibrationEnabled);
+                    setShowMinutesBalanceModal(true);
+                  }}
+                  className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-sky-300 hover:text-white rounded-lg text-[9px] sm:text-[10px] font-bold border border-sky-500/40 transition active:scale-95 flex items-center gap-1"
+                  title="Ver balance y reparto equitativo de minutos de la plantilla"
+                >
+                  <Scale className="w-2.5 h-2.5" />
+                  <span>Reparto</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('light', game.settings.vibrationEnabled);
+                    onOpenSubstitutionModal();
+                  }}
+                  className="px-2 py-0.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black rounded-lg text-[9px] sm:text-[10px] uppercase shrink-0 transition flex items-center gap-1 shadow-sm"
+                  title="Abrir ventana de cambios para equilibrar minutos y dar descanso"
+                >
+                  <ArrowRightLeft className="w-2.5 h-2.5 stroke-[2.5]" />
+                  <span>Rotar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 4. JUGADORES EN PISTA (PORTRAIT ONLY) */}
       {!isLandscapeTablet && (
         <CourtPlayersBar
@@ -1336,6 +1403,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           }}
           onOpenSubstitutionModal={onOpenSubstitutionModal}
           onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
+          onOpenMinutesBalanceModal={() => setShowMinutesBalanceModal(true)}
         />
       )}
 
@@ -1388,6 +1456,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               onOpenRosterModal={() => {
                 if (isActionsLocked) return;
                 if (onOpenRosterModal) onOpenRosterModal();
+              }}
+              onOpenMinutesBalanceModal={() => {
+                if (isActionsLocked) return;
+                setShowMinutesBalanceModal(true);
               }}
               onUndoLastAction={onUndoLastAction}
               onDeleteEvent={onDeleteEvent}
@@ -2027,6 +2099,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onClose={() => setShowProBenefitsModal(false)}
           onOpenOfficialSheet={onOpenOfficialSheet}
           onOpenShotChart={onOpenShotChart}
+        />
+      )}
+
+      {/* MODAL REPARTO EQUITATIVO DE MINUTOS Y BALANCE DE PLANTILLA */}
+      {showMinutesBalanceModal && (
+        <TeamMinutesBalanceModal
+          game={game}
+          onClose={() => setShowMinutesBalanceModal(false)}
+          onPerformSubstitution={handlePerformDirectSub}
+          onOpenSubstitutionModal={() => {
+            setShowMinutesBalanceModal(false);
+            onOpenSubstitutionModal();
+          }}
         />
       )}
     </div>
