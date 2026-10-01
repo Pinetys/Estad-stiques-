@@ -108,6 +108,7 @@ import {
 import { DeviceRole, getDeviceRole, setDeviceRole as persistDeviceRole } from './utils/deviceRole';
 import { SyncStatusBar } from './components/SyncStatusBar';
 import { SyncPairingModal } from './components/SyncPairingModal';
+import { LiveMatchSpectatorView } from './components/LiveMatchSpectatorView';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
 
@@ -321,17 +322,17 @@ export default function App() {
       const pairCode = params.get('pair') || params.get('code');
       const urlMode = params.get('mode') || params.get('role');
 
-      if (urlMode === 'monitor') {
-        setDeviceRoleState('monitor');
-        persistDeviceRole('monitor');
+      if (urlMode === 'spectator' || urlMode === 'monitor' || urlMode === 'live') {
+        setDeviceRoleState('spectator');
+        persistDeviceRole('spectator');
       }
 
       if (pairCode) {
         syncEngine.fetchGameByTransferCode(pairCode).then(loadedGame => {
           saveGameToLibrary(loadedGame);
           setGame(loadedGame);
-          setDeviceRoleState('monitor');
-          persistDeviceRole('monitor');
+          setDeviceRoleState('spectator');
+          persistDeviceRole('spectator');
           setActiveTab('live');
           const cleanUrl = window.location.pathname;
           window.history.replaceState({}, '', cleanUrl);
@@ -1586,6 +1587,23 @@ export default function App() {
   // Screen Wake Lock (Anti-bloqueo móvil en pista y registro en directo)
   useScreenWakeLock((isCourtMode || activeTab === 'live') && game.settings.keepScreenAwake !== false);
 
+  // Dedicated Spectator Live View for other devices connected via QR code
+  // Only shows live result, scoreboard and proposed player stats with zero menu access
+  if (deviceRole === 'spectator' || deviceRole === 'monitor') {
+    return (
+      <LiveMatchSpectatorView
+        game={game}
+        onSwitchToRecorder={() => {
+          setDeviceRoleState('recorder');
+          persistDeviceRole('recorder');
+        }}
+        onRefresh={() => {
+          syncEngine.syncAll().catch(console.error);
+        }}
+      />
+    );
+  }
+
   return (
     <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#070c1e] text-slate-100' : 'min-h-screen bg-[#090f23] text-slate-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
       {/* 1. If Court Mode is Active: Show Ultra-Clean Bench Tactile Console */}
@@ -2070,45 +2088,6 @@ export default function App() {
               </div>
             </div>
           </header>
-
-          {/* Monitor Mode Alert Banner (PC Reception / Read-Only View) */}
-          {deviceRole === 'monitor' && (
-            <div className="bg-gradient-to-r from-sky-950 via-[#0c1833] to-sky-950 border-b border-sky-500/60 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs text-sky-200 sticky top-14 z-35 shadow-lg animate-in slide-in-from-top duration-200">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-1.5 rounded-lg bg-sky-600/20 border border-sky-400/40 text-sky-400 shrink-0">
-                  <Laptop className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="font-black text-white uppercase tracking-wider block sm:inline">
-                    🖥️ Modo Monitor Activo (Ordenador)
-                  </span>
-                  <span className="text-[11px] text-sky-300/80 sm:ml-2">
-                    Recibiendo en directo desde la tablet de pista • Solo lectura para no sobreescribir datos
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeviceRoleState('recorder');
-                    persistDeviceRole('recorder');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-mono font-bold text-[11px] transition active:scale-95 shadow-sm"
-                  title="Tomar el control de anotación en este dispositivo"
-                >
-                  Tomar Control (Anotar)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSyncPairingModal(true)}
-                  className="px-2 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-300 border border-gray-700 font-mono text-[11px] transition active:scale-95"
-                >
-                  Ajustes Sync
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Active Cloud Match Alert Banner (e.g. tablet is recording match) */}
           {activeCloudMatchNotice && activeCloudMatchNotice.activeGameId !== game.id && (

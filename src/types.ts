@@ -232,6 +232,7 @@ export interface Game {
   deletedAt?: string;
   settings: GameSettings;
   players: Player[];
+  awayPlayers?: Player[];
   events: PlayEvent[];
   quarterScores: QuarterScore[];
 }

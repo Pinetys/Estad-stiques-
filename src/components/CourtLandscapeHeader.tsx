@@ -22,6 +22,7 @@ import {
   Minimize,
   Cloud,
   Check,
+  Edit2,
 } from 'lucide-react';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 
@@ -55,6 +56,7 @@ interface CourtLandscapeHeaderProps {
   onOpenProBenefits?: () => void;
   onOpenTutorial?: () => void;
   onOpenCloudSync?: () => void;
+  onOpenRivalRoster?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -87,6 +89,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenProBenefits,
   onOpenTutorial,
   onOpenCloudSync,
+  onOpenRivalRoster,
 }) => {
   const currentQuarterLabel = formatQuarterShort(game.currentQuarter);
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
@@ -604,9 +607,21 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             )}
 
             <div className="flex flex-col text-right ml-auto min-w-0">
-              <span className="text-xs sm:text-sm font-black text-sky-400 uppercase tracking-wider truncate max-w-[85px] sm:max-w-[110px] leading-tight">
-                {game.awayTeamName || 'RIVAL'}
-              </span>
+              <div className="flex items-center justify-end gap-1">
+                <span className="text-xs sm:text-sm font-black text-sky-400 uppercase tracking-wider truncate max-w-[85px] sm:max-w-[110px] leading-tight">
+                  {game.awayTeamName || 'RIVAL'}
+                </span>
+                {onOpenRivalRoster && (
+                  <button
+                    type="button"
+                    onClick={onOpenRivalRoster}
+                    className="p-1 rounded text-slate-400 hover:text-sky-300 hover:bg-sky-950/60 transition active:scale-90 shrink-0"
+                    title="Editar jugadores del rival"
+                  >
+                    <Edit2 className="w-3 h-3 text-sky-400/80 hover:text-sky-300" />
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5 justify-end">
                 <span className="text-slate-400 font-bold">Faltas:</span>
                 <span
@@ -624,8 +639,38 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </div>
           </div>
 
-          {/* Opponent Live Action: The ONLY button needed in court mode is +FALTA */}
-          <div className={`flex items-center ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+          {/* Opponent Live Action: Scoring buttons (+1 TL, +2 Pts, +3 Tri) & Proportioned +FALTA */}
+          <div className={`flex items-center gap-1 sm:gap-1.5 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+            <button
+              type="button"
+              id="header-away-score-1p-btn"
+              onClick={() => onLogOpponentAction('OPP_1P')}
+              disabled={isActionsLocked}
+              className="px-2 py-1 sm:py-1.5 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40"
+              title="+1 Tiro Libre Rival"
+            >
+              +1 TL
+            </button>
+            <button
+              type="button"
+              id="header-away-score-2p-btn"
+              onClick={() => onLogOpponentAction('OPP_2P')}
+              disabled={isActionsLocked}
+              className="px-2 py-1 sm:py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40"
+              title="+2 Canasta Rival (Poner sitio de tiro)"
+            >
+              +2 Pts
+            </button>
+            <button
+              type="button"
+              id="header-away-score-3p-btn"
+              onClick={() => onLogOpponentAction('OPP_3P')}
+              disabled={isActionsLocked}
+              className="px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40"
+              title="+3 Triple Rival (Poner sitio de tiro)"
+            >
+              +3 Tri
+            </button>
             <button
               type="button"
               id="header-away-foul-action-btn"
@@ -637,19 +682,19 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 }
               }}
               disabled={isActionsLocked}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-mono font-black text-xs sm:text-sm transition active:scale-95 border-2 shadow-lg disabled:opacity-40 shrink-0 flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg font-mono font-black text-[10px] sm:text-xs transition active:scale-95 border-2 shadow-md disabled:opacity-40 shrink-0 flex items-center gap-1 ${
                 awayIsBonus
-                  ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse shadow-red-600/50'
-                  : 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400 shadow-red-950/60'
+                  ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
+                  : 'bg-red-950/90 hover:bg-red-900 text-rose-200 border-red-600/70'
               }`}
               title="Sumar falta al equipo contrario (Rival)"
             >
-              <span className="uppercase tracking-tight">+FALTA RIVAL</span>
-              <span className="bg-red-950 text-white px-2 py-0.5 rounded font-scoreboard font-black text-xs sm:text-sm border border-red-300">
+              <span className="uppercase tracking-tight">+F</span>
+              <span className="bg-black/50 text-white px-1.5 py-0.2 rounded font-scoreboard font-black text-[10px] sm:text-xs border border-red-400">
                 {game.awayQuarterFouls || 0}
               </span>
               {awayIsBonus && (
-                <span className="text-[8px] sm:text-[9px] bg-white text-red-600 px-1.5 py-0.2 rounded font-black animate-pulse">
+                <span className="text-[7.5px] sm:text-[8px] bg-white text-red-600 px-1 py-0.2 rounded font-black animate-pulse">
                   BONUS
                 </span>
               )}

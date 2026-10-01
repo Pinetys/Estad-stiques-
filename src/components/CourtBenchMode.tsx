@@ -10,6 +10,7 @@ import {
   getPlayerConsecutiveCourtSeconds,
   calculateTeamMinutesDistribution,
   isPlayerLowMinutes,
+  CONTINUOUS_FATIGUE_LIMIT_SECONDS,
 } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { saveGameToLibrary } from '../utils/libraryUtils';
@@ -60,6 +61,7 @@ import { TimeoutCountdownModal } from './TimeoutCountdownModal';
 import { ProSubscriptionBenefitsModal } from './ProSubscriptionBenefitsModal';
 import { FoulModalData } from './FoulResolutionModal';
 import { TeamMinutesBalanceModal } from './TeamMinutesBalanceModal';
+import { RivalRosterModal } from './RivalRosterModal';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -145,6 +147,15 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [timeoutModalTeam, setTimeoutModalTeam] = useState<'home' | 'away' | null>(null);
   const [showProBenefitsModal, setShowProBenefitsModal] = useState(false);
   const [showMinutesBalanceModal, setShowMinutesBalanceModal] = useState(false);
+  const [showRivalRosterModal, setShowRivalRosterModal] = useState(false);
+
+  const handleSaveRivalRoster = (awayPlayers: Player[], awayTeamName?: string) => {
+    onUpdateGame(prev => ({
+      ...prev,
+      awayPlayers,
+      awayTeamName: awayTeamName || prev.awayTeamName,
+    }));
+  };
 
   const isGameFinished = game.status === 'finished';
   const isActionsLocked = isGameFinished && !isEditingFinishedGame;
@@ -221,6 +232,30 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       return;
     }
     onLogOpponentAction(actionType, opponentPlayerNumber);
+  };
+
+  // Explicit shot location placement for rival points (+2 and +3)
+  const handleOpenRivalShotPlacement = (actionType: 'OPP_2P' | 'OPP_3P') => {
+    if (isActionsLocked) {
+      playSound('error', game.settings.soundEnabled);
+      return;
+    }
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('light', game.settings.vibrationEnabled);
+
+    if (onOpenShotChartForBasket) {
+      onOpenShotChartForBasket({
+        playerId: 'opponent',
+        playerName: game.awayTeamName || 'Equipo Rival',
+        playerNumber: 0,
+        actionType,
+        points: actionType === 'OPP_3P' ? 3 : 2,
+        isMade: true,
+        isOpponentShot: true,
+      });
+    } else {
+      onLogOpponentAction(actionType);
+    }
   };
 
   const handleConfirmOpponentScout = (dorsal?: number) => {
@@ -1600,6 +1635,13 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                     const foulLimit = game.settings.foulOutLimit || 5;
                     const isFouledOut = stats.foulsPersonal >= foulLimit;
                     const isFoulDanger = stats.foulsPersonal === foulLimit - 1;
+                    const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
+                    const isFatigued = isPlayerFatigued(player);
+                    const consecutiveMinsFormatted = formatMinutesPlayed(consecutiveSeconds);
+                    const fatiguePct = Math.min(
+                      100,
+                      Math.round((consecutiveSeconds / CONTINUOUS_FATIGUE_LIMIT_SECONDS) * 100)
+                    );
 
                     return (
                       <button
@@ -1607,8 +1649,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                         onClick={() => handleConfirmPlayerForAction(player)}
                         className={`rounded-xl text-center transition flex flex-col justify-between border active:scale-95 shadow-lg ${
                           isFoulConfirmation
-                            ? 'p-1 min-h-[72px] sm:min-h-[78px]'
-                            : 'p-1.5 min-h-[82px] sm:min-h-[90px]'
+                            ? 'p-1 min-h-[76px] sm:min-h-[82px]'
+                            : 'p-1.5 min-h-[86px] sm:min-h-[94px]'
                         } ${
                           isFouledOut
                             ? 'bg-red-950/60 border-red-800 text-red-400'
@@ -1644,6 +1686,39 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                           }`}>
                             {player.name.split(' ')[0]}
                           </span>
+                        </div>
+
+                        {/* Barra de Fatiga Proporcionada entre Nombre y Faltas */}
+                        <div
+                          className="w-full px-0.5 my-0.5 flex flex-col items-center justify-center"
+                          title={`Fatiga / Tanda en pista: ${consecutiveMinsFormatted} seguidos sin descanso (${fatiguePct}%)`}
+                        >
+                          <div className="w-full max-w-[54px] sm:max-w-[60px] h-1.5 bg-slate-900/90 rounded-full overflow-hidden border border-slate-700/60 p-[0.5px] shadow-xs">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                isFatigued
+                                  ? 'bg-gradient-to-r from-amber-500 to-red-500 animate-pulse'
+                                  : fatiguePct >= 65
+                                  ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                                  : fatiguePct >= 35
+                                  ? 'bg-gradient-to-r from-emerald-400 to-amber-300'
+                                  : 'bg-emerald-400'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(8, fatiguePct))}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-center gap-0.5 leading-none mt-0.5">
+                            {isFatigued ? (
+                              <span className="flex items-center gap-0.5 text-[7px] sm:text-[7.5px] font-mono font-black text-amber-300">
+                                <Flame className="w-2 h-2 text-amber-400 shrink-0" />
+                                <span>{consecutiveMinsFormatted} seg</span>
+                              </span>
+                            ) : (
+                              <span className="text-[7px] sm:text-[7.5px] font-mono text-slate-400 font-bold">
+                                {consecutiveMinsFormatted} seg
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Marcador de Faltas */}

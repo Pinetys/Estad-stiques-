@@ -1,7 +1,7 @@
 import React from 'react';
 import { Game } from '../types';
 import { formatGameTime } from '../utils/statsCalculator';
-import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown } from 'lucide-react';
+import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown, Edit2 } from 'lucide-react';
 
 interface CourtScoreboardProps {
   game: Game;
@@ -22,6 +22,7 @@ interface CourtScoreboardProps {
   onOpenQuickTimeAdjust?: () => void;
   onTriggerTimeout?: (team: 'home' | 'away') => void;
   onOpenProBenefits?: () => void;
+  onOpenRivalRoster?: () => void;
 }
 
 export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
@@ -43,6 +44,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
   onOpenQuickTimeAdjust,
   onTriggerTimeout,
   onOpenProBenefits,
+  onOpenRivalRoster,
 }) => {
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
 
@@ -264,8 +266,21 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
 
         {/* VISITANTE (AWAY) */}
         <div className="col-span-3 flex flex-col items-center justify-center text-center">
-          <div className="text-xs sm:text-sm font-black text-sky-400 uppercase tracking-wider truncate w-full px-1">
-            {game.awayTeamName || 'RIVAL'}
+          <div className="flex items-center justify-center gap-1 w-full px-1">
+            <span className="text-xs sm:text-sm font-black text-sky-400 uppercase tracking-wider truncate">
+              {game.awayTeamName || 'RIVAL'}
+            </span>
+            {onOpenRivalRoster && (
+              <button
+                type="button"
+                id="scoreboard-edit-rival-btn"
+                onClick={onOpenRivalRoster}
+                className="p-1 rounded-md text-slate-400 hover:text-sky-300 hover:bg-sky-950/60 transition active:scale-90 shrink-0"
+                title="Editar plantilla del equipo rival (dorsales y nombres)"
+              >
+                <Edit2 className="w-3 h-3 text-sky-400/80 hover:text-sky-300" />
+              </button>
+            )}
           </div>
           <div
             className={`font-scoreboard font-extrabold ${
@@ -274,35 +289,71 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           >
             {game.awayScore}
           </div>
-          {/* Away Team Interactive Foul Button: Single dedicated button for rival fouls */}
-          <button
-            type="button"
-            id="scoreboard-away-foul-btn"
-            onClick={() => {
-              onLogOpponentAction('OPP_FOUL');
-              const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
-              if (nextAwayFouls >= bonusLimit) {
-                onTriggerOpponentFoulBonus(nextAwayFouls);
-              }
-            }}
-            disabled={isActionsLocked}
-            className={`mt-1 px-2.5 py-1 rounded-lg text-xs font-mono font-black flex items-center justify-center gap-1 transition active:scale-95 border-2 shadow-sm ${
-              awayIsBonus
-                ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse shadow-red-600/50'
-                : 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400'
-            }`}
-            title="Tocar para sumar falta al equipo contrario (Rival)"
-          >
-            <span className="text-white text-[10px] uppercase font-black tracking-tight">+FALTA RIVAL</span>
-            <span className="bg-red-950 text-white px-1.5 py-0.2 rounded font-black text-xs border border-red-300">
-              {game.awayQuarterFouls || 0}
-            </span>
-            {awayIsBonus && (
-              <span className="text-[8px] bg-white text-red-600 px-1 rounded font-black animate-pulse">
-                BONUS
+
+          {/* Rival Quick Action Row: Points (+1, +2, +3) & Proportioned Foul (+FALTA) */}
+          <div className="grid grid-cols-4 gap-1 w-full max-w-[210px] mt-1">
+            <button
+              type="button"
+              id="away-score-1p-btn"
+              onClick={() => onLogOpponentAction('OPP_1P')}
+              disabled={isActionsLocked}
+              className="py-1 px-1 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[10px] sm:text-[11px] active:scale-95 transition shadow-xs disabled:opacity-40"
+              title="+1 Tiro Libre Rival"
+            >
+              +1 TL
+            </button>
+            <button
+              type="button"
+              id="away-score-2p-btn"
+              onClick={() => onLogOpponentAction('OPP_2P')}
+              disabled={isActionsLocked}
+              className="py-1 px-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-[11px] active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center justify-center gap-0.5"
+              title="+2 Canasta Rival (Poner sitio de tiro en pista)"
+            >
+              <span>+2</span>
+              <span className="text-[8px] opacity-80">🎯</span>
+            </button>
+            <button
+              type="button"
+              id="away-score-3p-btn"
+              onClick={() => onLogOpponentAction('OPP_3P')}
+              disabled={isActionsLocked}
+              className="py-1 px-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-[11px] active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center justify-center gap-0.5"
+              title="+3 Triple Rival (Poner sitio de tiro en pista)"
+            >
+              <span>+3</span>
+              <span className="text-[8px] opacity-80">🎯</span>
+            </button>
+            {/* Away Team Interactive Foul Button - Proportioned and balanced */}
+            <button
+              type="button"
+              id="scoreboard-away-foul-btn"
+              onClick={() => {
+                onLogOpponentAction('OPP_FOUL');
+                const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+                if (nextAwayFouls >= bonusLimit) {
+                  onTriggerOpponentFoulBonus(nextAwayFouls);
+                }
+              }}
+              disabled={isActionsLocked}
+              className={`py-1 px-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-black flex items-center justify-center gap-1 transition active:scale-95 border shadow-xs disabled:opacity-40 ${
+                awayIsBonus
+                  ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
+                  : 'bg-red-950/90 hover:bg-red-900 text-rose-200 border-red-600/70'
+              }`}
+              title="Sumar falta al equipo rival"
+            >
+              <span className="font-bold">+F</span>
+              <span className="bg-black/50 text-white px-1 py-0.2 rounded font-black text-[9px]">
+                {game.awayQuarterFouls || 0}
               </span>
-            )}
-          </button>
+              {awayIsBonus && (
+                <span className="text-[7.5px] bg-white text-red-600 px-0.5 rounded font-black">
+                  B
+                </span>
+              )}
+            </button>
+          </div>
 
           {/* Away Timeouts button (TM) */}
           <button

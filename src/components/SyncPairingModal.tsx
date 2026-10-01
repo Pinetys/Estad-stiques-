@@ -80,7 +80,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
       if (origin.includes('ais-dev-')) {
         origin = origin.replace('ais-dev-', 'ais-pre-');
       }
-      const pairUrl = `${origin}/?pair=${encodeURIComponent(code)}&mode=monitor`;
+      const pairUrl = `${origin}/?pair=${encodeURIComponent(code)}&mode=spectator`;
 
       // 3. Generate QR Code image
       const qrImage = await QRCode.toDataURL(pairUrl, {
@@ -108,7 +108,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
     if (origin.includes('ais-dev-')) {
       origin = origin.replace('ais-dev-', 'ais-pre-');
     }
-    const pairUrl = `${origin}/?pair=${encodeURIComponent(pinCode)}&mode=monitor`;
+    const pairUrl = `${origin}/?pair=${encodeURIComponent(pinCode)}&mode=spectator`;
     navigator.clipboard.writeText(pairUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
@@ -288,7 +288,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
                   )}
 
                   <p className="text-[11px] text-gray-300 mt-2 max-w-xs">
-                    Escanea este código con la cámara del ordenador o móvil para ver el partido en directo.
+                    Escanea este código con cualquier móvil u ordenador para ver el partido en directo: solo resultado y estadísticas de jugadores, sin acceso a menús ni edición.
                   </p>
                 </div>
 
@@ -311,7 +311,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
                   className="w-full py-2.5 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-gray-700 font-mono font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-sm"
                 >
                   {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedLink ? '¡Enlace copiado al portapapeles!' : 'Copiar Enlace de Monitor para el Ordenador'}</span>
+                  <span>{copiedLink ? '¡Enlace copiado al portapapeles!' : 'Copiar Enlace Directo para Espectadores'}</span>
                 </button>
               </div>
 
