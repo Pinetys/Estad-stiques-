@@ -478,14 +478,31 @@ export function generateShareText(game: Game, playerStats: PlayerBoxScore[], tea
     text += ` ${idx + 1}. #${p.player.number} ${p.player.name} (${p.minutesPlayedFormatted} min): *${p.efficiency} VAL* (${p.points}p, ${p.totalRebounds}r, ${p.assists}a, ${p.steals}rob, ${p.foulsPersonal}f)\n`;
   });
 
+  text += `\n🎯 *RESUMEN GRÁFICO DE TIRO Y EFICACIA:*\n`;
+  const renderBar = (pct: number) => {
+    const blocks = Math.round(Math.min(100, Math.max(0, pct)) / 10);
+    return `[${'█'.repeat(blocks)}${'░'.repeat(10 - blocks)}]`;
+  };
+
+  const ptsT2 = (teamStats.twoPointsMade || 0) * 2;
+  const ptsT3 = (teamStats.threePointsMade || 0) * 3;
+  const ptsTL = teamStats.freeThrowsMade || 0;
+  const totalScored = Math.max(1, ptsT2 + ptsT3 + ptsTL);
+  const pctT2 = Math.round((ptsT2 / totalScored) * 100);
+  const pctT3 = Math.round((ptsT3 / totalScored) * 100);
+  const pctTL = Math.max(0, 100 - pctT2 - pctT3);
+
+  text += ` • Tiros de Campo: ${renderBar(teamStats.fieldGoalsPercentage)} *${teamStats.fieldGoalsPercentage}%* (${teamStats.fieldGoalsMade}/${teamStats.fieldGoalsAttempted})\n`;
+  text += ` • Tiros de 2:     ${renderBar(teamStats.twoPointsPercentage)} *${teamStats.twoPointsPercentage}%* (${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted})\n`;
+  text += ` • Triples (T3):   ${renderBar(teamStats.threePointsPercentage)} *${teamStats.threePointsPercentage}%* (${teamStats.threePointsMade}/${teamStats.threePointsAttempted})\n`;
+  text += ` • Tiros Libres:   ${renderBar(teamStats.freeThrowsPercentage)} *${teamStats.freeThrowsPercentage}%* (${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted})\n`;
+  text += ` • Métricas Tiro:  eFG% *${teamStats.effectiveFieldGoalPercentage}%* | TS% *${teamStats.trueShootingPercentage}%*\n`;
+  text += ` • Reparto Puntos: 🔵 T2: ${ptsT2}p (${pctT2}%) | 🟢 T3: ${ptsT3}p (${pctT3}%) | 🟡 TL: ${ptsTL}p (${pctTL}%)\n`;
+
   text += `\n📋 *ESTADÍSTICAS COLECTIVAS:*\n`;
-  text += ` • Tiros de Campo: ${teamStats.fieldGoalsMade}/${teamStats.fieldGoalsAttempted} (${teamStats.fieldGoalsPercentage}%)\n`;
-  text += ` • Tiros de 2: ${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted} (${teamStats.twoPointsPercentage}%)\n`;
-  text += ` • Triples (T3): ${teamStats.threePointsMade}/${teamStats.threePointsAttempted} (${teamStats.threePointsPercentage}%)\n`;
-  text += ` • Tiros Libres: ${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted} (${teamStats.freeThrowsPercentage}%)\n`;
   text += ` • Rebotes Totales: ${teamStats.totalRebounds} (Of: ${teamStats.offensiveRebounds}, Def: ${teamStats.defensiveRebounds})\n`;
   text += ` • Asistencias: ${teamStats.assists} | Robos: ${teamStats.steals} | Pérdidas: ${teamStats.turnovers}\n`;
-  text += ` • Faltas Cometidas: ${teamStats.foulsPersonal}\n`;
+  text += ` • Tapones: ${teamStats.blocks} | Faltas Cometidas: ${teamStats.foulsPersonal}\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `Generado en directo con BasketStats Live 📱`;
 

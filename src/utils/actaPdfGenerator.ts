@@ -229,7 +229,10 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
   doc.text(`${teamStats.foulsPersonal || 0}F`, 178, y + 1.2, { align: 'center' });
   doc.text(String(teamStats.efficiency), 194, y + 1.2, { align: 'center' });
 
-  y += 10;
+  y += 7;
+
+  // 4b. RESUMEN GRÁFICO DEL RENDIMIENTO DEL EQUIPO (PORCENTAJES DE TIRO GLOBALES)
+  y = renderTeamShootingSummaryBlock(doc, y, pageWidth, teamStats);
 
   // 5. OPPONENT SCOUTING & SUMMARY
   doc.setFillColor(240, 242, 245);
@@ -301,6 +304,172 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
 }
 
 /**
+ * Renders a comprehensive vector graphical summary of team shooting performance
+ * (percentages, visual progress bars, and point distribution chart) on the generated PDF document.
+ */
+function renderTeamShootingSummaryBlock(doc: jsPDF, startY: number, pageWidth: number, teamStats: any): number {
+  let y = startY;
+
+  // 1. Header Banner
+  doc.setFillColor(20, 24, 33);
+  doc.rect(10, y, pageWidth - 20, 5, 'F');
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('RESUMEN GRÁFICO DEL RENDIMIENTO DEL EQUIPO • PORCENTAJES DE TIRO Y EFICACIA', 14, y + 3.5);
+
+  y += 6.5;
+
+  // 2. 4 Graphical Cards with Progress Bars
+  const cardW = (pageWidth - 20 - 3 * 2.5) / 4;
+  const cards = [
+    {
+      title: 'TIROS DE 2 (T2)',
+      ratio: `${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted}`,
+      pct: teamStats.twoPointsPercentage || 0,
+      color: [37, 99, 235], // Blue
+      lightColor: [219, 234, 254],
+    },
+    {
+      title: 'TRIPLES (T3)',
+      ratio: `${teamStats.threePointsMade}/${teamStats.threePointsAttempted}`,
+      pct: teamStats.threePointsPercentage || 0,
+      color: [16, 185, 129], // Emerald
+      lightColor: [209, 250, 229],
+    },
+    {
+      title: 'TIROS LIBRES (TL)',
+      ratio: `${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted}`,
+      pct: teamStats.freeThrowsPercentage || 0,
+      color: [245, 158, 11], // Amber
+      lightColor: [254, 243, 199],
+    },
+    {
+      title: 'TC GLOBAL (CAMPO)',
+      ratio: `${teamStats.fieldGoalsMade}/${teamStats.fieldGoalsAttempted}`,
+      pct: teamStats.fieldGoalsPercentage || 0,
+      color: [234, 88, 12], // Orange
+      lightColor: [255, 237, 213],
+      extra: `eFG: ${teamStats.effectiveFieldGoalPercentage || 0}%`,
+    },
+  ];
+
+  const cardH = 13.5;
+  cards.forEach((c, idx) => {
+    const cx = 10 + idx * (cardW + 2.5);
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(215, 222, 232);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(cx, y, cardW, cardH, 1.2, 1.2, 'FD');
+
+    // Title
+    doc.setFontSize(5.8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 90, 105);
+    doc.text(c.title, cx + cardW / 2, y + 3.2, { align: 'center' });
+
+    // Ratio & Percentage
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(c.color[0], c.color[1], c.color[2]);
+    doc.text(`${c.ratio} • ${c.pct}%`, cx + cardW / 2, y + 7.2, { align: 'center' });
+
+    // Graphical Progress Bar Track & Fill
+    const barW = cardW - 4;
+    const barH = 2;
+    const barX = cx + 2;
+    const barY = y + 8.8;
+
+    doc.setFillColor(c.lightColor[0], c.lightColor[1], c.lightColor[2]);
+    doc.roundedRect(barX, barY, barW, barH, 0.6, 0.6, 'F');
+
+    const fillWidth = Math.max(0.5, (barW * Math.min(100, Math.max(0, c.pct))) / 100);
+    doc.setFillColor(c.color[0], c.color[1], c.color[2]);
+    doc.roundedRect(barX, barY, fillWidth, barH, 0.6, 0.6, 'F');
+
+    // Extra subtitle (eFG% on total)
+    if (c.extra) {
+      doc.setFontSize(5);
+      doc.setTextColor(120, 130, 145);
+      doc.text(c.extra, cx + cardW / 2, y + 12.3, { align: 'center' });
+    }
+  });
+
+  y += cardH + 2.2;
+
+  // 3. Point Origin Distribution Chart (Segmented Horizontal Bar)
+  const ptsT2 = (teamStats.twoPointsMade || 0) * 2;
+  const ptsT3 = (teamStats.threePointsMade || 0) * 3;
+  const ptsTL = teamStats.freeThrowsMade || 0;
+  const totalScoredPts = Math.max(1, ptsT2 + ptsT3 + ptsTL);
+
+  const pctT2 = Math.round((ptsT2 / totalScoredPts) * 100);
+  const pctT3 = Math.round((ptsT3 / totalScoredPts) * 100);
+  const pctTL = Math.max(0, 100 - pctT2 - pctT3);
+
+  const distBarW = pageWidth - 20;
+  const distBarH = 3;
+  const distBarX = 10;
+  const distBarY = y;
+
+  const wT2 = (distBarW * (ptsT2 / totalScoredPts));
+  const wT3 = (distBarW * (ptsT3 / totalScoredPts));
+  const wTL = distBarW - wT2 - wT3;
+
+  // Draw segments
+  let segX = distBarX;
+  if (wT2 > 0) {
+    doc.setFillColor(37, 99, 235);
+    doc.rect(segX, distBarY, wT2, distBarH, 'F');
+    segX += wT2;
+  }
+  if (wT3 > 0) {
+    doc.setFillColor(16, 185, 129);
+    doc.rect(segX, distBarY, wT3, distBarH, 'F');
+    segX += wT3;
+  }
+  if (wTL > 0) {
+    doc.setFillColor(245, 158, 11);
+    doc.rect(segX, distBarY, wTL, distBarH, 'F');
+  }
+
+  // Border outline on the whole segmented bar
+  doc.setDrawColor(180, 190, 205);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(distBarX, distBarY, distBarW, distBarH, 0.6, 0.6, 'S');
+
+  y += distBarH + 2.5;
+
+  // Distribution Legend & Advanced Metrics Line
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+
+  // Legend T2
+  doc.setFillColor(37, 99, 235);
+  doc.circle(13, y, 0.9, 'F');
+  doc.setTextColor(30, 41, 59);
+  doc.text(`Puntos T2: ${ptsT2}p (${pctT2}%)`, 15.5, y + 0.7);
+
+  // Legend T3
+  doc.setFillColor(16, 185, 129);
+  doc.circle(58, y, 0.9, 'F');
+  doc.text(`Puntos T3: ${ptsT3}p (${pctT3}%)`, 60.5, y + 0.7);
+
+  // Legend TL
+  doc.setFillColor(245, 158, 11);
+  doc.circle(104, y, 0.9, 'F');
+  doc.text(`Puntos TL: ${ptsTL}p (${pctTL}%)`, 106.5, y + 0.7);
+
+  // Advanced TS & eFG badges on the right
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`eFG: ${teamStats.effectiveFieldGoalPercentage || 0}%  |  TS: ${teamStats.trueShootingPercentage || 0}%`, pageWidth - 14, y + 0.7, { align: 'right' });
+
+  y += 5.5;
+  return y;
+}
+
+/**
  * Renders the official FIBA Team Shot Chart on Page 2 with vector graphics
  */
 function renderTeamShotChartPage(doc: jsPDF, game: Game, teamStats: any) {
@@ -329,13 +498,13 @@ function renderTeamShotChartPage(doc: jsPDF, game: Game, teamStats: any) {
 
   y += 28;
 
-  // 2. TEAM SHOOTING METRICS (4 BOXES)
+  // 2. TEAM SHOOTING METRICS (4 BOXES WITH GRAPHICAL PROGRESS BARS)
   const boxW = (pageWidth - 20 - 3 * 3) / 4;
   const metrics = [
-    { label: 'TIROS DE CAMPO', val: `${teamStats.fieldGoalsMade}/${teamStats.fieldGoalsAttempted}`, pct: `${teamStats.fieldGoalsPercentage}%`, color: [234, 88, 12] },
-    { label: 'TIROS DE 2 (T2)', val: `${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted}`, pct: `${teamStats.twoPointsPercentage}%`, color: [37, 99, 235] },
-    { label: 'TRIPLES (T3)', val: `${teamStats.threePointsMade}/${teamStats.threePointsAttempted}`, pct: `${teamStats.threePointsPercentage}%`, color: [16, 185, 129] },
-    { label: 'TIROS LIBRES (TL)', val: `${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted}`, pct: `${teamStats.freeThrowsPercentage}%`, color: [100, 116, 139] },
+    { label: 'TIROS DE CAMPO', val: `${teamStats.fieldGoalsMade}/${teamStats.fieldGoalsAttempted}`, pct: `${teamStats.fieldGoalsPercentage}%`, pctNum: teamStats.fieldGoalsPercentage || 0, color: [234, 88, 12], lightColor: [255, 237, 213] },
+    { label: 'TIROS DE 2 (T2)', val: `${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted}`, pct: `${teamStats.twoPointsPercentage}%`, pctNum: teamStats.twoPointsPercentage || 0, color: [37, 99, 235], lightColor: [219, 234, 254] },
+    { label: 'TRIPLES (T3)', val: `${teamStats.threePointsMade}/${teamStats.threePointsAttempted}`, pct: `${teamStats.threePointsPercentage}%`, pctNum: teamStats.threePointsPercentage || 0, color: [16, 185, 129], lightColor: [209, 250, 229] },
+    { label: 'TIROS LIBRES (TL)', val: `${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted}`, pct: `${teamStats.freeThrowsPercentage}%`, pctNum: teamStats.freeThrowsPercentage || 0, color: [245, 158, 11], lightColor: [254, 243, 199] },
   ];
 
   metrics.forEach((m, idx) => {
@@ -343,20 +512,33 @@ function renderTeamShotChartPage(doc: jsPDF, game: Game, teamStats: any) {
     doc.setFillColor(245, 247, 250);
     doc.setDrawColor(200, 205, 215);
     doc.setLineWidth(0.3);
-    doc.roundedRect(bx, y, boxW, 14, 1.5, 1.5, 'FD');
+    doc.roundedRect(bx, y, boxW, 16, 1.5, 1.5, 'FD');
 
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.2);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
-    doc.text(m.label, bx + boxW / 2, y + 4.5, { align: 'center' });
+    doc.text(m.label, bx + boxW / 2, y + 4.2, { align: 'center' });
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(m.color[0], m.color[1], m.color[2]);
-    doc.text(`${m.val}  (${m.pct})`, bx + boxW / 2, y + 10.5, { align: 'center' });
+    doc.text(`${m.val}  (${m.pct})`, bx + boxW / 2, y + 9.5, { align: 'center' });
+
+    // Vector graphical progress bar
+    const barW = boxW - 6;
+    const barH = 2;
+    const barX = bx + 3;
+    const barY = y + 11.8;
+
+    doc.setFillColor(m.lightColor[0], m.lightColor[1], m.lightColor[2]);
+    doc.roundedRect(barX, barY, barW, barH, 0.6, 0.6, 'F');
+
+    const fillW = Math.max(0.5, (barW * Math.min(100, Math.max(0, m.pctNum))) / 100);
+    doc.setFillColor(m.color[0], m.color[1], m.color[2]);
+    doc.roundedRect(barX, barY, fillW, barH, 0.6, 0.6, 'F');
   });
 
-  y += 18;
+  y += 20;
 
   // 3. BASKETBALL HALF-COURT (OFFICIAL FIBA PROPORTIONS)
   const courtW = 106; // mm
