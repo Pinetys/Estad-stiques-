@@ -10,6 +10,32 @@ import {
 
 const TEAMS_STORAGE_KEY = 'basketstats_registered_teams_v2';
 const ACTIVE_TEAM_ID_KEY = 'basketstats_active_team_id_v2';
+export const TEAM_TOMBSTONES_STORAGE_KEY = 'basketstats_deleted_team_tombstones_v1';
+
+export function getDeletedTeamTombstones(): string[] {
+  try {
+    const raw = localStorage.getItem(TEAM_TOMBSTONES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedTeamTombstone(teamId: string): void {
+  try {
+    const current = getDeletedTeamTombstones();
+    if (!current.includes(teamId)) {
+      localStorage.setItem(TEAM_TOMBSTONES_STORAGE_KEY, JSON.stringify([...current, teamId]));
+    }
+  } catch {}
+}
+
+export function removeDeletedTeamTombstone(teamId: string): void {
+  try {
+    const current = getDeletedTeamTombstones().filter(id => id !== teamId);
+    localStorage.setItem(TEAM_TOMBSTONES_STORAGE_KEY, JSON.stringify(current));
+  } catch {}
+}
 
 export const DEMO_TEAM_IDS = new Set(['demo-sample-team-99']);
 
@@ -129,8 +155,9 @@ export function getRegisteredTeams(): TeamProfile[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      // Filter out any mock/sample demo teams
-      const cleanUserTeams = parsed.filter(t => !isDemoTeam(t));
+      const tombstones = new Set(getDeletedTeamTombstones());
+      // Filter out any mock/sample demo teams or tombstoned deleted teams
+      const cleanUserTeams = parsed.filter(t => !isDemoTeam(t) && !tombstones.has(t.id));
       if (cleanUserTeams.length !== parsed.length) {
         // Overwrite storage with clean user teams
         localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(cleanUserTeams));
@@ -162,7 +189,11 @@ export function saveRegisteredTeams(teams: TeamProfile[]): void {
 }
 
 export function mergeCloudTeams(cloudTeams: TeamProfile[]): TeamProfile[] {
+  const tombstones = new Set(getDeletedTeamTombstones());
   const cleanCloudTeams = cloudTeams.filter(t => {
+    if (tombstones.has(t.id)) {
+      return false;
+    }
     if (isDemoTeam(t)) {
       deleteTeamFromCloud(t.id);
       return false;
@@ -172,9 +203,13 @@ export function mergeCloudTeams(cloudTeams: TeamProfile[]): TeamProfile[] {
 
   const localTeams = getRegisteredTeams();
   const mergedMap = new Map<string, TeamProfile>();
-  localTeams.forEach(t => mergedMap.set(t.id, t));
-  cleanCloudTeams.forEach(t => mergedMap.set(t.id, t));
-  const merged = Array.from(mergedMap.values()).filter(t => !isDemoTeam(t));
+  localTeams.forEach(t => {
+    if (!tombstones.has(t.id)) mergedMap.set(t.id, t);
+  });
+  cleanCloudTeams.forEach(t => {
+    if (!tombstones.has(t.id)) mergedMap.set(t.id, t);
+  });
+  const merged = Array.from(mergedMap.values()).filter(t => !isDemoTeam(t) && !tombstones.has(t.id));
   try {
     localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(merged));
   } catch (err) {
@@ -274,16 +309,42 @@ export function upsertTeamProfile(team: TeamProfile): TeamProfile[] {
 }
 
 /**
- * Delete a team profile
+ * Delete a team profile everywhere (locally, cloud Firestore and server DB)
  */
 export function deleteTeamProfile(teamId: string): TeamProfile[] {
-  const teams = getRegisteredTeams().filter(t => t.id !== teamId);
-  saveRegisteredTeams(teams);
-  deleteTeamFromCloud(teamId);
+  // 1. Add to local tombstones so it never resurrects
+  addDeletedTeamTombstone(teamId);
 
-  // If deleted team was active, switch to another
-  if (getActiveTeamId() === teamId && teams.length > 0) {
-    setActiveTeamId(teams[0].id);
+  // 2. Filter out locally and persist
+  const teams = getRegisteredTeams().filter(t => t.id !== teamId);
+  try {
+    localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(teams));
+  } catch (err) {
+    console.error('Error saving teams after deletion:', err);
+  }
+
+  // 3. Delete from cloud Firestore
+  deleteTeamFromCloud(teamId).catch(() => {});
+
+  // 4. Delete from server DB
+  try {
+    fetch(`/api/sync/team/${encodeURIComponent(teamId)}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+    fetch('/api/sync/team/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teamId }),
+    }).catch(() => {});
+  } catch {}
+
+  // 5. If deleted team was active, switch to another
+  if (getActiveTeamId() === teamId) {
+    if (teams.length > 0) {
+      setActiveTeamId(teams[0].id);
+    } else {
+      localStorage.removeItem(ACTIVE_TEAM_ID_KEY);
+    }
   }
   return teams;
 }

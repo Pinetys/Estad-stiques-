@@ -75,8 +75,11 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
       const code = await syncEngine.generateTransferCode(currentGame);
       setPinCode(code);
 
-      // 2. Generate direct URL with auto-pair and monitor mode
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      // 2. Generate direct URL with auto-pair and monitor mode (using public companion URL if in dev preview)
+      let origin = typeof window !== 'undefined' ? window.location.origin : '';
+      if (origin.includes('ais-dev-')) {
+        origin = origin.replace('ais-dev-', 'ais-pre-');
+      }
       const pairUrl = `${origin}/?pair=${encodeURIComponent(code)}&mode=monitor`;
 
       // 3. Generate QR Code image
@@ -101,7 +104,10 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
     if (!pinCode) return;
     playSound('click', true);
     triggerHaptic('light', true);
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    let origin = typeof window !== 'undefined' ? window.location.origin : '';
+    if (origin.includes('ais-dev-')) {
+      origin = origin.replace('ais-dev-', 'ais-pre-');
+    }
     const pairUrl = `${origin}/?pair=${encodeURIComponent(pinCode)}&mode=monitor`;
     navigator.clipboard.writeText(pairUrl);
     setCopiedLink(true);

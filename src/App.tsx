@@ -53,6 +53,7 @@ import {
   getActiveTeamId,
   setActiveTeamId,
   upsertTeamProfile,
+  deleteTeamProfile,
   syncTeamsFromCloud,
   mergeCloudTeams,
 } from './utils/teamStorage';
@@ -659,10 +660,16 @@ export default function App() {
 
   // Handle Delete Team
   const handleDeleteTeam = (teamId: string) => {
-    const remaining = teams.filter(t => t.id !== teamId);
-    saveRegisteredTeams(remaining);
+    const remaining = deleteTeamProfile(teamId);
+    syncEngine.deleteTeam(teamId).catch(() => {});
     setTeams(remaining);
-    if (remaining.length > 0) handleSelectTeam(remaining[0].id);
+    if (activeTeamId === teamId) {
+      if (remaining.length > 0) {
+        handleSelectTeam(remaining[0].id, remaining[0]);
+      } else {
+        setActiveTeamId('');
+      }
+    }
   };
 
   // Clear selected player if they leave the court

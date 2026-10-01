@@ -4,16 +4,21 @@ import {
   saveGamesToStorage,
   mergeCloudMatches,
   isDemoGame,
+  addDeletedTombstone,
 } from '../utils/libraryUtils';
 import {
   getRegisteredTeams,
   saveRegisteredTeams,
   mergeCloudTeams,
+  addDeletedTeamTombstone,
+  deleteTeamProfile,
 } from '../utils/teamStorage';
 import {
   syncMatchToCloud,
   syncTeamToCloud,
   syncBulkToCloud,
+  deleteMatchFromCloud,
+  deleteTeamFromCloud,
   fetchAllMatchesFromCloud,
   fetchAllTeamsFromCloud,
   isFirebaseConfigured,
@@ -171,8 +176,18 @@ class AutoSyncManager {
             this.handleRemoteMatchPush(payload.data);
           } else if (payload.type === 'active_match_updated' && payload.data) {
             this.handleRemoteMatchPush(payload.data);
+          } else if (payload.type === 'match_deleted' && payload.data?.matchId) {
+            addDeletedTombstone(payload.data.matchId);
+            const remaining = getSavedGamesFromStorage().filter(g => g.id !== payload.data.matchId);
+            saveGamesToStorage(remaining);
+            this.notifyStatus({ lastSyncTime: new Date() });
           } else if (payload.type === 'team_updated' && payload.data) {
             this.handleRemoteTeamPush(payload.data);
+          } else if (payload.type === 'team_deleted' && payload.data?.teamId) {
+            addDeletedTeamTombstone(payload.data.teamId);
+            const remaining = getRegisteredTeams().filter(t => t.id !== payload.data.teamId);
+            saveRegisteredTeams(remaining);
+            this.notifyStatus({ lastSyncTime: new Date() });
           } else if (payload.type === 'bulk_synced') {
             this.syncAll({ force: false });
           }
@@ -250,6 +265,14 @@ class AutoSyncManager {
           serverMatches = Array.isArray(serverData.matches) ? serverData.matches : [];
           serverTeams = Array.isArray(serverData.teams) ? serverData.teams : [];
           serverActiveMatch = serverData.activeMatch || null;
+
+          // Propagate tombstones from server to local storage so other devices do not resurrect them!
+          if (Array.isArray(serverData.deletedMatchIds)) {
+            serverData.deletedMatchIds.forEach((id: string) => addDeletedTombstone(id));
+          }
+          if (Array.isArray(serverData.deletedTeamIds)) {
+            serverData.deletedTeamIds.forEach((id: string) => addDeletedTeamTombstone(id));
+          }
         }
       } catch (err) {
         console.warn('Server sync fetch error (offline?):', err);
@@ -449,19 +472,38 @@ class AutoSyncManager {
   }
 
   /**
-   * Delete match everywhere
+   * Delete match everywhere (local storage, tombstones, server DB and Firestore)
    */
   public async deleteMatch(gameId: string): Promise<void> {
+    if (!gameId) return;
+    addDeletedTombstone(gameId);
     const library = getSavedGamesFromStorage().filter(g => g.id !== gameId);
     saveGamesToStorage(library);
 
+    // Delete from Firestore
+    deleteMatchFromCloud(gameId).catch(() => {});
+
+    // Delete from autonomous server DB
     try {
       await fetch(`/api/sync/match/${encodeURIComponent(gameId)}`, {
         method: 'DELETE',
       });
+      await fetch('/api/sync/match/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId: gameId }),
+      });
     } catch {
       // offline
     }
+  }
+
+  /**
+   * Delete team everywhere (local storage, tombstones, server DB and Firestore)
+   */
+  public async deleteTeam(teamId: string): Promise<void> {
+    if (!teamId) return;
+    deleteTeamProfile(teamId);
   }
 
   /**

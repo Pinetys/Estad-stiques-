@@ -1104,6 +1104,9 @@ export function deleteGameFromLibrary(gameId: string): Game[] {
 
   // Notify server & cloud to remove
   try {
+    fetch(`/api/sync/match/${encodeURIComponent(gameId)}`, {
+      method: 'DELETE',
+    }).catch(() => {});
     fetch('/api/sync/match/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

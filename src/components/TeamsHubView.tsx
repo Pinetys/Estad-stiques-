@@ -20,6 +20,7 @@ import {
   RefreshCw,
   HelpCircle,
   Calendar,
+  AlertCircle,
 } from 'lucide-react';
 
 interface TeamsHubViewProps {
@@ -71,6 +72,9 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTeamForMatches, setSelectedTeamForMatches] = useState<TeamProfile | null>(null);
+  const [teamToDelete, setTeamToDelete] = useState<TeamProfile | null>(null);
+  const [matchToDelete, setMatchToDelete] = useState<Game | null>(null);
+  const [errorNotification, setErrorNotification] = useState<string | null>(null);
 
   // Extract all distinct categories
   const availableCategories = useMemo(() => {
@@ -119,20 +123,15 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
     );
   }, [currentGame]);
 
-  // Delete team with confirmation
+  // Delete team with confirmation modal
   const handleDelete = (team: TeamProfile, e: React.MouseEvent) => {
     e.stopPropagation();
     if (teams.length <= 1) {
-      alert('No puedes eliminar el único equipo registrado. Crea otro antes de eliminar este.');
+      setErrorNotification('No puedes eliminar el único equipo registrado. Crea otro antes de eliminar este.');
+      setTimeout(() => setErrorNotification(null), 4000);
       return;
     }
-    const confirmed = window.confirm(
-      `¿Deseas eliminar el equipo "${team.name}" (${team.category || 'Sin categoría'})? Los partidos guardados seguirán en la biblioteca.`
-    );
-    if (confirmed) {
-      playSound('click', soundEnabled);
-      onDeleteTeam(team.id);
-    }
+    setTeamToDelete(team);
   };
 
   return (
@@ -751,11 +750,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (confirm(`¿Estás seguro de eliminar el partido "${match.homeTeamName} vs ${match.awayTeamName}"? Esta acción no se puede deshacer.`)) {
-                                      onDeleteGame(match.id);
-                                      playSound('click', soundEnabled);
-                                      triggerHaptic('medium', true);
-                                    }
+                                    setMatchToDelete(match);
                                   }}
                                   className="p-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/80 transition active:scale-95"
                                   title="Eliminar este partido permanentemente de la biblioteca y la nube"
@@ -772,6 +767,125 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                 </>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Error / Warning Toast */}
+      {errorNotification && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-amber-950/95 border-2 border-amber-500 rounded-xl shadow-2xl text-amber-200 text-xs font-mono font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{errorNotification}</span>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Delete Team */}
+      {teamToDelete && (
+        <div
+          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setTeamToDelete(null)}
+        >
+          <div
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/80 border border-rose-600/50 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">¿Eliminar Equipo?</h3>
+                <p className="text-[11px] text-gray-400">Esta acción se sincronizará en todos tus dispositivos</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#071228]/70 border border-rose-900/40 rounded-xl text-xs space-y-1">
+              <p className="font-bold text-white text-sm">{teamToDelete.name}</p>
+              <p className="text-[11px] text-slate-300">Categoría: {teamToDelete.category || 'General'}</p>
+              <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-800">
+                Los partidos asociados seguirán guardados en la biblioteca general.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setTeamToDelete(null)}
+                className="px-3.5 py-2 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 rounded-lg text-xs font-bold font-mono border border-[#203a70] transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = teamToDelete.id;
+                  setTeamToDelete(null);
+                  playSound('click', soundEnabled);
+                  triggerHaptic('medium', true);
+                  onDeleteTeam(id);
+                }}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold font-mono shadow-md flex items-center gap-1.5 transition active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sí, Eliminar Equipo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Delete Match */}
+      {matchToDelete && (
+        <div
+          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setMatchToDelete(null)}
+        >
+          <div
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/80 border border-rose-600/50 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">¿Eliminar Partido?</h3>
+                <p className="text-[11px] text-gray-400">Se eliminará de la biblioteca y de la nube</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#071228]/70 border border-rose-900/40 rounded-xl text-xs space-y-1">
+              <p className="font-bold text-white text-sm">
+                {matchToDelete.homeTeamName || 'Local'} ({matchToDelete.homeScore ?? 0}) vs {matchToDelete.awayTeamName || 'Visitante'} ({matchToDelete.awayScore ?? 0})
+              </p>
+              <p className="text-[11px] text-slate-300">
+                {matchToDelete.title || 'Partido'} · {matchToDelete.date || ''}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setMatchToDelete(null)}
+                className="px-3.5 py-2 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 rounded-lg text-xs font-bold font-mono border border-[#203a70] transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = matchToDelete.id;
+                  setMatchToDelete(null);
+                  playSound('click', soundEnabled);
+                  triggerHaptic('medium', true);
+                  onDeleteGame?.(id);
+                }}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold font-mono shadow-md flex items-center gap-1.5 transition active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sí, Eliminar Partido</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -11,6 +11,7 @@ interface ServerSyncDatabase {
   activeMatch: any | null;
   transferCodes: Record<string, { game: any; createdAt: number }>;
   deletedMatchIds?: string[];
+  deletedTeamIds?: string[];
   lastUpdate: number;
 }
 
@@ -28,6 +29,7 @@ function loadServerSyncDb(): ServerSyncDatabase {
         activeMatch: parsed.activeMatch || null,
         transferCodes: parsed.transferCodes || {},
         deletedMatchIds: parsed.deletedMatchIds || [],
+        deletedTeamIds: parsed.deletedTeamIds || [],
         lastUpdate: parsed.lastUpdate || Date.now(),
       };
     }
@@ -41,6 +43,7 @@ function loadServerSyncDb(): ServerSyncDatabase {
     activeMatch: null,
     transferCodes: {},
     deletedMatchIds: [],
+    deletedTeamIds: [],
     lastUpdate: Date.now(),
   };
 }
@@ -178,6 +181,7 @@ async function startServer() {
       subscribers: Object.values(serverDb.subscribers || {}),
       activeMatch: serverDb.activeMatch,
       deletedMatchIds: serverDb.deletedMatchIds || [],
+      deletedTeamIds: serverDb.deletedTeamIds || [],
       lastUpdate: serverDb.lastUpdate,
     });
   });
@@ -368,6 +372,11 @@ async function startServer() {
         return res.status(400).json({ error: 'Falta objeto de equipo válido' });
       }
 
+      // If team was in deleted list, remove from deleted list if re-saved
+      if (serverDb.deletedTeamIds) {
+        serverDb.deletedTeamIds = serverDb.deletedTeamIds.filter(id => id !== team.id);
+      }
+
       team.updatedAt = new Date().toISOString();
       serverDb.teams[team.id] = team;
       saveServerSyncDb();
@@ -377,6 +386,51 @@ async function startServer() {
     } catch (err: any) {
       console.error('Error in POST /api/sync/team:', err);
       res.status(500).json({ error: err.message || 'Error guardando equipo en servidor' });
+    }
+  });
+
+  // 5b. Delete a team from server database
+  app.delete('/api/sync/team/:id', (req, res) => {
+    try {
+      const teamId = req.params.id;
+      if (!teamId) return res.status(400).json({ error: 'Falta teamId' });
+
+      delete serverDb.teams[teamId];
+      if (!serverDb.deletedTeamIds) {
+        serverDb.deletedTeamIds = [];
+      }
+      if (!serverDb.deletedTeamIds.includes(teamId)) {
+        serverDb.deletedTeamIds.push(teamId);
+      }
+
+      saveServerSyncDb();
+      broadcastSync({ type: 'team_deleted', data: { teamId } });
+      res.json({ success: true, teamId });
+    } catch (err: any) {
+      console.error('Error in DELETE /api/sync/team/:id:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/sync/team/delete', (req, res) => {
+    try {
+      const teamId = req.body?.teamId;
+      if (!teamId) return res.status(400).json({ error: 'Falta teamId' });
+
+      delete serverDb.teams[teamId];
+      if (!serverDb.deletedTeamIds) {
+        serverDb.deletedTeamIds = [];
+      }
+      if (!serverDb.deletedTeamIds.includes(teamId)) {
+        serverDb.deletedTeamIds.push(teamId);
+      }
+
+      saveServerSyncDb();
+      broadcastSync({ type: 'team_deleted', data: { teamId } });
+      res.json({ success: true, teamId });
+    } catch (err: any) {
+      console.error('Error in POST /api/sync/team/delete:', err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -390,6 +444,10 @@ async function startServer() {
       if (Array.isArray(teams)) {
         for (const t of teams) {
           if (t && t.id) {
+            // Never re-add deleted teams
+            if (serverDb.deletedTeamIds && serverDb.deletedTeamIds.includes(t.id)) {
+              continue;
+            }
             serverDb.teams[t.id] = { ...serverDb.teams[t.id], ...t, updatedAt: new Date().toISOString() };
             addedTeams++;
           }
@@ -399,6 +457,7 @@ async function startServer() {
       if (Array.isArray(matches)) {
         for (const m of matches) {
           if (m && m.id) {
+            // Never re-add deleted matches
             if (serverDb.deletedMatchIds && serverDb.deletedMatchIds.includes(m.id)) {
               continue;
             }
@@ -519,18 +578,44 @@ async function startServer() {
   });
 
   app.get('/api/sync/get-transfer-code/:code', (req, res) => {
-    const code = req.params.code?.toUpperCase()?.trim();
-    if (!code || !serverDb.transferCodes[code]) {
+    const rawCode = req.params.code?.toUpperCase()?.trim();
+    if (!rawCode) {
+      return res.status(400).json({ error: 'Falta código de sincronización' });
+    }
+
+    const cleanInput = rawCode.replace(/[^A-Z0-9]/g, '');
+
+    // 1. Direct match
+    let matchedKey = Object.keys(serverDb.transferCodes).find(k => k.toUpperCase() === rawCode);
+
+    // 2. Normalized alphanumeric match (allows entering TAB482 or TAB-482 or tab 482)
+    if (!matchedKey) {
+      matchedKey = Object.keys(serverDb.transferCodes).find(k => k.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanInput);
+    }
+
+    // 3. Match numeric suffix if 3+ digits provided and unique
+    if (!matchedKey && cleanInput.length >= 3) {
+      const candidates = Object.keys(serverDb.transferCodes).filter(k => k.replace(/[^0-9]/g, '') === cleanInput || k.toUpperCase().endsWith(cleanInput));
+      if (candidates.length === 1) {
+        matchedKey = candidates[0];
+      }
+    }
+
+    if (!matchedKey || !serverDb.transferCodes[matchedKey]) {
       return res.status(404).json({
-        error: `Código de sincronización "${code}" no encontrado o ha caducado.`,
+        error: `Código de sincronización "${rawCode}" no encontrado o ha caducado.`,
       });
     }
 
-    const payload = serverDb.transferCodes[code];
+    const payload = serverDb.transferCodes[matchedKey];
+    // Return live game from database if it exists (ensures live score and clock updates)
+    const liveGame = (payload.game?.id && serverDb.matches[payload.game.id]) ? serverDb.matches[payload.game.id] : payload.game;
+
     res.json({
       success: true,
-      game: payload.game,
+      game: liveGame,
       createdAt: payload.createdAt,
+      code: matchedKey,
     });
   });
 
