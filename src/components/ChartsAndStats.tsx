@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Game, PlayerBoxScore } from '../types';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
-import { BarChart3, PieChart, Activity, Flame, ShieldAlert, Award } from 'lucide-react';
+import { BarChart3, PieChart, Activity, Flame, ShieldAlert, Award, Crosshair } from 'lucide-react';
+import { PlayerShotMap } from './PlayerShotMap';
 
 interface ChartsAndStatsProps {
   game: Game;
 }
 
 export const ChartsAndStats: React.FC<ChartsAndStatsProps> = ({ game }) => {
+  const [selectedPlayerFilter, setSelectedPlayerFilter] = useState<string>('all');
+  const [selectedQuarterFilter, setSelectedQuarterFilter] = useState<number | 'all'>('all');
+
   const playerStatsList: PlayerBoxScore[] = game.players.map(p =>
     calculatePlayerStats(p, game.events)
   );
@@ -18,6 +22,21 @@ export const ChartsAndStats: React.FC<ChartsAndStatsProps> = ({ game }) => {
     .sort((a, b) => b.points - a.points);
 
   const maxPoints = Math.max(...playerStatsList.map(p => p.points), 10);
+
+  // Filter shots for interactive Shot Chart
+  const shotEvents = game.events.filter(e => {
+    const isShot =
+      ['2PM', '2PA', '3PM', '3PA', 'OPP_2P', 'OPP_3P'].includes(e.actionType) ||
+      (e.isOpponentAction && Boolean(e.shotLocation));
+    if (!isShot) return false;
+    if (selectedQuarterFilter !== 'all' && e.quarter !== selectedQuarterFilter) return false;
+    if (selectedPlayerFilter === 'opponent') {
+      if (!e.isOpponentAction) return false;
+    } else if (selectedPlayerFilter !== 'all') {
+      if (e.isOpponentAction || e.playerId !== selectedPlayerFilter) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 space-y-3 pb-24">
@@ -131,7 +150,67 @@ export const ChartsAndStats: React.FC<ChartsAndStatsProps> = ({ game }) => {
         </div>
       </div>
 
-      {/* 3. Individual Scoring Distribution Bars */}
+      {/* 3. Mapa de Tiro Oficial (Tiros Propios y del Rival con Mapa Térmico y Zonas) */}
+      <div className="bg-[#0e224a] border border-[#203a70] rounded-xl p-3 shadow-xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#203a70] pb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <Crosshair className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xs uppercase tracking-wider text-amber-300">
+                Mapa de Tiro del Partido (Local y Rival)
+              </h3>
+              <p className="text-[10px] text-slate-300">
+                Aciertos, fallos, mapa de calor y análisis de puntos concedidos al rival por zona
+              </p>
+            </div>
+          </div>
+
+          {/* Filtros por Jugador y Cuarto */}
+          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+            <select
+              value={selectedPlayerFilter}
+              onChange={e => setSelectedPlayerFilter(e.target.value)}
+              className="bg-[#0B1C3D] border border-sky-500/40 text-slate-200 text-[11px] rounded-lg px-2 py-1 font-mono focus:outline-none focus:ring-1 focus:ring-amber-400"
+              title="Filtrar por jugador o equipo"
+            >
+              <option value="all">🏀 Todos los Tiros (Local y Rival)</option>
+              <option value="opponent">🛡️ Canastas Concedidas al Rival ({game.awayTeamName || 'Rival'})</option>
+              <optgroup label="Nuestros Jugadores">
+                {game.players.map(p => (
+                  <option key={p.id} value={p.id}>
+                    #{p.number} {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+
+            <select
+              value={selectedQuarterFilter}
+              onChange={e => setSelectedQuarterFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="bg-[#0B1C3D] border border-sky-500/40 text-slate-200 text-[11px] rounded-lg px-2 py-1 font-mono focus:outline-none focus:ring-1 focus:ring-amber-400"
+              title="Filtrar por cuarto"
+            >
+              <option value="all">⏱️ Todos los Cuartos</option>
+              {game.quarterScores.map(q => (
+                <option key={q.quarter} value={q.quarter}>
+                  {q.quarterLabel}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Componente PlayerShotMap integrado */}
+        <PlayerShotMap
+          shots={shotEvents}
+          theme="dark"
+          title="Carta de Tiro del Partido"
+        />
+      </div>
+
+      {/* 4. Individual Scoring Distribution Bars */}
       <div className="bg-[#0e224a] border border-[#203a70] rounded-xl p-3 shadow-xl space-y-2">
         <div className="flex items-center gap-1.5">
           <Flame className="w-4 h-4 text-amber-400" />

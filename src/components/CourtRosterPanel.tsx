@@ -65,6 +65,35 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   const [pendingInId, setPendingInId] = useState<string | null>(null);
   const [swapToast, setSwapToast] = useState<string | null>(null);
 
+  // Tab view: 'court' (Quinteto en pista) or 'bench' (Banquillo) with swipe gesture
+  const [viewTab, setViewTab] = useState<'court' | 'bench'>('court');
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+    setTouchStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || touchStartY === null) return;
+    const diffX = e.changedTouches[0].clientX - touchStartX;
+    const diffY = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 25) {
+      if (diffX < 0 && viewTab === 'court') {
+        playSound('click', game.settings.soundEnabled);
+        triggerHaptic('light', game.settings.vibrationEnabled);
+        setViewTab('bench');
+      } else if (diffX > 0 && viewTab === 'bench') {
+        playSound('click', game.settings.soundEnabled);
+        triggerHaptic('light', game.settings.vibrationEnabled);
+        setViewTab('court');
+      }
+    }
+    setTouchStartX(null);
+    setTouchStartY(null);
+  };
+
   const pendingOutPlayer = pendingOutId ? game.players.find(p => p.id === pendingOutId) : null;
   const pendingInPlayer = pendingInId ? game.players.find(p => p.id === pendingInId) : null;
 
@@ -312,14 +341,50 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
         </div>
       )}
 
-      {/* 3. ROSTER CONTAINER: PLAYERS ON COURT (ALWAYS VISIBLE & PROMINENT) */}
-      <div className="shrink-0 space-y-1.5 py-1">
-        <div className="flex items-center justify-between text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 px-0.5">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Quinteto en Pista ({playersOnCourt.length}/5)
+      {/* 3. ROSTER CONTAINER: PLAYERS ON COURT & BENCH WITH SWIPE (Deslizar el dedo encima) */}
+      <div
+        className="shrink-0 space-y-1.5 py-1 select-none"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-center justify-between text-[11px] font-mono font-bold uppercase tracking-wider px-0.5">
+          {/* Segmented Control / Tabs between Court (5) and Bench */}
+          <div className="flex items-center gap-1 bg-[#071328] p-0.5 rounded-lg border border-[#203a70]">
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                setViewTab('court');
+              }}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition flex items-center gap-1.5 ${
+                viewTab === 'court'
+                  ? 'bg-amber-400 text-black shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>En Pista ({playersOnCourt.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                setViewTab('bench');
+              }}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition flex items-center gap-1.5 ${
+                viewTab === 'bench'
+                  ? 'bg-sky-500 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>Banquillo ({benchPlayers.length})</span>
+            </button>
+          </div>
+          <span className="text-slate-400 text-[9px] font-normal hidden sm:inline">
+            Desliza con el dedo ↔
           </span>
-          <span className="text-slate-400 text-[10px] font-normal">Toca para seleccionar</span>
         </div>
 
         {/* Rotations & Equal Minutes Alert for Coach */}
@@ -382,125 +447,216 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
           );
         })()}
 
-        {/* 5 On-Court Players List */}
-        <div className="space-y-1">
-          {playersOnCourt.map(player => {
-            const stats = calculatePlayerStats(player, game.events);
-            const isSelectedForAction = selectedPlayerId === player.id;
-            const isPendingOut = pendingOutId === player.id;
-            const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
-            const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
-            const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
-            const isFatigued = isPlayerFatigued(player);
-            const teamStats = calculateTeamMinutesDistribution(
-              game.players,
-              game.settings.quarterDurationMinutes,
-              game.settings.totalQuarters
-            );
-            const isLow = isPlayerLowMinutes(player, teamStats);
-            const consecutiveMinsFormatted = formatMinutesPlayed(consecutiveSeconds);
+        {/* VIEW 1: 5 On-Court Players List */}
+        {viewTab === 'court' && (
+          <div className="space-y-1 animate-in fade-in slide-in-from-left-2 duration-150">
+            {playersOnCourt.map(player => {
+              const stats = calculatePlayerStats(player, game.events);
+              const isSelectedForAction = selectedPlayerId === player.id;
+              const isPendingOut = pendingOutId === player.id;
+              const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
+              const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
+              const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
+              const isFatigued = isPlayerFatigued(player);
+              const teamStats = calculateTeamMinutesDistribution(
+                game.players,
+                game.settings.quarterDurationMinutes,
+                game.settings.totalQuarters
+              );
+              const isLow = isPlayerLowMinutes(player, teamStats);
+              const consecutiveMinsFormatted = formatMinutesPlayed(consecutiveSeconds);
 
-            return (
-              <div
-                key={player.id}
-                onClick={() => handleCourtPlayerClick(player)}
-                className={`w-full p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
-                  isPendingOut
-                    ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/60 text-white shadow-lg'
-                    : pendingInId
-                    ? 'bg-[#0E224A] hover:bg-rose-950/60 border-rose-500/70 text-rose-200 animate-pulse'
-                    : isSelectedForAction
-                    ? 'bg-[#D4AF37]/25 border-[#D4AF37] ring-2 ring-[#D4AF37]/60 text-white shadow-md'
-                    : isFouledOut
-                    ? 'bg-red-950/30 border-red-800 text-red-300'
-                    : isFoulDanger
-                    ? 'bg-amber-950/30 border-amber-700/80 text-slate-200 hover:border-[#D4AF37]'
-                    : isFatigued
-                    ? 'bg-[#0E224A] hover:bg-[#16356E] border-amber-500/70 ring-1 ring-amber-500/50 text-[#FFFDF7]'
-                    : isLow
-                    ? 'bg-[#0E224A] hover:bg-[#16356E] border-sky-600/70 text-[#FFFDF7]'
-                    : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
-                }`}
-              >
-                {/* Left: Dorsal + Name + Status */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-scoreboard font-black text-lg lg:text-xl text-amber-400 shrink-0 w-8 text-center leading-none">
-                    #{player.number}
-                  </span>
-                  <div className="flex flex-col min-w-0 text-left">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-xs font-bold text-slate-200 truncate leading-tight">
-                        {player.name}
+              return (
+                <div
+                  key={player.id}
+                  onClick={() => handleCourtPlayerClick(player)}
+                  className={`w-full p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
+                    isPendingOut
+                      ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/60 text-white shadow-lg'
+                      : pendingInId
+                      ? 'bg-[#0E224A] hover:bg-rose-950/60 border-rose-500/70 text-rose-200 animate-pulse'
+                      : isSelectedForAction
+                      ? 'bg-[#D4AF37]/25 border-[#D4AF37] ring-2 ring-[#D4AF37]/60 text-white shadow-md'
+                      : isFouledOut
+                      ? 'bg-red-950/30 border-red-800 text-red-300'
+                      : isFoulDanger
+                      ? 'bg-amber-950/30 border-amber-700/80 text-slate-200 hover:border-[#D4AF37]'
+                      : isFatigued
+                      ? 'bg-[#0E224A] hover:bg-[#16356E] border-amber-500/70 ring-1 ring-amber-500/50 text-[#FFFDF7]'
+                      : isLow
+                      ? 'bg-[#0E224A] hover:bg-[#16356E] border-sky-600/70 text-[#FFFDF7]'
+                      : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
+                  }`}
+                >
+                  {/* Left: Dorsal + Name + Status */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-scoreboard font-black text-lg lg:text-xl text-amber-400 shrink-0 w-8 text-center leading-none">
+                      #{player.number}
+                    </span>
+                    <div className="flex flex-col min-w-0 text-left">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs font-bold text-slate-200 truncate leading-tight">
+                          {player.name}
+                        </span>
+                        {isFatigued && (
+                          <span
+                            className="px-1.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[8.5px] font-mono font-black flex items-center gap-1 shrink-0 animate-pulse"
+                            title={`Alerta de cansancio: Lleva ${consecutiveMinsFormatted} seguidos en pista sin ser sustituido (>6 min)`}
+                          >
+                            <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                            <span>&gt;6m</span>
+                          </span>
+                        )}
+                        {isLow && !isFatigued && (
+                          <span
+                            className="px-1.5 py-0.5 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8.5px] font-mono font-bold flex items-center gap-1 shrink-0"
+                            title={`Pocos minutos acumulados (${stats.minutesPlayedFormatted}). Jugador fresco.`}
+                          >
+                            <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                            <span>Fresco</span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] text-slate-400 font-medium">
+                        ⏱ {stats.minutesPlayedFormatted}
+                        {isFatigued && (
+                          <span className="text-amber-400 font-bold ml-1">
+                            ({consecutiveMinsFormatted} seg)
+                          </span>
+                        )}
+                        {' · '}{player.position || 'JUG'}
                       </span>
-                      {isFatigued && (
-                        <span
-                          className="px-1.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[8.5px] font-mono font-black flex items-center gap-1 shrink-0 animate-pulse"
-                          title={`Alerta de cansancio: Lleva ${consecutiveMinsFormatted} seguidos en pista sin ser sustituido (>6 min)`}
-                        >
-                          <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-                          <span>&gt;6m</span>
-                        </span>
-                      )}
-                      {isLow && !isFatigued && (
-                        <span
-                          className="px-1.5 py-0.5 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8.5px] font-mono font-bold flex items-center gap-1 shrink-0"
-                          title={`Pocos minutos acumulados (${stats.minutesPlayedFormatted}). Jugador fresco.`}
-                        >
-                          <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
-                          <span>Fresco</span>
-                        </span>
-                      )}
                     </div>
-                    <span className="text-[9px] text-slate-400 font-medium">
-                      ⏱ {stats.minutesPlayedFormatted}
-                      {isFatigued && (
-                        <span className="text-amber-400 font-bold ml-1">
-                          ({consecutiveMinsFormatted} seg)
-                        </span>
-                      )}
-                      {' · '}{player.position || 'JUG'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Right: Stats & Swap Action Button */}
-                <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                  {/* Points & Fouls */}
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold">
-                    <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-700/50">
-                      {stats.points}p
-                    </span>
-                    <PlayerFoulsIndicator
-                      fouls={stats.foulsPersonal}
-                      limit={game.settings.foulOutLimit || 5}
-                      compact={false}
-                      showDots={true}
-                    />
                   </div>
 
-                  {/* Direct Change Button (opens substitution screen) */}
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (isActionsLocked) return;
-                      onOpenSubstitutionModal();
-                    }}
-                    className={`p-1 px-2 rounded-lg transition active:scale-90 flex items-center gap-1 text-[10px] font-bold ${
-                      isFatigued
-                        ? 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300 shadow-sm animate-pulse'
-                        : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50'
-                    }`}
-                    title={isFatigued ? `Sustituir a ${player.name} (lleva >6 min seguidos)` : 'Abrir ventana de cambios'}
-                  >
-                    <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
-                    <span>{isFatigued ? 'ROTAR' : 'CAMBIO'}</span>
-                  </button>
+                  {/* Right: Stats & Swap Action Button */}
+                  <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                    {/* Points & Fouls */}
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-700/50">
+                        {stats.points}p
+                      </span>
+                      <PlayerFoulsIndicator
+                        fouls={stats.foulsPersonal}
+                        limit={game.settings.foulOutLimit || 5}
+                        compact={false}
+                        showDots={true}
+                      />
+                    </div>
+
+                    {/* Direct Change Button (opens substitution screen) */}
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (isActionsLocked) return;
+                        onOpenSubstitutionModal();
+                      }}
+                      className={`p-1 px-2 rounded-lg transition active:scale-90 flex items-center gap-1 text-[10px] font-bold ${
+                        isFatigued
+                          ? 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300 shadow-sm animate-pulse'
+                          : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50'
+                      }`}
+                      title={isFatigued ? `Sustituir a ${player.name} (lleva >6 min seguidos)` : 'Abrir ventana de cambios'}
+                    >
+                      <ArrowRightLeft className="w-3 h-3 stroke-[2.5]" />
+                      <span>{isFatigued ? 'ROTAR' : 'CAMBIO'}</span>
+                    </button>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* VIEW 2: Bench Players List */}
+        {viewTab === 'bench' && (
+          <div className="space-y-1 animate-in fade-in slide-in-from-right-2 duration-150 max-h-[310px] overflow-y-auto pr-0.5">
+            {benchPlayers.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 text-xs font-mono">
+                No hay suplentes en el banquillo.
               </div>
-            );
-          })}
-        </div>
+            ) : (
+              benchPlayers.map(player => {
+                const stats = calculatePlayerStats(player, game.events);
+                const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
+                const teamStats = calculateTeamMinutesDistribution(
+                  game.players,
+                  game.settings.quarterDurationMinutes,
+                  game.settings.totalQuarters
+                );
+                const isLow = isPlayerLowMinutes(player, teamStats);
+
+                return (
+                  <div
+                    key={player.id}
+                    onClick={() => handleBenchPlayerClick(player)}
+                    className={`w-full p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
+                      pendingInId === player.id
+                        ? 'bg-sky-950/90 border-sky-500 ring-2 ring-sky-500/60 text-white shadow-lg'
+                        : isFouledOut
+                        ? 'bg-red-950/30 border-red-800 text-red-300 opacity-60'
+                        : isLow
+                        ? 'bg-[#0E224A] hover:bg-[#16356E] border-sky-500/70 text-white'
+                        : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-scoreboard font-black text-lg lg:text-xl text-sky-400 shrink-0 w-8 text-center leading-none">
+                        #{player.number}
+                      </span>
+                      <div className="flex flex-col min-w-0 text-left">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-bold text-slate-200 truncate leading-tight">
+                            {player.name}
+                          </span>
+                          {isLow && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8.5px] font-mono font-bold flex items-center gap-1 shrink-0">
+                              <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                              <span>Fresco</span>
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {stats.minutesPlayedFormatted} · {player.position || 'JUG'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                        <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-700/50">
+                          {stats.points}p
+                        </span>
+                        <PlayerFoulsIndicator
+                          fouls={stats.foulsPersonal}
+                          limit={game.settings.foulOutLimit || 5}
+                          compact={false}
+                          showDots={true}
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (isActionsLocked) return;
+                          handleBenchPlayerClick(player);
+                        }}
+                        disabled={isFouledOut}
+                        className="p-1 px-2 rounded-lg bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-black border border-sky-500/50 transition active:scale-90 flex items-center gap-1 text-[10px] font-bold disabled:opacity-30"
+                        title={`Poner a jugar a ${player.name}`}
+                      >
+                        <UserCheck className="w-3 h-3 stroke-[2.5]" />
+                        <span>ENTRA</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
 
         {/* PROMINENT SUBSTITUTION BUTTON THAT OPENS MULTIPLE SUBSTITUTION SCREEN */}
         <button
@@ -516,7 +672,11 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
           title="Abrir ventana de cambios para sustituir jugadores de banquillo"
         >
           <ArrowRightLeft className="w-4 h-4 stroke-[2.5]" />
-          <span>Cambiar Jugadores ({benchPlayers.length} en banquillo)</span>
+          <span>
+            {viewTab === 'court'
+              ? `Cambiar Jugadores (${benchPlayers.length} en banquillo)`
+              : `Gestionar Rotaciones (${playersOnCourt.length} en pista)`}
+          </span>
         </button>
       </div>
 

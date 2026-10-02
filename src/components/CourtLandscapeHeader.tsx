@@ -23,8 +23,10 @@ import {
   Cloud,
   Check,
   Edit2,
+  QrCode,
 } from 'lucide-react';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
+import { NotificationBellButton } from './NotificationBellButton';
 
 interface CourtLandscapeHeaderProps {
   game: Game;
@@ -57,6 +59,7 @@ interface CourtLandscapeHeaderProps {
   onOpenTutorial?: () => void;
   onOpenCloudSync?: () => void;
   onOpenRivalRoster?: () => void;
+  onOpenSpectatorQR?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -90,6 +93,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenTutorial,
   onOpenCloudSync,
   onOpenRivalRoster,
+  onOpenSpectatorQR,
 }) => {
   const currentQuarterLabel = formatQuarterShort(game.currentQuarter);
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
@@ -260,6 +264,32 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             {isWakeLockActive ? <Sun className="w-3 h-3 text-emerald-400" /> : <Moon className="w-3 h-3 text-slate-400" />}
             <span className="hidden xl:inline">{isWakeLockActive ? 'Pantalla Activa' : 'Auto Bloqueo'}</span>
           </button>
+
+          {/* Botón QR Seguidores para enlazar con la vista de los aficionados */}
+          <button
+            type="button"
+            id="header-spectator-qr-btn"
+            onClick={() => {
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('light', game.settings.vibrationEnabled);
+              if (onOpenSpectatorQR) {
+                onOpenSpectatorQR();
+              } else if (onOpenCloudSync) {
+                onOpenCloudSync();
+              }
+            }}
+            className="px-2 py-0.5 rounded border border-cyan-500/60 bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 font-mono font-bold text-[10px] sm:text-[11px] flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
+            title="Ver código QR para que los seguidores y aficionados sigan el partido en directo"
+          >
+            <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-bold">QR Seguidores</span>
+          </button>
+
+          {/* Push Notifications Toggle for Match Alerts */}
+          <NotificationBellButton
+            isCompact={true}
+            className="px-1.5 py-0.5 rounded border border-sky-500/50 bg-[#0E224A] hover:bg-[#16356E] shadow-sm shrink-0"
+          />
 
           {/* Cloud Sync Status & Action Button (Tablet to PC) */}
           <button
@@ -656,20 +686,22 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               id="header-away-score-2p-btn"
               onClick={() => onLogOpponentAction('OPP_2P')}
               disabled={isActionsLocked}
-              className="px-2 py-1 sm:py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40"
-              title="+2 Canasta Rival (Poner sitio de tiro)"
+              className="px-2 py-1 sm:py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-1"
+              title="+2 Canasta Rival (Poner sitio de tiro en pista)"
             >
-              +2 Pts
+              <span>+2 Pts</span>
+              <span className="text-[10px]">🎯</span>
             </button>
             <button
               type="button"
               id="header-away-score-3p-btn"
               onClick={() => onLogOpponentAction('OPP_3P')}
               disabled={isActionsLocked}
-              className="px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40"
-              title="+3 Triple Rival (Poner sitio de tiro)"
+              className="px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-1"
+              title="+3 Triple Rival (Poner sitio de tiro en pista)"
             >
-              +3 Tri
+              <span>+3 Tri</span>
+              <span className="text-[10px]">🎯</span>
             </button>
             <button
               type="button"

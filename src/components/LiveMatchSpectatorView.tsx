@@ -12,6 +12,7 @@ import {
   CONTINUOUS_FATIGUE_LIMIT_SECONDS,
 } from '../utils/statsCalculator';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
+import { NotificationBellButton } from './NotificationBellButton';
 import {
   Clock,
   Flame,
@@ -228,6 +229,12 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
           )}
+
+          {/* Notificaciones push para avisos de finales ajustados */}
+          <NotificationBellButton
+            isCompact={true}
+            className="p-1.5 rounded-lg bg-[#142347] hover:bg-[#1E3461] border border-[#27457C] text-xs transition shadow-sm"
+          />
 
           {/* Discreet coach switch */}
           {onSwitchToRecorder && (

@@ -109,6 +109,7 @@ interface PlayerShotMapProps {
   theme?: 'dark' | 'light';
   isCompact?: boolean;
   title?: string;
+  teamFilter?: 'all' | 'local' | 'away';
 }
 
 export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
@@ -118,8 +119,12 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
   theme = 'dark',
   isCompact = false,
   title = 'Carta de Tiros',
+  teamFilter: propTeamFilter,
 }) => {
   const [filterResult, setFilterResult] = useState<'all' | 'made' | 'missed'>('all');
+  const [teamFilterState, setTeamFilterState] = useState<'all' | 'local' | 'away'>('all');
+  const activeTeamFilter = propTeamFilter || teamFilterState;
+
   const [viewMode, setViewMode] = useState<'shots' | 'heat' | 'combined'>('shots');
   const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('parquet');
   const [showPercentagesInCombined, setShowPercentagesInCombined] = useState<boolean>(false);
@@ -134,15 +139,29 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
     distanceMeters: number;
   } | null>(null);
 
-  // Field shot events
-  const fieldShots = useMemo(() => {
-    return shots.filter(s => ['2PM', '2PA', '3PM', '3PA'].includes(s.actionType));
+  const hasOpponentShots = useMemo(() => {
+    return shots.some(s => s.isOpponentAction || ['OPP_2P', 'OPP_3P'].includes(s.actionType));
   }, [shots]);
+
+  // Field shot events (supporting both local team and opponent baskets)
+  const fieldShots = useMemo(() => {
+    return shots.filter(s => {
+      const isFieldGoal =
+        ['2PM', '2PA', '3PM', '3PA', 'OPP_2P', 'OPP_3P'].includes(s.actionType) ||
+        (s.isOpponentAction && Boolean(s.shotLocation));
+      if (!isFieldGoal) return false;
+
+      const isOpp = s.isOpponentAction || ['OPP_2P', 'OPP_3P'].includes(s.actionType);
+      if (activeTeamFilter === 'local' && isOpp) return false;
+      if (activeTeamFilter === 'away' && !isOpp) return false;
+      return true;
+    });
+  }, [shots, activeTeamFilter]);
 
   // Filtered by user selection
   const displayedShots = useMemo(() => {
     return fieldShots.filter(s => {
-      const isMade = ['2PM', '3PM'].includes(s.actionType);
+      const isMade = ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(s.actionType);
       if (filterResult === 'made') return isMade;
       if (filterResult === 'missed') return !isMade;
       return true;
@@ -151,18 +170,18 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
 
   // Overall metrics
   const totalShots = fieldShots.length;
-  const totalMade = fieldShots.filter(s => ['2PM', '3PM'].includes(s.actionType)).length;
+  const totalMade = fieldShots.filter(s => ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(s.actionType)).length;
   const totalMissed = totalShots - totalMade;
   const totalPct = totalShots > 0 ? Math.round((totalMade / totalShots) * 100) : 0;
 
   // 2P metrics
-  const shots2P = fieldShots.filter(s => ['2PM', '2PA'].includes(s.actionType));
-  const made2P = shots2P.filter(s => s.actionType === '2PM').length;
+  const shots2P = fieldShots.filter(s => ['2PM', '2PA', 'OPP_2P'].includes(s.actionType));
+  const made2P = shots2P.filter(s => ['2PM', 'OPP_2P'].includes(s.actionType)).length;
   const pct2P = shots2P.length > 0 ? Math.round((made2P / shots2P.length) * 100) : 0;
 
   // 3P metrics
-  const shots3P = fieldShots.filter(s => ['3PM', '3PA'].includes(s.actionType));
-  const made3P = shots3P.filter(s => s.actionType === '3PM').length;
+  const shots3P = fieldShots.filter(s => ['3PM', '3PA', 'OPP_3P'].includes(s.actionType));
+  const made3P = shots3P.filter(s => ['3PM', 'OPP_3P'].includes(s.actionType)).length;
   const pct3P = shots3P.length > 0 ? Math.round((made3P / shots3P.length) * 100) : 0;
 
   // Calculate zone stats with non-colliding peripheral anchors
@@ -190,9 +209,9 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
         const shotZid = classifyShotZone(coords.x, coords.y);
         if (shotZid === zid) {
           attempted++;
-          if (['2PM', '3PM'].includes(shot.actionType)) {
+          if (['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(shot.actionType)) {
             made++;
-            points += shot.actionType === '3PM' ? 3 : 2;
+            points += ['3PM', 'OPP_3P'].includes(shot.actionType) ? 3 : 2;
           }
         }
       });
@@ -346,6 +365,45 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
             )}
           </div>
         </div>
+
+        {/* Team Filter: Todos vs Local vs Rival */}
+        {hasOpponentShots && !propTeamFilter && (
+          <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-neutral-800 text-[10px] font-bold">
+            <button
+              type="button"
+              onClick={() => setTeamFilterState('all')}
+              className={`px-2 py-1 rounded-md transition ${
+                activeTeamFilter === 'all'
+                  ? 'bg-amber-500 text-black font-black shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setTeamFilterState('local')}
+              className={`px-2 py-1 rounded-md transition ${
+                activeTeamFilter === 'local'
+                  ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Nuestro Equipo
+            </button>
+            <button
+              type="button"
+              onClick={() => setTeamFilterState('away')}
+              className={`px-2 py-1 rounded-md transition ${
+                activeTeamFilter === 'away'
+                  ? 'bg-sky-600 text-white font-bold shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Puntos Rival
+            </button>
+          </div>
+        )}
 
         {/* View Mode Toggle: Tiros vs Mapa de Calor vs Ambos */}
         <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-neutral-800 text-[10px] font-bold">
@@ -874,7 +932,8 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
           {/* =================================================== */}
           {viewMode !== 'heat' &&
             displayedShots.map((shot, idx) => {
-              const isMade = ['2PM', '3PM'].includes(shot.actionType);
+              const isOpp = shot.isOpponentAction || ['OPP_2P', 'OPP_3P'].includes(shot.actionType);
+              const isMade = ['2PM', '3PM', 'OPP_2P', 'OPP_3P'].includes(shot.actionType);
               const { x, y } = getShotCoordinates(shot, idx);
               const isHovered = hoveredShot?.id ? hoveredShot.id === shot.id : hoveredShot === shot;
 
@@ -889,15 +948,34 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
                       cx={x}
                       cy={y}
                       r="2.8"
-                      fill={isMade ? '#10b981' : '#ef4444'}
-                      fillOpacity="0.3"
-                      stroke={isMade ? '#34d399' : '#f87171'}
+                      fill={isOpp ? '#0284c7' : isMade ? '#10b981' : '#ef4444'}
+                      fillOpacity="0.35"
+                      stroke={isOpp ? '#38bdf8' : isMade ? '#34d399' : '#f87171'}
                       strokeWidth="0.4"
-                      filter={isMade ? 'url(#made-glow)' : 'url(#miss-glow)'}
+                      filter={isOpp ? 'url(#shot-glow)' : isMade ? 'url(#made-glow)' : 'url(#miss-glow)'}
                     />
                   )}
 
-                  {isMade ? (
+                  {isOpp ? (
+                    /* Opponent Made Shot: Distinct Sky-Cyan ring with orange core */
+                    <g className="transition-transform duration-100">
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={isHovered ? 1.6 : 1.1}
+                        fill="#0284c7"
+                        stroke="#ffffff"
+                        strokeWidth={isHovered ? 0.35 : 0.25}
+                        className="drop-shadow-sm"
+                      />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={isHovered ? 0.7 : 0.45}
+                        fill="#f97316"
+                      />
+                    </g>
+                  ) : isMade ? (
                     /* Made Shot: Ultra-fine, sleek emerald circle with fine white rim */
                     <circle
                       cx={x}
@@ -995,27 +1073,39 @@ export const PlayerShotMap: React.FC<PlayerShotMapProps> = ({
           >
             <div
               className={`px-2.5 py-1.5 rounded-lg border shadow-2xl backdrop-blur-md text-xs font-mono whitespace-nowrap flex items-center gap-2 ${
-                ['2PM', '3PM'].includes(hoveredShot.actionType)
+                hoveredShot.isOpponentAction || ['OPP_2P', 'OPP_3P'].includes(hoveredShot.actionType)
+                  ? 'bg-sky-950/95 border-sky-400 text-sky-100 shadow-sky-950/80'
+                  : ['2PM', '3PM'].includes(hoveredShot.actionType)
                   ? 'bg-emerald-950/95 border-emerald-500 text-emerald-100 shadow-emerald-950/80'
                   : 'bg-rose-950/95 border-rose-500 text-rose-100 shadow-rose-950/80'
               }`}
             >
               <div className="flex items-center gap-1.5">
-                {['2PM', '3PM'].includes(hoveredShot.actionType) ? (
+                {hoveredShot.isOpponentAction || ['OPP_2P', 'OPP_3P'].includes(hoveredShot.actionType) ? (
+                  <span className="text-sm">🏀</span>
+                ) : ['2PM', '3PM'].includes(hoveredShot.actionType) ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 ) : (
                   <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 )}
                 <div>
                   <div className="flex items-center gap-1.5 font-bold text-[11px]">
-                    {hoveredShot.playerName && (
-                      <span className="text-white font-black">
-                        #{hoveredShot.playerNumber} {hoveredShot.playerName}
+                    {hoveredShot.isOpponentAction || ['OPP_2P', 'OPP_3P'].includes(hoveredShot.actionType) ? (
+                      <span className="text-sky-300 font-black">
+                        Canasta Rival {hoveredShot.opponentPlayerNumber ? `(#${hoveredShot.opponentPlayerNumber})` : ''}
                       </span>
+                    ) : (
+                      hoveredShot.playerName && (
+                        <span className="text-white font-black">
+                          #{hoveredShot.playerNumber} {hoveredShot.playerName}
+                        </span>
+                      )
                     )}
                     <span
                       className={
-                        ['2PM', '3PM'].includes(hoveredShot.actionType)
+                        hoveredShot.isOpponentAction || ['OPP_2P', 'OPP_3P'].includes(hoveredShot.actionType)
+                          ? 'text-cyan-300'
+                          : ['2PM', '3PM'].includes(hoveredShot.actionType)
                           ? 'text-emerald-300'
                           : 'text-rose-300'
                       }

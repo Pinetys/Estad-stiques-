@@ -109,6 +109,8 @@ import { DeviceRole, getDeviceRole, setDeviceRole as persistDeviceRole } from '.
 import { SyncStatusBar } from './components/SyncStatusBar';
 import { SyncPairingModal } from './components/SyncPairingModal';
 import { LiveMatchSpectatorView } from './components/LiveMatchSpectatorView';
+import { NotificationBellButton } from './components/NotificationBellButton';
+import { checkAndNotifyMatchAlerts } from './utils/notificationService';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
 
@@ -297,6 +299,11 @@ export default function App() {
       if (interval) clearInterval(interval);
     };
   }, [game.isClockRunning, game.status]);
+
+  // Check and dispatch Service Worker push notifications for crucial live match events (clutch final 2 mins, overtime, etc.)
+  useEffect(() => {
+    checkAndNotifyMatchAlerts(game);
+  }, [game.homeScore, game.awayScore, game.currentQuarter, game.currentSecondsRemaining, game.status]);
 
   // Cloud & Autonomous Server Sync State (real-time sync between Tablet, Mobile and PC)
   const isRemoteSyncInProgressRef = useRef(false);

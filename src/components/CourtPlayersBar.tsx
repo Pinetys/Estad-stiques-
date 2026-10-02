@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Game, Player } from '../types';
 import {
   calculatePlayerStats,
@@ -42,6 +42,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [isSwipingHorizontally, setIsSwipingHorizontally] = useState<boolean>(false);
+  const didSwipeRef = useRef(false);
 
   const teamStats = calculateTeamMinutesDistribution(
     game.players,
@@ -78,6 +79,11 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
 
     // Horizontal swipe threshold: 25px
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 25) {
+      didSwipeRef.current = true;
+      setTimeout(() => {
+        didSwipeRef.current = false;
+      }, 250);
+
       if (diffX < 0 && viewMode === 'court') {
         // Swiped left -> show bench
         playSound('click', game.settings.soundEnabled);
@@ -106,7 +112,12 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
   const handlePointerUp = (e: React.PointerEvent) => {
     if (touchStartX === null || e.pointerType !== 'mouse') return;
     const diffX = e.clientX - touchStartX;
-    if (Math.abs(diffX) > 30) {
+    if (Math.abs(diffX) > 25) {
+      didSwipeRef.current = true;
+      setTimeout(() => {
+        didSwipeRef.current = false;
+      }, 250);
+
       if (diffX < 0 && viewMode === 'court') {
         playSound('click', game.settings.soundEnabled);
         triggerHaptic('light', game.settings.vibrationEnabled);
@@ -294,6 +305,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                   <button
                     key={player.id}
                     onClick={() => {
+                      if (didSwipeRef.current) return;
                       playSound('click', game.settings.soundEnabled);
                       triggerHaptic('light', game.settings.vibrationEnabled);
                       onSelectPlayer(selectedPlayerId === player.id ? '' : player.id);

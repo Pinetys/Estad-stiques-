@@ -38,6 +38,7 @@ import {
   Target,
   Zap,
   Edit,
+  Edit2,
   Lock,
   Unlock,
   HelpCircle,
@@ -45,6 +46,7 @@ import {
   Maximize,
   Minimize,
   Scale,
+  QrCode,
 } from 'lucide-react';
 import { toggleFullscreen, isFullscreenActive } from '../utils/fullscreen';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
@@ -62,6 +64,8 @@ import { ProSubscriptionBenefitsModal } from './ProSubscriptionBenefitsModal';
 import { FoulModalData } from './FoulResolutionModal';
 import { TeamMinutesBalanceModal } from './TeamMinutesBalanceModal';
 import { RivalRosterModal } from './RivalRosterModal';
+import { LiveSpectatorQRModal } from './LiveSpectatorQRModal';
+import { NotificationBellButton } from './NotificationBellButton';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -148,6 +152,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showProBenefitsModal, setShowProBenefitsModal] = useState(false);
   const [showMinutesBalanceModal, setShowMinutesBalanceModal] = useState(false);
   const [showRivalRosterModal, setShowRivalRosterModal] = useState(false);
+  const [showSpectatorQRModal, setShowSpectatorQRModal] = useState(false);
 
   const handleSaveRivalRoster = (awayPlayers: Player[], awayTeamName?: string) => {
     onUpdateGame(prev => ({
@@ -219,7 +224,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       return;
     }
     const isOppBasket = actionType === 'OPP_2P' || actionType === 'OPP_3P';
-    if (isOppBasket && onOpenShotChartForBasket && game.settings.shotChartAutoOpen !== 'off') {
+    if (isOppBasket && onOpenShotChartForBasket) {
       onOpenShotChartForBasket({
         playerId: 'opponent',
         playerName: game.awayTeamName || 'Equipo Rival',
@@ -1002,6 +1007,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           handleResetShotClock={handleResetShotClock}
           handleToggleShotClock={handleToggleShotClock}
           onLogOpponentAction={handleLogOpponentActionGuarded}
+          onOpenRivalRoster={() => setShowRivalRosterModal(true)}
           onOpenScoutingDorsal={() => {
             if (isActionsLocked) return;
             setScoutingOppAction('OPP_2P');
@@ -1045,6 +1051,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             }));
           }}
           onOpenCloudSync={onOpenCloudSync}
+          onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
         />
       ) : (
         <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
@@ -1132,18 +1139,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </button>
         </div>
 
-        {/* Quick Tools: Carta de Tiro, Acta PDF & Cerrar Partido / Editar */}
+        {/* Quick Tools: Carta de Tiro, Acta PDF, Notificaciones & Cerrar Partido / Editar */}
         <div className="flex items-center gap-1">
           {onOpenShotChart && (
             <div className="flex items-center gap-0.5">
               <button
                 type="button"
+                id="bottom-open-shot-chart-btn"
                 onClick={onOpenShotChart}
-                className="p-1 px-1.5 sm:px-2 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-                title="Abrir Carta de Tiro completa"
+                className="p-1 px-2 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/60 rounded text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+                title="Abrir Mapa de Tiro y análisis de zonas en directo"
               >
-                <Crosshair className="w-3 h-3 text-[#F5C542]" />
-                <span className="hidden sm:inline">Mapa</span>
+                <Crosshair className="w-3.5 h-3.5 text-[#F5C542]" />
+                <span>Mapa de Tiro</span>
               </button>
               <button
                 type="button"
@@ -1161,6 +1169,29 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               </button>
             </div>
           )}
+
+          {/* Botón de avisos / Notificaciones Push del partido */}
+          <NotificationBellButton
+            isCompact={true}
+            className="p-1 px-1.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[11px] shadow-sm shrink-0"
+          />
+
+          {/* Botón QR Seguidores para enlazar con la vista en directo de aficionados */}
+          <button
+            type="button"
+            id="portrait-spectator-qr-btn"
+            onClick={() => {
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('light', game.settings.vibrationEnabled);
+              setShowSpectatorQRModal(true);
+            }}
+            className="p-1 px-2 bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 border border-cyan-500/60 rounded text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
+            title="Ver código QR para que los seguidores y aficionados sigan el partido en directo"
+          >
+            <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-bold">QR Seguidores</span>
+          </button>
+
           {onOpenOfficialSheet && (
             <button
               type="button"
@@ -1248,6 +1279,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           handleResetShotClock={handleResetShotClock}
           handleToggleShotClock={handleToggleShotClock}
           onLogOpponentAction={handleLogOpponentActionGuarded}
+          onOpenRivalRoster={() => setShowRivalRosterModal(true)}
           onOpenScoutingDorsal={() => {
             if (isActionsLocked) return;
             setScoutingOppAction('OPP_2P');
@@ -1415,6 +1447,104 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </div>
         );
       })()}
+
+      {/* 3.2 BARRA DE ANOTACIÓN Y ACCIONES DEL EQUIPO RIVAL */}
+      {!isLandscapeTablet && (
+        <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-1 select-none shrink-0">
+          <div className="bg-gradient-to-r from-[#071328] via-[#0E224A] to-[#071328] border border-sky-500/50 rounded-xl px-2.5 py-1 flex items-center justify-between shadow-md gap-1.5 sm:gap-2">
+            {/* Info Rival y Botón discreto de editar */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse shrink-0" />
+              <span className="text-[11px] sm:text-xs font-mono font-black text-sky-300 uppercase tracking-tight truncate max-w-[90px] sm:max-w-[130px]">
+                {game.awayTeamName || 'Rival'}
+              </span>
+              {/* Botón discreto para editar jugadores rivales */}
+              <button
+                type="button"
+                id="court-edit-rival-discrete-btn"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('light', game.settings.vibrationEnabled);
+                  setShowRivalRosterModal(true);
+                }}
+                className="p-1 rounded-md text-slate-400 hover:text-sky-300 hover:bg-sky-950/70 transition active:scale-90 shrink-0"
+                title="Editar plantilla del equipo rival (dorsales y nombres)"
+              >
+                <Edit2 className="w-3 h-3 text-sky-400/80 hover:text-sky-300" />
+              </button>
+              <span className="font-scoreboard font-black text-xs sm:text-sm text-white ml-0.5 px-1 py-0.2 bg-black/40 rounded border border-sky-500/30">
+                {game.awayScore}p
+              </span>
+            </div>
+
+            {/* Botones de Anotación y Falta del Rival */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              <button
+                type="button"
+                id="rival-bar-score-1p-btn"
+                onClick={() => handleLogOpponentActionGuarded('OPP_1P')}
+                disabled={isActionsLocked}
+                className="px-2 py-1 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/60 text-cyan-300 font-mono font-black text-[10px] sm:text-xs active:scale-95 transition shadow-xs disabled:opacity-40"
+                title="+1 Tiro Libre Rival"
+              >
+                +1 TL
+              </button>
+              <button
+                type="button"
+                id="rival-bar-score-2p-btn"
+                onClick={() => handleOpenRivalShotPlacement('OPP_2P')}
+                disabled={isActionsLocked}
+                className="px-2 py-1 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/70 text-emerald-300 font-mono font-black text-[10px] sm:text-xs active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center gap-1"
+                title="+2 Canasta Rival (Toca en la pista para marcar dónde metió el punto)"
+              >
+                <span>+2 Canasta</span>
+                <span className="text-[10px]">🎯</span>
+              </button>
+              <button
+                type="button"
+                id="rival-bar-score-3p-btn"
+                onClick={() => handleOpenRivalShotPlacement('OPP_3P')}
+                disabled={isActionsLocked}
+                className="px-2 py-1 rounded-lg bg-amber-950/90 hover:bg-amber-900 border border-amber-500/70 text-amber-300 font-mono font-black text-[10px] sm:text-xs active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center gap-1"
+                title="+3 Triple Rival (Toca en la pista para marcar dónde metió el punto)"
+              >
+                <span>+3 Triple</span>
+                <span className="text-[10px]">🎯</span>
+              </button>
+              {/* Botón de falta del equipo rival proporcionado */}
+              <button
+                type="button"
+                id="rival-bar-foul-btn"
+                onClick={() => {
+                  handleLogOpponentActionGuarded('OPP_FOUL');
+                  const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+                  if (nextAwayFouls >= bonusLimit) {
+                    triggerHaptic('bonus', game.settings.vibrationEnabled);
+                    setBonusFreeThrowPrompt({ team: 'away', count: nextAwayFouls });
+                  }
+                }}
+                disabled={isActionsLocked}
+                className={`px-2 py-1 rounded-lg text-[10px] sm:text-xs font-mono font-black flex items-center gap-1 transition active:scale-95 border shadow-sm disabled:opacity-40 ${
+                  awayIsBonus
+                    ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
+                    : 'bg-red-950/90 hover:bg-red-900 text-rose-200 border-red-600/80'
+                }`}
+                title="Sumar falta al equipo rival"
+              >
+                <span className="uppercase">+FALTA RIVAL</span>
+                <span className="bg-black/50 text-white px-1.5 py-0.2 rounded font-black text-[10px]">
+                  {game.awayQuarterFouls || 0}
+                </span>
+                {awayIsBonus && (
+                  <span className="text-[8px] bg-white text-red-600 px-0.5 rounded font-black">
+                    BONUS
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4. JUGADORES EN PISTA (PORTRAIT ONLY) */}
       {!isLandscapeTablet && (
@@ -2187,6 +2317,25 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             setShowMinutesBalanceModal(false);
             onOpenSubstitutionModal();
           }}
+        />
+      )}
+
+      {/* MODAL EDICIÓN PLANTILLA EQUIPO RIVAL (DORSALES Y NOMBRES) */}
+      {showRivalRosterModal && (
+        <RivalRosterModal
+          isOpen={showRivalRosterModal}
+          onClose={() => setShowRivalRosterModal(false)}
+          game={game}
+          onSaveRoster={handleSaveRivalRoster}
+        />
+      )}
+
+      {/* MODAL CÓDIGO QR PARA SEGUIDORES Y AFICIÓN EN DIRECTO */}
+      {showSpectatorQRModal && (
+        <LiveSpectatorQRModal
+          isOpen={showSpectatorQRModal}
+          onClose={() => setShowSpectatorQRModal(false)}
+          game={game}
         />
       )}
     </div>
