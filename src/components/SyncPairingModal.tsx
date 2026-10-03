@@ -75,12 +75,9 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
       const code = await syncEngine.generateTransferCode(currentGame);
       setPinCode(code);
 
-      // 2. Generate direct URL with auto-pair and monitor mode (using public companion URL if in dev preview)
-      let origin = typeof window !== 'undefined' ? window.location.origin : '';
-      if (origin.includes('ais-dev-')) {
-        origin = origin.replace('ais-dev-', 'ais-pre-');
-      }
-      const pairUrl = `${origin}/?pair=${encodeURIComponent(code)}&mode=spectator`;
+      // 2. Generate direct URL with auto-pair and monitor mode
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const pairUrl = `${origin}/?pair=${encodeURIComponent(code)}&match=${encodeURIComponent(currentGame.id)}&mode=spectator`;
 
       // 3. Generate QR Code image
       const qrImage = await QRCode.toDataURL(pairUrl, {
@@ -104,11 +101,8 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
     if (!pinCode) return;
     playSound('click', true);
     triggerHaptic('light', true);
-    let origin = typeof window !== 'undefined' ? window.location.origin : '';
-    if (origin.includes('ais-dev-')) {
-      origin = origin.replace('ais-dev-', 'ais-pre-');
-    }
-    const pairUrl = `${origin}/?pair=${encodeURIComponent(pinCode)}&mode=spectator`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const pairUrl = `${origin}/?pair=${encodeURIComponent(pinCode)}&match=${encodeURIComponent(currentGame.id)}&mode=spectator`;
     navigator.clipboard.writeText(pairUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);

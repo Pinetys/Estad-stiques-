@@ -525,6 +525,16 @@ async function startServer() {
     }
   });
 
+  // 7.5 Get specific match by ID
+  app.get('/api/sync/match/:id', (req, res) => {
+    const id = req.params.id;
+    const match = serverDb.matches[id] || (serverDb.activeMatch?.id === id ? serverDb.activeMatch : null);
+    if (!match) {
+      return res.status(404).json({ error: 'Partido no encontrado en el servidor' });
+    }
+    res.json({ success: true, game: match });
+  });
+
   // 8. Delete match
   app.delete('/api/sync/match/:id', (req, res) => {
     const id = req.params.id;
@@ -601,7 +611,19 @@ async function startServer() {
       }
     }
 
+    // 4. Fallback: match by match ID or active match
     if (!matchedKey || !serverDb.transferCodes[matchedKey]) {
+      const fallbackGame = serverDb.matches[rawCode] || serverDb.matches[cleanInput] || (serverDb.activeMatch?.id === rawCode ? serverDb.activeMatch : null) || serverDb.activeMatch;
+      if (fallbackGame) {
+        return res.json({
+          success: true,
+          game: fallbackGame,
+          createdAt: Date.now(),
+          code: rawCode,
+          note: 'Recuperado de partido activo',
+        });
+      }
+
       return res.status(404).json({
         error: `Código de sincronización "${rawCode}" no encontrado o ha caducado.`,
       });

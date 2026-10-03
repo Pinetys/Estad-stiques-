@@ -63,12 +63,9 @@ export const LiveSpectatorQRModal: React.FC<LiveSpectatorQRModalProps> = ({
       }
       setPinCode(code);
 
-      // 2. Generate direct follower spectator URL (auto-switches dev preview to public preview)
-      let origin = typeof window !== 'undefined' ? window.location.origin : '';
-      if (origin.includes('ais-dev-')) {
-        origin = origin.replace('ais-dev-', 'ais-pre-');
-      }
-      const fullUrl = `${origin}/?pair=${encodeURIComponent(code)}&mode=spectator`;
+      // 2. Generate direct follower spectator URL using current active origin
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const fullUrl = `${origin}/?pair=${encodeURIComponent(code)}&match=${encodeURIComponent(game.id)}&mode=spectator`;
       setSpectatorUrl(fullUrl);
 
       // 3. Render High-Resolution QR code
