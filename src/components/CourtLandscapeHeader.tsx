@@ -218,38 +218,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Screen wake, quick rival foul, shot chart, match sheet, tutorial, pro and finish match buttons */}
+        {/* Right: Screen wake, shot chart, match sheet, tutorial, pro and finish match buttons */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-          {/* Quick Foul Opponent in Top Utility Strip - Highly Visible on Tablets */}
-          <button
-            type="button"
-            id="top-utility-away-foul-btn"
-            onClick={() => {
-              onLogOpponentAction('OPP_FOUL');
-              const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
-              if (nextAwayFouls >= bonusLimit) {
-                onTriggerOpponentFoulBonus(nextAwayFouls);
-              }
-            }}
-            disabled={isActionsLocked}
-            className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-black flex items-center gap-1 transition active:scale-95 border shadow-sm shrink-0 ${
-              awayIsBonus
-                ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
-                : 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400'
-            }`}
-            title="Sumar falta al equipo rival en la parte superior"
-          >
-            <span className="uppercase text-[9px] font-black tracking-tight">+FALTA RIVAL</span>
-            <span className="bg-red-900 text-white px-1.5 py-0.2 rounded font-black text-xs border border-red-300">
-              {game.awayQuarterFouls || 0}
-            </span>
-            {awayIsBonus && (
-              <span className="text-[8px] bg-white text-red-600 px-1 rounded font-black animate-pulse">
-                BONUS
-              </span>
-            )}
-          </button>
-
           {/* Screen Wake Lock */}
           <button
             type="button"

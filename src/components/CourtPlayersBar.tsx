@@ -325,14 +325,14 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                     }`}
                   >
                     {/* Micro-header: Puntos y Minutos */}
-                    <div className="w-full flex items-center justify-between text-[8px] sm:text-[9px] font-mono px-0.5 leading-none text-neutral-400">
-                      <span className="font-bold text-orange-400/90">{stats.points}p</span>
+                    <div className="w-full flex items-center justify-between text-[9px] sm:text-[10px] font-mono px-0.5 leading-none text-slate-300">
+                      <span className="font-bold text-orange-400">{stats.points}p</span>
                       {isFatigued ? (
                         <span
                           className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-amber-500/25 border border-amber-500/50 text-amber-300 font-black animate-pulse"
                           title={`Alerta de cansancio: ${player.name} lleva ${consecutiveMinsFormatted} seguidos en pista sin ser sustituido (>6 min)`}
                         >
-                          <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                          <Flame className="w-3 h-3 text-amber-400 shrink-0" />
                           <span>&gt;6'</span>
                         </span>
                       ) : isLow ? (
@@ -340,12 +340,12 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                           className="flex items-center gap-0.5 text-sky-300 font-bold"
                           title={`Lleva pocos minutos jugados en el partido (${stats.minutesPlayedFormatted}). Jugador fresco.`}
                         >
-                          <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                          <Zap className="w-3 h-3 text-sky-400 shrink-0" />
                           <span>{stats.minutesPlayedFormatted}</span>
                         </span>
                       ) : (
-                        <span className="flex items-center gap-0.5 text-neutral-400" title={`Minutos en pista: ${stats.minutesPlayedFormatted}`}>
-                          <Clock className="w-2.5 h-2.5 opacity-60 shrink-0" />
+                        <span className="flex items-center gap-0.5 text-slate-300 font-bold" title={`Minutos en pista: ${stats.minutesPlayedFormatted}`}>
+                          <Clock className="w-3 h-3 text-sky-400 shrink-0" />
                           <span>{stats.minutesPlayedFormatted}</span>
                         </span>
                       )}
@@ -368,11 +368,11 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                       className="w-full px-0.5 my-0.5 flex flex-col items-center justify-center"
                       title={`Fatiga / Tanda en pista: ${consecutiveMinsFormatted} seguidos sin descanso (${fatiguePct}%)`}
                     >
-                      <div className="w-full max-w-[58px] sm:max-w-[64px] h-1.5 bg-slate-900/90 rounded-full overflow-hidden border border-slate-700/60 p-[0.5px] shadow-xs">
+                      <div className="w-full max-w-[68px] sm:max-w-[76px] h-2.5 sm:h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-600/90 p-[1px] shadow-xs">
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${
                             isFatigued
-                              ? 'bg-gradient-to-r from-amber-500 to-red-500 animate-pulse'
+                              ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 animate-pulse'
                               : fatiguePct >= 65
                               ? 'bg-gradient-to-r from-amber-400 to-amber-500'
                               : fatiguePct >= 35
@@ -384,17 +384,17 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                       </div>
                       <div className="flex items-center justify-center gap-0.5 leading-none mt-0.5">
                         {isFatigued ? (
-                          <span className="flex items-center gap-0.5 text-[7px] sm:text-[7.5px] font-mono font-black text-amber-300">
-                            <Flame className="w-2 h-2 text-amber-400 shrink-0" />
+                          <span className="flex items-center gap-0.5 text-[8px] sm:text-[9px] font-mono font-black text-amber-300">
+                            <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
                             <span>{consecutiveMinsFormatted} seg</span>
                           </span>
                         ) : isLow ? (
-                          <span className="flex items-center gap-0.5 text-[7px] sm:text-[7.5px] font-mono font-bold text-sky-300">
-                            <Zap className="w-1.5 h-1.5 text-sky-400 shrink-0" />
+                          <span className="flex items-center gap-0.5 text-[8px] sm:text-[9px] font-mono font-bold text-sky-300">
+                            <Zap className="w-2 h-2 text-sky-400 shrink-0" />
                             <span>{consecutiveMinsFormatted}</span>
                           </span>
                         ) : (
-                          <span className="text-[7px] sm:text-[7.5px] font-mono text-slate-400 font-bold">
+                          <span className="text-[8px] sm:text-[9px] font-mono text-slate-300 font-bold">
                             {consecutiveMinsFormatted} seg
                           </span>
                         )}

@@ -1791,11 +1791,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                       >
                         {/* Micro-header: Puntos y Minutos */}
                         <div className={`w-full flex items-center justify-between font-mono px-0.5 leading-none text-slate-300 ${
-                          isFoulConfirmation ? 'text-[7.5px] sm:text-[8px]' : 'text-[8px] sm:text-[9px]'
+                          isFoulConfirmation ? 'text-[8.5px] sm:text-[9.5px]' : 'text-[9.5px] sm:text-[10.5px]'
                         }`}>
                           <span className="font-bold text-[#F5C542]">{stats.points}p</span>
-                          <span className="flex items-center gap-0.5 text-slate-400" title={`Minutos en pista: ${stats.minutesPlayedFormatted}`}>
-                            <Clock className={`${isFoulConfirmation ? 'w-2 h-2' : 'w-2.5 h-2.5'} opacity-60 shrink-0`} />
+                          <span className="flex items-center gap-0.5 text-slate-300 font-bold" title={`Minutos en pista: ${stats.minutesPlayedFormatted}`}>
+                            <Clock className={`${isFoulConfirmation ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-sky-400 shrink-0`} />
                             <span>{stats.minutesPlayedFormatted}</span>
                           </span>
                         </div>
@@ -1823,11 +1823,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                           className="w-full px-0.5 my-0.5 flex flex-col items-center justify-center"
                           title={`Fatiga / Tanda en pista: ${consecutiveMinsFormatted} seguidos sin descanso (${fatiguePct}%)`}
                         >
-                          <div className="w-full max-w-[54px] sm:max-w-[60px] h-1.5 bg-slate-900/90 rounded-full overflow-hidden border border-slate-700/60 p-[0.5px] shadow-xs">
+                          <div className="w-full max-w-[66px] sm:max-w-[74px] h-2.5 sm:h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-600/90 p-[1px] shadow-xs">
                             <div
                               className={`h-full rounded-full transition-all duration-300 ${
                                 isFatigued
-                                  ? 'bg-gradient-to-r from-amber-500 to-red-500 animate-pulse'
+                                  ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 animate-pulse'
                                   : fatiguePct >= 65
                                   ? 'bg-gradient-to-r from-amber-400 to-amber-500'
                                   : fatiguePct >= 35
@@ -1839,12 +1839,12 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                           </div>
                           <div className="flex items-center justify-center gap-0.5 leading-none mt-0.5">
                             {isFatigued ? (
-                              <span className="flex items-center gap-0.5 text-[7px] sm:text-[7.5px] font-mono font-black text-amber-300">
-                                <Flame className="w-2 h-2 text-amber-400 shrink-0" />
+                              <span className="flex items-center gap-0.5 text-[8px] sm:text-[9px] font-mono font-black text-amber-300">
+                                <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
                                 <span>{consecutiveMinsFormatted} seg</span>
                               </span>
                             ) : (
-                              <span className="text-[7px] sm:text-[7.5px] font-mono text-slate-400 font-bold">
+                              <span className="text-[8px] sm:text-[9px] font-mono text-slate-300 font-bold">
                                 {consecutiveMinsFormatted} seg
                               </span>
                             )}

@@ -9,8 +9,18 @@
 export function getAppBaseUrl(): string {
   if (typeof window === 'undefined') return '';
   const origin = window.location.origin;
-  // Strip index.html from path
-  let pathname = window.location.pathname.replace(/\/index\.html$/i, '');
+
+  // 1. If hosted on github.io, ensure repository root is strictly preserved
+  if (window.location.hostname.endsWith('github.io')) {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    const repoName = segments[0] || '';
+    if (repoName) {
+      return `${origin}/${repoName}/`;
+    }
+  }
+
+  // 2. Clean pathname: remove trailing files (e.g. index.html or other assets)
+  let pathname = window.location.pathname.replace(/\/[^/]*\.[a-zA-Z0-9]+$/i, '');
   if (!pathname.endsWith('/')) {
     pathname = `${pathname}/`;
   }

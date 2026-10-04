@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BasketStats Live - Redirigiendo...</title>
+  <script>
+    // GitHub Pages 404 SPA fallback redirect
+    // Preserves repository path, query parameters and hash
+    (function() {
+      var loc = window.location;
+      var pathSegments = loc.pathname.split('/').filter(Boolean);
+      var repoBase = '';
+      if (loc.hostname.endsWith('github.io') && pathSegments.length > 0) {
+        repoBase = '/' + pathSegments[0] + '/';
+      } else {
+        repoBase = '/';
+      }
+      var target = loc.origin + repoBase + (loc.search || '') + (loc.hash || '');
+      window.location.replace(target);
+    })();
+  </script>
+</head>
+<body style="background:#0B1C3D;color:#FFFDF7;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+  <div style="text-align:center;padding:20px;">
+    <div style="font-size:24px;font-weight:bold;margin-bottom:8px;">🏀 BasketStats Live</div>
+    <div style="font-size:14px;color:#38bdf8;">Conectando con el partido en directo...</div>
+  </div>
+</body>
+</html>

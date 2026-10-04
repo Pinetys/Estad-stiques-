@@ -550,13 +550,13 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                           </span>
                         )}
                       </div>
-                      {/* Minutos jugados un poco más grandes y legibles */}
+                      {/* Minutos jugados para titular más grandes y visibles */}
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs sm:text-[12.5px] font-black font-mono text-amber-300 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="text-sm sm:text-[14.5px] font-black font-mono text-amber-300 flex items-center gap-1 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30">
+                          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                           <span>{stats.minutesPlayedFormatted}</span>
                         </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span className="text-[11px] text-slate-300 font-mono font-semibold">
                           • {player.position || 'JUG'}
                         </span>
                       </div>
@@ -565,31 +565,31 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
                   {/* CENTRO: BARRA VISUAL DE MINUTOS EN PISTA ENTRE JUGADOR Y FALTAS */}
                   <div
-                    className="flex flex-col items-center justify-center px-1.5 min-w-[58px] sm:min-w-[66px] max-w-[76px] shrink-0"
+                    className="flex flex-col items-center justify-center px-1.5 min-w-[70px] sm:min-w-[82px] max-w-[94px] shrink-0"
                     title={`Tiempo en pista: ${stats.minutesPlayedFormatted}${isFatigued ? ` (Lleva ${consecutiveMinsFormatted} seguidos)` : ''}`}
                   >
-                    <div className="w-full h-2 bg-slate-950/90 rounded-full overflow-hidden border border-slate-700/80 p-[0.5px] shadow-xs">
+                    <div className="w-full h-3 sm:h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-600/90 p-[1px] shadow-sm">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${
                           isFatigued
-                            ? 'bg-gradient-to-r from-amber-500 to-red-500 animate-pulse'
+                            ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 animate-pulse'
                             : fatiguePct >= 65
-                            ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                            ? 'bg-gradient-to-r from-amber-400 to-orange-400'
                             : fatiguePct >= 35
                             ? 'bg-gradient-to-r from-emerald-400 to-amber-300'
                             : 'bg-emerald-400'
                         }`}
-                        style={{ width: `${Math.min(100, Math.max(6, fatiguePct))}%` }}
+                        style={{ width: `${Math.min(100, Math.max(8, fatiguePct))}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-center gap-0.5 leading-none mt-0.5">
+                    <div className="flex items-center justify-center gap-0.5 leading-none mt-1">
                       {isFatigued ? (
-                        <span className="flex items-center gap-0.5 text-[7.5px] font-mono font-black text-amber-300 animate-pulse">
-                          <Flame className="w-2 h-2 text-amber-400 shrink-0" />
+                        <span className="flex items-center gap-0.5 text-[9px] sm:text-[10px] font-mono font-black text-amber-300 animate-pulse">
+                          <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
                           <span>{consecutiveMinsFormatted} seg</span>
                         </span>
                       ) : (
-                        <span className="text-[8px] font-mono text-slate-400 font-bold">
+                        <span className="text-[9px] sm:text-[10px] font-mono text-slate-300 font-bold">
                           {consecutiveSeconds > 0 ? `${consecutiveMinsFormatted} seg` : stats.minutesPlayedFormatted}
                         </span>
                       )}
@@ -805,11 +805,11 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                         </div>
                         {/* Minutos jugados para suplente más grandes */}
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-xs sm:text-[12.5px] font-black font-mono text-sky-300 flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-sky-400 shrink-0" />
+                          <span className="text-sm sm:text-[14.5px] font-black font-mono text-sky-300 flex items-center gap-1 bg-sky-950/40 px-1.5 py-0.5 rounded border border-sky-500/30">
+                            <Clock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                             <span>{stats.minutesPlayedFormatted}</span>
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
+                          <span className="text-[11px] text-slate-300 font-mono font-semibold">
                             • {player.position || 'JUG'}
                           </span>
                         </div>
@@ -818,21 +818,21 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
                     {/* Barra visual de minutos en pista para suplente */}
                     <div
-                      className="flex flex-col items-center justify-center px-1.5 min-w-[58px] sm:min-w-[66px] max-w-[76px] shrink-0"
+                      className="flex flex-col items-center justify-center px-1.5 min-w-[70px] sm:min-w-[82px] max-w-[94px] shrink-0"
                       title={`Minutos jugados en total: ${stats.minutesPlayedFormatted}`}
                     >
-                      <div className="w-full h-2 bg-slate-950/90 rounded-full overflow-hidden border border-slate-700/80 p-[0.5px] shadow-xs">
+                      <div className="w-full h-3 sm:h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-600/90 p-[1px] shadow-sm">
                         <div
-                          className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-sky-500 to-sky-400"
+                          className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-sky-500 to-sky-300"
                           style={{
                             width: `${Math.min(
                               100,
-                              Math.max(6, Math.round(((player.minutesPlayedSeconds || 0) / (game.settings.quarterDurationMinutes * 60 * 2)) * 100))
+                              Math.max(8, Math.round(((player.minutesPlayedSeconds || 0) / (game.settings.quarterDurationMinutes * 60 * 2)) * 100))
                             )}%`,
                           }}
                         />
                       </div>
-                      <span className="text-[8px] font-mono text-slate-400 font-bold mt-0.5 leading-none">
+                      <span className="text-[9px] sm:text-[10px] font-mono text-slate-300 font-bold mt-1 leading-none">
                         {stats.minutesPlayedFormatted}
                       </span>
                     </div>
