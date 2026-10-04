@@ -5,18 +5,12 @@ import {
   calculatePlayerStats,
   calculateTeamStats,
   formatGameTime,
-  formatMinutesPlayed,
   formatQuarterShort,
-  isPlayerFatigued,
-  getPlayerConsecutiveCourtSeconds,
-  CONTINUOUS_FATIGUE_LIMIT_SECONDS,
 } from '../utils/statsCalculator';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 import { NotificationBellButton } from './NotificationBellButton';
 import {
   Clock,
-  Flame,
-  Zap,
   TrendingUp,
   RefreshCw,
   Radio,
@@ -385,81 +379,88 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
             </div>
           </div>
 
-          {/* Main Teams Score Grid */}
-          <div className="grid grid-cols-11 items-center gap-2 sm:gap-4 my-2">
-            {/* HOME TEAM */}
-            <div className="col-span-5 flex flex-col items-center sm:items-start text-center sm:text-left">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-black font-black text-lg sm:text-2xl shadow-lg shrink-0">
+          {/* Main Teams Score Grid - Anti-overlap layout */}
+          <div className="grid grid-cols-12 items-center gap-2 sm:gap-4 my-2">
+            {/* HOME TEAM (Left - 4 columns) */}
+            <div className="col-span-4 flex flex-col items-center sm:items-start text-center sm:text-left min-w-0">
+              <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 w-full min-w-0">
+                <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-black font-black text-base sm:text-2xl shadow-lg shrink-0">
                   {game.homeTeamName ? game.homeTeamName.substring(0, 2).toUpperCase() : 'LOC'}
                 </div>
-                <div className="min-w-0">
-                  <h1 className="text-base sm:text-2xl font-black text-white uppercase tracking-tight truncate max-w-[130px] sm:max-w-[200px]">
+                <div className="min-w-0 w-full">
+                  <h1 className="text-xs sm:text-base md:text-xl font-black text-white uppercase tracking-tight truncate block" title={game.homeTeamName || 'Equipo Local'}>
                     {game.homeTeamName || 'Equipo Local'}
                   </h1>
-                  <span className="text-[10px] sm:text-xs font-mono font-bold text-amber-400/90 uppercase tracking-widest block">
+                  <span className="text-[9px] sm:text-[11px] font-mono font-bold text-amber-400/90 uppercase tracking-wider block">
                     LOCAL
                   </span>
                 </div>
               </div>
 
               {/* Home Team Bonus & Fouls info */}
-              <div className="mt-3 flex items-center gap-1.5 text-xs font-mono">
-                <span className="text-slate-400">Faltas Cto:</span>
-                <span className="font-bold text-white px-1.5 py-0.5 rounded bg-[#172E5C]">
+              <div className="mt-2 sm:mt-3 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono">
+                <span className="text-slate-400 hidden xs:inline">Faltas:</span>
+                <span className="font-bold text-white px-1.5 py-0.2 rounded bg-[#172E5C]">
                   {homeFoulsInCurrentQ}/4
                 </span>
                 {homeFoulsInCurrentQ >= 4 && (
-                  <span className="px-1.5 py-0.5 rounded bg-red-900/80 text-red-300 font-black text-[10px] border border-red-600 animate-pulse">
+                  <span className="px-1 py-0.2 rounded bg-red-900/80 text-red-300 font-black text-[9px] border border-red-600 animate-pulse">
                     BONUS
                   </span>
                 )}
               </div>
             </div>
 
-            {/* SCORE NUMBERS (CENTER) */}
-            <div className="col-span-1 flex flex-col items-center justify-center">
-              <div className="flex items-center justify-center gap-2 sm:gap-4">
-                <span className="font-scoreboard font-black text-4xl sm:text-6xl md:text-7xl text-amber-400 leading-none drop-shadow-md">
+            {/* SCORE NUMBERS (Center - 4 columns, dedicated non-overlapping box) */}
+            <div className="col-span-4 flex flex-col items-center justify-center min-w-0 px-0.5 sm:px-2">
+              <div className="bg-[#071329]/90 border border-[#27447D] rounded-2xl px-2 sm:px-4 py-2 sm:py-3 w-full flex items-center justify-center gap-1.5 sm:gap-3 shadow-inner">
+                {/* Home Points */}
+                <span className="font-scoreboard font-black text-3xl sm:text-5xl md:text-6xl text-amber-400 leading-none drop-shadow-md text-right min-w-[32px] sm:min-w-[55px]">
                   {game.homeScore}
                 </span>
-                <span className="font-scoreboard font-black text-2xl sm:text-4xl text-slate-600 leading-none">
-                  -
-                </span>
-                <span className="font-scoreboard font-black text-4xl sm:text-6xl md:text-7xl text-cyan-400 leading-none drop-shadow-md">
+
+                {/* Separator */}
+                <div className="flex flex-col items-center px-0.5 shrink-0">
+                  <span className="font-scoreboard font-black text-lg sm:text-2xl text-slate-500 leading-none">
+                    -
+                  </span>
+                  <span className="text-[7px] sm:text-[8.5px] font-mono text-slate-400 uppercase tracking-widest leading-none mt-0.5">
+                    VS
+                  </span>
+                </div>
+
+                {/* Away Points */}
+                <span className="font-scoreboard font-black text-3xl sm:text-5xl md:text-6xl text-cyan-400 leading-none drop-shadow-md text-left min-w-[32px] sm:min-w-[55px]">
                   {game.awayScore}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mt-1 hidden sm:block">
-                MARCADOR
-              </span>
             </div>
 
-            {/* AWAY TEAM */}
-            <div className="col-span-5 flex flex-col items-center sm:items-end text-center sm:text-right">
-              <div className="flex items-center justify-end gap-2 sm:gap-3 flex-row-reverse sm:flex-row">
-                <div className="min-w-0">
-                  <h1 className="text-base sm:text-2xl font-black text-white uppercase tracking-tight truncate max-w-[130px] sm:max-w-[200px]">
+            {/* AWAY TEAM (Right - 4 columns) */}
+            <div className="col-span-4 flex flex-col items-center sm:items-end text-center sm:text-right min-w-0">
+              <div className="flex flex-col sm:flex-row-reverse items-center gap-1.5 sm:gap-3 w-full min-w-0">
+                <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-white font-black text-base sm:text-2xl shadow-lg shrink-0">
+                  {game.awayTeamName ? game.awayTeamName.substring(0, 2).toUpperCase() : 'VIS'}
+                </div>
+                <div className="min-w-0 w-full">
+                  <h1 className="text-xs sm:text-base md:text-xl font-black text-white uppercase tracking-tight truncate block" title={game.awayTeamName || 'Equipo Rival'}>
                     {game.awayTeamName || 'Equipo Rival'}
                   </h1>
-                  <span className="text-[10px] sm:text-xs font-mono font-bold text-cyan-400/90 uppercase tracking-widest block">
+                  <span className="text-[9px] sm:text-[11px] font-mono font-bold text-cyan-400/90 uppercase tracking-wider block">
                     VISITANTE
                   </span>
-                </div>
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-white font-black text-lg sm:text-2xl shadow-lg shrink-0">
-                  {game.awayTeamName ? game.awayTeamName.substring(0, 2).toUpperCase() : 'VIS'}
                 </div>
               </div>
 
               {/* Away Team Bonus & Fouls info */}
-              <div className="mt-3 flex items-center gap-1.5 text-xs font-mono">
+              <div className="mt-2 sm:mt-3 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono">
                 {awayFoulsInCurrentQ >= 4 && (
-                  <span className="px-1.5 py-0.5 rounded bg-red-900/80 text-red-300 font-black text-[10px] border border-red-600 animate-pulse">
+                  <span className="px-1 py-0.2 rounded bg-red-900/80 text-red-300 font-black text-[9px] border border-red-600 animate-pulse">
                     BONUS
                   </span>
                 )}
-                <span className="text-slate-400">Faltas Cto:</span>
-                <span className="font-bold text-white px-1.5 py-0.5 rounded bg-[#172E5C]">
+                <span className="text-slate-400 hidden xs:inline">Faltas:</span>
+                <span className="font-bold text-white px-1.5 py-0.2 rounded bg-[#172E5C]">
                   {awayFoulsInCurrentQ}/4
                 </span>
               </div>
@@ -587,7 +588,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                 <span>Rendimiento y Estadísticas de los Jugadores</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Puntos, porcentajes de tiro, faltas, minutos, valoración y barra de fatiga en pista.
+                Puntos, porcentajes de tiro, faltas y valoración en directo.
               </p>
             </div>
 
@@ -646,13 +647,6 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                   {homeOnCourt.map(player => {
                     const stats = calculatePlayerStats(player, game.events);
-                    const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
-                    const isFatigued = isPlayerFatigued(player);
-                    const consecutiveMinsFormatted = formatMinutesPlayed(consecutiveSeconds);
-                    const fatiguePct = Math.min(
-                      100,
-                      Math.round((consecutiveSeconds / CONTINUOUS_FATIGUE_LIMIT_SECONDS) * 100)
-                    );
                     const isFouledOut = stats.foulsPersonal >= foulLimit;
 
                     return (
@@ -661,62 +655,28 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                         className={`rounded-2xl p-3 border font-mono transition flex flex-col justify-between shadow-lg relative ${
                           isFouledOut
                             ? 'bg-red-950/40 border-red-800/80 text-red-200'
-                            : isFatigued
-                            ? 'bg-[#0E2045] border-amber-500/80 ring-1 ring-amber-500/50'
                             : 'bg-[#0C1B3B] border-[#223E75] hover:border-amber-400/50'
                         }`}
                       >
-                        {/* Header: Dorsal + Position + Minutes */}
-                        <div className="flex items-center justify-between text-xs pb-1 border-b border-[#1E3461]">
-                          <span className="font-scoreboard font-black text-amber-400 text-xl leading-none">
+                        {/* Header: Dorsal + Status Badge */}
+                        <div className="flex items-center justify-between text-xs pb-1.5 border-b border-[#1E3461]">
+                          <span className="font-scoreboard font-black text-amber-400 text-2xl leading-none">
                             #{player.number}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-bold">
-                            ⏱ {stats.minutesPlayedFormatted}
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>En Pista</span>
                           </span>
                         </div>
 
                         {/* Player Name */}
-                        <div className="my-1.5 text-center">
+                        <div className="my-2 text-center">
                           <span className="text-sm font-black text-white uppercase tracking-tight block truncate">
                             {player.name}
                           </span>
                           <span className="text-[10px] text-slate-400 block font-medium">
                             {player.position || 'JUGADOR'}
                           </span>
-                        </div>
-
-                        {/* BARRA DE FATIGA PROPORCIONADA ENTRE EL NOMBRE Y LAS FALTAS */}
-                        <div
-                          className="w-full my-1 flex flex-col items-center justify-center"
-                          title={`Fatiga / Tanda en pista: ${consecutiveMinsFormatted} seguidos sin descanso (${fatiguePct}%)`}
-                        >
-                          <div className="w-full max-w-[80px] h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-700/60 p-[0.5px]">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${
-                                isFatigued
-                                  ? 'bg-gradient-to-r from-amber-500 to-red-500 animate-pulse'
-                                  : fatiguePct >= 65
-                                  ? 'bg-gradient-to-r from-amber-400 to-amber-500'
-                                  : fatiguePct >= 35
-                                  ? 'bg-gradient-to-r from-emerald-400 to-amber-300'
-                                  : 'bg-emerald-400'
-                              }`}
-                              style={{ width: `${Math.min(100, Math.max(8, fatiguePct))}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center justify-center gap-1 leading-none mt-1">
-                            {isFatigued ? (
-                              <span className="flex items-center gap-0.5 text-[8px] font-mono font-black text-amber-300 animate-pulse">
-                                <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-                                <span>{consecutiveMinsFormatted} seg</span>
-                              </span>
-                            ) : (
-                              <span className="text-[8px] font-mono text-slate-400 font-bold">
-                                Tanda: {consecutiveMinsFormatted}
-                              </span>
-                            )}
-                          </div>
                         </div>
 
                         {/* Faltas Personales */}
@@ -780,8 +740,9 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                               <span className="font-bold text-slate-200 truncate block">
                                 {player.name}
                               </span>
-                              <span className="text-[9.5px] text-slate-400">
-                                ⏱ {stats.minutesPlayedFormatted} • {stats.points} pts
+                              <span className="text-[10px] text-amber-300 font-bold">
+                                {stats.points} pts
+                                <span className="text-slate-400 font-normal ml-1.5">• {player.position || 'BANQUILLO'}</span>
                               </span>
                             </div>
                           </div>
