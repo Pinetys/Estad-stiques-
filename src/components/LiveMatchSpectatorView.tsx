@@ -29,19 +29,31 @@ import { syncEngine } from '../lib/syncEngine';
 
 interface LiveMatchSpectatorViewProps {
   game: Game;
+  isConnecting?: boolean;
+  connectionError?: string | null;
   onSwitchToRecorder?: () => void;
   onRefresh?: () => void;
+  onRetry?: () => void;
+  onConnectCode?: (code: string) => void;
 }
 
 export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   game,
+  isConnecting = false,
+  connectionError = null,
   onSwitchToRecorder,
   onRefresh,
+  onRetry,
+  onConnectCode,
 }) => {
   const [selectedTeamTab, setSelectedTeamTab] = useState<'home' | 'away'>('home');
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [showRecentPlays, setShowRecentPlays] = useState<boolean>(true);
   const [filterCourtOnly, setFilterCourtOnly] = useState<boolean>(false);
+  const [manualCodeInput, setManualCodeInput] = useState<string>('');
+
+  const safeEvents = useMemo(() => game.events || [], [game.events]);
+  const safePlayers = useMemo(() => game.players || [], [game.players]);
 
   // Auto-track sync updates
   useEffect(() => {
@@ -54,23 +66,23 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   // Update last sync time whenever game changes
   useEffect(() => {
     setLastSyncTime(new Date());
-  }, [game.events.length, game.homeScore, game.awayScore, game.currentSecondsRemaining, game.currentQuarter]);
+  }, [safeEvents.length, game.homeScore, game.awayScore, game.currentSecondsRemaining, game.currentQuarter]);
 
   // Statistics for home team
   const homeStats = useMemo(
-    () => calculateTeamStats(game.players || [], game.events, game.homeTeamName || 'Local'),
-    [game.players, game.events, game.homeTeamName]
+    () => calculateTeamStats(safePlayers, safeEvents, game.homeTeamName || 'Local'),
+    [safePlayers, safeEvents, game.homeTeamName]
   );
 
   // Categorize home players
-  const homePlayers = useMemo(() => game.players || [], [game.players]);
+  const homePlayers = safePlayers;
   const homeOnCourt = useMemo(() => homePlayers.filter(p => p.onCourt), [homePlayers]);
   const homeOnBench = useMemo(() => homePlayers.filter(p => !p.onCourt), [homePlayers]);
 
   // Rival players (derived from opponent events or scouted opponent numbers)
   const awayPlayers = useMemo(() => {
     const rivalNumbersSet = new Set<number>();
-    game.events.forEach(e => {
+    safeEvents.forEach(e => {
       if (e.isOpponentAction && typeof e.opponentPlayerNumber === 'number' && e.opponentPlayerNumber > 0) {
         rivalNumbersSet.add(e.opponentPlayerNumber);
       }
@@ -78,7 +90,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
 
     const numbers = rivalNumbersSet.size > 0 ? Array.from(rivalNumbersSet).sort((a, b) => a - b) : [4, 5, 7, 9, 10, 11, 12, 14, 15, 23];
     return numbers.map(num => {
-      const pEvents = game.events.filter(e => e.isOpponentAction && e.opponentPlayerNumber === num);
+      const pEvents = safeEvents.filter(e => e.isOpponentAction && e.opponentPlayerNumber === num);
       let pts = 0;
       let fouls = 0;
       pEvents.forEach(e => {
@@ -92,12 +104,12 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
         fouls: fouls,
       };
     });
-  }, [game.events]);
+  }, [safeEvents]);
 
   // Recent plays stream (last 8 actions)
   const recentEvents = useMemo(() => {
-    return [...game.events].slice(-8).reverse();
-  }, [game.events]);
+    return [...safeEvents].slice(-8).reverse();
+  }, [safeEvents]);
 
   const isGameOver = game.status === 'finished';
   const foulLimit = game.settings?.foulOutLimit || 5;
@@ -113,7 +125,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
     for (let q = 1; q <= totalQ; q++) {
       let h = 0;
       let a = 0;
-      game.events.forEach(e => {
+      safeEvents.forEach(e => {
         if (e.quarter === q && e.pointsAdded) {
           if (!e.isOpponentAction) {
             h += e.pointsAdded;
@@ -130,22 +142,22 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
       });
     }
     return res;
-  }, [game.events, game.quarterScores, game.settings?.totalQuarters, game.currentQuarter]);
+  }, [safeEvents, game.quarterScores, game.settings?.totalQuarters, game.currentQuarter]);
 
   // Team fouls in current quarter
   const homeFoulsInCurrentQ = useMemo(() => {
     if (typeof game.homeQuarterFouls === 'number') return game.homeQuarterFouls;
-    return game.events.filter(
+    return safeEvents.filter(
       e => e.quarter === game.currentQuarter && !e.isOpponentAction && ACTION_DEFINITIONS[e.actionType]?.category === 'fouls'
     ).length;
-  }, [game.homeQuarterFouls, game.events, game.currentQuarter]);
+  }, [game.homeQuarterFouls, safeEvents, game.currentQuarter]);
 
   const awayFoulsInCurrentQ = useMemo(() => {
     if (typeof game.awayQuarterFouls === 'number') return game.awayQuarterFouls;
-    return game.events.filter(
+    return safeEvents.filter(
       e => e.quarter === game.currentQuarter && e.isOpponentAction && e.actionType === 'OPP_FOUL'
     ).length;
-  }, [game.awayQuarterFouls, game.events, game.currentQuarter]);
+  }, [game.awayQuarterFouls, safeEvents, game.currentQuarter]);
 
   // Helper for action readable name in recent plays
   const getActionDescription = (event: PlayEvent) => {
@@ -158,8 +170,8 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
       return { text: `Acción del rival: ${event.actionLabel || event.actionType}`, color: 'text-cyan-300' };
     }
 
-    const player = game.players.find(p => p.id === event.playerId);
-    const pName = player ? `#${player.number} ${player.name.split(' ')[0]}` : event.playerName || 'Jugador';
+    const player = safePlayers.find(p => p.id === event.playerId);
+    const pName = player ? `#${player.number} ${(player.name || '').split(' ')[0]}` : event.playerName || 'Jugador';
 
     switch (event.actionType) {
       case '3PM': return { text: `¡Triple anotado por ${pName}! (+3)`, color: 'text-amber-400 font-black' };
@@ -185,6 +197,97 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
       default: return { text: `${event.actionLabel || event.actionType} - ${pName}`, color: 'text-slate-300' };
     }
   };
+
+  if (isConnecting) {
+    return (
+      <div className="min-h-screen bg-[#060D1E] text-slate-100 flex flex-col items-center justify-center p-6 text-center font-sans select-none">
+        <div className="p-4 rounded-3xl bg-[#0B1A38] border border-cyan-500/40 shadow-2xl flex flex-col items-center max-w-sm w-full animate-in zoom-in-95">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-4 shadow-inner">
+            <RefreshCw className="w-8 h-8 animate-spin" />
+          </div>
+          <h2 className="text-lg font-black uppercase tracking-tight text-white mb-1">
+            Conectando con el Partido
+          </h2>
+          <p className="text-xs text-slate-400 font-mono mb-4">
+            Sincronizando marcador y estadísticas en directo desde la mesa de pista...
+          </p>
+          <div className="w-full bg-[#081228] h-1.5 rounded-full overflow-hidden border border-slate-700/50">
+            <div className="h-full bg-gradient-to-r from-cyan-500 to-amber-400 rounded-full animate-pulse w-3/4" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (connectionError && (!game || !game.id || (game.events.length === 0 && game.homeScore === 0 && game.awayScore === 0))) {
+    return (
+      <div className="min-h-screen bg-[#060D1E] text-slate-100 flex flex-col items-center justify-center p-4 text-center font-sans select-none">
+        <div className="p-6 rounded-3xl bg-[#0B1A38] border border-rose-500/40 shadow-2xl flex flex-col items-center max-w-md w-full animate-in zoom-in-95 space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-center text-rose-400 shadow-inner">
+            <Radio className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black uppercase tracking-tight text-white">
+              Partido no encontrado o no disponible
+            </h2>
+            <p className="text-xs text-slate-400 font-mono mt-1">
+              {connectionError || 'No se ha podido conectar con el partido en directo. Es posible que el código haya cambiado o haya finalizado.'}
+            </p>
+          </div>
+
+          {/* Manual PIN code input */}
+          <div className="w-full bg-[#081228] p-3 rounded-2xl border border-slate-700/60 space-y-2">
+            <span className="text-[11px] font-mono text-slate-300 block font-bold">
+              ¿Tienes el PIN del partido de 6 caracteres?
+            </span>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={manualCodeInput}
+                onChange={e => setManualCodeInput(e.target.value.toUpperCase())}
+                placeholder="Ej. BSK-492"
+                className="flex-1 bg-[#0A1630] border border-cyan-500/40 text-amber-300 text-center font-scoreboard font-black text-lg rounded-xl px-3 py-1.5 uppercase focus:outline-hidden focus:border-amber-400 tracking-wider"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (manualCodeInput.trim() && onConnectCode) {
+                    onConnectCode(manualCodeInput.trim());
+                  }
+                }}
+                disabled={!manualCodeInput.trim()}
+                className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black font-black font-mono text-xs rounded-xl uppercase transition active:scale-95 shadow-md"
+              >
+                Conectar
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 w-full pt-1">
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reintentar Conexión</span>
+              </button>
+            )}
+            {onSwitchToRecorder && (
+              <button
+                type="button"
+                onClick={onSwitchToRecorder}
+                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs transition"
+              >
+                Entrar a Mesa de Control
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#060D1E] text-slate-100 flex flex-col font-sans select-none pb-12 antialiased">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Game, GameSettings, PlayEvent, Player, StatActionType, TeamProfile, PendingShot, BasketOriginType } from './types';
 import {
   DEFAULT_ROSTER,
@@ -65,6 +65,8 @@ import {
   subscribeToActiveMatchMetadata,
   syncMatchToCloud,
   updateActiveMatchMetadata,
+  fetchMatchFromCloud,
+  fetchAllMatchesFromCloud,
   ActiveMatchMetadata,
 } from './lib/firebase';
 import { syncEngine, SyncEngineStatus } from './lib/syncEngine';
@@ -317,6 +319,111 @@ export default function App() {
     status: 'syncing',
   });
   const [activeCloudMatchNotice, setActiveCloudMatchNotice] = useState<ActiveMatchMetadata | null>(null);
+  const [isSpectatorConnecting, setIsSpectatorConnecting] = useState(false);
+  const [spectatorConnectionError, setSpectatorConnectionError] = useState<string | null>(null);
+
+  const handleConnectSpectator = useCallback(async (pairCode?: string | null, matchId?: string | null) => {
+    setIsSpectatorConnecting(true);
+    setSpectatorConnectionError(null);
+
+    // 1. Try by transfer code if present
+    if (pairCode) {
+      try {
+        const loadedGame = await syncEngine.fetchGameByTransferCode(pairCode);
+        if (loadedGame && loadedGame.id) {
+          saveGameToLibrary(loadedGame);
+          setGame(loadedGame);
+          setDeviceRoleState('spectator');
+          persistDeviceRole('spectator');
+          setActiveTab('live');
+          setIsSpectatorConnecting(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Auto pair code error:', err);
+      }
+    }
+
+    // 2. Try by matchId from server
+    if (matchId) {
+      try {
+        const loadedGame = await syncEngine.fetchGameById(matchId);
+        if (loadedGame && loadedGame.id) {
+          saveGameToLibrary(loadedGame);
+          setGame(loadedGame);
+          setDeviceRoleState('spectator');
+          persistDeviceRole('spectator');
+          setActiveTab('live');
+          setIsSpectatorConnecting(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Server matchId fetch error:', err);
+      }
+
+      // 3. Try from Cloud Firestore by matchId (for GitHub Pages & serverless hosting)
+      try {
+        const cloudGame = await fetchMatchFromCloud(matchId);
+        if (cloudGame && cloudGame.id) {
+          saveGameToLibrary(cloudGame);
+          setGame(cloudGame);
+          setDeviceRoleState('spectator');
+          persistDeviceRole('spectator');
+          setActiveTab('live');
+          setIsSpectatorConnecting(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Cloud matchId fetch error:', err);
+      }
+    }
+
+    // 4. Try from local library
+    if (matchId) {
+      const local = getSavedGamesFromStorage().find(
+        m => m.id === matchId || m.id?.toLowerCase() === matchId.toLowerCase()
+      );
+      if (local && (local.events?.length > 0 || local.status === 'live' || local.status === 'finished')) {
+        setGame(local);
+        setDeviceRoleState('spectator');
+        persistDeviceRole('spectator');
+        setActiveTab('live');
+        setIsSpectatorConnecting(false);
+        return;
+      }
+    }
+
+    // 5. Try loading active match from server or Cloud Firestore
+    try {
+      const activeMatch = await syncEngine.fetchActiveMatch();
+      if (activeMatch && activeMatch.id) {
+        saveGameToLibrary(activeMatch);
+        setGame(activeMatch);
+        setDeviceRoleState('spectator');
+        persistDeviceRole('spectator');
+        setActiveTab('live');
+        setIsSpectatorConnecting(false);
+        return;
+      }
+    } catch {}
+
+    try {
+      const cloudMatches = await fetchAllMatchesFromCloud();
+      const live = cloudMatches.find(m => m.status === 'live') || cloudMatches[0];
+      if (live && live.id) {
+        saveGameToLibrary(live);
+        setGame(live);
+        setDeviceRoleState('spectator');
+        persistDeviceRole('spectator');
+        setActiveTab('live');
+        setIsSpectatorConnecting(false);
+        return;
+      }
+    } catch {}
+
+    setIsSpectatorConnecting(false);
+    setSpectatorConnectionError('No se pudo encontrar el partido en directo. Verifica el código o la conexión.');
+  }, []);
 
   // Initialize and run the Unified Sync Engine (SSE streaming + server sync + firestore fallback)
   useEffect(() => {
@@ -327,25 +434,16 @@ export default function App() {
     try {
       const params = new URLSearchParams(window.location.search);
       const pairCode = params.get('pair') || params.get('code');
+      const matchId = params.get('match') || params.get('matchId') || params.get('id');
       const urlMode = params.get('mode') || params.get('role');
 
-      if (urlMode === 'spectator' || urlMode === 'monitor' || urlMode === 'live') {
+      if (urlMode === 'spectator' || urlMode === 'monitor' || urlMode === 'live' || pairCode || matchId) {
         setDeviceRoleState('spectator');
         persistDeviceRole('spectator');
       }
 
-      if (pairCode) {
-        syncEngine.fetchGameByTransferCode(pairCode).then(loadedGame => {
-          saveGameToLibrary(loadedGame);
-          setGame(loadedGame);
-          setDeviceRoleState('spectator');
-          persistDeviceRole('spectator');
-          setActiveTab('live');
-          const cleanUrl = window.location.pathname;
-          window.history.replaceState({}, '', cleanUrl);
-        }).catch(err => {
-          console.warn('Auto pair error from URL:', err);
-        });
+      if (pairCode || matchId) {
+        handleConnectSpectator(pairCode, matchId);
       }
     } catch (e) {
       console.warn('URL pair check error:', e);
@@ -1600,12 +1698,23 @@ export default function App() {
     return (
       <LiveMatchSpectatorView
         game={game}
+        isConnecting={isSpectatorConnecting}
+        connectionError={spectatorConnectionError}
+        onRetry={() => {
+          const params = new URLSearchParams(window.location.search);
+          const pairCode = params.get('pair') || params.get('code');
+          const matchId = params.get('match') || params.get('matchId') || params.get('id');
+          handleConnectSpectator(pairCode, matchId);
+        }}
+        onConnectCode={(code) => {
+          handleConnectSpectator(code, null);
+        }}
         onSwitchToRecorder={() => {
           setDeviceRoleState('recorder');
           persistDeviceRole('recorder');
         }}
         onRefresh={() => {
-          syncEngine.syncAll().catch(console.error);
+          syncEngine.syncAll({ force: true }).catch(console.error);
         }}
       />
     );

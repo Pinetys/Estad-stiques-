@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
@@ -525,10 +526,45 @@ async function startServer() {
     }
   });
 
-  // 7.5 Get specific match by ID
+  // 7.4 Server information and accessible LAN IPs for pairing / spectator devices
+  app.get('/api/sync/server-info', (req, res) => {
+    try {
+      const interfaces = os.networkInterfaces();
+      const lanIps: string[] = [];
+      for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name] || []) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            lanIps.push(iface.address);
+          }
+        }
+      }
+      res.json({
+        success: true,
+        lanIps,
+        port: PORT,
+      });
+    } catch {
+      res.json({ success: true, lanIps: [], port: PORT });
+    }
+  });
+
+  // 7.5 Get specific match by ID (case-insensitive with fallback)
   app.get('/api/sync/match/:id', (req, res) => {
-    const id = req.params.id;
-    const match = serverDb.matches[id] || (serverDb.activeMatch?.id === id ? serverDb.activeMatch : null);
+    const rawId = req.params.id?.trim();
+    if (!rawId) {
+      return res.status(400).json({ error: 'Falta ID de partido' });
+    }
+
+    const match =
+      serverDb.matches[rawId] ||
+      Object.values(serverDb.matches).find(
+        m => m.id === rawId || m.id?.toLowerCase() === rawId.toLowerCase()
+      ) ||
+      (serverDb.activeMatch?.id === rawId || serverDb.activeMatch?.id?.toLowerCase() === rawId.toLowerCase()
+        ? serverDb.activeMatch
+        : null) ||
+      serverDb.activeMatch;
+
     if (!match) {
       return res.status(404).json({ error: 'Partido no encontrado en el servidor' });
     }
@@ -572,8 +608,9 @@ async function startServer() {
         game,
         createdAt: Date.now(),
       };
-      // Also ensure match is in database
+      // Also ensure match is in database and active pointer is up-to-date
       serverDb.matches[game.id] = game;
+      serverDb.activeMatch = game;
       saveServerSyncDb();
 
       res.json({
@@ -588,14 +625,15 @@ async function startServer() {
   });
 
   app.get('/api/sync/get-transfer-code/:code', (req, res) => {
-    const rawCode = req.params.code?.toUpperCase()?.trim();
+    const originalInput = req.params.code?.trim() || '';
+    const rawCode = originalInput.toUpperCase();
     if (!rawCode) {
       return res.status(400).json({ error: 'Falta código de sincronización' });
     }
 
     const cleanInput = rawCode.replace(/[^A-Z0-9]/g, '');
 
-    // 1. Direct match
+    // 1. Direct match in transferCodes
     let matchedKey = Object.keys(serverDb.transferCodes).find(k => k.toUpperCase() === rawCode);
 
     // 2. Normalized alphanumeric match (allows entering TAB482 or TAB-482 or tab 482)
@@ -611,21 +649,30 @@ async function startServer() {
       }
     }
 
-    // 4. Fallback: match by match ID or active match
+    // 4. Fallback: match by match ID (case-insensitive) or active live match
     if (!matchedKey || !serverDb.transferCodes[matchedKey]) {
-      const fallbackGame = serverDb.matches[rawCode] || serverDb.matches[cleanInput] || (serverDb.activeMatch?.id === rawCode ? serverDb.activeMatch : null) || serverDb.activeMatch;
+      const fallbackGame =
+        serverDb.matches[originalInput] ||
+        serverDb.matches[rawCode] ||
+        serverDb.matches[cleanInput] ||
+        Object.values(serverDb.matches).find(
+          m => m.id === originalInput || m.id?.toLowerCase() === originalInput.toLowerCase() || m.id?.toLowerCase() === rawCode.toLowerCase()
+        ) ||
+        (serverDb.activeMatch?.id === originalInput || serverDb.activeMatch?.id?.toLowerCase() === originalInput.toLowerCase() ? serverDb.activeMatch : null) ||
+        serverDb.activeMatch;
+
       if (fallbackGame) {
         return res.json({
           success: true,
           game: fallbackGame,
           createdAt: Date.now(),
-          code: rawCode,
+          code: originalInput,
           note: 'Recuperado de partido activo',
         });
       }
 
       return res.status(404).json({
-        error: `Código de sincronización "${rawCode}" no encontrado o ha caducado.`,
+        error: `Código de sincronización "${originalInput}" no encontrado o ha caducado.`,
       });
     }
 

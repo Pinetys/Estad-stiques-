@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Game } from '../types';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { buildSpectatorUrl } from '../utils/urlHelper';
 import {
   Crown,
   Sparkles,
@@ -34,9 +35,8 @@ export const ProSubscriptionBenefitsModal: React.FC<ProSubscriptionBenefitsModal
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
-  // Generate live match link
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const liveUrl = `${origin}/#live-${game.id}`;
+  // Generate live match link (preserving GitHub Pages and subpaths)
+  const liveUrl = buildSpectatorUrl('', game.id);
 
   const handleCopyLink = () => {
     playSound('click', game.settings.soundEnabled);

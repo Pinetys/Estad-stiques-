@@ -596,11 +596,58 @@ class AutoSyncManager {
     const cleanCode = code.trim().toUpperCase();
     const res = await fetch(`/api/sync/get-transfer-code/${encodeURIComponent(cleanCode)}`);
     if (!res.ok) {
-      const err = await res.json();
+      const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Código no encontrado o caducado');
     }
     const data = await res.json();
     return data.game;
+  }
+
+  /**
+   * Fetch match directly by match ID from server or Firestore
+   */
+  public async fetchGameById(matchId: string): Promise<Game> {
+    const cleanId = matchId.trim();
+
+    // 1. Try server endpoint /api/sync/match/:id
+    try {
+      const res = await fetch(`/api/sync/match/${encodeURIComponent(cleanId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.game) return data.game;
+      }
+    } catch {}
+
+    // 2. Try transfer code endpoint (which falls back to match ID and active match)
+    try {
+      const res = await fetch(`/api/sync/get-transfer-code/${encodeURIComponent(cleanId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.game) return data.game;
+      }
+    } catch {}
+
+    // 3. Fallback to local stored library
+    const local = getSavedGamesFromStorage().find(
+      g => g.id === cleanId || g.id?.toLowerCase() === cleanId.toLowerCase()
+    );
+    if (local) return local;
+
+    throw new Error('Partido no encontrado');
+  }
+
+  /**
+   * Fetch currently active live match from server
+   */
+  public async fetchActiveMatch(): Promise<Game | null> {
+    try {
+      const res = await fetch('/api/sync/active-match');
+      if (res.ok) {
+        const data = await res.json();
+        return data.activeMatch || null;
+      }
+    } catch {}
+    return null;
   }
 
   // Handling remote pushes from SSE

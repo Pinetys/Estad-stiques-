@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { Game } from '../types';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { syncEngine } from '../lib/syncEngine';
+import { buildSpectatorUrl } from '../utils/urlHelper';
 import { formatGameTime, formatQuarterShort } from '../utils/statsCalculator';
 import {
   QrCode,
@@ -63,9 +64,8 @@ export const LiveSpectatorQRModal: React.FC<LiveSpectatorQRModalProps> = ({
       }
       setPinCode(code);
 
-      // 2. Generate direct follower spectator URL using current active origin
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const fullUrl = `${origin}/?pair=${encodeURIComponent(code)}&match=${encodeURIComponent(game.id)}&mode=spectator`;
+      // 2. Generate direct follower spectator URL preserving full base path (GitHub Pages, subpaths, etc.)
+      const fullUrl = buildSpectatorUrl(code, game.id);
       setSpectatorUrl(fullUrl);
 
       // 3. Render High-Resolution QR code

@@ -4,6 +4,7 @@ import {
   collection,
   doc,
   setDoc,
+  getDoc,
   getDocFromServer,
   getDocs,
   deleteDoc,
@@ -250,6 +251,26 @@ export async function fetchAllMatchesFromCloud(): Promise<Game[]> {
   } catch (err) {
     handleFirestoreError(err, OperationType.LIST, 'matches');
     return [];
+  }
+}
+
+/**
+ * Fetch a single match document from Cloud Firestore by ID (ideal for spectator followers)
+ */
+export async function fetchMatchFromCloud(matchId: string): Promise<Game | null> {
+  if (!isFirebaseConfigured || !matchId) return null;
+  try {
+    const docRef = doc(db, 'matches', matchId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as Game;
+    }
+    // Also try list search if document ID differs in casing
+    const all = await fetchAllMatchesFromCloud();
+    return all.find(m => m.id === matchId || m.id?.toLowerCase() === matchId.toLowerCase()) || null;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, `matches/${matchId}`);
+    return null;
   }
 }
 

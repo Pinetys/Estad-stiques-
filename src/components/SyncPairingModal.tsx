@@ -5,6 +5,7 @@ import { DeviceRole, setDeviceRole as persistDeviceRole } from '../utils/deviceR
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import { saveGameToLibrary } from '../utils/libraryUtils';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { buildSpectatorUrl } from '../utils/urlHelper';
 import {
   QrCode,
   Laptop,
@@ -75,9 +76,8 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
       const code = await syncEngine.generateTransferCode(currentGame);
       setPinCode(code);
 
-      // 2. Generate direct URL with auto-pair and monitor mode
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const pairUrl = `${origin}/?pair=${encodeURIComponent(code)}&match=${encodeURIComponent(currentGame.id)}&mode=spectator`;
+      // 2. Generate direct URL with auto-pair and monitor mode (preserving subpaths)
+      const pairUrl = buildSpectatorUrl(code, currentGame.id);
 
       // 3. Generate QR Code image
       const qrImage = await QRCode.toDataURL(pairUrl, {
@@ -101,8 +101,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
     if (!pinCode) return;
     playSound('click', true);
     triggerHaptic('light', true);
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const pairUrl = `${origin}/?pair=${encodeURIComponent(pinCode)}&match=${encodeURIComponent(currentGame.id)}&mode=spectator`;
+    const pairUrl = buildSpectatorUrl(pinCode, currentGame.id);
     navigator.clipboard.writeText(pairUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);

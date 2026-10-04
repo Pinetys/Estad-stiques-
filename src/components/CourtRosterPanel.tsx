@@ -7,6 +7,7 @@ import {
   formatMinutesPlayed,
   calculateTeamMinutesDistribution,
   isPlayerLowMinutes,
+  CONTINUOUS_FATIGUE_LIMIT_SECONDS,
 } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import {
@@ -22,6 +23,7 @@ import {
   Flame,
   Scale,
   Zap,
+  Clock,
 } from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 
@@ -65,8 +67,8 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   const [pendingInId, setPendingInId] = useState<string | null>(null);
   const [swapToast, setSwapToast] = useState<string | null>(null);
 
-  // Tab view: 'court' (Quinteto en pista) or 'bench' (Banquillo) with swipe gesture
-  const [viewTab, setViewTab] = useState<'court' | 'bench'>('court');
+  // Tab view: 'court' (En pista con banquillo deslizable), 'bench' (Solo banquillo), o 'all' (Todos)
+  const [viewTab, setViewTab] = useState<'court' | 'bench' | 'all'>('court');
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
@@ -80,14 +82,26 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
     const diffX = e.changedTouches[0].clientX - touchStartX;
     const diffY = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 25) {
-      if (diffX < 0 && viewTab === 'court') {
-        playSound('click', game.settings.soundEnabled);
-        triggerHaptic('light', game.settings.vibrationEnabled);
-        setViewTab('bench');
-      } else if (diffX > 0 && viewTab === 'bench') {
-        playSound('click', game.settings.soundEnabled);
-        triggerHaptic('light', game.settings.vibrationEnabled);
-        setViewTab('court');
+      if (diffX < 0) {
+        if (viewTab === 'court') {
+          playSound('click', game.settings.soundEnabled);
+          triggerHaptic('light', game.settings.vibrationEnabled);
+          setViewTab('bench');
+        } else if (viewTab === 'bench') {
+          playSound('click', game.settings.soundEnabled);
+          triggerHaptic('light', game.settings.vibrationEnabled);
+          setViewTab('all');
+        }
+      } else if (diffX > 0) {
+        if (viewTab === 'all') {
+          playSound('click', game.settings.soundEnabled);
+          triggerHaptic('light', game.settings.vibrationEnabled);
+          setViewTab('bench');
+        } else if (viewTab === 'bench') {
+          playSound('click', game.settings.soundEnabled);
+          triggerHaptic('light', game.settings.vibrationEnabled);
+          setViewTab('court');
+        }
       }
     }
     setTouchStartX(null);
@@ -348,7 +362,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
         onTouchEnd={handleTouchEnd}
       >
         <div className="flex items-center justify-between text-[11px] font-mono font-bold uppercase tracking-wider px-0.5">
-          {/* Segmented Control / Tabs between Court (5) and Bench */}
+          {/* Segmented Control / Tabs between Court (5), Bench, and All */}
           <div className="flex items-center gap-1 bg-[#071328] p-0.5 rounded-lg border border-[#203a70]">
             <button
               type="button"
@@ -381,9 +395,24 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             >
               <span>Banquillo ({benchPlayers.length})</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                setViewTab('all');
+              }}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition flex items-center gap-1.5 ${
+                viewTab === 'all'
+                  ? 'bg-indigo-500 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>Todos ({game.players.length})</span>
+            </button>
           </div>
           <span className="text-slate-400 text-[9px] font-normal hidden sm:inline">
-            Desliza con el dedo ↔
+            Desliza abajo para ver banquillo ↓
           </span>
         </div>
 
@@ -447,9 +476,9 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
           );
         })()}
 
-        {/* VIEW 1: 5 On-Court Players List */}
-        {viewTab === 'court' && (
-          <div className="space-y-1 animate-in fade-in slide-in-from-left-2 duration-150">
+        {/* VIEW 1 & ALL: Players List with Court Quinteto + Scrollable Bench Below */}
+        {(viewTab === 'court' || viewTab === 'all') && (
+          <div className="space-y-1.5 overflow-y-auto max-h-[300px] sm:max-h-[340px] lg:max-h-[380px] xl:max-h-[415px] pr-1 select-none scrollbar-thin scrollbar-thumb-sky-700/60 scrollbar-track-transparent">
             {playersOnCourt.map(player => {
               const stats = calculatePlayerStats(player, game.events);
               const isSelectedForAction = selectedPlayerId === player.id;
@@ -465,6 +494,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
               );
               const isLow = isPlayerLowMinutes(player, teamStats);
               const consecutiveMinsFormatted = formatMinutesPlayed(consecutiveSeconds);
+              const fatiguePct = Math.min(
+                100,
+                Math.round((consecutiveSeconds / CONTINUOUS_FATIGUE_LIMIT_SECONDS) * 100)
+              );
 
               return (
                 <div
@@ -488,19 +521,19 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
                   }`}
                 >
-                  {/* Left: Dorsal + Name + Status */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-scoreboard font-black text-lg lg:text-xl text-amber-400 shrink-0 w-8 text-center leading-none">
+                  {/* Left: Dorsal + Name + Minutos Jugados Más Grandes */}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="font-scoreboard font-black text-lg lg:text-xl text-amber-400 shrink-0 w-7 text-center leading-none">
                       #{player.number}
                     </span>
                     <div className="flex flex-col min-w-0 text-left">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs font-bold text-slate-200 truncate leading-tight">
+                        <span className="text-xs sm:text-[13px] font-black text-slate-100 truncate leading-tight">
                           {player.name}
                         </span>
                         {isFatigued && (
                           <span
-                            className="px-1.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[8.5px] font-mono font-black flex items-center gap-1 shrink-0 animate-pulse"
+                            className="px-1 py-0.2 rounded-full bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[8px] font-mono font-black flex items-center gap-0.5 shrink-0 animate-pulse"
                             title={`Alerta de cansancio: Lleva ${consecutiveMinsFormatted} seguidos en pista sin ser sustituido (>6 min)`}
                           >
                             <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
@@ -509,7 +542,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                         )}
                         {isLow && !isFatigued && (
                           <span
-                            className="px-1.5 py-0.5 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8.5px] font-mono font-bold flex items-center gap-1 shrink-0"
+                            className="px-1 py-0.2 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8px] font-mono font-bold flex items-center gap-0.5 shrink-0"
                             title={`Pocos minutos acumulados (${stats.minutesPlayedFormatted}). Jugador fresco.`}
                           >
                             <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
@@ -517,15 +550,49 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                           </span>
                         )}
                       </div>
-                      <span className="text-[9px] text-slate-400 font-medium">
-                        ⏱ {stats.minutesPlayedFormatted}
-                        {isFatigued && (
-                          <span className="text-amber-400 font-bold ml-1">
-                            ({consecutiveMinsFormatted} seg)
-                          </span>
-                        )}
-                        {' · '}{player.position || 'JUG'}
-                      </span>
+                      {/* Minutos jugados un poco más grandes y legibles */}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs sm:text-[12.5px] font-black font-mono text-amber-300 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                          <span>{stats.minutesPlayedFormatted}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          • {player.position || 'JUG'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CENTRO: BARRA VISUAL DE MINUTOS EN PISTA ENTRE JUGADOR Y FALTAS */}
+                  <div
+                    className="flex flex-col items-center justify-center px-1.5 min-w-[58px] sm:min-w-[66px] max-w-[76px] shrink-0"
+                    title={`Tiempo en pista: ${stats.minutesPlayedFormatted}${isFatigued ? ` (Lleva ${consecutiveMinsFormatted} seguidos)` : ''}`}
+                  >
+                    <div className="w-full h-2 bg-slate-950/90 rounded-full overflow-hidden border border-slate-700/80 p-[0.5px] shadow-xs">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isFatigued
+                            ? 'bg-gradient-to-r from-amber-500 to-red-500 animate-pulse'
+                            : fatiguePct >= 65
+                            ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                            : fatiguePct >= 35
+                            ? 'bg-gradient-to-r from-emerald-400 to-amber-300'
+                            : 'bg-emerald-400'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(6, fatiguePct))}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-center gap-0.5 leading-none mt-0.5">
+                      {isFatigued ? (
+                        <span className="flex items-center gap-0.5 text-[7.5px] font-mono font-black text-amber-300 animate-pulse">
+                          <Flame className="w-2 h-2 text-amber-400 shrink-0" />
+                          <span>{consecutiveMinsFormatted} seg</span>
+                        </span>
+                      ) : (
+                        <span className="text-[8px] font-mono text-slate-400 font-bold">
+                          {consecutiveSeconds > 0 ? `${consecutiveMinsFormatted} seg` : stats.minutesPlayedFormatted}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -566,12 +633,131 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                 </div>
               );
             })}
+
+            {/* SEPARADOR Y LISTA DE JUGADORES DEL BANQUILLO DESPLAZABLES HACIA ABAJO */}
+            {benchPlayers.length > 0 && (
+              <div className="pt-2 space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-wider text-sky-400 bg-[#07152b] px-2 py-1 rounded-lg border border-[#203a70]/80 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Banquillo ({benchPlayers.length} suplentes)</span>
+                  </div>
+                  <span className="text-[8.5px] text-slate-400 font-normal">Desliza abajo para ver todos ↓</span>
+                </div>
+
+                {benchPlayers.map(player => {
+                  const stats = calculatePlayerStats(player, game.events);
+                  const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
+                  const teamStats = calculateTeamMinutesDistribution(
+                    game.players,
+                    game.settings.quarterDurationMinutes,
+                    game.settings.totalQuarters
+                  );
+                  const isLow = isPlayerLowMinutes(player, teamStats);
+
+                  return (
+                    <div
+                      key={player.id}
+                      onClick={() => handleBenchPlayerClick(player)}
+                      className={`w-full p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
+                        pendingInId === player.id
+                          ? 'bg-sky-950/90 border-sky-500 ring-2 ring-sky-500/60 text-white shadow-lg'
+                          : isFouledOut
+                          ? 'bg-red-950/30 border-red-800 text-red-300 opacity-60'
+                          : isLow
+                          ? 'bg-[#0E224A] hover:bg-[#16356E] border-sky-500/70 text-white'
+                          : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="font-scoreboard font-black text-lg lg:text-xl text-sky-400 shrink-0 w-7 text-center leading-none">
+                          #{player.number}
+                        </span>
+                        <div className="flex flex-col min-w-0 text-left">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs sm:text-[13px] font-black text-slate-200 truncate leading-tight">
+                              {player.name}
+                            </span>
+                            {isLow && (
+                              <span className="px-1 py-0.2 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8px] font-mono font-bold flex items-center gap-0.5 shrink-0">
+                                <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                                <span>Fresco</span>
+                              </span>
+                            )}
+                          </div>
+                          {/* Minutos jugados para suplente más grandes */}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs sm:text-[12.5px] font-black font-mono text-sky-300 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-sky-400 shrink-0" />
+                              <span>{stats.minutesPlayedFormatted}</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              • {player.position || 'JUG'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Barra visual de minutos en pista para suplente */}
+                      <div
+                        className="flex flex-col items-center justify-center px-1.5 min-w-[58px] sm:min-w-[66px] max-w-[76px] shrink-0"
+                        title={`Minutos jugados en total: ${stats.minutesPlayedFormatted}`}
+                      >
+                        <div className="w-full h-2 bg-slate-950/90 rounded-full overflow-hidden border border-slate-700/80 p-[0.5px] shadow-xs">
+                          <div
+                            className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-sky-500 to-sky-400"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.max(6, Math.round(((player.minutesPlayedSeconds || 0) / (game.settings.quarterDurationMinutes * 60 * 2)) * 100))
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-[8px] font-mono text-slate-400 font-bold mt-0.5 leading-none">
+                          {stats.minutesPlayedFormatted}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                          <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-700/50">
+                            {stats.points}p
+                          </span>
+                          <PlayerFoulsIndicator
+                            fouls={stats.foulsPersonal}
+                            limit={game.settings.foulOutLimit || 5}
+                            compact={false}
+                            showDots={true}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (isActionsLocked) return;
+                            handleBenchPlayerClick(player);
+                          }}
+                          disabled={isFouledOut}
+                          className="p-1 px-2 rounded-lg bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-black border border-sky-500/50 transition active:scale-90 flex items-center gap-1 text-[10px] font-bold disabled:opacity-30"
+                          title={`Poner a jugar a ${player.name}`}
+                        >
+                          <UserCheck className="w-3 h-3 stroke-[2.5]" />
+                          <span>ENTRA</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* VIEW 2: Bench Players List */}
+        {/* VIEW 2: Solo Banquillo */}
         {viewTab === 'bench' && (
-          <div className="space-y-1 animate-in fade-in slide-in-from-right-2 duration-150 max-h-[310px] overflow-y-auto pr-0.5">
+          <div className="space-y-1.5 animate-in fade-in slide-in-from-right-2 duration-150 max-h-[300px] sm:max-h-[340px] lg:max-h-[380px] xl:max-h-[415px] overflow-y-auto pr-1 select-none scrollbar-thin scrollbar-thumb-sky-700/60 scrollbar-track-transparent">
             {benchPlayers.length === 0 ? (
               <div className="text-center py-6 text-slate-400 text-xs font-mono">
                 No hay suplentes en el banquillo.
@@ -601,26 +787,54 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                         : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-slate-200'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-scoreboard font-black text-lg lg:text-xl text-sky-400 shrink-0 w-8 text-center leading-none">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="font-scoreboard font-black text-lg lg:text-xl text-sky-400 shrink-0 w-7 text-center leading-none">
                         #{player.number}
                       </span>
                       <div className="flex flex-col min-w-0 text-left">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-xs font-bold text-slate-200 truncate leading-tight">
+                          <span className="text-xs sm:text-[13px] font-black text-slate-200 truncate leading-tight">
                             {player.name}
                           </span>
                           {isLow && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8.5px] font-mono font-bold flex items-center gap-1 shrink-0">
+                            <span className="px-1 py-0.2 rounded-full bg-sky-500/25 border border-sky-500/50 text-sky-300 text-[8px] font-mono font-bold flex items-center gap-0.5 shrink-0">
                               <Zap className="w-2.5 h-2.5 text-sky-400 shrink-0" />
                               <span>Fresco</span>
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {stats.minutesPlayedFormatted} · {player.position || 'JUG'}
-                        </span>
+                        {/* Minutos jugados para suplente más grandes */}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs sm:text-[12.5px] font-black font-mono text-sky-300 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-sky-400 shrink-0" />
+                            <span>{stats.minutesPlayedFormatted}</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            • {player.position || 'JUG'}
+                          </span>
+                        </div>
                       </div>
+                    </div>
+
+                    {/* Barra visual de minutos en pista para suplente */}
+                    <div
+                      className="flex flex-col items-center justify-center px-1.5 min-w-[58px] sm:min-w-[66px] max-w-[76px] shrink-0"
+                      title={`Minutos jugados en total: ${stats.minutesPlayedFormatted}`}
+                    >
+                      <div className="w-full h-2 bg-slate-950/90 rounded-full overflow-hidden border border-slate-700/80 p-[0.5px] shadow-xs">
+                        <div
+                          className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-sky-500 to-sky-400"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(6, Math.round(((player.minutesPlayedSeconds || 0) / (game.settings.quarterDurationMinutes * 60 * 2)) * 100))
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[8px] font-mono text-slate-400 font-bold mt-0.5 leading-none">
+                        {stats.minutesPlayedFormatted}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0 ml-1">
@@ -675,7 +889,9 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
           <span>
             {viewTab === 'court'
               ? `Cambiar Jugadores (${benchPlayers.length} en banquillo)`
-              : `Gestionar Rotaciones (${playersOnCourt.length} en pista)`}
+              : viewTab === 'bench'
+              ? `Gestionar Rotaciones (${playersOnCourt.length} en pista)`
+              : `Gestionar Cambios (${playersOnCourt.length} en pista, ${benchPlayers.length} banquillo)`}
           </span>
         </button>
       </div>
