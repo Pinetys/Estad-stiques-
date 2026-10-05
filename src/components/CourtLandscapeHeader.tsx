@@ -95,7 +95,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenRivalRoster,
   onOpenSpectatorQR,
 }) => {
-  const currentQuarterLabel = formatQuarterShort(game.currentQuarter);
+  const totalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+    ? 6
+    : (game.settings?.totalQuarters || 4);
+  const currentQuarterLabel = formatQuarterShort(game.currentQuarter, totalQ);
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
 
   // Cloud Sync status for real-time tablet-to-PC status
@@ -460,7 +463,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </span>
             <button
               onClick={handleNextQuarter}
-              disabled={isActionsLocked || game.currentQuarter >= 6}
+              disabled={isActionsLocked || game.currentQuarter >= (totalQ + 3)}
               className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-black transition text-sm sm:text-base"
               title="Siguiente cuarto"
             >

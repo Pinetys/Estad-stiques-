@@ -363,7 +363,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     triggerHaptic('medium', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
     onUpdateGame(prev => {
-      const nextQ = Math.max(1, Math.min(6, prev.currentQuarter + delta));
+      const totalQ = (prev.category?.toLowerCase().includes('escola') || prev.settings.quarterDurationMinutes === 8)
+        ? 6
+        : (prev.settings.totalQuarters || 4);
+      const nextQ = Math.max(1, Math.min(totalQ + 3, prev.currentQuarter + delta));
       return {
         ...prev,
         currentQuarter: nextQ,
@@ -1085,27 +1088,34 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </button>
 
           {/* Quarter Navigator */}
-          <div className="flex items-center bg-[#071328] rounded-lg border border-[#D4AF37]/50 p-0.5 font-mono text-[11px] font-bold">
-            <button
-              onClick={() => handleChangeQuarter(-1)}
-              disabled={isActionsLocked || game.currentQuarter <= 1}
-              className="px-1.5 py-0.5 text-slate-400 hover:text-white disabled:opacity-20"
-              title="Cuarto anterior"
-            >
-              ‹
-            </button>
-            <span className="px-1.5 text-[#F5C542] font-black">
-              {formatQuarterShort(game.currentQuarter)}
-            </span>
-            <button
-              onClick={() => handleChangeQuarter(1)}
-              disabled={isActionsLocked || game.currentQuarter >= 6}
-              className="px-1.5 py-0.5 text-slate-400 hover:text-white disabled:opacity-20"
-              title="Siguiente cuarto"
-            >
-              ›
-            </button>
-          </div>
+          {(() => {
+            const benchTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+              ? 6
+              : (game.settings?.totalQuarters || 4);
+            return (
+              <div className="flex items-center bg-[#071328] rounded-lg border border-[#D4AF37]/50 p-0.5 font-mono text-[11px] font-bold">
+                <button
+                  onClick={() => handleChangeQuarter(-1)}
+                  disabled={isActionsLocked || game.currentQuarter <= 1}
+                  className="px-1.5 py-0.5 text-slate-400 hover:text-white disabled:opacity-20"
+                  title="Cuarto anterior"
+                >
+                  ‹
+                </button>
+                <span className="px-1.5 text-[#F5C542] font-black">
+                  {formatQuarterShort(game.currentQuarter, benchTotalQuarters)}
+                </span>
+                <button
+                  onClick={() => handleChangeQuarter(1)}
+                  disabled={isActionsLocked || game.currentQuarter >= (benchTotalQuarters + 3)}
+                  className="px-1.5 py-0.5 text-slate-400 hover:text-white disabled:opacity-20"
+                  title="Siguiente cuarto"
+                >
+                  ›
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Anti-Bloqueo Móvil (Keep Screen Awake) */}
           <button

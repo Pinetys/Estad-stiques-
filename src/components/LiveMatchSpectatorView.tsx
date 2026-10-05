@@ -25,7 +25,6 @@ interface LiveMatchSpectatorViewProps {
   game: Game;
   isConnecting?: boolean;
   connectionError?: string | null;
-  onSwitchToRecorder?: () => void;
   onRefresh?: () => void;
   onRetry?: () => void;
   onConnectCode?: (code: string) => void;
@@ -35,7 +34,6 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   game,
   isConnecting = false,
   connectionError = null,
-  onSwitchToRecorder,
   onRefresh,
   onRetry,
   onConnectCode,
@@ -45,6 +43,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   const [showRecentPlays, setShowRecentPlays] = useState<boolean>(true);
   const [filterCourtOnly, setFilterCourtOnly] = useState<boolean>(false);
   const [manualCodeInput, setManualCodeInput] = useState<string>('');
+
+  // Total Quarters (e.g. Escola 8m = 6 cuartos)
+  const matchTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+    ? 6
+    : (game.settings?.totalQuarters || 4);
 
   const safeEvents = useMemo(() => game.events || [], [game.events]);
   const safePlayers = useMemo(() => game.players || [], [game.players]);
@@ -105,6 +108,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
     return [...safeEvents].slice(-8).reverse();
   }, [safeEvents]);
 
+  // Last 5 registered match events for immediate context below scoreboard
+  const lastFiveEvents = useMemo(() => {
+    return [...safeEvents].slice(-5).reverse();
+  }, [safeEvents]);
+
   const isGameOver = game.status === 'finished';
   const foulLimit = game.settings?.foulOutLimit || 5;
 
@@ -113,7 +121,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
     if (game.quarterScores && game.quarterScores.length > 0) {
       return game.quarterScores;
     }
-    const totalQ = Math.max(game.settings?.totalQuarters || 4, game.currentQuarter);
+    const totalQ = Math.max(matchTotalQuarters, game.currentQuarter);
     const res: Array<{ quarter: number; quarterLabel: string; home: number; away: number }> = [];
 
     for (let q = 1; q <= totalQ; q++) {
@@ -130,13 +138,13 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
       });
       res.push({
         quarter: q,
-        quarterLabel: formatQuarterShort(q),
+        quarterLabel: formatQuarterShort(q, matchTotalQuarters),
         home: h,
         away: a,
       });
     }
     return res;
-  }, [safeEvents, game.quarterScores, game.settings?.totalQuarters, game.currentQuarter]);
+  }, [safeEvents, game.quarterScores, matchTotalQuarters, game.currentQuarter]);
 
   // Team fouls in current quarter
   const homeFoulsInCurrentQ = useMemo(() => {
@@ -257,24 +265,15 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 w-full pt-1">
+          <div className="w-full pt-1">
             {onRetry && (
               <button
                 type="button"
                 onClick={onRetry}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md"
+                className="w-full py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Reintentar Conexión</span>
-              </button>
-            )}
-            {onSwitchToRecorder && (
-              <button
-                type="button"
-                onClick={onSwitchToRecorder}
-                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs transition"
-              >
-                Entrar a Mesa de Control
               </button>
             )}
           </div>
@@ -332,18 +331,6 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
             isCompact={true}
             className="p-1.5 rounded-lg bg-[#142347] hover:bg-[#1E3461] border border-[#27457C] text-xs transition shadow-sm"
           />
-
-          {/* Discreet coach switch */}
-          {onSwitchToRecorder && (
-            <button
-              type="button"
-              onClick={onSwitchToRecorder}
-              className="px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[10px] sm:text-xs font-mono font-bold transition active:scale-95"
-              title="Si eres el anotador o entrenador, pulsa para acceder al panel de control"
-            >
-              Acceso Mesa
-            </button>
-          )}
         </div>
       </header>
 
@@ -358,7 +345,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           <div className="flex items-center justify-between border-b border-[#233F75]/70 pb-3 mb-4">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-xl bg-[#172E5C] text-amber-300 font-mono font-black text-xs sm:text-sm uppercase tracking-wider border border-amber-500/30">
-                {formatQuarterShort(game.currentQuarter)}
+                {formatQuarterShort(game.currentQuarter, matchTotalQuarters)}
               </span>
               {game.isClockRunning ? (
                 <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-400 font-bold">
@@ -511,6 +498,73 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
               </table>
             </div>
           </div>
+        </section>
+
+        {/* 2.1 ÚLTIMOS 5 EVENTOS REGISTRADOS (CONTEXTO INMEDIATO BAJO EL MARCADOR) */}
+        <section className="bg-gradient-to-b from-[#0A1733] to-[#071328] border border-[#1E376B] rounded-2xl p-3 sm:p-4 shadow-xl">
+          <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-[#1A2E59]">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <h2 className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5 font-mono">
+                <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Últimos Eventos en Pista</span>
+              </h2>
+            </div>
+            <span className="text-[10px] font-mono text-cyan-300/90 bg-cyan-950/70 border border-cyan-500/40 px-2 py-0.5 rounded-full font-bold">
+              Últimas 5 acciones
+            </span>
+          </div>
+
+          {lastFiveEvents.length === 0 ? (
+            <div className="text-center py-2.5 text-slate-500 text-xs font-mono">
+              Esperando las primeras jugadas del partido...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5 sm:gap-2">
+              {lastFiveEvents.map((event, idx) => {
+                const desc = getActionDescription(event);
+                const isNewest = idx === 0;
+
+                return (
+                  <div
+                    key={event.id || idx}
+                    className={`px-2.5 py-1.5 sm:py-2 rounded-xl border font-mono flex sm:flex-col justify-between items-center sm:items-start text-xs transition ${
+                      isNewest
+                        ? 'bg-[#10244F] border-amber-500/70 ring-1 ring-amber-500/40 shadow-md'
+                        : 'bg-[#081329] border-[#1C325F] text-slate-300'
+                    }`}
+                  >
+                    {/* Top Meta info */}
+                    <div className="flex items-center gap-1.5 w-full justify-between mb-0 sm:mb-1">
+                      <span className="px-1.5 py-0.2 rounded bg-slate-900/90 text-slate-400 text-[9px] font-bold shrink-0">
+                        {formatQuarterShort(event.quarter, matchTotalQuarters)}
+                      </span>
+                      {isNewest && (
+                        <span className="text-[8px] uppercase font-black px-1.5 py-0.2 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/40 animate-pulse shrink-0">
+                          ÚLTIMO
+                        </span>
+                      )}
+                      <span className="text-[9px] text-slate-400 font-mono hidden sm:inline ml-auto">
+                        {event.gameTimeFormatted || ''}
+                      </span>
+                    </div>
+
+                    {/* Action Description */}
+                    <div className="min-w-0 flex-1 sm:w-full">
+                      <p className={`text-[11px] font-bold truncate leading-tight ${desc.color}`} title={desc.text}>
+                        {desc.text}
+                      </p>
+                    </div>
+
+                    {/* Mobile Clock Time */}
+                    <span className="text-[9.5px] text-slate-400 font-mono sm:hidden shrink-0 ml-2">
+                      {event.gameTimeFormatted || ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* 3. TEAM GLOBAL SHOOTING RESUME / GRAPHICAL SUMMARY */}
@@ -845,7 +899,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                     >
                       <div className="flex items-center gap-2">
                         <span className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 text-[10px] font-bold">
-                          Q{event.quarter}
+                          {formatQuarterShort(event.quarter, matchTotalQuarters)}
                         </span>
                         <span className={desc.color}>
                           {desc.text}

@@ -121,11 +121,14 @@ function createInitialGame(targetTeam?: TeamProfile): Game {
   const activeId = getActiveTeamId();
   const teamToUse = targetTeam || registeredTeams.find(t => t.id === activeId) || registeredTeams[0];
   const initialRoster = teamToUse && teamToUse.roster && teamToUse.roster.length > 0 ? teamToUse.roster : DEFAULT_ROSTER;
+  const isEscolaTeam = Boolean(teamToUse?.category?.toLowerCase().includes('escola') || teamToUse?.name?.toLowerCase().includes('escola'));
+  const initialDuration = isEscolaTeam ? 8 : DEFAULT_SETTINGS.quarterDurationMinutes;
+  const initialTotalQuarters = isEscolaTeam || initialDuration === 8 ? 6 : (DEFAULT_SETTINGS.totalQuarters || 4);
 
   return {
     id: `game-${Date.now()}`,
     teamId: teamToUse ? teamToUse.id : undefined,
-    category: teamToUse?.category?.trim() || 'Senior Masculino',
+    category: teamToUse?.category?.trim() || (isEscolaTeam ? 'Escola' : 'Senior Masculino'),
     title: 'Partido en Directo',
     date: new Date().toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -140,14 +143,18 @@ function createInitialGame(targetTeam?: TeamProfile): Game {
     homeScore: 0,
     awayScore: 0,
     currentQuarter: 1,
-    currentSecondsRemaining: DEFAULT_SETTINGS.quarterDurationMinutes * 60,
+    currentSecondsRemaining: initialDuration * 60,
     isClockRunning: false,
     homeTimeouts: 3,
     awayTimeouts: 3,
     homeQuarterFouls: 0,
     awayQuarterFouls: 0,
     status: 'live',
-    settings: DEFAULT_SETTINGS,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      quarterDurationMinutes: initialDuration,
+      totalQuarters: initialTotalQuarters,
+    },
     players: initialRoster.map((p, idx) => ({
       ...p,
       starter: idx < 5,
@@ -158,12 +165,12 @@ function createInitialGame(targetTeam?: TeamProfile): Game {
       isFouledOut: false,
     })),
     events: [],
-    quarterScores: [
-      { quarter: 1, quarterLabel: 'Q1', home: 0, away: 0 },
-      { quarter: 2, quarterLabel: 'Q2', home: 0, away: 0 },
-      { quarter: 3, quarterLabel: 'Q3', home: 0, away: 0 },
-      { quarter: 4, quarterLabel: 'Q4', home: 0, away: 0 },
-    ],
+    quarterScores: Array.from({ length: initialTotalQuarters }, (_, i) => ({
+      quarter: i + 1,
+      quarterLabel: formatQuarterShort(i + 1, initialTotalQuarters),
+      home: 0,
+      away: 0,
+    })),
   };
 }
 
@@ -173,6 +180,28 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (parsed) {
+          const isEscolaMatch = Boolean(
+            parsed.category?.toLowerCase()?.includes('escola') ||
+            parsed.settings?.quarterDurationMinutes === 8
+          );
+          if (isEscolaMatch) {
+            if (!parsed.settings) parsed.settings = { ...DEFAULT_SETTINGS };
+            parsed.settings.quarterDurationMinutes = 8;
+            parsed.settings.totalQuarters = 6;
+            if (Array.isArray(parsed.quarterScores)) {
+              while (parsed.quarterScores.length < 6) {
+                const qNum = parsed.quarterScores.length + 1;
+                parsed.quarterScores.push({
+                  quarter: qNum,
+                  quarterLabel: formatQuarterShort(qNum, 6),
+                  home: 0,
+                  away: 0,
+                });
+              }
+            }
+          }
+        }
         if (parsed && Array.isArray(parsed.players)) {
           const seenIds = new Set<string>();
           parsed.players = parsed.players
@@ -1519,12 +1548,15 @@ export default function App() {
 
     setGame(prev => {
       const nextQ = prev.currentQuarter + 1;
+      const totalQ = (prev.category?.toLowerCase().includes('escola') || prev.settings.quarterDurationMinutes === 8)
+        ? 6
+        : (prev.settings.totalQuarters || 4);
       const existingQuarterScores = [...prev.quarterScores];
 
       if (!existingQuarterScores.some(q => q.quarter === nextQ)) {
         existingQuarterScores.push({
           quarter: nextQ,
-          quarterLabel: nextQ <= 4 ? `Q${nextQ}` : `PR${nextQ - 4}`,
+          quarterLabel: formatQuarterShort(nextQ, totalQ),
           home: 0,
           away: 0,
         });
@@ -1550,12 +1582,15 @@ export default function App() {
     triggerHaptic('medium', game.settings.vibrationEnabled);
 
     setGame(prev => {
+      const totalQ = (prev.category?.toLowerCase().includes('escola') || prev.settings.quarterDurationMinutes === 8)
+        ? 6
+        : (prev.settings.totalQuarters || 4);
       const existingQuarterScores = [...prev.quarterScores];
 
       if (!existingQuarterScores.some(q => q.quarter === targetQuarter)) {
         existingQuarterScores.push({
           quarter: targetQuarter,
-          quarterLabel: targetQuarter <= 4 ? `Q${targetQuarter}` : `PR${targetQuarter - 4}`,
+          quarterLabel: formatQuarterShort(targetQuarter, totalQ),
           home: 0,
           away: 0,
         });
@@ -1657,15 +1692,32 @@ export default function App() {
       homeQuarterFouls: 0,
       awayQuarterFouls: 0,
       status: 'live',
-      settings: newConfig.settings,
+      settings: {
+        ...newConfig.settings,
+        totalQuarters: (Boolean(resolvedCategory?.toLowerCase().includes('escola')) || newConfig.settings.quarterDurationMinutes === 8)
+          ? 6
+          : (newConfig.settings.totalQuarters || 4),
+      },
       players: initialPlayers,
       events: [],
-      quarterScores: [
-        { quarter: 1, quarterLabel: 'Q1', home: 0, away: 0 },
-        { quarter: 2, quarterLabel: 'Q2', home: 0, away: 0 },
-        { quarter: 3, quarterLabel: 'Q3', home: 0, away: 0 },
-        { quarter: 4, quarterLabel: 'Q4', home: 0, away: 0 },
-      ],
+      quarterScores: Array.from(
+        {
+          length: (Boolean(resolvedCategory?.toLowerCase().includes('escola')) || newConfig.settings.quarterDurationMinutes === 8)
+            ? 6
+            : (newConfig.settings.totalQuarters || 4),
+        },
+        (_, i) => {
+          const tQ = (Boolean(resolvedCategory?.toLowerCase().includes('escola')) || newConfig.settings.quarterDurationMinutes === 8)
+            ? 6
+            : (newConfig.settings.totalQuarters || 4);
+          return {
+            quarter: i + 1,
+            quarterLabel: formatQuarterShort(i + 1, tQ),
+            home: 0,
+            away: 0,
+          };
+        }
+      ),
     };
 
     setGame(freshGame);
@@ -1708,10 +1760,6 @@ export default function App() {
         }}
         onConnectCode={(code) => {
           handleConnectSpectator(code, null);
-        }}
-        onSwitchToRecorder={() => {
-          setDeviceRoleState('recorder');
-          persistDeviceRole('recorder');
         }}
         onRefresh={() => {
           syncEngine.syncAll({ force: true }).catch(console.error);

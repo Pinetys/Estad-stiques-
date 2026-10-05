@@ -231,19 +231,26 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, onDeleteEvent }) =
             <label className="text-[9px] text-gray-400 uppercase font-mono font-bold block mb-0.5">
               Cuarto
             </label>
-            <select
-              value={filterQuarter === undefined ? 'all' : filterQuarter}
-              onChange={e => setFilterQuarter(e.target.value === 'all' ? undefined : Number(e.target.value))}
-              className="w-full bg-[#14161B] border border-gray-700 text-xs text-gray-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-orange-500 font-mono"
-            >
-              <option value="all">Todos los cuartos</option>
-              {[1, 2, 3, 4].map(q => (
-                <option key={q} value={q}>
-                  {formatQuarterShort(q)}
-                </option>
-              ))}
-              {game.currentQuarter > 4 && <option value={5}>Prórroga</option>}
-            </select>
+            {(() => {
+              const pbpTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+                ? 6
+                : (game.settings?.totalQuarters || 4);
+              const maxQ = Math.max(pbpTotalQuarters, game.currentQuarter);
+              return (
+                <select
+                  value={filterQuarter === undefined ? 'all' : filterQuarter}
+                  onChange={e => setFilterQuarter(e.target.value === 'all' ? undefined : Number(e.target.value))}
+                  className="w-full bg-[#14161B] border border-gray-700 text-xs text-gray-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-orange-500 font-mono"
+                >
+                  <option value="all">Todos los cuartos</option>
+                  {Array.from({ length: maxQ }, (_, i) => i + 1).map(q => (
+                    <option key={q} value={q}>
+                      {formatQuarterShort(q, pbpTotalQuarters)} {q <= pbpTotalQuarters ? `(${q}º Cuarto)` : `(Prórroga ${q - pbpTotalQuarters})`}
+                    </option>
+                  ))}
+                </select>
+              );
+            })()}
           </div>
 
           {/* Action category selector */}
@@ -312,12 +319,21 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, onDeleteEvent }) =
                   className="px-3.5 py-2.5 bg-gradient-to-r from-[#1C2028] via-[#161922] to-[#12141A] border-b border-gray-800 flex items-center justify-between gap-2 cursor-pointer hover:bg-neutral-800 transition select-none"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-scoreboard font-black text-sm px-2.5 py-0.5 rounded-lg bg-orange-600 text-white shadow-sm">
-                      {formatQuarterShort(group.quarter)}
-                    </span>
-                    <span className="font-bold text-xs sm:text-sm text-gray-200 truncate">
-                      {group.quarter <= 4 ? `${group.quarter}º Cuarto` : 'Prórroga'}
-                    </span>
+                    {(() => {
+                      const pbpTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+                        ? 6
+                        : (game.settings?.totalQuarters || 4);
+                      return (
+                        <>
+                          <span className="font-scoreboard font-black text-sm px-2.5 py-0.5 rounded-lg bg-orange-600 text-white shadow-sm">
+                            {formatQuarterShort(group.quarter, pbpTotalQuarters)}
+                          </span>
+                          <span className="font-bold text-xs sm:text-sm text-gray-200 truncate">
+                            {group.quarter <= pbpTotalQuarters ? `${group.quarter}º Cuarto` : `Prórroga ${group.quarter - pbpTotalQuarters}`}
+                          </span>
+                        </>
+                      );
+                    })()}
                     <span className="text-[10px] text-gray-400 font-mono">
                       ({group.events.length} {group.events.length === 1 ? 'acción' : 'acciones'})
                     </span>

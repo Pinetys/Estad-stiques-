@@ -129,6 +129,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const [quarterDuration, setQuarterDuration] = useState(
     currentGame.settings.quarterDurationMinutes
   );
+  const [totalQuarters, setTotalQuarters] = useState<number>(() => {
+    if (currentGame.settings.quarterDurationMinutes === 8 || currentGame.category?.toLowerCase().includes('escola')) return 6;
+    return currentGame.settings.totalQuarters || 4;
+  });
   const [foulOutLimit, setFoulOutLimit] = useState(currentGame.settings.foulOutLimit);
   const [soundEnabled, setSoundEnabled] = useState(currentGame.settings.soundEnabled);
   const [vibrationEnabled, setVibrationEnabled] = useState(
@@ -212,6 +216,11 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       setHomeTeam(target.name);
       setHomeLogo(target.logo || '🏀');
       if (target.primaryColor) setHomeColor(target.primaryColor);
+      const isTargetEscola = Boolean(target.category?.toLowerCase().includes('escola') || target.name.toLowerCase().includes('escola'));
+      if (isTargetEscola) {
+        setQuarterDuration(8);
+        setTotalQuarters(6);
+      }
       if (target.roster && target.roster.length > 0) {
         const cloned = JSON.parse(JSON.stringify(target.roster));
         const numStarters = cloned.filter((p: Player) => p.starter || p.onCourt).length;
@@ -411,6 +420,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       settings: {
         ...currentGame.settings,
         quarterDurationMinutes: quarterDuration,
+        totalQuarters: (quarterDuration === 8 || gameCategoryToUse.toLowerCase().includes('escola')) ? 6 : (totalQuarters || 4),
         foulOutLimit,
         soundEnabled,
         vibrationEnabled,
@@ -1030,24 +1040,66 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               </label>
               <div className="grid grid-cols-4 gap-1">
                 {[
-                  { mins: 10, label: '10m (FIBA)' },
-                  { mins: 8, label: '8m (Escolar)' },
-                  { mins: 12, label: '12m (NBA)' },
-                  { mins: 5, label: '5m (Mini)' },
+                  { mins: 10, label: '10m (FIBA)', note: '4 cuartos', defaultQ: 4 },
+                  { mins: 8, label: '8m (Escola)', note: '6 cuartos', defaultQ: 6 },
+                  { mins: 12, label: '12m (NBA)', note: '4 cuartos', defaultQ: 4 },
+                  { mins: 5, label: '5m (Mini)', note: '6 cuartos', defaultQ: 6 },
                 ].map(opt => (
                   <button
                     key={opt.mins}
                     type="button"
-                    onClick={() => setQuarterDuration(opt.mins)}
+                    onClick={() => {
+                      setQuarterDuration(opt.mins);
+                      setTotalQuarters(opt.defaultQ);
+                    }}
                     className={`py-1.5 px-1 text-center rounded-xl text-xs font-mono font-bold border transition ${
                       quarterDuration === opt.mins
                         ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400 text-slate-950 font-black shadow-md'
                         : 'bg-[#132a58] border-[#203a70] text-slate-300 hover:text-white hover:bg-[#16356e]'
                     }`}
                   >
-                    {opt.label}
+                    <div>{opt.label}</div>
+                    <div className="text-[8.5px] opacity-80 font-normal">{opt.note}</div>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Total Quarters Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] uppercase font-mono text-slate-300 block">
+                  Número de Cuartos / Periodos:
+                </label>
+                {quarterDuration === 8 && totalQuarters === 6 && (
+                  <span className="text-[9px] font-mono text-amber-300 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-500/40 font-bold animate-pulse">
+                    🏀 Oficial Escola: 8m = 6 cuartos
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTotalQuarters(4)}
+                  className={`py-1.5 rounded-xl text-xs font-mono font-bold border transition ${
+                    totalQuarters === 4
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400 text-slate-950 font-black shadow-md'
+                      : 'bg-[#132a58] border-[#203a70] text-slate-300 hover:text-white hover:bg-[#16356e]'
+                  }`}
+                >
+                  4 Cuartos (FIBA / Senior)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTotalQuarters(6)}
+                  className={`py-1.5 rounded-xl text-xs font-mono font-bold border transition ${
+                    totalQuarters === 6
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400 text-slate-950 font-black shadow-md'
+                      : 'bg-[#132a58] border-[#203a70] text-slate-300 hover:text-white hover:bg-[#16356e]'
+                  }`}
+                >
+                  6 Cuartos (Escola / 8 min)
+                </button>
               </div>
             </div>
 

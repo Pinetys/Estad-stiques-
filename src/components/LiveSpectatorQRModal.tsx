@@ -64,6 +64,9 @@ export const LiveSpectatorQRModal: React.FC<LiveSpectatorQRModalProps> = ({
       }
       setPinCode(code);
 
+      // Ensure current match data is immediately pushed to local server and cloud
+      syncEngine.saveAndSyncMatch(game, { immediate: true });
+
       // 2. Generate direct follower spectator URL preserving full base path (GitHub Pages, subpaths, etc.)
       const fullUrl = buildSpectatorUrl(code, game.id);
       setSpectatorUrl(fullUrl);
@@ -181,7 +184,12 @@ export const LiveSpectatorQRModal: React.FC<LiveSpectatorQRModalProps> = ({
               <span className="text-slate-500 text-base">-</span>
               <span className="text-sky-400">{game.awayScore}</span>
               <span className="ml-1 text-[10px] font-mono font-bold text-slate-400 bg-black/40 px-1.5 py-0.5 rounded border border-slate-700">
-                {formatQuarterShort(game.currentQuarter)} · {formatGameTime(game.currentSecondsRemaining)}
+                {(() => {
+                  const modalTotalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+                    ? 6
+                    : (game.settings?.totalQuarters || 4);
+                  return formatQuarterShort(game.currentQuarter, modalTotalQ);
+                })()} · {formatGameTime(game.currentSecondsRemaining)}
               </span>
             </div>
           </div>

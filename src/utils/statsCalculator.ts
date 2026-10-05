@@ -26,16 +26,16 @@ export function formatMinutesPlayedShort(seconds: number = 0): string {
   return `${mins}'${secs.toString().padStart(2, '0')}"`;
 }
 
-export function formatQuarterName(quarter: number): string {
-  if (quarter <= 4) {
+export function formatQuarterName(quarter: number, totalQuarters: number = 4): string {
+  if (quarter <= totalQuarters) {
     return `${quarter}º Cuarto (Q${quarter})`;
   }
-  return `Prórroga ${quarter - 4} (PR${quarter - 4})`;
+  return `Prórroga ${quarter - totalQuarters} (PR${quarter - totalQuarters})`;
 }
 
-export function formatQuarterShort(quarter: number): string {
-  if (quarter <= 4) return `Q${quarter}`;
-  return `PR${quarter - 4}`;
+export function formatQuarterShort(quarter: number, totalQuarters: number = 4): string {
+  if (quarter <= totalQuarters) return `Q${quarter}`;
+  return `PR${quarter - totalQuarters}`;
 }
 
 /**

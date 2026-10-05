@@ -4,11 +4,12 @@ const DEVICE_ROLE_KEY = 'basketstats_device_role';
 
 export function getDeviceRole(): DeviceRole {
   try {
-    // 1. Check URL parameters for explicit override (e.g. ?mode=spectator, ?mode=monitor)
+    // 1. Check URL parameters for explicit override (e.g. ?mode=spectator, ?mode=monitor, ?pair=..., ?match=...)
     if (typeof window !== 'undefined' && window.location) {
       const params = new URLSearchParams(window.location.search);
       const urlMode = params.get('mode') || params.get('role');
       if (urlMode === 'spectator' || urlMode === 'monitor' || urlMode === 'live') return 'spectator';
+      if (params.get('pair') || params.get('match') || params.get('code') || params.get('matchId')) return 'spectator';
       if (urlMode === 'recorder') return 'recorder';
     }
 

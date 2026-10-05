@@ -214,7 +214,7 @@ export const MatchTimeProgressBar: React.FC<MatchTimeProgressBarProps> = ({
           <div className="flex items-center justify-between text-[10px]">
             <div className="flex items-center gap-1 text-gray-300">
               <span className="text-gray-400">
-                {currentQuarter <= 4 ? `Cuarto ${currentQuarter}:` : `Prórroga ${currentQuarter - 4}:`}
+                {currentQuarter <= totalQuarters ? `Cuarto ${currentQuarter}:` : `Prórroga ${currentQuarter - totalQuarters}:`}
               </span>
               <span className="font-bold text-cyan-300">
                 {formatGameTime(clampedQuarterSecsRemaining)}

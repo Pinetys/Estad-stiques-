@@ -150,31 +150,40 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
           >
             Partido Completo
           </button>
-          {[1, 2, 3, 4].map(q => (
-            <button
-              key={q}
-              onClick={() => setQuarterFilter(q)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
-                quarterFilter === q
-                  ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
-                  : 'bg-[#0e1738] border-blue-900/60 hover:bg-blue-900/50 text-slate-300'
-              }`}
-            >
-              {formatQuarterShort(q)}
-            </button>
-          ))}
-          {game.currentQuarter > 4 && (
-            <button
-              onClick={() => setQuarterFilter(5)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
-                quarterFilter === 5
-                  ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
-                  : 'bg-[#0e1738] border-blue-900/60 hover:bg-blue-900/50 text-slate-300'
-              }`}
-            >
-              PR
-            </button>
-          )}
+          {(() => {
+            const tableTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+              ? 6
+              : (game.settings?.totalQuarters || 4);
+            return (
+              <>
+                {Array.from({ length: tableTotalQuarters }, (_, i) => i + 1).map(q => (
+                  <button
+                    key={q}
+                    onClick={() => setQuarterFilter(q)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
+                      quarterFilter === q
+                        ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
+                        : 'bg-[#0e1738] border-blue-900/60 hover:bg-blue-900/50 text-slate-300'
+                    }`}
+                  >
+                    {formatQuarterShort(q, tableTotalQuarters)}
+                  </button>
+                ))}
+                {game.currentQuarter > tableTotalQuarters && (
+                  <button
+                    onClick={() => setQuarterFilter(tableTotalQuarters + 1)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
+                      quarterFilter && quarterFilter > tableTotalQuarters
+                        ? 'bg-orange-500 border-orange-400 text-white shadow-sm'
+                        : 'bg-[#0e1738] border-blue-900/60 hover:bg-blue-900/50 text-slate-300'
+                    }`}
+                  >
+                    PR
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 hidden sm:inline">

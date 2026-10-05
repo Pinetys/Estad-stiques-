@@ -246,16 +246,16 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
               </div>
 
               {/* Parciales por cuarto */}
-              <div className="mt-2 grid grid-cols-5 gap-1 text-center font-mono text-[10px]">
+              <div className="mt-2 flex flex-wrap gap-1 text-center font-mono text-[10px]">
                 {game.quarterScores.map(q => (
-                  <div key={q.quarter} className="bg-neutral-50 border border-neutral-300 p-1 rounded">
+                  <div key={q.quarter} className="flex-1 min-w-[55px] bg-neutral-50 border border-neutral-300 p-1 rounded">
                     <div className="font-bold text-neutral-600">{q.quarterLabel}</div>
                     <div className="font-black text-xs">
                       {q.home} - {q.away}
                     </div>
                   </div>
                 ))}
-                <div className="bg-neutral-200 border border-neutral-400 p-1 rounded font-bold">
+                <div className="flex-1 min-w-[70px] bg-neutral-200 border border-neutral-400 p-1 rounded font-bold">
                   <div className="text-neutral-700">FALTAS EQ.</div>
                   <div className="text-xs font-black">
                     {game.homeQuarterFouls} - {game.awayQuarterFouls}

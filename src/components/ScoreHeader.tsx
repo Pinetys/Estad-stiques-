@@ -186,6 +186,9 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   };
 
   const isCourtMode = Boolean(game.settings.courtMode);
+  const totalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+    ? 6
+    : (game.settings?.totalQuarters || 4);
 
   return (
     <div className={`${isCourtMode ? 'bg-[#090f23] border-blue-900/60' : 'bg-gradient-to-b from-[#101c40] via-[#0d1736] to-[#091026] border-blue-900/60'} border-b shadow-xl relative z-30 w-full max-w-full overflow-hidden`}>
@@ -218,22 +221,22 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                 title="Elegir cuarto específico"
               >
                 <span className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${isCourtMode ? 'bg-amber-400' : 'bg-white animate-live-dot'}`}></span>
-                <span className="leading-none">{formatQuarterShort(game.currentQuarter)}</span>
+                <span className="leading-none">{formatQuarterShort(game.currentQuarter, totalQ)}</span>
                 <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-90" />
               </button>
 
               {/* Quarter Picker Popup */}
               {showQuarterPicker && (
-                <div className="absolute left-0 top-full mt-1.5 w-52 bg-[#0e1736] border border-blue-500/60 rounded-xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95">
+                <div className="absolute left-0 top-full mt-1.5 w-56 bg-[#0e1736] border border-blue-500/60 rounded-xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1.5 px-1 font-mono">
-                    Seleccionar Cuarto:
+                    Seleccionar Cuarto / Periodo:
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {[1, 2, 3, 4].map(q => (
+                  <div className={`grid ${totalQ === 6 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5`}>
+                    {Array.from({ length: totalQ }, (_, i) => i + 1).map(q => (
                       <button
                         key={q}
                         onClick={() => handleQuarterPick(q)}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-mono font-bold border text-center transition ${
+                        className={`px-1.5 py-2 rounded-lg text-xs font-mono font-bold border text-center transition ${
                           game.currentQuarter === q
                             ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400 shadow'
                             : 'bg-[#142045] text-slate-200 hover:bg-[#1c2c5e] border-blue-900/60'
@@ -249,19 +252,22 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                       Prórrogas (OT):
                     </div>
                     <div className="grid grid-cols-3 gap-1">
-                      {[5, 6, 7].map(q => (
-                        <button
-                          key={q}
-                          onClick={() => handleQuarterPick(q)}
-                          className={`px-1.5 py-1.5 rounded-lg text-xs font-mono font-bold border text-center transition ${
-                            game.currentQuarter === q
-                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400'
-                              : 'bg-[#142045] text-slate-300 hover:bg-[#1c2c5e] border-blue-900/60'
-                          }`}
-                        >
-                          PR{q - 4}
-                        </button>
-                      ))}
+                      {[1, 2, 3].map(ot => {
+                        const q = totalQ + ot;
+                        return (
+                          <button
+                            key={q}
+                            onClick={() => handleQuarterPick(q)}
+                            className={`px-1.5 py-1.5 rounded-lg text-xs font-mono font-bold border text-center transition ${
+                              game.currentQuarter === q
+                                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400'
+                                : 'bg-[#142045] text-slate-300 hover:bg-[#1c2c5e] border-blue-900/60'
+                            }`}
+                          >
+                            PR{ot}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -275,7 +281,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               className="text-xs sm:text-sm bg-[#0f1b3b] hover:bg-[#182a5c] active:bg-[#0c1633] text-slate-200 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl flex items-center gap-1 border border-blue-900/80 font-black uppercase transition shadow-sm"
               title="Avanzar al siguiente cuarto"
             >
-              <span>{game.currentQuarter < 4 ? `Q${game.currentQuarter + 1}` : 'PR'}</span>
+              <span>{game.currentQuarter < totalQ ? formatQuarterShort(game.currentQuarter + 1, totalQ) : 'PR'}</span>
               <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-300" />
             </button>
           </div>

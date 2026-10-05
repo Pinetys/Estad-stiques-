@@ -8,9 +8,16 @@
 
 export function getAppBaseUrl(): string {
   if (typeof window === 'undefined') return '';
-  const origin = window.location.origin;
+  let origin = window.location.origin;
 
-  // 1. If hosted on github.io, ensure repository root is strictly preserved
+  // 1. If running in AI Studio development origin ('ais-dev-*.run.app'),
+  // spectators cannot open 'ais-dev' links on external devices because it requires Google account developer auth.
+  // The public shared app URL that ANY phone/spectator can access is 'ais-pre-*.run.app'.
+  if (origin.includes('ais-dev-')) {
+    origin = origin.replace('ais-dev-', 'ais-pre-');
+  }
+
+  // 2. If hosted on github.io, ensure repository root is strictly preserved
   if (window.location.hostname.endsWith('github.io')) {
     const segments = window.location.pathname.split('/').filter(Boolean);
     const repoName = segments[0] || '';
@@ -19,7 +26,7 @@ export function getAppBaseUrl(): string {
     }
   }
 
-  // 2. Clean pathname: remove trailing files (e.g. index.html or other assets)
+  // 3. Clean pathname: remove trailing files (e.g. index.html or other assets)
   let pathname = window.location.pathname.replace(/\/[^/]*\.[a-zA-Z0-9]+$/i, '');
   if (!pathname.endsWith('/')) {
     pathname = `${pathname}/`;
@@ -27,8 +34,8 @@ export function getAppBaseUrl(): string {
   return `${origin}${pathname}`;
 }
 
-export function buildSpectatorUrl(code: string, matchId: string): string {
-  const base = getAppBaseUrl();
+export function buildSpectatorUrl(code: string, matchId: string, customBaseUrl?: string): string {
+  const base = customBaseUrl || getAppBaseUrl();
   const params = new URLSearchParams();
   if (code) {
     params.set('pair', code.trim().toUpperCase());

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Game, PlayEvent, StatActionType, PendingShot, BasketOriginType, BASKET_ORIGIN_LABELS } from '../types';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { formatQuarterName } from '../utils/statsCalculator';
 import {
   downloadShotChartPng,
   downloadShotChartSvg,
@@ -1108,17 +1109,26 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
           )}
 
           {/* Quarter Selector */}
-          <select
-            value={filterQuarter}
-            onChange={e => setFilterQuarter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="bg-[#071328] text-slate-200 border border-[#203a70] rounded-lg px-2 py-1 font-mono focus:outline-none focus:border-[#D4AF37]"
-          >
-            <option value="all">⏱️ Todos los cuartos</option>
-            <option value={1}>1º Cuarto (Q1)</option>
-            <option value={2}>2º Cuarto (Q2)</option>
-            <option value={3}>3º Cuarto (Q3)</option>
-            <option value={4}>4º Cuarto (Q4)</option>
-          </select>
+          {(() => {
+            const chartTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
+              ? 6
+              : (game.settings?.totalQuarters || 4);
+            const maxQ = Math.max(chartTotalQuarters, game.currentQuarter);
+            return (
+              <select
+                value={filterQuarter}
+                onChange={e => setFilterQuarter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                className="bg-[#071328] text-slate-200 border border-[#203a70] rounded-lg px-2 py-1 font-mono focus:outline-none focus:border-[#D4AF37]"
+              >
+                <option value="all">⏱️ Todos los cuartos</option>
+                {Array.from({ length: maxQ }, (_, i) => i + 1).map(q => (
+                  <option key={q} value={q}>
+                    {formatQuarterName(q, chartTotalQuarters)}
+                  </option>
+                ))}
+              </select>
+            );
+          })()}
 
           {/* Made / Missed toggle */}
           <div className="flex items-center bg-[#071328] border border-[#203a70] rounded-lg p-0.5 ml-auto">
