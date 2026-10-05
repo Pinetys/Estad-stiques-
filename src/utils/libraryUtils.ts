@@ -1234,6 +1234,7 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
   const merged = Array.from(mergedMap.values()).filter(m => !isDemoGame(m));
   try {
     localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(merged));
+    localStorage.setItem('basketstats_matches_backup_safety', JSON.stringify(merged));
   } catch (e) {
     console.warn('Error persisting merged matches:', e);
   }
@@ -1243,9 +1244,13 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
 export async function syncMatchesFromCloud(): Promise<Game[]> {
   const incomingMatches: Game[] = [];
 
-  // 1. Fetch from Express Server database (/api/sync/all)
+  // 1. Fetch from Express Server database (/api/sync/all) with 8s timeout
   try {
-    const res = await fetch('/api/sync/all');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch('/api/sync/all', { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.matches) && data.matches.length > 0) {
@@ -1253,17 +1258,17 @@ export async function syncMatchesFromCloud(): Promise<Game[]> {
       }
     }
   } catch (err) {
-    console.warn('Sync matches from server failed:', err);
+    console.warn('Sync matches from server note (offline or timeout):', err);
   }
 
-  // 2. Fetch from Firebase Firestore
+  // 2. Fetch from Firebase Firestore (bounded by 6s timeout)
   try {
     const cloudMatches = await fetchAllMatchesFromCloud();
     if (Array.isArray(cloudMatches) && cloudMatches.length > 0) {
       incomingMatches.push(...cloudMatches);
     }
   } catch (err) {
-    console.warn('Sync matches from Firestore failed:', err);
+    console.warn('Sync matches from Firestore note:', err);
   }
 
   if (incomingMatches.length > 0) {

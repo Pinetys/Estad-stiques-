@@ -17,11 +17,25 @@ interface ServerSyncDatabase {
 }
 
 const SYNC_DB_PATH = path.join(process.cwd(), 'server_sync_db.json');
+const SYNC_DB_BACKUP_PATH = path.join(process.cwd(), 'server_sync_db.backup.json');
 
 function loadServerSyncDb(): ServerSyncDatabase {
   try {
     if (fs.existsSync(SYNC_DB_PATH)) {
       const raw = fs.readFileSync(SYNC_DB_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      return {
+        matches: parsed.matches || {},
+        teams: parsed.teams || {},
+        subscribers: parsed.subscribers || {},
+        activeMatch: parsed.activeMatch || null,
+        transferCodes: parsed.transferCodes || {},
+        deletedMatchIds: parsed.deletedMatchIds || [],
+        deletedTeamIds: parsed.deletedTeamIds || [],
+        lastUpdate: parsed.lastUpdate || Date.now(),
+      };
+    } else if (fs.existsSync(SYNC_DB_BACKUP_PATH)) {
+      const raw = fs.readFileSync(SYNC_DB_BACKUP_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
       return {
         matches: parsed.matches || {},
@@ -54,7 +68,9 @@ let serverDb = loadServerSyncDb();
 function saveServerSyncDb(): void {
   try {
     serverDb.lastUpdate = Date.now();
-    fs.writeFileSync(SYNC_DB_PATH, JSON.stringify(serverDb, null, 2), 'utf-8');
+    const dataStr = JSON.stringify(serverDb, null, 2);
+    fs.writeFileSync(SYNC_DB_PATH, dataStr, 'utf-8');
+    fs.writeFileSync(SYNC_DB_BACKUP_PATH, dataStr, 'utf-8');
   } catch (err) {
     console.error('Error saving server_sync_db.json:', err);
   }

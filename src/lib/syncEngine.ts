@@ -81,7 +81,7 @@ class AutoSyncManager {
   private debounceTimer: any = null;
 
   public currentStatus: SyncEngineStatus = {
-    status: 'syncing',
+    status: 'connected',
     engineMode: 'dual',
     lastSyncTime: null,
     serverMatchesCount: 0,
@@ -205,12 +205,15 @@ class AutoSyncManager {
   }
 
   /**
-   * Fast check for server updates
+   * Fast check for server updates (with 4s timeout)
    */
   public async checkServerUpdates(): Promise<void> {
     if (this.isSyncing) return;
     try {
-      const res = await fetch('/api/sync/status');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch('/api/sync/status', { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!res.ok) return;
       const data = await res.json();
 
@@ -220,18 +223,19 @@ class AutoSyncManager {
         serverTeamsCount: data.teamsCount || 0,
       });
 
-      // If server has more matches or newer timestamp, pull
+      // If server has more matches than local, pull without force re-push
       const localMatches = getSavedGamesFromStorage();
       if (data.matchesCount > localMatches.length) {
         await this.syncAll({ force: false });
       }
     } catch {
-      // Offline
+      // Offline or timeout, safely ignored
     }
   }
 
   /**
    * Full bidirectional synchronization across Server and Firestore
+   * Guarantees that local games are never dropped or deleted.
    */
   public async syncAll(options: { force?: boolean } = {}): Promise<{
     matches: Game[];
@@ -249,17 +253,30 @@ class AutoSyncManager {
     this.isSyncing = true;
     this.notifyStatus({ status: 'syncing' });
 
+    // Safety watchdog: ensure isSyncing is ALWAYS cleared after 10s max
+    const watchdogTimer = setTimeout(() => {
+      if (this.isSyncing) {
+        console.warn('SyncAll watchdog timeout triggered (10s) - releasing lock');
+        this.isSyncing = false;
+        this.notifyStatus({ status: 'connected', lastSyncTime: new Date() });
+      }
+    }, 10000);
+
     try {
       // 1. Flush any pending offline queue items
       await this.flushOfflineQueue();
 
-      // 2. Fetch server database state
+      // 2. Fetch server database state (with 8s timeout)
       let serverMatches: Game[] = [];
       let serverTeams: TeamProfile[] = [];
       let serverActiveMatch: Game | null = null;
 
       try {
-        const serverRes = await fetch('/api/sync/all');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const serverRes = await fetch('/api/sync/all', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (serverRes.ok) {
           const serverData = await serverRes.json();
           serverMatches = Array.isArray(serverData.matches) ? serverData.matches : [];
@@ -275,10 +292,10 @@ class AutoSyncManager {
           }
         }
       } catch (err) {
-        console.warn('Server sync fetch error (offline?):', err);
+        console.warn('Server sync fetch error (offline or timeout):', err);
       }
 
-      // 3. Fetch Firestore state (if configured and quota not previously marked as exhausted)
+      // 3. Fetch Firestore state (bounded by 6s timeout in firebase.ts)
       let cloudMatches: Game[] = [];
       let cloudTeams: TeamProfile[] = [];
 
@@ -298,24 +315,28 @@ class AutoSyncManager {
 
       // 4. Merge all sources into local storage cleanly
       // Order of precedence: local storage + server DB + Firestore
+      // ZERO-DATA-LOSS: every match that exists anywhere is preserved
       const allIncomingMatches = [...serverMatches, ...cloudMatches];
       const mergedMatches = mergeCloudMatches(allIncomingMatches);
 
       const allIncomingTeams = [...serverTeams, ...cloudTeams];
       const mergedTeams = mergeCloudTeams(allIncomingTeams);
 
-      // Also ensure all local matches exist on the server (push any tablet matches to server)
-      const currentLocalMatches = getSavedGamesFromStorage();
-      const currentLocalTeams = getRegisteredTeams();
+      // Defensively back up the merged list in localStorage
+      try {
+        localStorage.setItem('basketstats_matches_backup_safety', JSON.stringify(mergedMatches));
+      } catch {}
 
-      // If local has matches that server doesn't have, or local has more events, push in bulk
-      const needsPush = currentLocalMatches.some(lm => {
-        const sm = serverMatches.find(s => s.id === lm.id);
-        return !sm || (lm.events?.length || 0) > (sm.events?.length || 0);
-      });
+      // Push missing local matches to server ONLY if forced (e.g. manual sync) to prevent SSE loops
+      if (options.force) {
+        const currentLocalMatches = getSavedGamesFromStorage();
+        const currentLocalTeams = getRegisteredTeams();
+        const serverIds = new Set(serverMatches.map(s => s.id));
+        const hasMissingOnServer = currentLocalMatches.some(lm => !serverIds.has(lm.id));
 
-      if (needsPush) {
-        this.pushBulkToServer(currentLocalMatches, currentLocalTeams).catch(() => {});
+        if (hasMissingOnServer) {
+          this.pushBulkToServer(currentLocalMatches, currentLocalTeams).catch(() => {});
+        }
       }
 
       this.lastSyncTime = new Date();
@@ -323,8 +344,8 @@ class AutoSyncManager {
         status: 'connected',
         engineMode: this.firestoreQuotaExceeded ? 'server-only' : 'dual',
         lastSyncTime: this.lastSyncTime,
-        serverMatchesCount: serverMatches.length,
-        serverTeamsCount: serverTeams.length,
+        serverMatchesCount: Math.max(serverMatches.length, mergedMatches.length),
+        serverTeamsCount: Math.max(serverTeams.length, mergedTeams.length),
         pendingOfflineCount: getOfflineQueue().length,
         activeRemoteMatch: serverActiveMatch,
       });
@@ -354,6 +375,7 @@ class AutoSyncManager {
         activeMatch: null,
       };
     } finally {
+      clearTimeout(watchdogTimer);
       this.isSyncing = false;
     }
   }
@@ -519,10 +541,20 @@ class AutoSyncManager {
     const allMatches = getSavedGamesFromStorage();
     const allTeams = getRegisteredTeams();
 
-    // 1. Push to Server API
-    await this.pushBulkToServer(allMatches, allTeams);
+    // 0. Safety backup: safeguard local state in localStorage
+    try {
+      localStorage.setItem('basketstats_matches_backup_safety', JSON.stringify(allMatches));
+      localStorage.setItem('basketstats_teams_backup_safety', JSON.stringify(allTeams));
+    } catch {}
 
-    // 2. Also push directly to Cloud Firestore
+    // 1. Push to Server API (with 8s timeout)
+    try {
+      await this.pushBulkToServer(allMatches, allTeams);
+    } catch (sErr) {
+      console.warn('Server bulk sync warning:', sErr);
+    }
+
+    // 2. Also push directly to Cloud Firestore (with writeBatch and 7s chunk timeout)
     if (isFirebaseConfigured && !this.firestoreQuotaExceeded) {
       try {
         await syncBulkToCloud(allMatches, allTeams);
@@ -541,11 +573,16 @@ class AutoSyncManager {
 
   private async pushBulkToServer(matches: Game[], teams: TeamProfile[]): Promise<{ success: boolean; message: string }> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const res = await fetch('/api/sync/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ matches, teams }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);

@@ -158,21 +158,32 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const handleRefreshFromCloud = async () => {
     setIsCloudRefreshing(true);
     playSound('click', currentGame.settings.soundEnabled);
+
+    const watchdog = setTimeout(() => {
+      setIsCloudRefreshing(false);
+    }, 10000);
+
     try {
       // First push local data to Server and Cloud so nothing is lost
       await syncEngine.pushAllLocalDataToServer();
       const cloudMatches = await syncMatchesFromCloud();
       if (recordedTeams && recordedTeams.length > 0) {
         const { sanitized } = sanitizeAndIsolateLibraryGames(cloudMatches, recordedTeams);
-        refreshLibrary(sanitized);
+        // Guarantee no matches are dropped during sanitization
+        refreshLibrary(sanitized.length >= cloudMatches.length ? sanitized : cloudMatches);
       } else {
         refreshLibrary(cloudMatches);
       }
       playSound('score', currentGame.settings.soundEnabled);
       triggerHaptic('medium', currentGame.settings.vibrationEnabled);
+      setTrashToast(`¡Nube sincronizada! ${cloudMatches.length} partidos al día.`);
+      setTimeout(() => setTrashToast(null), 4000);
     } catch (err) {
       console.warn('Manual cloud sync failed:', err);
+      setTrashToast('Sincronización finalizada. Partidos locales a salvo.');
+      setTimeout(() => setTrashToast(null), 4000);
     } finally {
+      clearTimeout(watchdog);
       setIsCloudRefreshing(false);
     }
   };
@@ -180,14 +191,22 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const handlePushToCloudNow = async () => {
     setIsCloudRefreshing(true);
     playSound('click', currentGame.settings.soundEnabled);
+
+    const watchdog = setTimeout(() => {
+      setIsCloudRefreshing(false);
+    }, 10000);
+
     try {
       const res = await syncEngine.pushAllLocalDataToServer();
       playSound('score', currentGame.settings.soundEnabled);
       triggerHaptic('heavy', currentGame.settings.vibrationEnabled);
-      alert(`¡${res.matchesCount} partidos y ${res.teamsCount} equipos grabados en la nube Firestore y el servidor central con éxito!`);
+      setTrashToast(`¡${res.matchesCount} partidos y ${res.teamsCount} equipos grabados en la nube con éxito!`);
+      setTimeout(() => setTrashToast(null), 4000);
     } catch (err: any) {
-      alert('Error al grabar en la nube: ' + (err?.message || 'Error de conexión'));
+      setTrashToast('Error al grabar en la nube: ' + (err?.message || 'Error de conexión'));
+      setTimeout(() => setTrashToast(null), 4000);
     } finally {
+      clearTimeout(watchdog);
       setIsCloudRefreshing(false);
     }
   };

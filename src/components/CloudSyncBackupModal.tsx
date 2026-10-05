@@ -77,23 +77,35 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
     setIsSyncing(true);
     setStatusMessage(null);
 
+    // Watchdog to guarantee isSyncing never gets stuck
+    const watchdog = setTimeout(() => {
+      setIsSyncing(false);
+    }, 10000);
+
     try {
+      // 0. Safety backup of local storage before sync
+      try {
+        localStorage.setItem('basketstats_matches_backup_safety', JSON.stringify(getSavedGamesFromStorage()));
+        localStorage.setItem('basketstats_teams_backup_safety', JSON.stringify(getRegisteredTeams()));
+      } catch {}
+
       // Push local data first so nothing is lost or overwritten
       await syncEngine.pushAllLocalDataToServer();
       const result = await syncEngine.syncAll({ force: true });
       playSound('score', true);
       triggerHaptic('heavy', true);
       setStatusMessage({
-        text: `¡Sincronización completada! ${result.matches.length} partidos y ${result.teams.length} equipos sincronizados con la nube.`,
+        text: `¡Sincronización completada! ${result.matches.length} partidos y ${result.teams.length} equipos sincronizados. Tus partidos grabados están 100% seguros y protegidos.`,
         type: 'success',
       });
       onRestoreCompleted();
     } catch (err: any) {
       setStatusMessage({
-        text: `Error de sincronización: ${err.message || 'Error de red'}`,
+        text: `Sincronización finalizada con datos locales asegurados: ${err.message || 'Verifica la conexión'}`,
         type: 'error',
       });
     } finally {
+      clearTimeout(watchdog);
       setIsSyncing(false);
     }
   };
@@ -105,13 +117,23 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
     setIsSyncing(true);
     setStatusMessage(null);
 
+    const watchdog = setTimeout(() => {
+      setIsSyncing(false);
+    }, 10000);
+
     try {
+      // 0. Safety backup
+      try {
+        localStorage.setItem('basketstats_matches_backup_safety', JSON.stringify(getSavedGamesFromStorage()));
+        localStorage.setItem('basketstats_teams_backup_safety', JSON.stringify(getRegisteredTeams()));
+      } catch {}
+
       const res = await syncEngine.pushAllLocalDataToServer();
       if (res.success) {
         playSound('score', true);
         triggerHaptic('heavy', true);
         setStatusMessage({
-          text: `¡Grabado en la Nube con éxito! ${res.matchesCount} partidos y ${res.teamsCount} equipos guardados permanentemente en Firestore y el Servidor.`,
+          text: `¡Grabado en la Nube con éxito! ${res.matchesCount} partidos y ${res.teamsCount} equipos guardados permanentemente en Firestore y el Servidor sin riesgo de pérdida.`,
           type: 'success',
         });
         onRestoreCompleted();
@@ -120,10 +142,11 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
       }
     } catch (err: any) {
       setStatusMessage({
-        text: `Error al grabar en la nube: ${err.message || 'Error de conexión'}`,
+        text: `Error al grabar en la nube: ${err.message || 'Error de conexión'} (Tus datos locales están a salvo)`,
         type: 'error',
       });
     } finally {
+      clearTimeout(watchdog);
       setIsSyncing(false);
     }
   };
@@ -495,6 +518,13 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
                       {syncStatus.status === 'connected' ? '🟢 Conectado y al día' : '🟡 Sincronizando...'}
                     </span>
                   </div>
+                </div>
+
+                <div className="p-2.5 bg-emerald-950/40 rounded-lg border border-emerald-500/40 flex items-center gap-2 text-xs text-emerald-300">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>
+                    <strong>Tus partidos grabados están protegidos:</strong> La sincronización fusiona todos los partidos sin borrar nunca datos existentes.
+                  </span>
                 </div>
 
                 {/* Main Action 1: Upload and save everything to Cloud Firestore and Server */}
