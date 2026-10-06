@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Game, Player, PlayEvent } from '../types';
+import { Game, Player, PlayEvent, BASKET_ORIGIN_LABELS } from '../types';
 import { ACTION_DEFINITIONS } from '../data/defaultData';
 import {
   calculatePlayerStats,
@@ -41,6 +41,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   const [selectedTeamTab, setSelectedTeamTab] = useState<'home' | 'away'>('home');
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [showRecentPlays, setShowRecentPlays] = useState<boolean>(true);
+  const [recentFilter, setRecentFilter] = useState<'all' | 'scores' | 'fouls'>('all');
   const [filterCourtOnly, setFilterCourtOnly] = useState<boolean>(false);
   const [manualCodeInput, setManualCodeInput] = useState<string>('');
 
@@ -103,10 +104,16 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
     });
   }, [safeEvents]);
 
-  // Recent plays stream (last 8 actions)
+  // Recent plays stream with filter support (last 16 actions)
   const recentEvents = useMemo(() => {
-    return [...safeEvents].slice(-8).reverse();
-  }, [safeEvents]);
+    let list = [...safeEvents];
+    if (recentFilter === 'scores') {
+      list = list.filter(e => (e.pointsAdded && e.pointsAdded > 0) || e.actionType === 'OPP_2P' || e.actionType === 'OPP_3P' || e.actionType === 'OPP_1P');
+    } else if (recentFilter === 'fouls') {
+      list = list.filter(e => e.actionType === 'OPP_FOUL' || ACTION_DEFINITIONS[e.actionType]?.category === 'fouls' || e.actionType === 'PF' || e.actionType === 'PFT' || e.actionType === 'UF' || e.actionType === 'TF');
+    }
+    return list.slice(-16).reverse();
+  }, [safeEvents, recentFilter]);
 
   // Last 5 registered match events for immediate context below scoreboard
   const lastFiveEvents = useMemo(() => {
@@ -167,83 +174,167 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
     pointsBadge?: string;
     actor: string;
     actionName: string;
+    subDetail?: string;
+    scoreSnapshotText?: string;
     text: string;
     color: string;
+    icon: string;
+    isScore: boolean;
   }
 
   // Helper for action readable name in recent plays
   const getActionDescription = (event: PlayEvent): ActionDescInfo => {
     const awayName = game.awayTeamName || 'Rival';
+    const scoreText = event.scoreSnapshot
+      ? `${event.scoreSnapshot.home} - ${event.scoreSnapshot.away}`
+      : undefined;
 
     if (event.isOpponentAction) {
+      const oppDorsal = typeof event.opponentPlayerNumber === 'number' && event.opponentPlayerNumber > 0
+        ? `#${event.opponentPlayerNumber} `
+        : '';
+      const oppActor = `${oppDorsal}${awayName}`.trim();
+
       if (event.actionType === 'OPP_3P') {
+        const originDesc = event.basketOrigin ? BASKET_ORIGIN_LABELS[event.basketOrigin]?.label : undefined;
         return {
           badge: '+3 TRIPLE',
           badgeBg: 'bg-amber-500/25 text-amber-300 border-amber-500/50',
           pointsBadge: '+3',
-          actor: awayName,
+          actor: oppActor,
           actionName: 'Triple anotado',
-          text: `¡Triple de ${awayName}! (+3)`,
+          subDetail: originDesc,
+          scoreSnapshotText: scoreText,
+          text: `¡Triple de ${oppActor}! (+3)`,
           color: 'text-amber-400 font-bold',
+          icon: '🏀',
+          isScore: true,
         };
       }
       if (event.actionType === 'OPP_2P') {
+        const originDesc = event.basketOrigin ? BASKET_ORIGIN_LABELS[event.basketOrigin]?.label : undefined;
         return {
           badge: '+2 CANASTA',
           badgeBg: 'bg-emerald-500/25 text-emerald-300 border-emerald-500/50',
           pointsBadge: '+2',
-          actor: awayName,
+          actor: oppActor,
           actionName: 'Canasta de 2 anotada',
-          text: `Canasta de 2 de ${awayName} (+2)`,
+          subDetail: originDesc,
+          scoreSnapshotText: scoreText,
+          text: `Canasta de 2 de ${oppActor} (+2)`,
           color: 'text-emerald-400 font-bold',
+          icon: '🏀',
+          isScore: true,
         };
       }
-      if (event.actionType === 'OPP_1P') {
+      if (event.actionType === 'OPP_1P' || (event.actionType as string) === 'OPP_FTM') {
         return {
           badge: '+1 TIRO LIBRE',
           badgeBg: 'bg-cyan-500/25 text-cyan-300 border-cyan-500/50',
           pointsBadge: '+1',
-          actor: awayName,
+          actor: oppActor,
           actionName: 'Tiro libre anotado',
-          text: `Tiro libre de ${awayName} (+1)`,
+          scoreSnapshotText: scoreText,
+          text: `Tiro libre anotado por ${oppActor} (+1)`,
           color: 'text-cyan-300 font-bold',
+          icon: '🎯',
+          isScore: true,
+        };
+      }
+      if ((event.actionType as string) === 'OPP_FTA') {
+        return {
+          badge: 'TL FALLADO',
+          badgeBg: 'bg-slate-800 text-slate-400 border-slate-700',
+          actor: oppActor,
+          actionName: 'Tiro libre fallado',
+          scoreSnapshotText: scoreText,
+          text: `Tiro libre fallado por ${oppActor}`,
+          color: 'text-slate-400',
+          icon: '❌',
+          isScore: false,
         };
       }
       if (event.actionType === 'OPP_FOUL') {
+        let foulLabel = 'Falta personal';
+        let badgeLabel = 'FALTA RIVAL';
+        if (event.foulType === 'PFT') {
+          foulLabel = 'Falta de tiro cometida';
+          badgeLabel = 'FALTA TIRO';
+        } else if (event.foulType === 'U') {
+          foulLabel = 'Falta antideportiva';
+          badgeLabel = 'ANTIDEPORTIVA';
+        } else if (event.foulType === 'T') {
+          foulLabel = 'Falta técnica';
+          badgeLabel = 'TÉCNICA';
+        } else if (event.foulType === 'OF') {
+          foulLabel = 'Falta en ataque';
+          badgeLabel = 'FALTA ATAQUE';
+        }
         return {
-          badge: 'FALTA RIVAL',
+          badge: badgeLabel,
           badgeBg: 'bg-rose-500/25 text-rose-300 border-rose-500/50',
-          actor: awayName,
-          actionName: 'Falta cometida',
-          text: `Falta personal de ${awayName}`,
+          actor: oppActor,
+          actionName: foulLabel,
+          scoreSnapshotText: scoreText,
+          text: `${foulLabel} de ${oppActor}`,
           color: 'text-rose-400 font-bold',
+          icon: '⚠️',
+          isScore: false,
         };
       }
       if (event.actionType === 'OPP_TO') {
         return {
           badge: 'PÉRDIDA RIVAL',
           badgeBg: 'bg-orange-500/25 text-orange-300 border-orange-500/50',
-          actor: awayName,
-          actionName: 'Pérdida de balón',
-          text: `Pérdida de ${awayName}`,
+          actor: oppActor,
+          actionName: 'Pérdida de posesión',
+          scoreSnapshotText: scoreText,
+          text: `Pérdida de balón de ${oppActor}`,
           color: 'text-emerald-400 font-bold',
+          icon: '🔄',
+          isScore: false,
+        };
+      }
+      if ((event.actionType as string) === 'OPP_TIMEOUT') {
+        return {
+          badge: 'TIEMPO MUERTO',
+          badgeBg: 'bg-amber-500/25 text-amber-300 border-amber-500/50',
+          actor: awayName,
+          actionName: 'Tiempo muerto solicitado',
+          scoreSnapshotText: scoreText,
+          text: `Tiempo muerto pedido por ${awayName}`,
+          color: 'text-amber-400 font-bold',
+          icon: '⏱️',
+          isScore: false,
         };
       }
       return {
         badge: 'RIVAL',
         badgeBg: 'bg-slate-700/50 text-slate-300 border-slate-600/50',
-        actor: awayName,
+        actor: oppActor,
         actionName: event.actionLabel || event.actionType,
-        text: `Acción de ${awayName}`,
+        scoreSnapshotText: scoreText,
+        text: `Acción de ${oppActor}`,
         color: 'text-cyan-300',
+        icon: '⚡',
+        isScore: false,
       };
     }
 
     const player = safePlayers.find(p => p.id === event.playerId);
-    const pDorsal = player ? `#${player.number}` : '';
+    const pDorsal = player ? `#${player.number}` : (typeof event.playerNumber === 'number' ? `#${event.playerNumber}` : '');
     const pFullName = player
       ? (player.name ? `${pDorsal} ${player.name}` : `${pDorsal} Jugador`).trim()
-      : (event.playerName ? event.playerName : 'Jugador');
+      : (event.playerName ? (event.playerNumber ? `#${event.playerNumber} ${event.playerName}` : event.playerName) : 'Jugador');
+
+    // Assist details
+    let assistText: string | undefined = undefined;
+    if (event.assistedByPlayerName || event.assistedByPlayerNumber) {
+      const aDorsal = event.assistedByPlayerNumber ? `#${event.assistedByPlayerNumber} ` : '';
+      assistText = `Asist. ${aDorsal}${event.assistedByPlayerName || ''}`.trim();
+    }
+    const originLabel = event.basketOrigin ? BASKET_ORIGIN_LABELS[event.basketOrigin]?.shortLabel : undefined;
+    const subDetail = [assistText, originLabel].filter(Boolean).join(' • ') || undefined;
 
     switch (event.actionType) {
       case '3PM':
@@ -253,8 +344,12 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           pointsBadge: '+3',
           actor: pFullName,
           actionName: 'Triple anotado',
-          text: `¡Triple anotado por ${pFullName}! (+3)`,
+          subDetail,
+          scoreSnapshotText: scoreText,
+          text: `¡Triple de ${pFullName}! (+3)`,
           color: 'text-amber-400 font-black',
+          icon: '🔥',
+          isScore: true,
         };
       case '2PM':
         return {
@@ -263,8 +358,12 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           pointsBadge: '+2',
           actor: pFullName,
           actionName: 'Canasta de 2 anotada',
-          text: `Canasta de 2 por ${pFullName} (+2)`,
+          subDetail,
+          scoreSnapshotText: scoreText,
+          text: `Canasta de 2 de ${pFullName} (+2)`,
           color: 'text-emerald-400 font-bold',
+          icon: '🏀',
+          isScore: true,
         };
       case 'FTM':
         return {
@@ -273,8 +372,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           pointsBadge: '+1',
           actor: pFullName,
           actionName: 'Tiro libre anotado',
+          scoreSnapshotText: scoreText,
           text: `Tiro Libre anotado por ${pFullName} (+1)`,
           color: 'text-cyan-300 font-bold',
+          icon: '🎯',
+          isScore: true,
         };
       case '3PA':
         return {
@@ -282,8 +384,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-slate-800 text-slate-400 border-slate-700',
           actor: pFullName,
           actionName: 'Intento de triple fallado',
+          scoreSnapshotText: scoreText,
           text: `Intento de triple fallado por ${pFullName}`,
           color: 'text-slate-400',
+          icon: '🏹',
+          isScore: false,
         };
       case '2PA':
         return {
@@ -291,8 +396,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-slate-800 text-slate-400 border-slate-700',
           actor: pFullName,
           actionName: 'Tiro de 2 fallado',
+          scoreSnapshotText: scoreText,
           text: `Tiro de 2 fallado por ${pFullName}`,
           color: 'text-slate-400',
+          icon: '❌',
+          isScore: false,
         };
       case 'FTA':
         return {
@@ -300,31 +408,56 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-slate-800 text-slate-400 border-slate-700',
           actor: pFullName,
           actionName: 'Tiro libre fallado',
+          scoreSnapshotText: scoreText,
           text: `Tiro Libre fallado por ${pFullName}`,
           color: 'text-slate-400',
+          icon: '❌',
+          isScore: false,
         };
       case 'PF':
       case 'PFT':
       case 'UF':
       case 'TF':
       case 'OF':
-      case 'BF':
+      case 'BF': {
+        let fBadge = 'FALTA';
+        let fName = 'Falta personal';
+        if (event.actionType === 'PFT' || event.foulType === 'PFT') {
+          fBadge = 'FALTA TIRO';
+          fName = 'Falta de tiro personal';
+        } else if (event.actionType === 'UF' || event.foulType === 'U') {
+          fBadge = 'ANTIDEPORTIVA';
+          fName = 'Falta antideportiva';
+        } else if (event.actionType === 'TF' || event.foulType === 'T') {
+          fBadge = 'TÉCNICA';
+          fName = 'Falta técnica';
+        } else if (event.actionType === 'OF' || event.foulType === 'OF') {
+          fBadge = 'FALTA ATAQUE';
+          fName = 'Falta en ataque';
+        }
         return {
-          badge: 'FALTA',
+          badge: fBadge,
           badgeBg: 'bg-rose-500/25 text-rose-300 border-rose-500/50',
           actor: pFullName,
-          actionName: 'Falta personal',
-          text: `Falta personal de ${pFullName}`,
+          actionName: fName,
+          scoreSnapshotText: scoreText,
+          text: `${fName} de ${pFullName}`,
           color: 'text-rose-400 font-bold',
+          icon: '⚠️',
+          isScore: false,
         };
+      }
       case 'AST':
         return {
           badge: 'ASISTENCIA',
           badgeBg: 'bg-blue-500/25 text-blue-300 border-blue-500/50',
           actor: pFullName,
           actionName: 'Asistencia de canasta',
-          text: `Asistencia de ${pFullName}`,
+          scoreSnapshotText: scoreText,
+          text: `Pase de canasta de ${pFullName}`,
           color: 'text-blue-400 font-semibold',
+          icon: '🎁',
+          isScore: false,
         };
       case 'OREB':
         return {
@@ -332,8 +465,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-purple-500/25 text-purple-300 border-purple-500/50',
           actor: pFullName,
           actionName: 'Rebote ofensivo',
+          scoreSnapshotText: scoreText,
           text: `Rebote ofensivo de ${pFullName}`,
           color: 'text-purple-400 font-semibold',
+          icon: '🔄',
+          isScore: false,
         };
       case 'DREB':
         return {
@@ -341,26 +477,35 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-indigo-500/25 text-indigo-300 border-indigo-500/50',
           actor: pFullName,
           actionName: 'Rebote defensivo',
+          scoreSnapshotText: scoreText,
           text: `Rebote defensivo de ${pFullName}`,
           color: 'text-indigo-400 font-semibold',
+          icon: '🛡️',
+          isScore: false,
         };
       case 'STL':
         return {
           badge: 'RECUPERACIÓN',
           badgeBg: 'bg-teal-500/25 text-teal-300 border-teal-500/50',
           actor: pFullName,
-          actionName: 'Recuperación de balón',
+          actionName: 'Robo / Recuperación',
+          scoreSnapshotText: scoreText,
           text: `Recuperación de balón por ${pFullName}`,
           color: 'text-teal-400 font-semibold',
+          icon: '⚡',
+          isScore: false,
         };
       case 'TO':
         return {
           badge: 'PÉRDIDA',
           badgeBg: 'bg-orange-500/25 text-orange-300 border-orange-500/50',
           actor: pFullName,
-          actionName: 'Pérdida de posesión',
-          text: `Pérdida de balón de ${pFullName}`,
+          actionName: 'Pérdida de balón',
+          scoreSnapshotText: scoreText,
+          text: `Pérdida de posesión de ${pFullName}`,
           color: 'text-orange-400 font-semibold',
+          icon: '⚠️',
+          isScore: false,
         };
       case 'BLK':
         return {
@@ -368,8 +513,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-pink-500/25 text-pink-300 border-pink-500/50',
           actor: pFullName,
           actionName: 'Tapón realizado',
+          scoreSnapshotText: scoreText,
           text: `Tapón de ${pFullName}`,
           color: 'text-pink-400 font-bold',
+          icon: '🚫',
+          isScore: false,
         };
       case 'FD':
         return {
@@ -377,8 +525,35 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-emerald-500/25 text-emerald-300 border-emerald-500/50',
           actor: pFullName,
           actionName: 'Falta recibida',
-          text: `Falta recibida por ${pFullName}`,
+          scoreSnapshotText: scoreText,
+          text: `Falta provocada por ${pFullName}`,
           color: 'text-emerald-300 font-semibold',
+          icon: '🛡️',
+          isScore: false,
+        };
+      case 'BLKR':
+        return {
+          badge: 'TAPÓN RECIBIDO',
+          badgeBg: 'bg-rose-500/25 text-rose-300 border-rose-500/50',
+          actor: pFullName,
+          actionName: 'Tapón recibido',
+          scoreSnapshotText: scoreText,
+          text: `Tapón recibido por ${pFullName}`,
+          color: 'text-rose-400',
+          icon: '🚫',
+          isScore: false,
+        };
+      case 'TIMEOUT' as any:
+        return {
+          badge: 'TIEMPO MUERTO',
+          badgeBg: 'bg-amber-500/25 text-amber-300 border-amber-500/50',
+          actor: game.homeTeamName || 'Local',
+          actionName: 'Tiempo muerto solicitado',
+          scoreSnapshotText: scoreText,
+          text: `Tiempo muerto de ${game.homeTeamName || 'Local'}`,
+          color: 'text-amber-300 font-bold',
+          icon: '⏱️',
+          isScore: false,
         };
       default:
         return {
@@ -386,8 +561,11 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           badgeBg: 'bg-slate-800 text-slate-300 border-slate-700',
           actor: pFullName,
           actionName: event.actionLabel || event.actionType,
-          text: `${event.actionLabel || event.actionType} - ${pFullName}`,
+          scoreSnapshotText: scoreText,
+          text: `${event.actionLabel || event.actionType} • ${pFullName}`,
           color: 'text-slate-300',
+          icon: '📋',
+          isScore: false,
         };
     }
   };
@@ -723,10 +901,10 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                     className={`p-3 rounded-xl border flex flex-col justify-between gap-2 transition ${
                       isNewest
                         ? 'bg-gradient-to-b from-[#132d66] to-[#0c1e45] border-amber-400 ring-2 ring-amber-400/30 shadow-lg shadow-amber-950/40'
-                        : 'bg-[#09152e] border-[#1C3566] text-slate-200 hover:border-slate-500/60'
+                        : 'bg-[#09152e] border-[#1C3566] text-slate-100 hover:border-slate-500/60'
                     }`}
                   >
-                    {/* Top: Quarter, Game Time & "ÚLTIMO" Badge */}
+                    {/* Top: Quarter, Game Time, Score Snapshot & "ÚLTIMO" Badge */}
                     <div className="flex items-center justify-between gap-1 w-full">
                       <div className="flex items-center gap-1.5 font-mono">
                         <span className="px-1.5 py-0.5 rounded bg-slate-900/90 text-slate-300 text-[10px] font-bold border border-slate-700/60">
@@ -736,17 +914,25 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                           {event.gameTimeFormatted || '00:00'}
                         </span>
                       </div>
-                      {isNewest && (
-                        <span className="text-[9px] uppercase font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-sm animate-pulse tracking-wide font-mono shrink-0">
-                          ÚLTIMO
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {desc.scoreSnapshotText && (
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-950/80 text-amber-300 border border-amber-500/30">
+                            {desc.scoreSnapshotText}
+                          </span>
+                        )}
+                        {isNewest && (
+                          <span className="text-[9px] uppercase font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 shadow-sm animate-pulse tracking-wide font-mono shrink-0">
+                            ÚLTIMO
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Action Type Badge with Score increment */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`text-[10.5px] font-black uppercase px-2 py-0.5 rounded-md border font-mono tracking-wide ${desc.badgeBg}`}>
-                        {desc.badge}
+                      <span className={`text-[10.5px] font-black uppercase px-2 py-0.5 rounded-md border font-mono tracking-wide flex items-center gap-1 ${desc.badgeBg}`}>
+                        <span>{desc.icon}</span>
+                        <span>{desc.badge}</span>
                       </span>
                       {desc.pointsBadge && (
                         <span className="text-xs font-black px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 font-mono shadow-sm">
@@ -755,14 +941,19 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                       )}
                     </div>
 
-                    {/* Clear Player / Team and Action Name (Never truncated) */}
-                    <div className="space-y-0.5 pt-0.5 border-t border-slate-700/40">
-                      <div className="text-xs font-bold text-white leading-snug break-words">
+                    {/* Clear Player / Team and Action Name (High Contrast, Never Truncated) */}
+                    <div className="space-y-0.5 pt-1 border-t border-slate-700/50">
+                      <div className="text-xs sm:text-[13px] font-black text-white leading-snug break-words">
                         {desc.actor}
                       </div>
-                      <div className="text-[11px] text-slate-300 leading-snug break-words">
+                      <div className="text-[11px] text-slate-200 font-medium leading-snug break-words">
                         {desc.actionName}
                       </div>
+                      {desc.subDetail && (
+                        <div className="text-[10px] text-amber-300/90 font-mono leading-tight break-words pt-0.5">
+                          {desc.subDetail}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1073,25 +1264,76 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
         </section>
 
         {/* 5. RECENT PLAYS / DIRECTO STREAM */}
-        <section className="bg-[#0B1A38] border border-[#20396B] rounded-2xl p-4 shadow-xl">
-          <div
-            className="flex items-center justify-between cursor-pointer"
-            onClick={() => setShowRecentPlays(!showRecentPlays)}
-          >
-            <div className="flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-200">
-              <Radio className="w-4 h-4 text-red-500 animate-pulse" />
-              <span>Directo: Últimas Jugadas del Partido</span>
+        <section className="bg-[#0B1A38] border border-[#20396B] rounded-2xl p-3 sm:p-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-[#1E3461]">
+            <div
+              className="flex items-center gap-2 cursor-pointer select-none"
+              onClick={() => setShowRecentPlays(!showRecentPlays)}
+            >
+              <Radio className="w-4 h-4 text-red-500 animate-pulse shrink-0" />
+              <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-100">
+                Directo: Últimas Jugadas del Partido
+              </span>
+              <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-500/30">
+                {safeEvents.length} registradas
+              </span>
             </div>
-            <span className="text-[11px] font-mono text-slate-400">
-              {showRecentPlays ? 'Ocultar' : 'Mostrar'}
-            </span>
+
+            {/* Filter buttons & Show/Hide toggle */}
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <div className="flex items-center bg-[#071328] p-0.5 rounded-xl border border-slate-700/60 text-[10px] font-mono">
+                <button
+                  type="button"
+                  onClick={() => setRecentFilter('all')}
+                  className={`px-2 py-0.5 rounded-lg transition ${
+                    recentFilter === 'all'
+                      ? 'bg-cyan-500 text-slate-950 font-black'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Todas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecentFilter('scores')}
+                  className={`px-2 py-0.5 rounded-lg transition ${
+                    recentFilter === 'scores'
+                      ? 'bg-amber-400 text-slate-950 font-black'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  🏀 Canastas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecentFilter('fouls')}
+                  className={`px-2 py-0.5 rounded-lg transition ${
+                    recentFilter === 'fouls'
+                      ? 'bg-rose-500 text-white font-black'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  ⚠️ Faltas
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowRecentPlays(!showRecentPlays)}
+                className="text-[11px] font-mono text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded-lg bg-[#071328] border border-slate-700/40"
+              >
+                {showRecentPlays ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
           </div>
 
           {showRecentPlays && (
-            <div className="mt-3 pt-3 border-t border-[#1E3461] space-y-2">
+            <div className="mt-3 space-y-2">
               {recentEvents.length === 0 ? (
-                <div className="text-center py-4 text-slate-500 text-xs font-mono">
-                  Aún no hay jugadas registradas en el partido
+                <div className="text-center py-6 text-slate-400 text-xs font-mono bg-[#081228] rounded-xl border border-[#1A2E59]/60">
+                  {recentFilter === 'all'
+                    ? 'Aún no hay jugadas registradas en el partido'
+                    : `No hay ${recentFilter === 'scores' ? 'canastas' : 'faltas'} registradas recientemente`}
                 </div>
               ) : (
                 recentEvents.map(event => {
@@ -1099,31 +1341,55 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                   return (
                     <div
                       key={event.id}
-                      className="px-3 py-2.5 rounded-xl bg-[#081228] border border-[#1A2E59] flex items-center justify-between gap-3 text-xs font-mono transition hover:bg-[#0c1c3d]"
+                      className="p-2.5 sm:p-3 rounded-xl bg-[#081228] border border-[#1A2E59] flex items-center justify-between gap-2.5 sm:gap-4 transition hover:bg-[#0c1c3d]"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                        <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 text-[10px] font-bold shrink-0 border border-slate-700/60">
-                          {formatQuarterShort(event.quarter, matchTotalQuarters)}
-                        </span>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border shrink-0 ${desc.badgeBg}`}>
-                          {desc.badge}
-                        </span>
-                        <span className="text-white font-bold shrink-0">
-                          {desc.actor}:
-                        </span>
-                        <span className="text-slate-300 font-sans">
-                          {desc.actionName}
-                        </span>
+                      {/* Left: Timing + Score Snapshot */}
+                      <div className="flex flex-col items-center justify-center shrink-0 min-w-[58px] sm:min-w-[68px] border-r border-slate-800 pr-2 sm:pr-3">
+                        <div className="flex items-center gap-1 font-mono text-[10px] text-slate-300">
+                          <span className="px-1.5 py-0.2 rounded bg-slate-900 border border-slate-700 font-bold">
+                            {formatQuarterShort(event.quarter, matchTotalQuarters)}
+                          </span>
+                          <span className="text-cyan-300 font-bold">
+                            {event.gameTimeFormatted || '00:00'}
+                          </span>
+                        </div>
+                        {desc.scoreSnapshotText && (
+                          <span className="text-[10px] font-mono font-black text-amber-300 mt-1 bg-amber-950/40 px-1.5 py-0.2 rounded border border-amber-500/30">
+                            {desc.scoreSnapshotText}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+
+                      {/* Center: Play description with actor, action and details */}
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border shrink-0 flex items-center gap-1 ${desc.badgeBg}`}>
+                            <span>{desc.icon}</span>
+                            <span>{desc.badge}</span>
+                          </span>
+                          <span className="text-xs sm:text-sm font-bold text-white truncate">
+                            {desc.actor}
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] sm:text-xs text-slate-200 font-medium leading-snug">
+                          {desc.actionName}
+                        </div>
+
+                        {desc.subDetail && (
+                          <div className="text-[10px] text-amber-300/90 font-mono">
+                            {desc.subDetail}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Points or Status Badge */}
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {desc.pointsBadge && (
-                          <span className="text-xs font-black px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono">
+                          <span className="text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-mono shadow-sm">
                             {desc.pointsBadge}
                           </span>
                         )}
-                        <span className="text-[11px] text-cyan-300/80 font-mono font-bold">
-                          {event.gameTimeFormatted || ''}
-                        </span>
                       </div>
                     </div>
                   );

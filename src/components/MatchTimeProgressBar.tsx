@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Timer, Clock, Flame, AlertCircle, RotateCcw } from 'lucide-react';
 import { formatGameTime } from '../utils/statsCalculator';
+import { MasterClockNumber, ShotClockNumber } from './common/IsolatedNumbers';
 
 export type ProgressBarMode = 'possession' | 'game' | 'dual';
 
@@ -155,9 +156,11 @@ export const MatchTimeProgressBar: React.FC<MatchTimeProgressBarProps> = ({
           <div className="flex items-center justify-between text-[10px]">
             <div className="flex items-center gap-1.5">
               <span className="text-gray-400">Posesión:</span>
-              <span className={`font-mono text-xs ${getShotClockTextColor()}`}>
-                {clampedShotSecs}″
-              </span>
+              <ShotClockNumber
+                seconds={clampedShotSecs}
+                isFinished={isGameFinished}
+                className={`font-mono text-xs ${getShotClockTextColor()}`}
+              />
               <span className="text-[9px] text-gray-500">
                 ({Math.round(possessionPercentRemaining)}% restante)
               </span>
@@ -216,9 +219,11 @@ export const MatchTimeProgressBar: React.FC<MatchTimeProgressBarProps> = ({
               <span className="text-gray-400">
                 {currentQuarter <= totalQuarters ? `Cuarto ${currentQuarter}:` : `Prórroga ${currentQuarter - totalQuarters}:`}
               </span>
-              <span className="font-bold text-cyan-300">
-                {formatGameTime(clampedQuarterSecsRemaining)}
-              </span>
+              <MasterClockNumber
+                secondsRemaining={clampedQuarterSecsRemaining}
+                isFinished={isGameFinished}
+                className="font-bold text-cyan-300"
+              />
               <span className="text-[9px] text-gray-500">
                 ({quarterPercentRemaining}% restante del cuarto)
               </span>
@@ -226,9 +231,11 @@ export const MatchTimeProgressBar: React.FC<MatchTimeProgressBarProps> = ({
 
             <div className="text-[9px] text-gray-400">
               <span>Total Partido: </span>
-              <strong className="text-orange-400">
-                {formatGameTime(totalMatchRemainingSecs)}
-              </strong>{' '}
+              <MasterClockNumber
+                secondsRemaining={totalMatchRemainingSecs}
+                isFinished={isGameFinished}
+                className="text-orange-400 font-bold"
+              />{' '}
               <span className="text-gray-500">({totalMatchPercentRemaining}%)</span>
             </div>
           </div>

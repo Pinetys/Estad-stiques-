@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Game, Player } from '../types';
 import {
   calculatePlayerStats,
@@ -12,6 +12,11 @@ import {
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { ArrowRightLeft, Users, Clock, Flame, Scale, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
+import {
+  PlayerStatNumber,
+  PlayerMinutesNumber,
+  DorsalNumber,
+} from './common/IsolatedNumbers';
 
 interface CourtPlayersBarProps {
   game: Game;
@@ -44,12 +49,24 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
   const [isSwipingHorizontally, setIsSwipingHorizontally] = useState<boolean>(false);
   const didSwipeRef = useRef(false);
 
-  const teamStats = calculateTeamMinutesDistribution(
+  const teamStats = useMemo(() => calculateTeamMinutesDistribution(
     game.players,
     game.settings.quarterDurationMinutes,
     game.settings.totalQuarters
-  );
-  const lowMinuteBenchPlayers = benchPlayers.filter(p => isPlayerLowMinutes(p, teamStats));
+  ), [game.players, game.settings.quarterDurationMinutes, game.settings.totalQuarters]);
+
+  const lowMinuteBenchPlayers = useMemo(() => {
+    return benchPlayers.filter(p => isPlayerLowMinutes(p, teamStats));
+  }, [benchPlayers, teamStats]);
+
+  // Memoize player statistics so they are computed ONLY when game.events or player IDs change
+  const playerStatsMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof calculatePlayerStats>>();
+    game.players.forEach(p => {
+      map.set(p.id, calculatePlayerStats(p, game.events));
+    });
+    return map;
+  }, [game.players, game.events]);
 
   // Touch and pointer swipe gesture handlers (Deslizar el dedo encima)
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -289,7 +306,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
           <div className="w-1/2 pr-1">
             <div className="grid grid-cols-5 gap-1.5 w-full">
               {playersOnCourt.map(player => {
-                const stats = calculatePlayerStats(player, game.events);
+                const stats = playerStatsMap.get(player.id) || calculatePlayerStats(player, game.events);
                 const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
                 const isFoulDanger = stats.foulsPersonal === (game.settings.foulOutLimit || 5) - 1;
                 const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
@@ -326,7 +343,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                   >
                     {/* Micro-header: Puntos y Minutos */}
                     <div className="w-full flex items-center justify-between text-[9px] sm:text-[10px] font-mono px-0.5 leading-none text-slate-300">
-                      <span className="font-bold text-orange-400">{stats.points}p</span>
+                      <PlayerStatNumber value={stats.points} suffix="p" className="font-bold text-orange-400" />
                       {isFatigued ? (
                         <span
                           className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-amber-500/25 border border-amber-500/50 text-amber-300 font-black animate-pulse"
@@ -341,12 +358,12 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                           title={`Lleva pocos minutos jugados en el partido (${stats.minutesPlayedFormatted}). Jugador fresco.`}
                         >
                           <Zap className="w-3 h-3 text-sky-400 shrink-0" />
-                          <span>{stats.minutesPlayedFormatted}</span>
+                          <PlayerStatNumber value={stats.minutesPlayedFormatted} />
                         </span>
                       ) : (
                         <span className="flex items-center gap-0.5 text-slate-300 font-bold" title={`Minutos en pista: ${stats.minutesPlayedFormatted}`}>
                           <Clock className="w-3 h-3 text-sky-400 shrink-0" />
-                          <span>{stats.minutesPlayedFormatted}</span>
+                          <PlayerStatNumber value={stats.minutesPlayedFormatted} />
                         </span>
                       )}
                     </div>
@@ -354,9 +371,10 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                     {/* Zona principal destacada: DORSAL GIGANTE Y NOMBRE CLARO */}
                     <div className="flex flex-col items-center justify-center my-0.5 w-full">
                       <div className="relative inline-flex items-center justify-center">
-                        <span className="font-scoreboard font-black text-2xl sm:text-3xl text-amber-400 leading-none drop-shadow-sm">
-                          #{player.number}
-                        </span>
+                        <DorsalNumber
+                          number={player.number}
+                          className="font-scoreboard font-black text-2xl sm:text-3xl text-amber-400 leading-none drop-shadow-sm"
+                        />
                       </div>
                       <span className="text-xs sm:text-sm font-black text-white uppercase tracking-tight truncate w-full mt-0.5 drop-shadow">
                         {player.name.split(' ')[0]}
@@ -426,7 +444,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
             ) : (
               <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none snap-x">
                 {benchPlayers.map(player => {
-                  const stats = calculatePlayerStats(player, game.events);
+                  const stats = playerStatsMap.get(player.id) || calculatePlayerStats(player, game.events);
                   const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
                   const isLow = isPlayerLowMinutes(player, teamStats);
 
@@ -443,18 +461,19 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                     >
                       {/* Header: Puntos y Minutos */}
                       <div className="w-full flex items-center justify-between text-[8px] sm:text-[9px] font-mono px-0.5 leading-none text-slate-400">
-                        <span className="font-bold text-orange-400/90">{stats.points}p</span>
+                        <PlayerStatNumber value={stats.points} suffix="p" className="font-bold text-orange-400/90" />
                         <span className="flex items-center gap-0.5 text-slate-400">
                           <Clock className="w-2.5 h-2.5 opacity-60" />
-                          <span>{stats.minutesPlayedFormatted}</span>
+                          <PlayerStatNumber value={stats.minutesPlayedFormatted} />
                         </span>
                       </div>
 
                       {/* Dorsal y Nombre */}
                       <div className="flex flex-col items-center justify-center my-0.5 w-full">
-                        <span className="font-scoreboard font-black text-xl sm:text-2xl text-sky-400 leading-none">
-                          #{player.number}
-                        </span>
+                        <DorsalNumber
+                          number={player.number}
+                          className="font-scoreboard font-black text-xl sm:text-2xl text-sky-400 leading-none"
+                        />
                         <span className="text-[11px] sm:text-xs font-black text-white uppercase tracking-tight truncate w-full mt-0.5">
                           {player.name.split(' ')[0]}
                         </span>

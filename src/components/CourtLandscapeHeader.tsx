@@ -27,6 +27,13 @@ import {
 } from 'lucide-react';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import { NotificationBellButton } from './NotificationBellButton';
+import {
+  MasterClockNumber,
+  ShotClockNumber,
+  ScoreNumber,
+  FoulsBadgeNumber,
+  TimeoutNumber,
+} from './common/IsolatedNumbers';
 
 interface CourtLandscapeHeaderProps {
   game: Game;
@@ -412,23 +419,22 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               </span>
               <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5">
                 <span className="text-slate-400 font-bold">Faltas:</span>
-                <span
+                <FoulsBadgeNumber
+                  fouls={game.homeQuarterFouls || 0}
+                  bonus={homeIsBonus}
                   className={`font-black px-1.5 py-0.2 rounded text-[10px] ${
                     homeIsBonus
                       ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
                       : 'text-[#FFFDF7] bg-[#071328] border border-[#D4AF37]/40'
                   }`}
-                  title={homeIsBonus ? '¡Bonus alcanzado!' : 'Faltas de equipo este cuarto'}
-                >
-                  {game.homeQuarterFouls || 0}
-                  {homeIsBonus && <span className="ml-0.5 text-[8px] text-rose-400 font-bold">BONUS</span>}
-                </span>
+                />
               </div>
             </div>
 
-            <div className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1">
-              {game.homeScore}
-            </div>
+            <ScoreNumber
+              score={game.homeScore}
+              className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1"
+            />
 
             {/* Home Timeouts */}
             {onTriggerTimeout && (
@@ -440,7 +446,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 title="Pedir Tiempo Muerto Local (60 segundos)"
               >
                 <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#F5C542]" />
-                <span>TM: {game.homeTimeouts ?? 3}</span>
+                <TimeoutNumber timeouts={game.homeTimeouts ?? 3} />
               </button>
             )}
           </div>
@@ -493,9 +499,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 <Play className="w-4 h-4 sm:w-5 sm:h-5 text-[#F5C542] fill-[#F5C542] shrink-0" />
               )}
               <div className="flex flex-col items-center">
-                <span className="font-scoreboard font-black text-2xl sm:text-3xl lg:text-4xl tracking-wider leading-none drop-shadow-md text-[#FFFDF7]">
-                  {formatGameTime(game.status === 'finished' ? 0 : game.currentSecondsRemaining)}
-                </span>
+                <MasterClockNumber
+                  secondsRemaining={game.currentSecondsRemaining}
+                  isFinished={game.status === 'finished'}
+                  className="font-scoreboard font-black text-2xl sm:text-3xl lg:text-4xl tracking-wider leading-none drop-shadow-md text-[#FFFDF7]"
+                />
                 <span className="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
                   {game.status === 'finished' ? (
                     isEditingFinishedGame ? (
@@ -562,7 +570,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               title="Pausar o Reanudar posesión"
             >
               <span className="text-[8px] font-mono text-slate-400 font-bold">POS</span>
-              <span>{game.status === 'finished' ? 0 : shotClockSecs}″</span>
+              <ShotClockNumber seconds={shotClockSecs} isFinished={game.status === 'finished'} />
             </button>
           </div>
 
@@ -591,9 +599,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* RIVAL TEAM CARD */}
           <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[105px] sm:min-w-[130px] lg:min-w-[155px] shadow-md">
-            <div className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1">
-              {game.awayScore}
-            </div>
+            <ScoreNumber
+              score={game.awayScore}
+              className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1"
+            />
 
             {/* Away Timeouts */}
             {onTriggerTimeout && (
@@ -605,7 +614,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 title="Tiempo Muerto Rival (60 segundos)"
               >
                 <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sky-400" />
-                <span>TM: {game.awayTimeouts ?? 3}</span>
+                <TimeoutNumber timeouts={game.awayTimeouts ?? 3} />
               </button>
             )}
 
@@ -627,17 +636,15 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               </div>
               <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5 justify-end">
                 <span className="text-slate-400 font-bold">Faltas:</span>
-                <span
+                <FoulsBadgeNumber
+                  fouls={game.awayQuarterFouls || 0}
+                  bonus={awayIsBonus}
                   className={`font-black px-1.5 py-0.2 rounded text-[10px] ${
                     awayIsBonus
                       ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
                       : 'text-[#FFFDF7] bg-[#071328] border border-sky-500/40'
                   }`}
-                  title={awayIsBonus ? '¡Bonus alcanzado!' : 'Faltas de equipo este cuarto'}
-                >
-                  {game.awayQuarterFouls || 0}
-                  {awayIsBonus && <span className="ml-0.5 text-[8px] text-rose-400 font-bold">BONUS</span>}
-                </span>
+                />
               </div>
             </div>
           </div>

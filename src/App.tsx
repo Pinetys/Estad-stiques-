@@ -256,44 +256,89 @@ export default function App() {
   const [deviceRole, setDeviceRoleState] = useState<DeviceRole>(() => getDeviceRole());
   const [showSyncPairingModal, setShowSyncPairingModal] = useState<boolean>(false);
 
-  // Central Game Clock & Automatic Player Minutes on Court Tracking Engine
+  // Central High-Precision Monotonic Game Clock Engine
+  // Locks to Date.now() real atomic time: never drifts, never freezes, and never slows down
+  const clockSessionRef = useRef<{
+    startRealTime: number;
+    startMatchSeconds: number;
+    startShotSeconds: number;
+    lastRecordedMatchSeconds: number;
+  } | null>(null);
+
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (game.isClockRunning && game.status === 'live') {
-      interval = setInterval(() => {
+    if (!game.isClockRunning || game.status !== 'live') {
+      clockSessionRef.current = null;
+      return;
+    }
+
+    // Initialize anchor to the current clock seconds
+    clockSessionRef.current = {
+      startRealTime: Date.now(),
+      startMatchSeconds: game.currentSecondsRemaining,
+      startShotSeconds: game.shotClockSeconds ?? 24,
+      lastRecordedMatchSeconds: game.currentSecondsRemaining,
+    };
+
+    // Ultra-precise 100ms precision loop comparing against real atomic clock (Date.now())
+    const intervalId = setInterval(() => {
+      if (!clockSessionRef.current) return;
+
+      const now = Date.now();
+      const elapsedTotalSeconds = Math.max(0, Math.floor((now - clockSessionRef.current.startRealTime) / 1000));
+      const expectedMatchSeconds = Math.max(0, clockSessionRef.current.startMatchSeconds - elapsedTotalSeconds);
+
+      // Only dispatch state update when a new whole second has passed
+      if (expectedMatchSeconds !== clockSessionRef.current.lastRecordedMatchSeconds) {
+        const deltaSeconds = Math.max(1, clockSessionRef.current.lastRecordedMatchSeconds - expectedMatchSeconds);
+        clockSessionRef.current.lastRecordedMatchSeconds = expectedMatchSeconds;
+
         setGame(prev => {
           if (!prev.isClockRunning) return prev;
 
-          const isQuarterEnding = prev.currentSecondsRemaining <= 1;
-          if (isQuarterEnding) {
+          // Check if currentSecondsRemaining was manually changed externally (e.g. +10s / -10s or edit clock)
+          const expectedPreviousSecs = expectedMatchSeconds + deltaSeconds;
+          if (prev.currentSecondsRemaining !== expectedPreviousSecs) {
+            // An external manual clock adjustment occurred!
+            // Re-anchor to the new manual value smoothly so we NEVER freeze or lose seconds
+            const newAnchor = prev.currentSecondsRemaining;
+            if (clockSessionRef.current) {
+              clockSessionRef.current.startRealTime = Date.now();
+              clockSessionRef.current.startMatchSeconds = newAnchor;
+              clockSessionRef.current.lastRecordedMatchSeconds = newAnchor;
+            }
+            return prev;
+          }
+
+          const isQuarterEnding = expectedMatchSeconds <= 0;
+          if (isQuarterEnding && prev.currentSecondsRemaining > 0) {
             playSound('buzzer', prev.settings.soundEnabled);
             triggerHaptic('warning', prev.settings.vibrationEnabled);
           }
 
-          const nextSeconds = isQuarterEnding ? 0 : prev.currentSecondsRemaining - 1;
-          const nextClockRunning = isQuarterEnding ? false : true;
+          const nextClockRunning = !isQuarterEnding;
           const currentQ = prev.currentQuarter;
 
-          // Shot clock synchronization: countdown in sync with quarter clock
-          const currentShotSecs = prev.shotClockSeconds !== undefined ? prev.shotClockSeconds : 24;
+          // Shot clock countdown strictly synchronized with real time
+          const currentShotSecs = prev.shotClockSeconds ?? 24;
           const isShotActive = (prev.isShotClockRunning ?? true) && nextClockRunning;
           let nextShotSecs = currentShotSecs;
           let nextShotRunning = prev.isShotClockRunning ?? true;
 
           if (isShotActive && currentShotSecs > 0) {
-            if (currentShotSecs <= 1) {
+            const rawShot = Math.max(0, (clockSessionRef.current?.startShotSeconds ?? 24) - elapsedTotalSeconds);
+            if (rawShot <= 0 && currentShotSecs > 0) {
               nextShotSecs = 0;
               nextShotRunning = false;
               playSound('buzzer', prev.settings.soundEnabled);
               triggerHaptic('warning', prev.settings.vibrationEnabled);
             } else {
-              nextShotSecs = currentShotSecs - 1;
+              nextShotSecs = rawShot;
             }
           } else if (!nextClockRunning) {
             nextShotRunning = false;
           }
 
-          // Automatically increment minutes played and consecutive stint seconds for all players currently on court
+          // Automatically increment minutes played and consecutive stint seconds for on-court players
           const updatedPlayers = prev.players.map(player => {
             if (player.onCourt) {
               const currentTotal = player.minutesPlayedSeconds || 0;
@@ -301,11 +346,11 @@ export default function App() {
               const currentQSeconds = (player.quarterSeconds && player.quarterSeconds[currentQ]) || 0;
               return {
                 ...player,
-                minutesPlayedSeconds: currentTotal + 1,
-                currentStintSeconds: currentStint + 1,
+                minutesPlayedSeconds: currentTotal + deltaSeconds,
+                currentStintSeconds: currentStint + deltaSeconds,
                 quarterSeconds: {
                   ...(player.quarterSeconds || {}),
-                  [currentQ]: currentQSeconds + 1,
+                  [currentQ]: currentQSeconds + deltaSeconds,
                 },
               };
             }
@@ -317,24 +362,25 @@ export default function App() {
 
           return {
             ...prev,
-            currentSecondsRemaining: nextSeconds,
+            currentSecondsRemaining: expectedMatchSeconds,
             isClockRunning: nextClockRunning,
             shotClockSeconds: nextShotSecs,
             isShotClockRunning: nextClockRunning ? nextShotRunning : false,
             players: updatedPlayers,
           };
         });
-      }, 1000);
-    }
+      }
+    }, 100);
+
     return () => {
-      if (interval) clearInterval(interval);
+      clearInterval(intervalId);
     };
   }, [game.isClockRunning, game.status]);
 
   // Check and dispatch Service Worker push notifications for crucial live match events (clutch final 2 mins, overtime, etc.)
   useEffect(() => {
     checkAndNotifyMatchAlerts(game);
-  }, [game.homeScore, game.awayScore, game.currentQuarter, game.currentSecondsRemaining, game.status]);
+  }, [game.homeScore, game.awayScore, game.currentQuarter, game.status]);
 
   // Cloud & Autonomous Server Sync State (real-time sync between Tablet, Mobile and PC)
   const isRemoteSyncInProgressRef = useRef(false);
@@ -739,24 +785,63 @@ export default function App() {
     setShowTeamStatsReportModal(true);
   };
 
-  // Save to localStorage & Library & broadcast active match to cloud
+  // High-Efficiency Persistence: immediate on structural match events, throttled to 4s during free-running clock
+  const lastStructuralSignatureRef = useRef<string>('');
+  const lastClockCloudBroadcastRef = useRef<number>(0);
+  const lastLocalStatePersistRef = useRef<number>(0);
+
+  // Guarantee instant save when closing tab, minimizing, or switching apps on tablet
+  useEffect(() => {
+    const handleEmergencySave = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
+      } catch {}
+    };
+    window.addEventListener('beforeunload', handleEmergencySave);
+    document.addEventListener('visibilitychange', handleEmergencySave);
+    return () => {
+      window.removeEventListener('beforeunload', handleEmergencySave);
+      document.removeEventListener('visibilitychange', handleEmergencySave);
+    };
+  }, [game]);
+
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
+      const now = Date.now();
 
-      // Skip pushing back to cloud if this update originated from remote cloud listener
+      // Structural fingerprint: baskets, fouls, events, quarter changes, timeouts, clock stop/start
+      const currentSignature = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.homeTimeouts}_${game.awayTimeouts}_${game.status}_${game.isClockRunning}`;
+      const hasStructuralChange = currentSignature !== lastStructuralSignatureRef.current;
+
+      // 1. Persist active match state locally:
+      // Immediate on any game event, status change, or clock pause. Throttled to 4s during uninterrupted clock tick.
+      const isThrottleTimeElapsed = now - lastLocalStatePersistRef.current > 4000;
+      if (hasStructuralChange || !game.isClockRunning || isThrottleTimeElapsed) {
+        lastLocalStatePersistRef.current = now;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
+      }
+
       if (isRemoteSyncInProgressRef.current) {
         isRemoteSyncInProgressRef.current = false;
         return;
       }
 
-      // Persist to library and sync if match is live or has events
-      if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
-        saveGameToLibrary(game);
-        setLibraryGames(getSavedGamesFromStorage());
+      const isPeriodicClockBroadcastDue = game.isClockRunning && (now - lastClockCloudBroadcastRef.current > 12000);
 
-        // Broadcast to server & cloud via Unified SyncEngine
-        syncEngine.saveAndSyncMatch(game, { immediate: game.status === 'finished' });
+      if (hasStructuralChange) {
+        lastStructuralSignatureRef.current = currentSignature;
+        lastClockCloudBroadcastRef.current = now;
+
+        // Persist to library and sync
+        if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
+          saveGameToLibrary(game);
+          setLibraryGames(getSavedGamesFromStorage());
+          syncEngine.saveAndSyncMatch(game, { immediate: game.status === 'finished' || !game.isClockRunning });
+        }
+      } else if (isPeriodicClockBroadcastDue) {
+        lastClockCloudBroadcastRef.current = now;
+        // Throttled clock broadcast for spectator screens (does not re-serialize the full 68-match library)
+        syncEngine.saveAndSyncMatch(game, { immediate: false });
       }
     } catch {
       // Storage quota or private mode

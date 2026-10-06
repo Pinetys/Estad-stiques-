@@ -28,6 +28,11 @@ import {
 } from 'lucide-react';
 import { DeviceRole } from '../utils/deviceRole';
 import { SyncStatusBar } from './SyncStatusBar';
+import {
+  MasterClockNumber,
+  ShotClockNumber,
+  ScoreNumber,
+} from './common/IsolatedNumbers';
 
 interface ScoreHeaderProps {
   game: Game;
@@ -313,9 +318,11 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
               ) : (
                 <Play className={`w-4 h-4 sm:w-6 sm:h-6 shrink-0 ${isCourtMode ? 'text-amber-400 fill-amber-400' : 'text-amber-400 fill-amber-400'}`} />
               )}
-              <span className="tracking-widest font-scoreboard leading-none">
-                {isGameFinished ? '00:00' : formatGameTime(game.currentSecondsRemaining)}
-              </span>
+              <MasterClockNumber
+                secondsRemaining={game.currentSecondsRemaining}
+                isFinished={isGameFinished}
+                className="tracking-widest font-scoreboard leading-none"
+              />
             </button>
 
             {/* Shot Clock (24s / 14s) Widget (Optimized & High Visibility) */}
@@ -351,7 +358,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                 }`}
                 title="Pausar / Reanudar 24s"
               >
-                {isGameFinished ? 0 : shotClockSecs}″
+                <ShotClockNumber seconds={shotClockSecs} isFinished={isGameFinished} />
               </button>
             </div>
 
@@ -560,9 +567,10 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
             <div className="flex items-baseline justify-between mt-1 sm:mt-2">
               <div className="flex items-baseline gap-1.5">
-                <span className={`font-scoreboard text-5xl sm:text-6xl md:text-7xl font-black ${isCourtMode ? 'text-amber-300' : 'text-orange-400'} leading-none tracking-tight drop-shadow-md`}>
-                  {game.homeScore}
-                </span>
+                <ScoreNumber
+                  score={game.homeScore}
+                  className={`font-scoreboard text-5xl sm:text-6xl md:text-7xl font-black ${isCourtMode ? 'text-amber-300' : 'text-orange-400'} leading-none tracking-tight drop-shadow-md`}
+                />
                 <span className="text-[10px] sm:text-xs uppercase font-black text-slate-400">pts</span>
               </div>
 
@@ -620,9 +628,10 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
             <div className="flex items-baseline justify-between mt-1 sm:mt-2">
               <div className="flex items-baseline gap-1.5">
-                <span className={`font-scoreboard text-5xl sm:text-6xl md:text-7xl font-black ${isCourtMode ? 'text-sky-300' : 'text-blue-400'} leading-none tracking-tight drop-shadow-md`}>
-                  {game.awayScore}
-                </span>
+                <ScoreNumber
+                  score={game.awayScore}
+                  className={`font-scoreboard text-5xl sm:text-6xl md:text-7xl font-black ${isCourtMode ? 'text-sky-300' : 'text-blue-400'} leading-none tracking-tight drop-shadow-md`}
+                />
                 <span className="text-[10px] sm:text-xs uppercase font-black text-slate-400">pts</span>
               </div>
 

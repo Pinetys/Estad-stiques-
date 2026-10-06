@@ -23,6 +23,10 @@ import {
 } from 'lucide-react';
 import { PlayerShotMap } from './PlayerShotMap';
 import { StartingFiveModal } from './StartingFiveModal';
+import {
+  PlayerStatNumber,
+  DorsalNumber,
+} from './common/IsolatedNumbers';
 
 interface InformativeMobileViewProps {
   game: Game;
@@ -267,9 +271,10 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                   {/* Top row: Number, Name, Position, Minutes */}
                   <div className="flex items-center justify-between gap-1.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/60 text-amber-300 font-mono font-black text-xs flex items-center justify-center shrink-0">
-                        #{player.number}
-                      </span>
+                      <DorsalNumber
+                        number={player.number}
+                        className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/60 text-amber-300 font-mono font-black text-xs flex items-center justify-center shrink-0"
+                      />
                       <div className="min-w-0">
                         <div className="font-bold text-xs sm:text-sm text-white truncate">
                           {player.name}
@@ -283,7 +288,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                     <div className="text-right shrink-0">
                       <div className="text-[11px] font-mono font-bold text-emerald-400 flex items-center gap-1 justify-end">
                         <Clock className="w-3 h-3 opacity-75" />
-                        <span>{stats.minutesPlayedFormatted}</span>
+                        <PlayerStatNumber value={stats.minutesPlayedFormatted} />
                       </div>
                       <span className="text-[9px] uppercase font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-1 rounded">
                         En pista
@@ -295,17 +300,17 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                   <div className="grid grid-cols-5 gap-1 mt-2.5 pt-2 border-t border-[#203a70] text-center font-mono">
                     <div className="bg-[#16336e] p-1 rounded border border-[#254d9b]">
                       <span className="text-[9px] text-slate-300 block">PTS</span>
-                      <span className="font-extrabold text-xs sm:text-sm text-amber-300">{stats.points}</span>
+                      <PlayerStatNumber value={stats.points} className="font-extrabold text-xs sm:text-sm text-amber-300" />
                     </div>
 
                     <div className="bg-[#16336e] p-1 rounded border border-[#254d9b]">
                       <span className="text-[9px] text-slate-300 block">REB</span>
-                      <span className="font-bold text-xs sm:text-sm text-white">{stats.totalRebounds}</span>
+                      <PlayerStatNumber value={stats.totalRebounds} className="font-bold text-xs sm:text-sm text-white" />
                     </div>
 
                     <div className="bg-[#16336e] p-1 rounded border border-[#254d9b]">
                       <span className="text-[9px] text-slate-300 block">AST</span>
-                      <span className="font-bold text-xs sm:text-sm text-white">{stats.assists}</span>
+                      <PlayerStatNumber value={stats.assists} className="font-bold text-xs sm:text-sm text-white" />
                     </div>
 
                     <div className={`p-1 rounded border ${
@@ -316,20 +321,21 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                         : 'bg-[#16336e] border-[#254d9b] text-white'
                     }`}>
                       <span className="text-[9px] opacity-75 block">FAL</span>
-                      <span className="font-black text-xs sm:text-sm">{stats.foulsPersonal}</span>
+                      <PlayerStatNumber value={stats.foulsPersonal} className="font-black text-xs sm:text-sm" />
                     </div>
 
                     <div className="bg-[#16336e] p-1 rounded border border-[#254d9b]">
                       <span className="text-[9px] text-slate-300 block">VAL</span>
-                      <span className={`font-black text-xs sm:text-sm ${
-                        stats.efficiency >= 10
-                          ? 'text-emerald-300'
-                          : stats.efficiency > 0
-                          ? 'text-white'
-                          : 'text-rose-300'
-                      }`}>
-                        {stats.efficiency}
-                      </span>
+                      <PlayerStatNumber
+                        value={stats.efficiency}
+                        className={`font-black text-xs sm:text-sm ${
+                          stats.efficiency >= 10
+                            ? 'text-emerald-300'
+                            : stats.efficiency > 0
+                            ? 'text-white'
+                            : 'text-rose-300'
+                        }`}
+                      />
                     </div>
                   </div>
 
@@ -423,7 +429,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                   >
                     <td className="py-2 px-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-black text-amber-300 text-xs">#{player.number}</span>
+                        <DorsalNumber number={player.number} className="font-black text-amber-300 text-xs" />
                         <span className="font-sans font-bold text-white truncate max-w-[90px] sm:max-w-none">
                           {player.name}
                         </span>
@@ -443,23 +449,24 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                     </td>
 
                     <td className="py-2 px-1.5 text-center text-emerald-400 font-bold text-[11px]">
-                      {stats.minutesPlayedFormatted}
+                      <PlayerStatNumber value={stats.minutesPlayedFormatted} />
                     </td>
 
                     <td className="py-2 px-1 text-center text-amber-300 font-black text-xs">
-                      {stats.points}
+                      <PlayerStatNumber value={stats.points} />
                     </td>
 
                     <td className="py-2 px-1 text-center text-slate-200">
-                      {stats.totalRebounds}
+                      <PlayerStatNumber value={stats.totalRebounds} />
                     </td>
 
                     <td className="py-2 px-1 text-center text-slate-200">
-                      {stats.assists}
+                      <PlayerStatNumber value={stats.assists} />
                     </td>
 
                     <td className="py-2 px-1 text-center">
-                      <span
+                      <PlayerStatNumber
+                        value={stats.foulsPersonal}
                         className={
                           stats.foulsPersonal >= (game.settings.foulOutLimit || 5)
                             ? 'text-rose-400 font-black'
@@ -467,13 +474,11 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
                             ? 'text-amber-400 font-bold'
                             : 'text-slate-300'
                         }
-                      >
-                        {stats.foulsPersonal}
-                      </span>
+                      />
                     </td>
 
                     <td className="py-2 px-1.5 text-center font-black text-emerald-400 text-xs">
-                      {stats.efficiency}
+                      <PlayerStatNumber value={stats.efficiency} />
                     </td>
                   </tr>
                 ))}

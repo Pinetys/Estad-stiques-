@@ -474,9 +474,13 @@ async function startServer() {
       if (Array.isArray(matches)) {
         for (const m of matches) {
           if (m && m.id) {
-            // Never re-add deleted matches
+            // Protect recorded matches: if the match contains recorded events, always preserve it and clear any tombstone
             if (serverDb.deletedMatchIds && serverDb.deletedMatchIds.includes(m.id)) {
-              continue;
+              if (m.events && m.events.length > 0) {
+                serverDb.deletedMatchIds = serverDb.deletedMatchIds.filter(id => id !== m.id);
+              } else {
+                continue;
+              }
             }
             const existing = serverDb.matches[m.id];
             if (existing) {

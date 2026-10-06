@@ -2,6 +2,13 @@ import React from 'react';
 import { Game } from '../types';
 import { formatGameTime } from '../utils/statsCalculator';
 import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown, Edit2 } from 'lucide-react';
+import {
+  MasterClockNumber,
+  ShotClockNumber,
+  ScoreNumber,
+  FoulsBadgeNumber,
+  TimeoutNumber,
+} from './common/IsolatedNumbers';
 
 interface CourtScoreboardProps {
   game: Game;
@@ -88,25 +95,23 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           <div className="text-xs sm:text-sm font-black text-[#F5C542] uppercase tracking-wider truncate w-full px-1">
             {game.homeTeamName || 'LOCAL'}
           </div>
-          <div
+          <ScoreNumber
+            score={game.homeScore}
             className={`font-scoreboard font-extrabold ${
               compact ? 'text-2xl sm:text-3xl' : 'text-4xl sm:text-5xl md:text-6xl'
             } text-[#F5C542] tracking-normal leading-none my-1 drop-shadow-[0_2px_14px_rgba(212,175,55,0.45)]`}
-          >
-            {game.homeScore}
-          </div>
+          />
           <div className="flex items-center gap-1 text-[10px] sm:text-xs font-mono">
             <span className="text-slate-400 text-[9px] sm:text-[10px]">F:</span>
-            <span
+            <FoulsBadgeNumber
+              fouls={game.homeQuarterFouls || 0}
+              bonus={homeIsBonus}
               className={`font-black px-1.5 py-0.2 rounded text-[10px] sm:text-xs ${
                 homeIsBonus
                   ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
                   : 'text-[#FFFDF7] bg-[#071328] border border-[#D4AF37]/40'
               }`}
-            >
-              {game.homeQuarterFouls || 0}
-              {homeIsBonus && <span className="ml-0.5 text-[8px] text-rose-400 font-bold">BONUS</span>}
-            </span>
+            />
           </div>
 
           {/* Home Timeouts button (TM) */}
@@ -118,7 +123,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
             title="Pedir Tiempo Muerto (60 segundos)"
           >
             <Timer className="w-3 h-3 text-[#F5C542]" />
-            <span>TM: {game.homeTimeouts ?? 3}</span>
+            <TimeoutNumber timeouts={game.homeTimeouts ?? 3} />
           </button>
         </div>
 
@@ -148,13 +153,13 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
                 ) : (
                   <Play className={`${compact ? 'w-4 h-4' : 'w-4 h-4 sm:w-6 sm:h-6'} text-[#F5C542] fill-[#F5C542] shrink-0`} />
                 )}
-                <span
+                <MasterClockNumber
+                  secondsRemaining={game.currentSecondsRemaining}
+                  isFinished={game.status === 'finished'}
                   className={`font-scoreboard font-black ${
                     compact ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-5xl md:text-6xl'
                   } tracking-wider leading-none drop-shadow-md text-[#FFFDF7]`}
-                >
-                  {formatGameTime(game.status === 'finished' ? 0 : game.currentSecondsRemaining)}
-                </span>
+                />
               </div>
               <div className="mt-0.5 flex items-center gap-1">
                 {game.status === 'finished' ? (
@@ -230,7 +235,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
               title="Pausar / Reanudar 24s"
             >
               <span className="text-[9px] font-mono font-bold uppercase text-slate-400">POS</span>
-              <span className="leading-none">{game.status === 'finished' ? 0 : shotClockSecs}″</span>
+              <ShotClockNumber seconds={shotClockSecs} isFinished={game.status === 'finished'} className="leading-none" />
             </button>
 
             {/* Quick +-10s micro-adjust */}
@@ -282,13 +287,12 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
               </button>
             )}
           </div>
-          <div
+          <ScoreNumber
+            score={game.awayScore}
             className={`font-scoreboard font-extrabold ${
               compact ? 'text-2xl sm:text-3xl' : 'text-4xl sm:text-5xl md:text-6xl'
             } text-[#FFFDF7] tracking-normal leading-none my-1 drop-shadow-[0_2px_14px_rgba(255,253,247,0.35)]`}
-          >
-            {game.awayScore}
-          </div>
+          />
 
           {/* Rival Quick Action Row: Points (+1, +2, +3) & Proportioned Foul (+FALTA) */}
           <div className="grid grid-cols-4 gap-1 w-full max-w-[210px] mt-1">
@@ -364,7 +368,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
             title="Tiempo Muerto Rival (60 segundos)"
           >
             <Timer className="w-3 h-3 text-sky-400" />
-            <span>TM: {game.awayTimeouts ?? 3}</span>
+            <TimeoutNumber timeouts={game.awayTimeouts ?? 3} />
           </button>
         </div>
       </div>

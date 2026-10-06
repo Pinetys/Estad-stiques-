@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Game, PlayEvent, Player, StatActionType, PendingShot } from '../types';
 import { ACTION_DEFINITIONS } from '../data/defaultData';
 import {
@@ -194,6 +194,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   }, []);
 
   const shotClockSecs = game.shotClockSeconds !== undefined ? game.shotClockSeconds : 24;
+
+  const teamMinutesDistributionStats = useMemo(() => {
+    return calculateTeamMinutesDistribution(
+      game.players,
+      game.settings.quarterDurationMinutes,
+      game.settings.totalQuarters
+    );
+  }, [game.players, game.settings.quarterDurationMinutes, game.settings.totalQuarters]);
 
   const handleResetShotClock = (secs: 24 | 14) => {
     if (isGameFinished) return;
@@ -1375,13 +1383,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 3.1 SUBTLE ROTATION & EQUAL MINUTES ALERT (PORTRAIT) */}
       {(() => {
-        const teamMinutesStats = calculateTeamMinutesDistribution(
-          game.players,
-          game.settings.quarterDurationMinutes,
-          game.settings.totalQuarters
-        );
         const fatiguedPlayersOnCourt = playersOnCourt.filter(p => isPlayerFatigued(p));
-        const lowMinuteBenchPlayers = benchPlayers.filter(p => isPlayerLowMinutes(p, teamMinutesStats));
+        const lowMinuteBenchPlayers = benchPlayers.filter(p => isPlayerLowMinutes(p, teamMinutesDistributionStats));
 
         if (
           isLandscapeTablet ||

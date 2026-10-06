@@ -20,9 +20,13 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
             id="action-3pm-btn"
             onClick={() => onInitiateAction('3PM')}
             className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-black rounded-2xl py-3 px-4 flex items-center justify-between border-2 border-amber-300 shadow-xl shadow-orange-500/25 active:scale-95 transition min-h-[64px] sm:min-h-[72px] lg:min-h-[78px]"
+            title="Atajo teclado: Tecla 3"
           >
             <div className="flex flex-col text-left">
-              <span className="text-base sm:text-lg lg:text-xl font-black font-mono leading-none tracking-tight">+3 TRIPLE</span>
+              <span className="text-base sm:text-lg lg:text-xl font-black font-mono leading-none tracking-tight flex items-center gap-1.5">
+                <span>+3 TRIPLE</span>
+                <kbd className="text-[9px] bg-slate-950/40 text-amber-200 px-1.5 py-0.5 rounded font-mono font-bold" title="Atajo teclado: 3">3</kbd>
+              </span>
               <span className="text-[10px] sm:text-xs uppercase font-extrabold text-slate-900 mt-1">Triple Metido</span>
             </div>
             <span className="text-2xl sm:text-3xl font-mono font-black leading-none bg-slate-950/20 px-2.5 py-1 rounded-xl">+3</span>
@@ -156,9 +160,12 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
             id="action-pf-btn"
             onClick={() => onInitiateAction('PF')}
             className="bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white border-2 border-rose-300 font-black rounded-xl sm:rounded-2xl py-2 px-1 flex flex-col items-center justify-center shadow-lg active:scale-95 transition h-[62px] sm:h-[68px] lg:h-[74px] min-h-[62px] sm:min-h-[68px] lg:min-h-[74px]"
-            title="Falta Personal simple (P)"
+            title="Falta Personal simple (P) - Atajo teclado: Tecla 4"
           >
-            <span className="text-[11px] sm:text-xs lg:text-sm font-black font-mono leading-tight text-white uppercase">FALTA (P)</span>
+            <span className="text-[11px] sm:text-xs lg:text-sm font-black font-mono leading-tight text-white uppercase flex items-center gap-1">
+              <span>FALTA (P)</span>
+              <kbd className="text-[8px] bg-slate-950/50 text-rose-200 px-1 py-0.2 rounded font-mono font-bold">4</kbd>
+            </span>
             <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10px] uppercase text-rose-100 font-bold mt-1 leading-none">Personal</span>
           </button>
 
@@ -221,9 +228,13 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
             id="action-3pm-btn"
             onClick={() => onInitiateAction('3PM')}
             className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-black rounded-xl xs:rounded-2xl py-2.5 px-2 xs:px-3 flex items-center justify-between border-2 border-amber-300 shadow-md active:scale-95 transition min-h-[54px] xs:min-h-[60px] sm:min-h-[68px]"
+            title="Atajo teclado: Tecla 3"
           >
             <div className="flex flex-col text-left leading-tight">
-              <span className="text-xs xs:text-sm sm:text-base font-black font-mono">+3 TRIPLE</span>
+              <span className="text-xs xs:text-sm sm:text-base font-black font-mono flex items-center gap-1">
+                <span>+3 TRIPLE</span>
+                <kbd className="text-[8px] bg-slate-950/40 text-amber-200 px-1 py-0.2 rounded font-mono font-bold">3</kbd>
+              </span>
               <span className="text-[8px] xs:text-[9px] uppercase font-extrabold text-slate-900">Metido</span>
             </div>
             <span className="text-base xs:text-xl sm:text-2xl font-mono font-black bg-slate-950/20 px-2 py-0.5 rounded-lg">+3</span>
@@ -353,9 +364,12 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           id="action-pf-btn"
           onClick={() => onInitiateAction('PF')}
           className="bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white border-2 border-rose-300 font-black rounded-xl xs:rounded-2xl py-2 px-0.5 sm:px-1 flex flex-col items-center justify-center shadow-md active:scale-95 transition min-h-[52px] xs:min-h-[58px] sm:min-h-[64px]"
-          title="Falta Personal simple (P)"
+          title="Falta Personal simple (P) - Atajo teclado: Tecla 4"
         >
-          <span className="text-[10px] xs:text-[11.5px] sm:text-xs font-black font-mono leading-none text-white">FALTA (P)</span>
+          <span className="text-[10px] xs:text-[11.5px] sm:text-xs font-black font-mono leading-none text-white flex items-center gap-1">
+            <span>FALTA (P)</span>
+            <kbd className="text-[8px] bg-slate-950/50 text-rose-200 px-0.5 py-0.2 rounded font-mono font-bold">4</kbd>
+          </span>
           <span className="text-[7px] xs:text-[8px] uppercase text-rose-100 font-bold mt-1">Personal</span>
         </button>
 
