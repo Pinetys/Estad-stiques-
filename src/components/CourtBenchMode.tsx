@@ -500,6 +500,61 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     setShowBenchInModal(false);
   };
 
+  // Keyboard shortcuts: strictly keys '3' and '4' per user instruction
+  // Key '3' -> Triple Metido (+3 puntos, '3PM')
+  // Key '4' -> Falta Personal Simple ('PF')
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (
+        isActionsLocked ||
+        showCloseConfirmModal ||
+        showStartingFiveModal ||
+        showQuickTimeAdjustModal ||
+        timeoutModalTeam !== null ||
+        showProBenefitsModal ||
+        showMinutesBalanceModal ||
+        showRivalRosterModal ||
+        showSpectatorQRModal
+      ) {
+        return;
+      }
+
+      if (e.key === '3') {
+        e.preventDefault();
+        handleInitiateAction('3PM');
+      } else if (e.key === '4') {
+        e.preventDefault();
+        handleInitiateAction('PF');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    isActionsLocked,
+    showCloseConfirmModal,
+    showStartingFiveModal,
+    showQuickTimeAdjustModal,
+    timeoutModalTeam,
+    showProBenefitsModal,
+    showMinutesBalanceModal,
+    showRivalRosterModal,
+    showSpectatorQRModal,
+    game.settings.soundEnabled,
+    game.settings.vibrationEnabled,
+  ]);
+
   // 2. STEP 2: USER SELECTS PLAYER FOR THE PENDING ACTION
   const handleConfirmPlayerForAction = (player: Player) => {
     if (!pendingAction) return;

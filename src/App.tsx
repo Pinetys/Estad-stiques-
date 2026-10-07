@@ -69,7 +69,7 @@ import {
   fetchAllMatchesFromCloud,
   ActiveMatchMetadata,
 } from './lib/firebase';
-import { syncEngine, SyncEngineStatus } from './lib/syncEngine';
+import { syncEngine, SyncEngineStatus, validateQRGameData } from './lib/syncEngine';
 import { useScreenWakeLock } from './utils/screenWakeLock';
 
 // Icons
@@ -401,20 +401,47 @@ export default function App() {
     setIsSpectatorConnecting(true);
     setSpectatorConnectionError(null);
 
+    const applyLoadedGame = (candidate: any, source: string): boolean => {
+      if (!candidate) return false;
+      const validation = validateQRGameData(candidate, `QR Loader (${source})`);
+      if (!validation.isValid || !validation.game) {
+        console.error(`[App] ❌ Fallo al validar partido desde QR (${source}):`, validation.errors);
+        setSpectatorConnectionError(`Datos del partido incompletos o corruptos: ${validation.errors.join('; ')}`);
+        return false;
+      }
+
+      const validGame = validation.game;
+
+      // Protect current local game if user was recording another match
+      setGame(prev => {
+        if (prev && prev.id && prev.id !== validGame.id && (prev.events.length > 0 || prev.homeScore > 0 || prev.awayScore > 0)) {
+          console.info(`[App] Resguardando partido previo en biblioteca local: ${prev.id}`);
+          saveGameToLibrary(prev);
+        }
+        return validGame;
+      });
+
+      // Save loaded game to local library
+      saveGameToLibrary(validGame);
+      setLibraryGames(getSavedGamesFromStorage());
+
+      // Set syncEngine active watched match ID for real-time background tracking
+      syncEngine.setWatchedMatchId(validGame.id);
+
+      isRemoteSyncInProgressRef.current = true;
+      setDeviceRoleState('spectator');
+      persistDeviceRole('spectator');
+      setActiveTab('live');
+      setIsSpectatorConnecting(false);
+      return true;
+    };
+
     // 1. Try by transfer code if present
     if (pairCode) {
       try {
         const loadedGame = await syncEngine.fetchGameByTransferCode(pairCode);
-        if (loadedGame && loadedGame.id) {
-          saveGameToLibrary(loadedGame);
-          setGame(loadedGame);
-          setDeviceRoleState('spectator');
-          persistDeviceRole('spectator');
-          setActiveTab('live');
-          setIsSpectatorConnecting(false);
-          return;
-        }
-      } catch (err) {
+        if (applyLoadedGame(loadedGame, `PIN Code: ${pairCode}`)) return;
+      } catch (err: any) {
         console.warn('Auto pair code error:', err);
       }
     }
@@ -423,15 +450,7 @@ export default function App() {
     if (matchId) {
       try {
         const loadedGame = await syncEngine.fetchGameById(matchId);
-        if (loadedGame && loadedGame.id) {
-          saveGameToLibrary(loadedGame);
-          setGame(loadedGame);
-          setDeviceRoleState('spectator');
-          persistDeviceRole('spectator');
-          setActiveTab('live');
-          setIsSpectatorConnecting(false);
-          return;
-        }
+        if (applyLoadedGame(loadedGame, `Server matchId: ${matchId}`)) return;
       } catch (err) {
         console.warn('Server matchId fetch error:', err);
       }
@@ -439,15 +458,7 @@ export default function App() {
       // 3. Try from Cloud Firestore by matchId (for GitHub Pages & serverless hosting)
       try {
         const cloudGame = await fetchMatchFromCloud(matchId);
-        if (cloudGame && cloudGame.id) {
-          saveGameToLibrary(cloudGame);
-          setGame(cloudGame);
-          setDeviceRoleState('spectator');
-          persistDeviceRole('spectator');
-          setActiveTab('live');
-          setIsSpectatorConnecting(false);
-          return;
-        }
+        if (applyLoadedGame(cloudGame, `Firestore matchId: ${matchId}`)) return;
       } catch (err) {
         console.warn('Cloud matchId fetch error:', err);
       }
@@ -455,49 +466,27 @@ export default function App() {
 
     // 4. Try from local library
     if (matchId) {
+      const cleanMatchId = matchId.trim().toLowerCase();
       const local = getSavedGamesFromStorage().find(
-        m => m.id === matchId || m.id?.toLowerCase() === matchId.toLowerCase()
+        m => m.id?.toLowerCase() === cleanMatchId || (m as any).gameId?.toLowerCase() === cleanMatchId
       );
-      if (local && (local.events?.length > 0 || local.status === 'live' || local.status === 'finished')) {
-        setGame(local);
-        setDeviceRoleState('spectator');
-        persistDeviceRole('spectator');
-        setActiveTab('live');
-        setIsSpectatorConnecting(false);
-        return;
-      }
+      if (local && applyLoadedGame(local, `Local Storage: ${matchId}`)) return;
     }
 
     // 5. Try loading active match from server or Cloud Firestore
     try {
       const activeMatch = await syncEngine.fetchActiveMatch();
-      if (activeMatch && activeMatch.id) {
-        saveGameToLibrary(activeMatch);
-        setGame(activeMatch);
-        setDeviceRoleState('spectator');
-        persistDeviceRole('spectator');
-        setActiveTab('live');
-        setIsSpectatorConnecting(false);
-        return;
-      }
+      if (applyLoadedGame(activeMatch, 'Server Active Match')) return;
     } catch {}
 
     try {
       const cloudMatches = await fetchAllMatchesFromCloud();
       const live = cloudMatches.find(m => m.status === 'live') || cloudMatches[0];
-      if (live && live.id) {
-        saveGameToLibrary(live);
-        setGame(live);
-        setDeviceRoleState('spectator');
-        persistDeviceRole('spectator');
-        setActiveTab('live');
-        setIsSpectatorConnecting(false);
-        return;
-      }
+      if (applyLoadedGame(live, 'Firestore Live Match')) return;
     } catch {}
 
     setIsSpectatorConnecting(false);
-    setSpectatorConnectionError('No se pudo encontrar el partido en directo. Verifica el código o la conexión.');
+    setSpectatorConnectionError('No se pudo encontrar el partido en directo. Verifica el código QR o la conexión.');
   }, []);
 
   // Initialize and run the Unified Sync Engine (SSE streaming + server sync + firestore fallback)
@@ -535,18 +524,42 @@ export default function App() {
 
     // 3. Listen to remote match real-time events (from tablet to phone/PC)
     const unsubMatchUpdate = syncEngine.onRemoteMatchUpdate(remoteGame => {
+      const validation = validateQRGameData(remoteGame, 'Remote Push in App');
+      if (!validation.isValid || !validation.game) {
+        console.warn('[App] Evento de actualización remota descartado por validación:', validation.errors);
+        return;
+      }
+      const validRemote = validation.game;
       setLibraryGames(getSavedGamesFromStorage());
 
       setGame(currentGame => {
-        if (remoteGame.id === currentGame.id) {
-          const remoteUpdated = remoteGame.updatedAt ? new Date(remoteGame.updatedAt).getTime() : 0;
+        const isMatch =
+          validRemote.id === currentGame.id ||
+          validRemote.id?.toLowerCase() === currentGame.id?.toLowerCase() ||
+          (validRemote as any).gameId === currentGame.id;
+
+        if (isMatch) {
+          const remoteUpdated = validRemote.updatedAt ? new Date(validRemote.updatedAt).getTime() : 0;
           const localUpdated = currentGame.updatedAt ? new Date(currentGame.updatedAt).getTime() : 0;
+          const remoteEventsCount = validRemote.events?.length || 0;
+          const localEventsCount = currentGame.events?.length || 0;
+          const hasScoreDiff = validRemote.homeScore !== currentGame.homeScore || validRemote.awayScore !== currentGame.awayScore;
+          const hasQuarterDiff = validRemote.currentQuarter !== currentGame.currentQuarter;
+          const hasStatusDiff = validRemote.status !== currentGame.status;
+          const hasClockDiff = Math.abs((validRemote.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || validRemote.isClockRunning !== currentGame.isClockRunning;
+          const hasFoulsDiff = validRemote.homeQuarterFouls !== currentGame.homeQuarterFouls || validRemote.awayQuarterFouls !== currentGame.awayQuarterFouls;
+
           if (
-            (remoteGame.events?.length || 0) > (currentGame.events?.length || 0) ||
+            remoteEventsCount !== localEventsCount ||
+            hasScoreDiff ||
+            hasQuarterDiff ||
+            hasStatusDiff ||
+            hasClockDiff ||
+            hasFoulsDiff ||
             remoteUpdated > localUpdated
           ) {
             isRemoteSyncInProgressRef.current = true;
-            return remoteGame;
+            return validRemote;
           }
         }
         return currentGame;
@@ -827,6 +840,12 @@ export default function App() {
       }
 
       const isPeriodicClockBroadcastDue = game.isClockRunning && (now - lastClockCloudBroadcastRef.current > 12000);
+
+      // Only recorder devices should broadcast live match updates to cloud/server;
+      // spectator/monitor devices are pure observers and must not push back to avoid race conditions.
+      if (deviceRole === 'spectator' || deviceRole === 'monitor') {
+        return;
+      }
 
       if (hasStructuralChange) {
         lastStructuralSignatureRef.current = currentSignature;

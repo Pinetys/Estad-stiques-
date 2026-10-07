@@ -49,6 +49,167 @@ interface QueuedMutation {
   timestamp: number;
 }
 
+export interface QRGameValidationResult {
+  isValid: boolean;
+  game: Game | null;
+  errors: string[];
+}
+
+/**
+ * Validates whether incoming match data (received via QR, transfer PIN, or remote sync)
+ * contains a complete and consistent player roster, valid events structure, and core metadata
+ * before overwriting or merging into local state.
+ * Emits detailed error logs when data is missing or corrupted.
+ */
+export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGameValidationResult {
+  const errors: string[] = [];
+
+  if (!raw || typeof raw !== 'object') {
+    const errorMsg = 'El objeto de partido recibido es nulo o no es un objeto válido.';
+    errors.push(errorMsg);
+    console.error(`[syncEngine] [${context}] Error de validación: datos no son un objeto`, {
+      context,
+      rawType: typeof raw,
+      raw,
+    });
+    return { isValid: false, game: null, errors };
+  }
+
+  // 1. Validate gameId / id
+  const rawId = raw.id || raw.gameId || raw.matchId;
+  const gameId = typeof rawId === 'string' ? rawId.trim() : (rawId ? String(rawId).trim() : '');
+
+  if (!gameId) {
+    errors.push('Falta identificador único de partido (se requiere "id" o "gameId").');
+  }
+
+  // 2. Validate players structure
+  if (!Array.isArray(raw.players)) {
+    errors.push('La propiedad "players" no es un arreglo válido de jugadores.');
+  } else {
+    for (let i = 0; i < raw.players.length; i++) {
+      const p = raw.players[i];
+      if (!p || typeof p !== 'object') {
+        errors.push(`El jugador en la posición [${i}] es nulo o no es un objeto.`);
+        continue;
+      }
+      if (p.id === undefined || p.id === null || p.id === '') {
+        errors.push(`El jugador en la posición [${i}] carece de "id" único.`);
+      }
+      if (typeof p.name !== 'string' || p.name.trim() === '') {
+        // Warning or default, but if number is also missing, treat as invalid
+        if (p.number === undefined || p.number === null) {
+          errors.push(`El jugador en la posición [${i}] carece de "name" y "number".`);
+        }
+      }
+    }
+  }
+
+  // 3. Validate events structure
+  if (!Array.isArray(raw.events)) {
+    errors.push('La propiedad "events" no es un arreglo válido de jugadas/eventos.');
+  } else {
+    for (let i = 0; i < raw.events.length; i++) {
+      const e = raw.events[i];
+      if (!e || typeof e !== 'object') {
+        errors.push(`El evento en la posición [${i}] es nulo o no es un objeto.`);
+        continue;
+      }
+      if (!e.id) {
+        errors.push(`El evento en la posición [${i}] carece de "id" único.`);
+      }
+      if (!e.actionType || typeof e.actionType !== 'string') {
+        errors.push(`El evento en la posición [${i}] carece de "actionType" válido.`);
+      }
+    }
+  }
+
+  // If critical errors found, log detailed diagnostic report
+  if (errors.length > 0) {
+    console.error(`[syncEngine] [${context}] ❌ Fallo en la validación de estructura de partido:`, {
+      context,
+      gameId,
+      totalErrors: errors.length,
+      errorsList: errors,
+      hasPlayersArray: Array.isArray(raw.players),
+      playersCount: Array.isArray(raw.players) ? raw.players.length : 0,
+      hasEventsArray: Array.isArray(raw.events),
+      eventsCount: Array.isArray(raw.events) ? raw.events.length : 0,
+      homeTeamName: raw.homeTeamName,
+      awayTeamName: raw.awayTeamName,
+      status: raw.status,
+      rawPayloadPreview: {
+        id: raw.id,
+        gameId: raw.gameId,
+        matchId: raw.matchId,
+        playersSample: Array.isArray(raw.players) ? raw.players.slice(0, 3) : raw.players,
+        eventsSample: Array.isArray(raw.events) ? raw.events.slice(0, 3) : raw.events,
+      },
+    });
+    return { isValid: false, game: null, errors };
+  }
+
+  // 4. Map & sanitize events without duplicating IDs
+  const seenEventIds = new Set<string>();
+  const normalizedEvents = (raw.events as any[]).filter(e => {
+    if (!e || !e.id) return false;
+    const strId = String(e.id);
+    if (seenEventIds.has(strId)) return false;
+    seenEventIds.add(strId);
+    return true;
+  }).map(e => ({
+    ...e,
+    id: String(e.id),
+    actionType: String(e.actionType),
+    quarter: typeof e.quarter === 'number' && !isNaN(e.quarter) ? e.quarter : 1,
+    secondsRemaining: typeof e.secondsRemaining === 'number' && !isNaN(e.secondsRemaining) ? e.secondsRemaining : 600,
+    timestamp: e.timestamp ? (Number(e.timestamp) || Date.now()) : Date.now(),
+    pointsAdded: typeof e.pointsAdded === 'number' && !isNaN(e.pointsAdded) ? e.pointsAdded : 0,
+    isOpponentAction: Boolean(e.isOpponentAction),
+  }));
+
+  // 5. Map & sanitize players
+  const normalizedPlayers = (raw.players as any[]).map((p, idx) => ({
+    ...p,
+    id: String(p.id ?? `p-${idx}`),
+    name: String(p.name || `Jugador #${p.number ?? idx + 1}`),
+    number: typeof p.number === 'number' ? p.number : (Number(p.number) || (idx + 1)),
+    onCourt: Boolean(p.onCourt),
+    position: p.position || 'JUG',
+    points: typeof p.points === 'number' && !isNaN(p.points) ? p.points : 0,
+    fouls: typeof p.fouls === 'number' && !isNaN(p.fouls) ? p.fouls : 0,
+    minutesPlayedSeconds: typeof p.minutesPlayedSeconds === 'number' && !isNaN(p.minutesPlayedSeconds) ? p.minutesPlayedSeconds : 0,
+  }));
+
+  // 6. Build clean, type-safe Game object
+  const normalizedGame: Game = {
+    ...raw,
+    id: gameId,
+    homeTeamName: (raw.homeTeamName && String(raw.homeTeamName).trim()) || 'Local',
+    awayTeamName: (raw.awayTeamName && String(raw.awayTeamName).trim()) || 'Visitante',
+    homeScore: typeof raw.homeScore === 'number' && !isNaN(raw.homeScore) ? raw.homeScore : 0,
+    awayScore: typeof raw.awayScore === 'number' && !isNaN(raw.awayScore) ? raw.awayScore : 0,
+    currentQuarter: typeof raw.currentQuarter === 'number' && !isNaN(raw.currentQuarter) ? Math.max(1, raw.currentQuarter) : 1,
+    currentSecondsRemaining: typeof raw.currentSecondsRemaining === 'number' && !isNaN(raw.currentSecondsRemaining) ? Math.max(0, raw.currentSecondsRemaining) : 600,
+    isClockRunning: Boolean(raw.isClockRunning),
+    homeQuarterFouls: typeof raw.homeQuarterFouls === 'number' && !isNaN(raw.homeQuarterFouls) ? raw.homeQuarterFouls : 0,
+    awayQuarterFouls: typeof raw.awayQuarterFouls === 'number' && !isNaN(raw.awayQuarterFouls) ? raw.awayQuarterFouls : 0,
+    homeTimeouts: typeof raw.homeTimeouts === 'number' && !isNaN(raw.homeTimeouts) ? raw.homeTimeouts : 2,
+    awayTimeouts: typeof raw.awayTimeouts === 'number' && !isNaN(raw.awayTimeouts) ? raw.awayTimeouts : 2,
+    status: raw.status || 'setup',
+    players: normalizedPlayers,
+    events: normalizedEvents,
+    quarterScores: Array.isArray(raw.quarterScores) ? raw.quarterScores : [],
+    updatedAt: raw.updatedAt || new Date().toISOString(),
+  };
+
+  return {
+    isValid: true,
+    game: normalizedGame,
+    errors: [],
+  };
+}
+
 function getOfflineQueue(): QueuedMutation[] {
   try {
     const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
@@ -79,6 +240,7 @@ class AutoSyncManager {
   private firestoreQuotaExceeded = false;
   private lastSavedGameHash: string = '';
   private debounceTimer: any = null;
+  private watchedMatchId: string | null = null;
 
   public currentStatus: SyncEngineStatus = {
     status: 'connected',
@@ -204,12 +366,53 @@ class AutoSyncManager {
     }
   }
 
+  public setWatchedMatchId(id: string | null): void {
+    this.watchedMatchId = id ? id.trim() : null;
+    if (this.watchedMatchId) {
+      this.checkWatchedMatchUpdate(this.watchedMatchId);
+    }
+  }
+
+  public getWatchedMatchId(): string | null {
+    return this.watchedMatchId;
+  }
+
+  /**
+   * Directly poll the tracked spectator match from server
+   */
+  public async checkWatchedMatchUpdate(matchId?: string): Promise<Game | null> {
+    const targetId = matchId ? matchId.trim() : this.watchedMatchId;
+    if (!targetId) return null;
+
+    try {
+      const res = await fetch(`/api/sync/match/${encodeURIComponent(targetId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.game) {
+          const val = validateQRGameData(data.game, 'Watched Match Direct Poll');
+          if (val.isValid && val.game) {
+            this.handleRemoteMatchPush(val.game);
+            return val.game;
+          }
+        }
+      }
+    } catch (err) {
+      // Network or offline, ignore
+    }
+    return null;
+  }
+
   /**
    * Fast check for server updates (with 4s timeout)
    */
   public async checkServerUpdates(): Promise<void> {
     if (this.isSyncing) return;
     try {
+      // 1. If following a match as spectator, actively fetch its live status
+      if (this.watchedMatchId) {
+        await this.checkWatchedMatchUpdate();
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
       const res = await fetch('/api/sync/status', { signal: controller.signal });
@@ -637,7 +840,11 @@ class AutoSyncManager {
       throw new Error(err.error || 'Código no encontrado o caducado');
     }
     const data = await res.json();
-    return data.game;
+    const validation = validateQRGameData(data.game, `PIN Code: ${cleanCode}`);
+    if (!validation.isValid || !validation.game) {
+      throw new Error(`Datos de partido incompletos o corruptos: ${validation.errors.join('; ')}`);
+    }
+    return validation.game;
   }
 
   /**
@@ -651,7 +858,10 @@ class AutoSyncManager {
       const res = await fetch(`/api/sync/match/${encodeURIComponent(cleanId)}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.game) return data.game;
+        if (data.game) {
+          const validation = validateQRGameData(data.game, `FetchById Server: ${cleanId}`);
+          if (validation.isValid && validation.game) return validation.game;
+        }
       }
     } catch {}
 
@@ -660,7 +870,10 @@ class AutoSyncManager {
       const res = await fetch(`/api/sync/get-transfer-code/${encodeURIComponent(cleanId)}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.game) return data.game;
+        if (data.game) {
+          const validation = validateQRGameData(data.game, `FetchById TransferCode: ${cleanId}`);
+          if (validation.isValid && validation.game) return validation.game;
+        }
       }
     } catch {}
 
@@ -668,7 +881,10 @@ class AutoSyncManager {
     const local = getSavedGamesFromStorage().find(
       g => g.id === cleanId || g.id?.toLowerCase() === cleanId.toLowerCase()
     );
-    if (local) return local;
+    if (local) {
+      const validation = validateQRGameData(local, `FetchById Local: ${cleanId}`);
+      if (validation.isValid && validation.game) return validation.game;
+    }
 
     throw new Error('Partido no encontrado');
   }
@@ -681,23 +897,35 @@ class AutoSyncManager {
       const res = await fetch('/api/sync/active-match');
       if (res.ok) {
         const data = await res.json();
-        return data.activeMatch || null;
+        if (data.activeMatch) {
+          const validation = validateQRGameData(data.activeMatch, 'Fetch Active Match');
+          if (validation.isValid && validation.game) return validation.game;
+        }
       }
     } catch {}
     return null;
   }
 
-  // Handling remote pushes from SSE
+  // Handling remote pushes from SSE or background polling
   private handleRemoteMatchPush(remoteMatch: Game) {
-    if (!remoteMatch || !remoteMatch.id || isDemoGame(remoteMatch)) return;
+    if (!remoteMatch || isDemoGame(remoteMatch)) return;
+
+    // Validate structure before merging into local library or firing update listeners
+    const validation = validateQRGameData(remoteMatch, 'Remote Match Push');
+    if (!validation.isValid || !validation.game) {
+      console.warn('[syncEngine] Partido remoto descartado por fallo en validación de datos:', validation.errors);
+      return;
+    }
+
+    const validatedGame = validation.game;
 
     // Merge into local library
-    mergeCloudMatches([remoteMatch]);
+    mergeCloudMatches([validatedGame]);
 
     // Notify match update listeners
     this.matchUpdateListeners.forEach(fn => {
       try {
-        fn(remoteMatch);
+        fn(validatedGame);
       } catch (e) {
         console.error('Error in match update listener:', e);
       }
@@ -706,7 +934,7 @@ class AutoSyncManager {
     // Check if it's a newer match that the user might want to load
     this.remoteMatchDetectedListeners.forEach(fn => {
       try {
-        fn(remoteMatch, true);
+        fn(validatedGame, true);
       } catch (e) {
         console.error('Error in remote match detected listener:', e);
       }

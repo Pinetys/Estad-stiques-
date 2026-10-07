@@ -20,6 +20,13 @@ import {
   Activity,
 } from 'lucide-react';
 import { syncEngine } from '../lib/syncEngine';
+import {
+  MasterClockNumber,
+  ScoreNumber,
+  FoulsBadgeNumber,
+  PlayerStatNumber,
+  DorsalNumber,
+} from './common/IsolatedNumbers';
 
 interface LiveMatchSpectatorViewProps {
   game: Game;
@@ -60,6 +67,20 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
     });
     return () => unsub();
   }, []);
+
+  // Dedicated active live polling for spectator follower mode (reliable even if SSE fails or mobile sleeps)
+  useEffect(() => {
+    if (game.id) {
+      syncEngine.setWatchedMatchId(game.id);
+    }
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && game.status !== 'finished' && game.id) {
+        syncEngine.checkWatchedMatchUpdate(game.id).catch(() => {});
+      }
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [game.id, game.status]);
 
   // Update last sync time whenever game changes
   useEffect(() => {
@@ -732,7 +753,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
             {/* Game Clock Display */}
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-black/60 border border-amber-500/40 text-amber-400 font-scoreboard font-black text-xl sm:text-2xl tracking-widest shadow-inner">
               <Clock className="w-4 h-4 text-amber-400/80 shrink-0" />
-              <span>{formatGameTime(game.currentSecondsRemaining)}</span>
+              <MasterClockNumber secondsRemaining={game.currentSecondsRemaining} isFinished={isGameOver} />
             </div>
           </div>
 
@@ -772,9 +793,10 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
             <div className="col-span-4 flex flex-col items-center justify-center min-w-0 px-0.5 sm:px-2">
               <div className="bg-[#071329]/90 border border-[#27447D] rounded-2xl px-2 sm:px-4 py-2 sm:py-3 w-full flex items-center justify-center gap-1.5 sm:gap-3 shadow-inner">
                 {/* Home Points */}
-                <span className="font-scoreboard font-black text-3xl sm:text-5xl md:text-6xl text-amber-400 leading-none drop-shadow-md text-right min-w-[32px] sm:min-w-[55px]">
-                  {game.homeScore}
-                </span>
+                <ScoreNumber
+                  score={game.homeScore}
+                  className="font-scoreboard font-black text-3xl sm:text-5xl md:text-6xl text-amber-400 leading-none drop-shadow-md text-right min-w-[32px] sm:min-w-[55px]"
+                />
 
                 {/* Separator */}
                 <div className="flex flex-col items-center px-0.5 shrink-0">
@@ -787,9 +809,10 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                 </div>
 
                 {/* Away Points */}
-                <span className="font-scoreboard font-black text-3xl sm:text-5xl md:text-6xl text-cyan-400 leading-none drop-shadow-md text-left min-w-[32px] sm:min-w-[55px]">
-                  {game.awayScore}
-                </span>
+                <ScoreNumber
+                  score={game.awayScore}
+                  className="font-scoreboard font-black text-3xl sm:text-5xl md:text-6xl text-cyan-400 leading-none drop-shadow-md text-left min-w-[32px] sm:min-w-[55px]"
+                />
               </div>
             </div>
 
