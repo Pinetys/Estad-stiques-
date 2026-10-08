@@ -6,6 +6,7 @@ import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import { saveGameToLibrary } from '../utils/libraryUtils';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { buildSpectatorUrl } from '../utils/urlHelper';
+import { formatGameTime } from '../utils/statsCalculator';
 import {
   QrCode,
   Laptop,
@@ -26,6 +27,8 @@ import {
   AlertTriangle,
   Play,
   Eye,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface SyncPairingModalProps {
@@ -48,18 +51,51 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
   const [activeTab, setActiveTab] = useState<'emit' | 'receive' | 'role'>('emit');
   const [pinCode, setPinCode] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [showQrCode, setShowQrCode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
   const [inputCode, setInputCode] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [status, setStatus] = useState<SyncEngineStatus>(syncEngine.currentStatus);
 
+  // Auto-detected live matches on the local network / server (Zero-QR discovery)
+  const [discoveredMatch, setDiscoveredMatch] = useState<Game | null>(null);
+  const [discoveredPin, setDiscoveredPin] = useState<string | null>(null);
+
   useEffect(() => {
     const unsub = syncEngine.subscribeStatus(st => setStatus(st));
     return () => unsub();
   }, []);
+
+  // Poll for active match broadcast on LAN/Server
+  useEffect(() => {
+    if (isOpen) {
+      checkDiscoveredMatches();
+      const interval = setInterval(checkDiscoveredMatches, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isOpen, activeTab]);
+
+  const checkDiscoveredMatches = async () => {
+    try {
+      const data = await syncEngine.fetchLiveBroadcastMatches();
+      const target = data.activeMatch || (data.liveMatches && data.liveMatches[0]) || null;
+      if (target) {
+        setDiscoveredMatch(target);
+        if (data.transferCodes) {
+          for (const [code, val] of Object.entries(data.transferCodes)) {
+            if (val.game?.id === target.id) {
+              setDiscoveredPin(code);
+              break;
+            }
+          }
+        }
+      }
+    } catch {}
+  };
 
   // When modal opens, auto-generate PIN and QR for the current match if in emit tab
   useEffect(() => {
@@ -107,6 +143,32 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
+  const handleCopyPin = () => {
+    if (!pinCode) return;
+    playSound('click', true);
+    triggerHaptic('light', true);
+    navigator.clipboard.writeText(pinCode);
+    setCopiedPin(true);
+    setTimeout(() => setCopiedPin(false), 2000);
+  };
+
+  const handleConnectDiscoveredMatch = (game: Game) => {
+    playSound('score', true);
+    triggerHaptic('heavy', true);
+    syncEngine.setWatchedMatchId(game.id);
+    saveGameToLibrary(game);
+
+    onChangeDeviceRole('monitor');
+    persistDeviceRole('monitor');
+
+    setSuccessMsg(`¡Conectado! Recibiendo transmisión en directo de "${game.homeTeamName} vs ${game.awayTeamName}"`);
+    onLoadGame(game);
+
+    setTimeout(() => {
+      onClose();
+    }, 1200);
+  };
+
   const handleConnectByCode = async () => {
     if (!inputCode.trim()) return;
     playSound('click', true);
@@ -116,6 +178,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
 
     try {
       const game = await syncEngine.fetchGameByTransferCode(inputCode.trim());
+      syncEngine.setWatchedMatchId(game.id);
       saveGameToLibrary(game);
 
       // Automatically switch this receiving computer to Monitor Mode (Solo Lectura)
@@ -130,7 +193,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
 
       setTimeout(() => {
         onClose();
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
       setErrorMsg(err.message || 'Código no encontrado o caducado. Comprueba las mayúsculas o el guion.');
     } finally {
@@ -250,86 +313,150 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
             </div>
           )}
 
-          {/* TAB 1: EMITIR (TABLET / MÓVIL) */}
+          {/* TAB 1: EMITIR (TABLET DE PISTA) */}
           {activeTab === 'emit' && (
             <div className="space-y-4">
-              <div className="bg-[#141A29] border border-orange-500/30 rounded-2xl p-4 text-center space-y-3">
+              <div className="bg-[#141A29] border-2 border-orange-500/40 rounded-2xl p-4 sm:p-5 text-center space-y-4 shadow-xl">
                 <div className="flex items-center justify-center gap-2 text-orange-400 text-xs font-bold font-mono uppercase tracking-wider">
-                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />
-                  <span>Emitiendo Partido Activo</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping" />
+                  <span>Emitiendo Partido en Directo</span>
                 </div>
 
-                <div className="font-bold text-white text-sm sm:text-base">
+                <div className="font-black text-white text-base sm:text-lg">
                   {currentGame.homeTeamName || 'Local'} ({currentGame.homeScore}) vs{' '}
                   {currentGame.awayTeamName || 'Rival'} ({currentGame.awayScore})
                 </div>
 
-                {/* QR Code Display */}
-                <div className="flex flex-col items-center justify-center pt-1">
-                  {qrDataUrl ? (
-                    <div className="bg-white p-3 rounded-2xl shadow-xl border-4 border-orange-500/40">
-                      <img
-                        src={qrDataUrl}
-                        alt="Código QR para emparejar con el ordenador"
-                        className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-48 h-48 bg-neutral-900 rounded-2xl flex items-center justify-center text-gray-500 font-mono text-xs">
-                      {isGenerating ? 'Generando QR...' : 'Sin código QR'}
-                    </div>
-                  )}
+                {/* BIG PROMINENT PIN CODE (Sin necesidad de QR ni cámara) */}
+                <div className="bg-[#0b101d] border-2 border-amber-400/60 rounded-2xl p-4 sm:p-5 flex flex-col items-center justify-center gap-2 shadow-inner">
+                  <span className="text-xs text-amber-300 font-mono font-bold uppercase tracking-wider">
+                    CÓDIGO PIN PARA EL ORDENADOR
+                  </span>
 
-                  <p className="text-[11px] text-gray-300 mt-2 max-w-xs">
-                    Escanea este código con cualquier móvil u ordenador para ver el partido en directo: solo resultado y estadísticas de jugadores, sin acceso a menús ni edición.
+                  <div className="px-6 py-3 bg-neutral-950 border-2 border-amber-400 rounded-2xl font-mono font-black text-3xl sm:text-4xl tracking-widest text-amber-400 shadow-2xl select-all">
+                    {pinCode || 'GENERANDO...'}
+                  </div>
+
+                  <p className="text-[12px] text-gray-300 max-w-sm mt-1 leading-relaxed">
+                    En el ordenador, abre la aplicación y pulsa <strong>"Conectar a Mesa"</strong> o introduce este código PIN. Recibirá el marcador, faltas y reloj en tiempo real. <strong>No requiere cámara ni QR.</strong>
                   </p>
+
+                  <div className="flex items-center gap-2 w-full pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCopyPin}
+                      disabled={!pinCode}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-mono font-black text-xs flex items-center justify-center gap-1.5 transition shadow-md cursor-pointer"
+                    >
+                      {copiedPin ? <Check className="w-3.5 h-3.5 text-slate-950" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedPin ? '¡PIN Copiado!' : 'Copiar PIN'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      disabled={!pinCode}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:scale-95 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 border border-gray-700 transition shadow-md cursor-pointer"
+                    >
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace'}</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* 6-Char PIN Code */}
-                {pinCode && (
-                  <div className="pt-2 border-t border-gray-800 flex flex-col items-center justify-center gap-1">
-                    <span className="text-[10px] text-gray-400 font-mono uppercase font-bold">
-                      O introduce este código PIN en el ordenador:
-                    </span>
-                    <div className="px-4 py-2 bg-neutral-900 border-2 border-orange-400 rounded-xl font-mono font-black text-2xl tracking-widest text-orange-400 shadow-inner">
-                      {pinCode}
-                    </div>
-                  </div>
-                )}
+                {/* Optional QR Code fold (solo si alguien quiere escanear con móvil) */}
+                <div className="pt-1 border-t border-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowQrCode(!showQrCode)}
+                    className="text-[11px] text-gray-400 hover:text-gray-200 font-mono flex items-center justify-center gap-1.5 mx-auto py-1 transition cursor-pointer"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>{showQrCode ? 'Ocultar Código QR' : 'Mostrar Código QR (opcional si usas cámara de móvil)'}</span>
+                    {showQrCode ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
 
-                {/* Copy Link Button */}
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="w-full py-2.5 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-gray-700 font-mono font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-sm"
-                >
-                  {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedLink ? '¡Enlace copiado al portapapeles!' : 'Copiar Enlace Directo para Espectadores'}</span>
-                </button>
+                  {showQrCode && qrDataUrl && (
+                    <div className="mt-3 flex flex-col items-center justify-center animate-in fade-in">
+                      <div className="bg-white p-3 rounded-2xl shadow-xl border-2 border-orange-400">
+                        <img
+                          src={qrDataUrl}
+                          alt="Código QR opcional"
+                          className="w-36 h-36 object-contain"
+                        />
+                      </div>
+                      <span className="text-[10px] text-gray-400 mt-1 font-mono">
+                        Escaneo opcional para teléfonos de aficionados
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Status info */}
               <div className="p-3 bg-neutral-900/60 rounded-2xl border border-gray-800 text-[11px] font-mono text-gray-400 flex items-center justify-between">
-                <span>Estado de emisión:</span>
+                <span>Transmisión en pista:</span>
                 <span className="text-emerald-400 font-bold flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Streaming SSE Activo (Latencia &lt;100ms)
+                  Streaming SSE Activo (Latencia &lt;80ms)
                 </span>
               </div>
             </div>
           )}
 
-          {/* TAB 2: RECIBIR EN ORDENADOR (MONITOR) */}
+          {/* TAB 2: RECIBIR EN ORDENADOR (MONITOR / MESA) */}
           {activeTab === 'receive' && (
             <div className="space-y-4">
+              {/* Option A: LAN / Server Auto-Discovery Card */}
+              {discoveredMatch && (
+                <div className="bg-gradient-to-r from-emerald-950/70 via-[#101c26] to-cyan-950/70 border-2 border-emerald-500/70 rounded-2xl p-4 sm:p-5 space-y-3 shadow-xl animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="text-xs font-black font-mono text-emerald-300 uppercase tracking-wider">
+                        PARTIDO EN DIRECTO DETECTADO EN LA RED
+                      </span>
+                    </div>
+                    {discoveredPin && (
+                      <span className="text-[11px] font-mono font-bold bg-emerald-900/80 text-emerald-200 px-2 py-0.5 rounded-lg border border-emerald-500/50">
+                        PIN: {discoveredPin}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="text-white font-black text-base sm:text-lg">
+                    {discoveredMatch.homeTeamName || 'Local'} ({discoveredMatch.homeScore ?? 0}) vs{' '}
+                    {discoveredMatch.awayTeamName || 'Visitante'} ({discoveredMatch.awayScore ?? 0})
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-gray-300 font-mono">
+                    <span>Periodo {discoveredMatch.currentQuarter}</span>
+                    <span>·</span>
+                    <span>Reloj: {formatGameTime(discoveredMatch.currentSecondsRemaining ?? 600)}</span>
+                    <span>·</span>
+                    <span>{discoveredMatch.events?.length || 0} jugadas</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleConnectDiscoveredMatch(discoveredMatch)}
+                    className="w-full py-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-mono font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+                  >
+                    <Radio className="w-4 h-4 animate-pulse stroke-[3]" />
+                    <span>CONECTAR ESTE ORDENADOR AHORA (1 CLIC · SIN CÓDIGO)</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Option B: Manual PIN entry */}
               <div className="bg-[#141A29] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 space-y-4">
                 <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold font-mono uppercase tracking-wider">
-                  <Laptop className="w-4 h-4" />
-                  <span>Vincular con la Tablet de Pista</span>
+                  <KeyRound className="w-4 h-4" />
+                  <span>{discoveredMatch ? 'O Introduce el Código PIN de la Tablet:' : 'Introduce el Código PIN de la Tablet:'}</span>
                 </div>
 
                 <p className="text-xs text-gray-300">
-                  Introduce el código PIN de 6 caracteres que muestra la tablet (o abre el enlace escaneado):
+                  Introduce el código PIN (ej: <strong>TAB-482</strong> o solo <strong>482</strong>) que muestra la tablet en la pista:
                 </p>
 
                 <div className="space-y-2">
@@ -337,16 +464,19 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
                     type="text"
                     value={inputCode}
                     onChange={e => setInputCode(e.target.value.toUpperCase())}
-                    placeholder="Ejemplo: BSK-482"
-                    maxLength={10}
-                    className="w-full px-4 py-3 bg-neutral-950 border-2 border-cyan-500/60 rounded-xl text-center text-xl sm:text-2xl font-mono font-black text-cyan-300 tracking-widest placeholder:text-gray-600 focus:outline-none focus:border-cyan-400"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleConnectByCode();
+                    }}
+                    placeholder="Ejemplo: TAB-482"
+                    maxLength={12}
+                    className="w-full px-4 py-3 bg-neutral-950 border-2 border-cyan-500/60 rounded-xl text-center text-xl sm:text-2xl font-mono font-black text-cyan-300 tracking-widest placeholder:text-gray-600 focus:outline-none focus:border-cyan-400 shadow-inner"
                   />
 
                   <button
                     type="button"
-                    onClick={handleConnectByCode}
+                    onClick={() => handleConnectByCode()}
                     disabled={!inputCode.trim() || isConnecting}
-                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 active:scale-95 disabled:opacity-50 text-white font-mono font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 active:scale-95 disabled:opacity-50 text-white font-mono font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center gap-2 transition cursor-pointer"
                   >
                     {isConnecting ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -359,7 +489,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
 
                 <div className="pt-2 border-t border-gray-800 text-[11px] text-gray-400 space-y-1">
                   <p>
-                    💡 Al conectar, este ordenador se pondrá automáticamente en <strong>Modo Monitor</strong> (solo lectura), recibiendo el reloj y las jugadas al instante sin peligro de alterar la mesa.
+                    💡 Al conectar, este ordenador se pondrá automáticamente en <strong>Modo Monitor (Mesa de Control)</strong>. Recibirá el marcador, faltas y reloj en tiempo real sin peligro de pisar los datos de la tablet.
                   </p>
                 </div>
               </div>

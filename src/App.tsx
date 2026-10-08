@@ -558,17 +558,19 @@ export default function App() {
           const hasClockDiff = Math.abs((validRemote.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || validRemote.isClockRunning !== currentGame.isClockRunning;
           const hasFoulsDiff = validRemote.homeQuarterFouls !== currentGame.homeQuarterFouls || validRemote.awayQuarterFouls !== currentGame.awayQuarterFouls;
 
-          // Spectators and monitors ALWAYS accept the freshest server/recorder state
+          // Spectators, monitors and connected devices ALWAYS accept freshest server/recorder state
           if (
             currentRole === 'spectator' ||
             currentRole === 'monitor' ||
+            isWatchedMatch ||
             remoteEventsCount !== localEventsCount ||
             hasScoreDiff ||
             hasQuarterDiff ||
             hasStatusDiff ||
             hasClockDiff ||
             hasFoulsDiff ||
-            remoteUpdated >= localUpdated
+            remoteUpdated >= localUpdated ||
+            localEventsCount === 0
           ) {
             isRemoteSyncInProgressRef.current = true;
             return validRemote;
@@ -743,6 +745,12 @@ export default function App() {
     }
     if (target) {
       isRemoteSyncInProgressRef.current = true;
+      syncEngine.setWatchedMatchId(target.id);
+      if (target.status === 'live' && deviceRoleRef.current === 'recorder') {
+        deviceRoleRef.current = 'monitor';
+        setDeviceRoleState('monitor');
+        persistDeviceRole('monitor');
+      }
       setGame(target);
       setActiveTab('live');
       playSound('score', game.settings.soundEnabled);
@@ -834,13 +842,15 @@ export default function App() {
     try {
       const now = Date.now();
 
-      // Structural fingerprint: baskets, fouls, events, quarter changes, timeouts, clock stop/start
-      const currentSignature = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.homeTimeouts}_${game.awayTimeouts}_${game.status}_${game.isClockRunning}`;
+      // Structural fingerprint: baskets, fouls, events, quarter changes, timeouts, substitutions, clock stop/start
+      const courtSignature = (game.players || []).filter(p => p.onCourt).map(p => p.id).sort().join(',');
+      const lastEventId = game.events?.[0]?.id || '';
+      const currentSignature = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.homeTimeouts}_${game.awayTimeouts}_${game.status}_${game.isClockRunning}_${courtSignature}_${lastEventId}`;
       const hasStructuralChange = currentSignature !== lastStructuralSignatureRef.current;
 
       // 1. Persist active match state locally:
-      // Immediate on any game event, status change, or clock pause. Throttled to 4s during uninterrupted clock tick.
-      const isThrottleTimeElapsed = now - lastLocalStatePersistRef.current > 4000;
+      // Immediate on any game event, status change, or clock pause. Throttled to 3s during uninterrupted clock tick.
+      const isThrottleTimeElapsed = now - lastLocalStatePersistRef.current > 3000;
       if (hasStructuralChange || !game.isClockRunning || isThrottleTimeElapsed) {
         lastLocalStatePersistRef.current = now;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
@@ -851,7 +861,8 @@ export default function App() {
         return;
       }
 
-      const isPeriodicClockBroadcastDue = game.isClockRunning && (now - lastClockCloudBroadcastRef.current > 12000);
+      // Responsive clock sync for spectator/table screens (2.5s instead of 12s)
+      const isPeriodicClockBroadcastDue = game.isClockRunning && (now - lastClockCloudBroadcastRef.current > 2500);
 
       // Only recorder devices should broadcast live match updates to cloud/server;
       // spectator/monitor devices are pure observers and must not push back to avoid race conditions.
@@ -864,15 +875,15 @@ export default function App() {
         lastStructuralSignatureRef.current = currentSignature;
         lastClockCloudBroadcastRef.current = now;
 
-        // Persist to library and sync
+        // Persist to library and sync immediately so computer receives actions with zero lag
         if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
           saveGameToLibrary(game);
           setLibraryGames(getSavedGamesFromStorage());
-          syncEngine.saveAndSyncMatch(game, { immediate: game.status === 'finished' || !game.isClockRunning });
+          syncEngine.saveAndSyncMatch(game, { immediate: true });
         }
       } else if (isPeriodicClockBroadcastDue) {
         lastClockCloudBroadcastRef.current = now;
-        // Throttled clock broadcast for spectator screens (does not re-serialize the full 68-match library)
+        // Throttled clock broadcast for spectator screens
         syncEngine.saveAndSyncMatch(game, { immediate: false });
       }
     } catch {

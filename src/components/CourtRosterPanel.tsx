@@ -149,7 +149,8 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
       const inStats = calculatePlayerStats(inP, game.events);
       if (inStats.foulsPersonal >= (game.settings.foulOutLimit || 5)) {
         triggerHaptic('warning', game.settings.vibrationEnabled);
-        alert(`No se puede dar entrada a #${inP.number} ${inP.name}: ha acumulado ${inStats.foulsPersonal} faltas (eliminado).`);
+        setSwapToast(`⚠️ No se puede dar entrada a #${inP.number} ${inP.name.split(' ')[0]}: eliminado por ${inStats.foulsPersonal} faltas`);
+        setTimeout(() => setSwapToast(null), 3500);
         return;
       }
     }

@@ -531,6 +531,23 @@ async function startServer() {
     res.json({ activeMatch: serverDb.activeMatch });
   });
 
+  // 7b. Live matches broadcast overview (for instant zero-QR pairing on PC / Mesa)
+  app.get('/api/sync/live-matches', (req, res) => {
+    try {
+      const liveMatches = Object.values(serverDb.matches).filter(
+        m => m && (m.status === 'live' || (m.events && m.events.length > 0) || (serverDb.activeMatch && serverDb.activeMatch.id === m.id))
+      );
+      res.json({
+        success: true,
+        activeMatch: serverDb.activeMatch,
+        liveMatches,
+        transferCodes: serverDb.transferCodes || {},
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post('/api/sync/active-match', (req, res) => {
     try {
       const { activeMatch } = req.body;

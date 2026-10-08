@@ -1123,6 +1123,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           }}
           onOpenCloudSync={onOpenCloudSync}
           onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
+          onOpenAISubHelper={() => setShowAISubHelperModal(true)}
         />
       ) : (
         <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">

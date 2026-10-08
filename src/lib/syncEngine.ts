@@ -67,73 +67,12 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
   if (!raw || typeof raw !== 'object') {
     const errorMsg = 'El objeto de partido recibido es nulo o no es un objeto válido.';
     errors.push(errorMsg);
-    console.error(`[syncEngine] [${context}] Error de validación: datos no son un objeto`, {
-      context,
-      rawType: typeof raw,
-      raw,
-    });
     return { isValid: false, game: null, errors };
   }
 
-  // 1. Validate gameId / id
+  // 1. Validate gameId / id with robust auto-generation fallback
   const rawId = raw.id || raw.gameId || raw.matchId;
-  const gameId = typeof rawId === 'string' ? rawId.trim() : (rawId ? String(rawId).trim() : '');
-
-  if (!gameId) {
-    errors.push('Falta identificador único de partido (se requiere "id" o "gameId").');
-  }
-
-  // 2. Validate players structure
-  if (!Array.isArray(raw.players)) {
-    errors.push('La propiedad "players" no es un arreglo válido de jugadores.');
-  } else {
-    for (let i = 0; i < raw.players.length; i++) {
-      const p = raw.players[i];
-      if (!p || typeof p !== 'object') {
-        errors.push(`El jugador en la posición [${i}] es nulo o no es un objeto.`);
-        continue;
-      }
-      if (p.id === undefined || p.id === null || p.id === '') {
-        errors.push(`El jugador en la posición [${i}] carece de "id" único.`);
-      }
-      if (typeof p.name !== 'string' || p.name.trim() === '') {
-        // Warning or default, but if number is also missing, treat as invalid
-        if (p.number === undefined || p.number === null) {
-          errors.push(`El jugador en la posición [${i}] carece de "name" y "number".`);
-        }
-      }
-    }
-  }
-
-  // 3. Validate events structure
-  if (!Array.isArray(raw.events)) {
-    errors.push('La propiedad "events" no es un arreglo válido de jugadas/eventos.');
-  }
-
-  // If critical errors found, log detailed diagnostic report
-  if (errors.length > 0) {
-    console.error(`[syncEngine] [${context}] ❌ Fallo en la validación de estructura de partido:`, {
-      context,
-      gameId,
-      totalErrors: errors.length,
-      errorsList: errors,
-      hasPlayersArray: Array.isArray(raw.players),
-      playersCount: Array.isArray(raw.players) ? raw.players.length : 0,
-      hasEventsArray: Array.isArray(raw.events),
-      eventsCount: Array.isArray(raw.events) ? raw.events.length : 0,
-      homeTeamName: raw.homeTeamName,
-      awayTeamName: raw.awayTeamName,
-      status: raw.status,
-      rawPayloadPreview: {
-        id: raw.id,
-        gameId: raw.gameId,
-        matchId: raw.matchId,
-        playersSample: Array.isArray(raw.players) ? raw.players.slice(0, 3) : raw.players,
-        eventsSample: Array.isArray(raw.events) ? raw.events.slice(0, 3) : raw.events,
-      },
-    });
-    return { isValid: false, game: null, errors };
-  }
+  const gameId = typeof rawId === 'string' && rawId.trim() ? rawId.trim() : (rawId ? String(rawId).trim() : `match-${Date.now()}`);
 
   // 4. Map & sanitize events safely without dropping collisions or rejecting on minor quirks
   const seenEventIds = new Set<string>();
@@ -596,8 +535,10 @@ class AutoSyncManager {
     }
     saveGamesToStorage(updated);
 
-    // Create fingerprint to avoid spamming
-    const dataHash = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.status}_${game.isClockRunning}`;
+    // Create rich fingerprint to capture substitutions, fouls, timeouts and score/clock changes
+    const courtSignature = (game.players || []).filter(p => p.onCourt).map(p => p.id).sort().join(',');
+    const latestEv = game.events?.[0]?.id || '';
+    const dataHash = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.status}_${game.isClockRunning}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.homeTimeouts}_${game.awayTimeouts}_${Math.floor(game.currentSecondsRemaining || 0)}_${courtSignature}_${latestEv}`;
     if (dataHash === this.lastSavedGameHash && !options.immediate) {
       return;
     }
@@ -882,6 +823,36 @@ class AutoSyncManager {
     }
 
     throw new Error('Partido no encontrado');
+  }
+
+  /**
+   * Fetch currently active live matches and codes broadcasting on LAN/Server
+   */
+  public async fetchLiveBroadcastMatches(): Promise<{
+    activeMatch: Game | null;
+    liveMatches: Game[];
+    transferCodes: Record<string, { game: Game; createdAt: number }>;
+  }> {
+    try {
+      const res = await fetch('/api/sync/live-matches');
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          activeMatch: data.activeMatch ? (validateQRGameData(data.activeMatch, 'Active Match').game) : null,
+          liveMatches: Array.isArray(data.liveMatches)
+            ? data.liveMatches.map((m: any) => validateQRGameData(m, 'Live Match').game).filter(Boolean) as Game[]
+            : [],
+          transferCodes: data.transferCodes || {},
+        };
+      }
+    } catch {}
+
+    const fallbackActive = await this.fetchActiveMatch();
+    return {
+      activeMatch: fallbackActive,
+      liveMatches: fallbackActive ? [fallbackActive] : [],
+      transferCodes: {},
+    };
   }
 
   /**

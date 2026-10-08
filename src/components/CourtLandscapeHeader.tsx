@@ -24,6 +24,8 @@ import {
   Check,
   Edit2,
   QrCode,
+  Sparkles,
+  Radio,
 } from 'lucide-react';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import { NotificationBellButton } from './NotificationBellButton';
@@ -67,6 +69,7 @@ interface CourtLandscapeHeaderProps {
   onOpenCloudSync?: () => void;
   onOpenRivalRoster?: () => void;
   onOpenSpectatorQR?: () => void;
+  onOpenAISubHelper?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -101,6 +104,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenCloudSync,
   onOpenRivalRoster,
   onOpenSpectatorQR,
+  onOpenAISubHelper,
 }) => {
   const totalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
     ? 6
@@ -245,24 +249,42 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <span className="hidden xl:inline">{isWakeLockActive ? 'Pantalla Activa' : 'Auto Bloqueo'}</span>
           </button>
 
-          {/* Botón QR Seguidores para enlazar con la vista de los aficionados */}
+          {/* Botón Asistente IA Rotaciones por Minutos y Fatiga */}
+          {onOpenAISubHelper && (
+            <button
+              type="button"
+              id="header-ai-sub-helper-btn"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                onOpenAISubHelper();
+              }}
+              className="px-2 py-0.5 rounded border border-purple-500/60 bg-gradient-to-r from-purple-950/90 via-indigo-950/80 to-[#0E224A] hover:from-purple-900 hover:to-indigo-900 text-amber-300 font-mono font-black text-[10px] sm:text-[11px] flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
+              title="Asistente IA de Rotaciones: sugiere automáticamente cambios según minutos jugados y fatiga"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <span>IA Rotar</span>
+            </button>
+          )}
+
+          {/* Botón Vincular con Mesa / Ordenador por PIN y Red (Sin QR) */}
           <button
             type="button"
-            id="header-spectator-qr-btn"
+            id="header-mesa-sync-btn"
             onClick={() => {
               playSound('click', game.settings.soundEnabled);
               triggerHaptic('light', game.settings.vibrationEnabled);
-              if (onOpenSpectatorQR) {
-                onOpenSpectatorQR();
-              } else if (onOpenCloudSync) {
+              if (onOpenCloudSync) {
                 onOpenCloudSync();
+              } else if (onOpenSpectatorQR) {
+                onOpenSpectatorQR();
               }
             }}
-            className="px-2 py-0.5 rounded border border-cyan-500/60 bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 font-mono font-bold text-[10px] sm:text-[11px] flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
-            title="Ver código QR para que los seguidores y aficionados sigan el partido en directo"
+            className="px-2 py-0.5 rounded border border-cyan-500/60 bg-gradient-to-r from-cyan-950/80 to-[#0E224A] hover:bg-[#16356E] text-cyan-300 font-mono font-bold text-[10px] sm:text-[11px] flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
+            title="Sincronización en Directo con el Ordenador / Mesa de Control (por PIN o Red Local, sin QR)"
           >
-            <QrCode className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-bold">QR Seguidores</span>
+            <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span className="font-bold">Mesa / PC</span>
           </button>
 
           {/* Push Notifications Toggle for Match Alerts */}
@@ -314,16 +336,31 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <button
               type="button"
               onClick={onCycleShotMode}
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border transition active:scale-95 hidden md:inline-flex shrink-0 ${
+              className={`px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-mono font-bold border transition active:scale-95 inline-flex items-center gap-1 shrink-0 ${
                 currentShotMode === 'off'
-                  ? 'bg-[#0E224A] border-blue-900/60 text-slate-400'
+                  ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-300'
                   : currentShotMode === 'all'
                   ? 'bg-amber-950/80 border-amber-500/70 text-amber-300'
                   : 'bg-orange-950/80 border-orange-500/70 text-orange-300'
               }`}
-              title="Modo automático de Carta de Tiro al registrar canastas"
+              title="Alternar entre modo ultra-rápido (tiro directo) o registrar posición en carta de tiro"
             >
-              {currentShotMode === 'baskets' ? 'TIRO: AUTO' : currentShotMode === 'all' ? 'TIRO: TODOS' : 'TIRO: OFF'}
+              {currentShotMode === 'off' ? (
+                <>
+                  <span className="text-emerald-400">⚡</span>
+                  <span>TIRO RÁPIDO</span>
+                </>
+              ) : currentShotMode === 'all' ? (
+                <>
+                  <span>🎯</span>
+                  <span>TIRO: TODOS</span>
+                </>
+              ) : (
+                <>
+                  <span>🎯</span>
+                  <span>TIRO: CANASTAS</span>
+                </>
+              )}
             </button>
           )}
 
