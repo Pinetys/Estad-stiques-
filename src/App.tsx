@@ -533,10 +533,12 @@ export default function App() {
       setLibraryGames(getSavedGamesFromStorage());
 
       setGame(currentGame => {
+        const isWatchedMatch = syncEngine.getWatchedMatchId() === validRemote.id;
         const isMatch =
           validRemote.id === currentGame.id ||
           validRemote.id?.toLowerCase() === currentGame.id?.toLowerCase() ||
-          (validRemote as any).gameId === currentGame.id;
+          (validRemote as any).gameId === currentGame.id ||
+          (deviceRole === 'spectator' && isWatchedMatch);
 
         if (isMatch) {
           const remoteUpdated = validRemote.updatedAt ? new Date(validRemote.updatedAt).getTime() : 0;
@@ -550,13 +552,14 @@ export default function App() {
           const hasFoulsDiff = validRemote.homeQuarterFouls !== currentGame.homeQuarterFouls || validRemote.awayQuarterFouls !== currentGame.awayQuarterFouls;
 
           if (
+            deviceRole === 'spectator' ||
             remoteEventsCount !== localEventsCount ||
             hasScoreDiff ||
             hasQuarterDiff ||
             hasStatusDiff ||
             hasClockDiff ||
             hasFoulsDiff ||
-            remoteUpdated > localUpdated
+            remoteUpdated >= localUpdated
           ) {
             isRemoteSyncInProgressRef.current = true;
             return validRemote;

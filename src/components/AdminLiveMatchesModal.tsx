@@ -326,7 +326,15 @@ export const AdminLiveMatchesModal: React.FC<AdminLiveMatchesModalProps> = ({
               {filteredMatches.map(m => {
                 const isLive = m.status === 'live';
                 const isCurrentGame = m.id === currentGameId;
-                const recentEvents = (m.events || []).slice(-3).reverse();
+                const recentEvents = [...(m.events || [])]
+                  .sort((a, b) => {
+                    const tA = a.timestamp ? Number(a.timestamp) || 0 : 0;
+                    const tB = b.timestamp ? Number(b.timestamp) || 0 : 0;
+                    if (tA && tB && tA !== tB) return tB - tA;
+                    if (a.quarter !== b.quarter) return b.quarter - a.quarter;
+                    return 0;
+                  })
+                  .slice(0, 3);
 
                 return (
                   <div

@@ -108,20 +108,6 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
   // 3. Validate events structure
   if (!Array.isArray(raw.events)) {
     errors.push('La propiedad "events" no es un arreglo válido de jugadas/eventos.');
-  } else {
-    for (let i = 0; i < raw.events.length; i++) {
-      const e = raw.events[i];
-      if (!e || typeof e !== 'object') {
-        errors.push(`El evento en la posición [${i}] es nulo o no es un objeto.`);
-        continue;
-      }
-      if (!e.id) {
-        errors.push(`El evento en la posición [${i}] carece de "id" único.`);
-      }
-      if (!e.actionType || typeof e.actionType !== 'string') {
-        errors.push(`El evento en la posición [${i}] carece de "actionType" válido.`);
-      }
-    }
   }
 
   // If critical errors found, log detailed diagnostic report
@@ -149,24 +135,33 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
     return { isValid: false, game: null, errors };
   }
 
-  // 4. Map & sanitize events without duplicating IDs
+  // 4. Map & sanitize events safely without dropping collisions or rejecting on minor quirks
   const seenEventIds = new Set<string>();
-  const normalizedEvents = (raw.events as any[]).filter(e => {
-    if (!e || !e.id) return false;
-    const strId = String(e.id);
-    if (seenEventIds.has(strId)) return false;
-    seenEventIds.add(strId);
-    return true;
-  }).map(e => ({
-    ...e,
-    id: String(e.id),
-    actionType: String(e.actionType),
-    quarter: typeof e.quarter === 'number' && !isNaN(e.quarter) ? e.quarter : 1,
-    secondsRemaining: typeof e.secondsRemaining === 'number' && !isNaN(e.secondsRemaining) ? e.secondsRemaining : 600,
-    timestamp: e.timestamp ? (Number(e.timestamp) || Date.now()) : Date.now(),
-    pointsAdded: typeof e.pointsAdded === 'number' && !isNaN(e.pointsAdded) ? e.pointsAdded : 0,
-    isOpponentAction: Boolean(e.isOpponentAction),
-  }));
+  const normalizedEvents = (raw.events as any[])
+    .filter(e => e && typeof e === 'object')
+    .map((e, idx) => {
+      let eventId = e.id !== undefined && e.id !== null ? String(e.id).trim() : '';
+      if (!eventId) {
+        eventId = `ev-${e.timestamp || Date.now()}-${idx}`;
+      }
+      if (seenEventIds.has(eventId)) {
+        eventId = `${eventId}-${idx}`;
+      }
+      seenEventIds.add(eventId);
+
+      const actionType = typeof e.actionType === 'string' && e.actionType.trim() ? e.actionType.trim() : 'ACTION';
+
+      return {
+        ...e,
+        id: eventId,
+        actionType,
+        quarter: typeof e.quarter === 'number' && !isNaN(e.quarter) ? e.quarter : 1,
+        secondsRemaining: typeof e.secondsRemaining === 'number' && !isNaN(e.secondsRemaining) ? e.secondsRemaining : 600,
+        timestamp: e.timestamp ? (Number(e.timestamp) || Date.now()) : Date.now(),
+        pointsAdded: typeof e.pointsAdded === 'number' && !isNaN(e.pointsAdded) ? e.pointsAdded : 0,
+        isOpponentAction: Boolean(e.isOpponentAction),
+      };
+    });
 
   // 5. Map & sanitize players
   const normalizedPlayers = (raw.players as any[]).map((p, idx) => ({

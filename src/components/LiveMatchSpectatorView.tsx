@@ -51,6 +51,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   const [recentFilter, setRecentFilter] = useState<'all' | 'scores' | 'fouls'>('all');
   const [filterCourtOnly, setFilterCourtOnly] = useState<boolean>(false);
   const [manualCodeInput, setManualCodeInput] = useState<string>('');
+  const [visiblePlaysCount, setVisiblePlaysCount] = useState<number>(30);
 
   // Total Quarters (e.g. Escola 8m = 6 cuartos)
   const matchTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
@@ -59,6 +60,46 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
 
   const safeEvents = useMemo(() => game.events || [], [game.events]);
   const safePlayers = useMemo(() => game.players || [], [game.players]);
+
+  // Chronologically sort all match events in descending order (most recent first at index 0)
+  const chronoSortedEventsDesc = useMemo(() => {
+    return [...safeEvents].sort((a, b) => {
+      const timeA = a.timestamp ? Number(a.timestamp) || 0 : 0;
+      const timeB = b.timestamp ? Number(b.timestamp) || 0 : 0;
+      if (timeA && timeB && timeA !== timeB) {
+        return timeB - timeA;
+      }
+      if (a.quarter !== b.quarter) {
+        return b.quarter - a.quarter;
+      }
+      const secA = typeof (a as any).secondsRemaining === 'number' ? (a as any).secondsRemaining : (a.gameSeconds ?? 600);
+      const secB = typeof (b as any).secondsRemaining === 'number' ? (b as any).secondsRemaining : (b.gameSeconds ?? 600);
+      if (secA !== secB) {
+        return secA - secB;
+      }
+      return 0;
+    });
+  }, [safeEvents]);
+
+  // Last 5 registered match events for immediate context below scoreboard (always freshest actions)
+  const lastFiveEvents = useMemo(() => {
+    return chronoSortedEventsDesc.slice(0, 5);
+  }, [chronoSortedEventsDesc]);
+
+  // Filtered recent plays stream with filter support
+  const filteredEventsDesc = useMemo(() => {
+    let list = chronoSortedEventsDesc;
+    if (recentFilter === 'scores') {
+      list = list.filter(e => (e.pointsAdded && e.pointsAdded > 0) || e.actionType === 'OPP_2P' || e.actionType === 'OPP_3P' || e.actionType === 'OPP_1P');
+    } else if (recentFilter === 'fouls') {
+      list = list.filter(e => e.actionType === 'OPP_FOUL' || ACTION_DEFINITIONS[e.actionType]?.category === 'fouls' || e.actionType === 'PF' || e.actionType === 'PFT' || e.actionType === 'UF' || e.actionType === 'TF');
+    }
+    return list;
+  }, [chronoSortedEventsDesc, recentFilter]);
+
+  const recentEvents = useMemo(() => {
+    return filteredEventsDesc.slice(0, visiblePlaysCount);
+  }, [filteredEventsDesc, visiblePlaysCount]);
 
   // Auto-track sync updates
   useEffect(() => {
@@ -123,22 +164,6 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
         fouls: fouls,
       };
     });
-  }, [safeEvents]);
-
-  // Recent plays stream with filter support (last 16 actions)
-  const recentEvents = useMemo(() => {
-    let list = [...safeEvents];
-    if (recentFilter === 'scores') {
-      list = list.filter(e => (e.pointsAdded && e.pointsAdded > 0) || e.actionType === 'OPP_2P' || e.actionType === 'OPP_3P' || e.actionType === 'OPP_1P');
-    } else if (recentFilter === 'fouls') {
-      list = list.filter(e => e.actionType === 'OPP_FOUL' || ACTION_DEFINITIONS[e.actionType]?.category === 'fouls' || e.actionType === 'PF' || e.actionType === 'PFT' || e.actionType === 'UF' || e.actionType === 'TF');
-    }
-    return list.slice(-16).reverse();
-  }, [safeEvents, recentFilter]);
-
-  // Last 5 registered match events for immediate context below scoreboard
-  const lastFiveEvents = useMemo(() => {
-    return [...safeEvents].slice(-5).reverse();
   }, [safeEvents]);
 
   const isGameOver = game.status === 'finished';
@@ -1417,6 +1442,26 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                     </div>
                   );
                 })
+              )}
+
+              {/* Controles para ver más o todas las jugadas del partido sin congelación */}
+              {filteredEventsDesc.length > recentEvents.length && (
+                <div className="flex items-center justify-center gap-2 pt-3 border-t border-[#1A2E59]/60">
+                  <button
+                    type="button"
+                    onClick={() => setVisiblePlaysCount(prev => prev + 25)}
+                    className="text-xs font-mono font-bold text-amber-300 hover:text-amber-200 px-3.5 py-2 rounded-xl bg-[#0e2248] hover:bg-[#16356e] border border-amber-500/40 transition active:scale-95 shadow-sm"
+                  >
+                    Mostrar más jugadas (+25)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisiblePlaysCount(filteredEventsDesc.length)}
+                    className="text-xs font-mono font-bold text-slate-300 hover:text-white px-3.5 py-2 rounded-xl bg-[#09152e] hover:bg-[#12234c] border border-slate-700/60 transition active:scale-95 shadow-sm"
+                  >
+                    Ver todas ({filteredEventsDesc.length})
+                  </button>
+                </div>
               )}
             </div>
           )}
