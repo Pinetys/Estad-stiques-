@@ -47,6 +47,7 @@ import {
   Minimize,
   Scale,
   QrCode,
+  Sparkles,
 } from 'lucide-react';
 import { toggleFullscreen, isFullscreenActive } from '../utils/fullscreen';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
@@ -66,6 +67,7 @@ import { TeamMinutesBalanceModal } from './TeamMinutesBalanceModal';
 import { RivalRosterModal } from './RivalRosterModal';
 import { LiveSpectatorQRModal } from './LiveSpectatorQRModal';
 import { NotificationBellButton } from './NotificationBellButton';
+import { SubstitutionAIHelper } from './SubstitutionAIHelper';
 
 interface CourtBenchModeProps {
   game: Game;
@@ -151,6 +153,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [timeoutModalTeam, setTimeoutModalTeam] = useState<'home' | 'away' | null>(null);
   const [showProBenefitsModal, setShowProBenefitsModal] = useState(false);
   const [showMinutesBalanceModal, setShowMinutesBalanceModal] = useState(false);
+  const [showAISubHelperModal, setShowAISubHelperModal] = useState(false);
   const [showRivalRosterModal, setShowRivalRosterModal] = useState(false);
   const [showSpectatorQRModal, setShowSpectatorQRModal] = useState(false);
 
@@ -524,6 +527,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         timeoutModalTeam !== null ||
         showProBenefitsModal ||
         showMinutesBalanceModal ||
+        showAISubHelperModal ||
         showRivalRosterModal ||
         showSpectatorQRModal
       ) {
@@ -549,6 +553,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     timeoutModalTeam,
     showProBenefitsModal,
     showMinutesBalanceModal,
+    showAISubHelperModal,
     showRivalRosterModal,
     showSpectatorQRModal,
     game.settings.soundEnabled,
@@ -1502,6 +1507,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   onClick={() => {
                     playSound('click', game.settings.soundEnabled);
                     triggerHaptic('light', game.settings.vibrationEnabled);
+                    setShowAISubHelperModal(true);
+                  }}
+                  className="px-2 py-0.5 bg-gradient-to-r from-purple-900/60 to-amber-900/60 hover:from-purple-800/80 hover:to-amber-800/80 text-amber-300 hover:text-white rounded-lg text-[9px] sm:text-[10px] font-bold border border-amber-500/50 transition active:scale-95 flex items-center gap-1 shadow-sm"
+                  title="Asistente IA de Rotaciones: sugiere automáticamente cambios por fatiga y minutos"
+                >
+                  <Sparkles className="w-2.5 h-2.5 text-amber-400 animate-pulse" />
+                  <span>IA Rotar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('light', game.settings.vibrationEnabled);
                     onOpenSubstitutionModal();
                   }}
                   className="px-2 py-0.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black rounded-lg text-[9px] sm:text-[10px] uppercase shrink-0 transition flex items-center gap-1 shadow-sm"
@@ -2373,6 +2391,26 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onOpenOfficialSheet={onOpenOfficialSheet}
           onOpenShotChart={onOpenShotChart}
         />
+      )}
+
+      {/* MODAL ASISTENTE IA DE ROTACIONES POR FATIGA Y MINUTOS */}
+      {showAISubHelperModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl">
+            <SubstitutionAIHelper
+              game={game}
+              onApplySuggestion={(playerOutId, playerInId) => {
+                handlePerformDirectSub(playerOutId, playerInId);
+                setShowAISubHelperModal(false);
+              }}
+              onApplyMultipleSuggestions={(subs) => {
+                subs.forEach(s => handlePerformDirectSub(s.playerOutId, s.playerInId));
+                setShowAISubHelperModal(false);
+              }}
+              onClose={() => setShowAISubHelperModal(false)}
+            />
+          </div>
+        </div>
       )}
 
       {/* MODAL REPARTO EQUITATIVO DE MINUTOS Y BALANCE DE PLANTILLA */}

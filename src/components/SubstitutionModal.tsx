@@ -20,7 +20,9 @@ import {
   Flame,
   Scale,
   Zap,
+  Sparkles,
 } from 'lucide-react';
+import { SubstitutionAIHelper } from './SubstitutionAIHelper';
 
 interface PlannedSub {
   playerInId: string;
@@ -54,6 +56,12 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 
   // Step 1 selected: Bench player who will ENTER the court
   const [pendingInId, setPendingInId] = useState<string | null>(null);
+
+  // Toggle for Substitution AI Helper
+  const [showAIHelper, setShowAIHelper] = useState<boolean>(() => {
+    // Auto-open if any player on court has continuous fatigue (>6m stint)
+    return playersOnCourt.some(p => isPlayerFatigued(p));
+  });
 
   // Helper info message
   const [guideNotice, setGuideNotice] = useState<string | null>(null);
@@ -190,13 +198,58 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 flex items-center justify-center text-xs font-bold border border-neutral-700 transition"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings?.soundEnabled ?? true);
+                triggerHaptic('light', game.settings?.vibrationEnabled ?? true);
+                setShowAIHelper(!showAIHelper);
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition border ${
+                showAIHelper
+                  ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md shadow-amber-500/20'
+                  : 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
+              }`}
+              title="Abrir sugerencias automáticas de rotación por fatiga y minutos"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{showAIHelper ? 'Ocultar Asistente IA' : 'Sugerencias IA'}</span>
+              <span className="sm:hidden">IA</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-7 h-7 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 flex items-center justify-center text-xs font-bold border border-neutral-700 transition"
+            >
+              ✕
+            </button>
+          </div>
         </div>
+
+        {/* Embedded Substitution AI Helper */}
+        {showAIHelper && (
+          <div className="shrink-0 max-h-[38vh] overflow-y-auto pr-1">
+            <SubstitutionAIHelper
+              game={game}
+              compact={true}
+              onApplySuggestion={(playerOutId, playerInId) => {
+                const newSub = { playerOutId, playerInId };
+                setPlannedSubs(prev => [
+                  ...prev.filter(s => s.playerOutId !== playerOutId && s.playerInId !== playerInId),
+                  newSub,
+                ]);
+                const pIn = benchPlayers.find(p => p.id === playerInId);
+                const pOut = playersOnCourt.find(p => p.id === playerOutId);
+                setGuideNotice(`Sugerencia IA aplicada: #${pIn?.number} entra por #${pOut?.number}.`);
+              }}
+              onApplyMultipleSuggestions={(subs) => {
+                setPlannedSubs(subs);
+                setGuideNotice(`Se han aplicado ${subs.length} sugerencias automáticas de la IA.`);
+              }}
+              onClose={() => setShowAIHelper(false)}
+            />
+          </div>
+        )}
 
         {/* Step Guide / Status Banner */}
         <div className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-xs font-mono shrink-0 transition-colors ${

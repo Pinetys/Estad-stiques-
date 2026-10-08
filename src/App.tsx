@@ -252,8 +252,12 @@ export default function App() {
   };
   const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
 
-  // Device Role: 'recorder' (Anotador en pista) vs 'monitor' (Recepción / Live Board en PC)
+  // Device Role: 'recorder' (Anotador en pista) vs 'monitor' (Recepción / Live Board en PC) vs 'spectator' (Seguidor)
   const [deviceRole, setDeviceRoleState] = useState<DeviceRole>(() => getDeviceRole());
+  const deviceRoleRef = useRef<DeviceRole>(deviceRole);
+  useEffect(() => {
+    deviceRoleRef.current = deviceRole;
+  }, [deviceRole]);
   const [showSyncPairingModal, setShowSyncPairingModal] = useState<boolean>(false);
 
   // Central High-Precision Monotonic Game Clock Engine
@@ -429,6 +433,7 @@ export default function App() {
       syncEngine.setWatchedMatchId(validGame.id);
 
       isRemoteSyncInProgressRef.current = true;
+      deviceRoleRef.current = 'spectator';
       setDeviceRoleState('spectator');
       persistDeviceRole('spectator');
       setActiveTab('live');
@@ -533,12 +538,14 @@ export default function App() {
       setLibraryGames(getSavedGamesFromStorage());
 
       setGame(currentGame => {
-        const isWatchedMatch = syncEngine.getWatchedMatchId() === validRemote.id;
+        const currentRole = deviceRoleRef.current || getDeviceRole();
+        const watchedId = syncEngine.getWatchedMatchId();
+        const isWatchedMatch = Boolean(watchedId && (watchedId === validRemote.id || watchedId.toLowerCase() === validRemote.id?.toLowerCase()));
         const isMatch =
           validRemote.id === currentGame.id ||
           validRemote.id?.toLowerCase() === currentGame.id?.toLowerCase() ||
           (validRemote as any).gameId === currentGame.id ||
-          (deviceRole === 'spectator' && isWatchedMatch);
+          ((currentRole === 'spectator' || currentRole === 'monitor') && isWatchedMatch);
 
         if (isMatch) {
           const remoteUpdated = validRemote.updatedAt ? new Date(validRemote.updatedAt).getTime() : 0;
@@ -551,8 +558,10 @@ export default function App() {
           const hasClockDiff = Math.abs((validRemote.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || validRemote.isClockRunning !== currentGame.isClockRunning;
           const hasFoulsDiff = validRemote.homeQuarterFouls !== currentGame.homeQuarterFouls || validRemote.awayQuarterFouls !== currentGame.awayQuarterFouls;
 
+          // Spectators and monitors ALWAYS accept the freshest server/recorder state
           if (
-            deviceRole === 'spectator' ||
+            currentRole === 'spectator' ||
+            currentRole === 'monitor' ||
             remoteEventsCount !== localEventsCount ||
             hasScoreDiff ||
             hasQuarterDiff ||
@@ -846,7 +855,8 @@ export default function App() {
 
       // Only recorder devices should broadcast live match updates to cloud/server;
       // spectator/monitor devices are pure observers and must not push back to avoid race conditions.
-      if (deviceRole === 'spectator' || deviceRole === 'monitor') {
+      const currentRole = deviceRoleRef.current || deviceRole;
+      if (currentRole === 'spectator' || currentRole === 'monitor') {
         return;
       }
 

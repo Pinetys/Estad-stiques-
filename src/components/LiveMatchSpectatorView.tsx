@@ -51,7 +51,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   const [recentFilter, setRecentFilter] = useState<'all' | 'scores' | 'fouls'>('all');
   const [filterCourtOnly, setFilterCourtOnly] = useState<boolean>(false);
   const [manualCodeInput, setManualCodeInput] = useState<string>('');
-  const [visiblePlaysCount, setVisiblePlaysCount] = useState<number>(30);
+  const [visiblePlaysCount, setVisiblePlaysCount] = useState<number>(() => Math.max(150, (game.events?.length || 0) + 20));
 
   // Total Quarters (e.g. Escola 8m = 6 cuartos)
   const matchTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
@@ -60,6 +60,14 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
 
   const safeEvents = useMemo(() => game.events || [], [game.events]);
   const safePlayers = useMemo(() => game.players || [], [game.players]);
+
+  // Auto-expand visiblePlaysCount whenever new events arrive so the stream never freezes
+  useEffect(() => {
+    const total = safeEvents.length;
+    if (total > 0) {
+      setVisiblePlaysCount(prev => Math.max(prev, total));
+    }
+  }, [safeEvents.length]);
 
   // Chronologically sort all match events in descending order (most recent first at index 0)
   const chronoSortedEventsDesc = useMemo(() => {
@@ -1384,11 +1392,28 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                     : `No hay ${recentFilter === 'scores' ? 'canastas' : 'faltas'} registradas recientemente`}
                 </div>
               ) : (
-                recentEvents.map(event => {
-                  const desc = getActionDescription(event);
+                recentEvents.map((event, idx) => {
+                  let desc: ActionDescInfo;
+                  try {
+                    desc = getActionDescription(event);
+                  } catch {
+                    desc = {
+                      badge: 'JUGADA',
+                      badgeBg: 'bg-slate-800 text-slate-300 border-slate-700',
+                      actor: event.playerName || 'Jugador',
+                      actionName: event.actionLabel || event.actionType || 'Acción de partido',
+                      text: event.actionLabel || event.actionType || 'Acción',
+                      color: 'text-slate-300',
+                      icon: '🏀',
+                      isScore: false,
+                    };
+                  }
+
+                  const uniqueKey = `${event.id || 'ev'}-${event.timestamp || idx}-${idx}`;
+
                   return (
                     <div
-                      key={event.id}
+                      key={uniqueKey}
                       className="p-2.5 sm:p-3 rounded-xl bg-[#081228] border border-[#1A2E59] flex items-center justify-between gap-2.5 sm:gap-4 transition hover:bg-[#0c1c3d]"
                     >
                       {/* Left: Timing + Score Snapshot */}
@@ -1449,10 +1474,10 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
                 <div className="flex items-center justify-center gap-2 pt-3 border-t border-[#1A2E59]/60">
                   <button
                     type="button"
-                    onClick={() => setVisiblePlaysCount(prev => prev + 25)}
+                    onClick={() => setVisiblePlaysCount(prev => prev + 50)}
                     className="text-xs font-mono font-bold text-amber-300 hover:text-amber-200 px-3.5 py-2 rounded-xl bg-[#0e2248] hover:bg-[#16356e] border border-amber-500/40 transition active:scale-95 shadow-sm"
                   >
-                    Mostrar más jugadas (+25)
+                    Mostrar más jugadas (+50)
                   </button>
                   <button
                     type="button"
