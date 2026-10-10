@@ -96,6 +96,7 @@ interface CourtBenchModeProps {
   onOpenTutorial?: () => void;
   onOpenCloudSync?: () => void;
   onOpenTacticalBoard?: () => void;
+  onOpenSpectatorQR?: () => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -121,6 +122,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onOpenTutorial,
   onOpenCloudSync,
   onOpenTacticalBoard,
+  onOpenSpectatorQR,
 }) => {
   // Direct In-Game Substitution handler
   const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
@@ -158,6 +160,15 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showAISubHelperModal, setShowAISubHelperModal] = useState(false);
   const [showRivalRosterModal, setShowRivalRosterModal] = useState(false);
   const [showSpectatorQRModal, setShowSpectatorQRModal] = useState(false);
+
+  const handleOpenSpectatorQR = () => {
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    if (onOpenSpectatorQR) {
+      onOpenSpectatorQR();
+    }
+    setShowSpectatorQRModal(true);
+  };
 
   const handleSaveRivalRoster = (awayPlayers: Player[], awayTeamName?: string) => {
     onUpdateGame(prev => ({
@@ -967,6 +978,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <div className="text-[11px] sm:text-xs text-slate-400 italic font-mono">Esperando jugada...</div>
             )}
           </div>
+
+          {/* Quick QR Seguidores button on bottom bar */}
+          <button
+            type="button"
+            id="bottombar-spectator-qr-btn"
+            onClick={handleOpenSpectatorQR}
+            className="px-2 py-1 bg-gradient-to-r from-cyan-950 via-[#0e2a52] to-blue-950 hover:bg-[#16356E] text-cyan-200 border border-cyan-400/80 rounded-lg text-[10px] sm:text-[11px] font-mono font-black flex items-center gap-1.5 shrink-0 transition active:scale-95 shadow-md shadow-cyan-950/80 ring-1 ring-cyan-500/40 cursor-pointer"
+            title="Mostrar Código QR para seguidores y afición en directo"
+          >
+            <QrCode className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+            <span className="hidden xs:inline">QR SEGUIDORES</span>
+            <span className="xs:hidden">QR</span>
+          </button>
         </div>
 
         {/* History Drawer Modal Overlay with integrated UNDO button */}
@@ -1129,8 +1153,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onOpenTacticalBoard={onOpenTacticalBoard}
         />
       ) : (
-        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
-        <div className="flex items-center gap-1.5">
+        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none text-xs z-30 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Exit Court Mode button */}
           <button
             onClick={onToggleCourtMode}
@@ -1157,6 +1181,18 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           >
             {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
             <span className="hidden xs:inline">{isFullscreen ? 'Normal' : 'Complet'}</span>
+          </button>
+
+          {/* QR SEGUIDORES: Inmediatamente visible al inicio sin necesidad de scroll horizontal */}
+          <button
+            type="button"
+            id="portrait-spectator-qr-btn"
+            onClick={handleOpenSpectatorQR}
+            className="p-1 px-2.5 bg-gradient-to-r from-cyan-950 via-[#0b284e] to-blue-950 hover:bg-[#16356E] text-cyan-200 border-2 border-cyan-400 rounded-lg text-[10px] sm:text-[11px] font-black font-mono flex items-center gap-1.5 transition active:scale-95 shadow-md shadow-cyan-950 shrink-0 ring-1 ring-cyan-400/60 cursor-pointer"
+            title="Ver código QR para que los seguidores y aficionados sigan el partido en directo desde el móvil"
+          >
+            <QrCode className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+            <span className="font-extrabold uppercase">QR Seguidores</span>
           </button>
 
           {/* Quarter Navigator */}
@@ -1261,17 +1297,13 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           {/* Botón QR Seguidores para enlazar con la vista en directo de aficionados */}
           <button
             type="button"
-            id="portrait-spectator-qr-btn"
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('light', game.settings.vibrationEnabled);
-              setShowSpectatorQRModal(true);
-            }}
-            className="p-1 px-2 bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 border border-cyan-500/60 rounded text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
+            id="portrait-spectator-qr-btn-tools"
+            onClick={handleOpenSpectatorQR}
+            className="p-1 px-2.5 bg-gradient-to-r from-cyan-950 to-blue-950 hover:bg-[#16356E] text-cyan-300 border border-cyan-400/80 rounded-lg text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1.5 transition active:scale-95 shadow-md shadow-cyan-950 shrink-0 ring-1 ring-cyan-500/40 cursor-pointer"
             title="Ver código QR para que los seguidores y aficionados sigan el partido en directo"
           >
-            <QrCode className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-bold">QR Seguidores</span>
+            <QrCode className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span className="font-extrabold uppercase">QR Afición</span>
           </button>
 
           {onOpenOfficialSheet && (
@@ -1393,6 +1425,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             setTimeoutModalTeam(team);
           }}
           onOpenProBenefits={() => setShowProBenefitsModal(true)}
+          onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
         />
       )}
 

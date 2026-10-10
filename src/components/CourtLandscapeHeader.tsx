@@ -176,8 +176,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   return (
     <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
       {/* 1. TOP UTILITY STRIP: Fixed responsive layout preventing lateral shifts on tablets */}
-      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-1.5 overflow-hidden">
-        {/* Left: Exit button & Mode title & Fullscreen button */}
+      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-1.5 overflow-x-auto scrollbar-none">
+        {/* Left: Exit button, Mode title, Fullscreen button & Prominent Spectators QR Button */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
@@ -215,7 +215,26 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             )}
           </button>
 
-          <div className="hidden md:flex items-center gap-1.5 text-slate-300 font-mono text-[10px] shrink-0">
+          {/* QR SEGUIDORES EN DIRECTO: Siempre visible en la parte frontal izquierda de la cabecera */}
+          {onOpenSpectatorQR && (
+            <button
+              type="button"
+              id="landscape-spectator-qr-btn"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                onOpenSpectatorQR();
+              }}
+              className="px-2.5 py-1 rounded-lg border-2 border-cyan-400 bg-gradient-to-r from-cyan-950 via-[#0b284e] to-blue-950 hover:from-cyan-900 hover:to-blue-900 text-cyan-200 text-[10px] sm:text-[11px] font-mono font-black flex items-center gap-1.5 transition active:scale-95 shadow-md shadow-cyan-950/90 shrink-0 ring-1 ring-cyan-400/60 cursor-pointer"
+              title="Mostrar Código QR para que el público y seguidores sigan el partido en directo desde sus móviles"
+            >
+              <QrCode className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+              <span>QR SEGUIDORES</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping hidden xs:inline" />
+            </button>
+          )}
+
+          <div className="hidden lg:flex items-center gap-1.5 text-slate-300 font-mono text-[10px] shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-bold text-[#FFFDF7]">TABLET PISTA</span>
             {game.status === 'finished' ? (
@@ -319,6 +338,24 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               {justSyncedToast ? 'SINCRONIZADO' : syncStatus.status === 'syncing' ? 'SYNC...' : 'NUBE OK'}
             </span>
           </button>
+
+          {/* QR Seguidores en Vivo (Acceso rápido herramientas) */}
+          {onOpenSpectatorQR && (
+            <button
+              type="button"
+              id="landscape-spectator-qr-btn-tools"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                onOpenSpectatorQR();
+              }}
+              className="px-2 py-0.5 rounded border border-cyan-500/70 bg-gradient-to-r from-cyan-950/80 to-blue-950/80 hover:from-cyan-900 hover:to-blue-900 text-cyan-300 text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm shadow-cyan-950 shrink-0 cursor-pointer"
+              title="Mostrar Código QR para que el público y seguidores sigan el partido en directo desde sus móviles"
+            >
+              <QrCode className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span>QR Afición</span>
+            </button>
+          )}
 
           {/* Shot Chart Modal */}
           {onOpenShotChart && (

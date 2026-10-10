@@ -20,6 +20,7 @@ import {
   Edit2,
   Target,
   ArrowRightLeft,
+  QrCode,
 } from 'lucide-react';
 import { PlayerShotMap } from './PlayerShotMap';
 import { StartingFiveModal } from './StartingFiveModal';
@@ -35,6 +36,7 @@ interface InformativeMobileViewProps {
   onOpenRosterModal?: () => void;
   onUpdateGame?: (updater: (prev: Game) => Game) => void;
   onOpenTacticalBoard?: () => void;
+  onOpenSpectatorQR?: () => void;
 }
 
 export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
@@ -44,6 +46,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
   onOpenRosterModal,
   onUpdateGame,
   onOpenTacticalBoard,
+  onOpenSpectatorQR,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'oncourt' | 'all' | 'team' | 'leaders'>('oncourt');
   const [selectedPlayerDetail, setSelectedPlayerDetail] = useState<Player | null>(null);
@@ -152,6 +155,18 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
             >
               <span>📋</span>
               <span className="hidden xs:inline">Pizarra</span>
+            </button>
+          )}
+
+          {onOpenSpectatorQR && (
+            <button
+              id="informative-spectator-qr-btn"
+              onClick={onOpenSpectatorQR}
+              className="px-2.5 py-2 bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 border border-cyan-500/50 font-bold text-xs uppercase tracking-wider rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition"
+              title="Mostrar Código QR para que el público y seguidores sigan el partido en directo"
+            >
+              <QrCode className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="hidden xs:inline">QR Seguidores</span>
             </button>
           )}
 

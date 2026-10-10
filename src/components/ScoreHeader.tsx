@@ -25,6 +25,7 @@ import {
   Lock,
   CheckCircle2,
   Save,
+  QrCode,
 } from 'lucide-react';
 import { DeviceRole } from '../utils/deviceRole';
 import { SyncStatusBar } from './SyncStatusBar';
@@ -45,6 +46,7 @@ interface ScoreHeaderProps {
   onSelectPlayer?: (playerId: string) => void;
   onOpenShotChart?: () => void;
   onOpenOfficialSheet?: () => void;
+  onOpenSpectatorQR?: () => void;
   isEditingFinishedGame?: boolean;
   onToggleEditFinishedGame?: () => void;
   deviceRole?: DeviceRole;
@@ -62,6 +64,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onSelectPlayer,
   onOpenShotChart,
   onOpenOfficialSheet,
+  onOpenSpectatorQR,
   isEditingFinishedGame = false,
   onToggleEditFinishedGame,
   deviceRole = 'recorder',

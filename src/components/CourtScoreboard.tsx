@@ -1,7 +1,7 @@
 import React from 'react';
 import { Game } from '../types';
 import { formatGameTime } from '../utils/statsCalculator';
-import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown, Edit2 } from 'lucide-react';
+import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown, Edit2, QrCode } from 'lucide-react';
 import {
   MasterClockNumber,
   ShotClockNumber,
@@ -30,6 +30,7 @@ interface CourtScoreboardProps {
   onTriggerTimeout?: (team: 'home' | 'away') => void;
   onOpenProBenefits?: () => void;
   onOpenRivalRoster?: () => void;
+  onOpenSpectatorQR?: () => void;
 }
 
 export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
@@ -52,6 +53,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
   onTriggerTimeout,
   onOpenProBenefits,
   onOpenRivalRoster,
+  onOpenSpectatorQR,
 }) => {
   const isFibaTiming = (game.settings.timingMode ?? 'fiba_stop') === 'fiba_stop';
 
@@ -61,7 +63,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
         compact ? 'px-1.5 py-1' : 'px-2 sm:px-4 py-1.5 sm:py-2'
       } shrink-0 shadow-2xl select-none`}
     >
-      {/* Top micro-bar: Timing Mode & PRO Club Badge */}
+      {/* Top micro-bar: Timing Mode & Spectators QR / PRO Club Badge */}
       <div className="max-w-xl mx-auto flex items-center justify-between pb-1 mb-0.5 border-b border-[#D4AF37]/25 text-[9px] font-mono">
         <button
           type="button"
@@ -76,17 +78,32 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           <span className="text-[7.5px] text-[#D4AF37]">⚙️</span>
         </button>
 
-        {onOpenProBenefits && (
-          <button
-            type="button"
-            onClick={onOpenProBenefits}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#D4AF37]/30 to-[#F59E0B]/20 border border-[#D4AF37]/60 text-[8.5px] font-mono font-black text-[#F5C542] hover:opacity-90 transition active:scale-95 shadow-sm"
-            title="Suscripción PRO Club: Retransmisión en Vivo, Actas Oficiales y Estadísticas Avanzadas"
-          >
-            <Crown className="w-2.5 h-2.5 text-[#F5C542]" />
-            <span>CLUB PRO</span>
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {onOpenSpectatorQR && (
+            <button
+              type="button"
+              id="scoreboard-spectator-qr-btn"
+              onClick={onOpenSpectatorQR}
+              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-950 via-[#0e2a52] to-blue-950 border border-cyan-400 text-[9px] font-mono font-black text-cyan-200 hover:bg-cyan-900 transition active:scale-95 shadow-sm ring-1 ring-cyan-400/50 cursor-pointer"
+              title="Mostrar Código QR para que el público siga el partido en directo desde su móvil"
+            >
+              <QrCode className="w-3 h-3 text-cyan-300 animate-pulse" />
+              <span>QR SEGUIDORES</span>
+            </button>
+          )}
+
+          {onOpenProBenefits && (
+            <button
+              type="button"
+              onClick={onOpenProBenefits}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#D4AF37]/30 to-[#F59E0B]/20 border border-[#D4AF37]/60 text-[8.5px] font-mono font-black text-[#F5C542] hover:opacity-90 transition active:scale-95 shadow-sm"
+              title="Suscripción PRO Club: Retransmisión en Vivo, Actas Oficiales y Estadísticas Avanzadas"
+            >
+              <Crown className="w-2.5 h-2.5 text-[#F5C542]" />
+              <span>CLUB PRO</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="max-w-xl mx-auto grid grid-cols-12 items-center gap-1 sm:gap-2">

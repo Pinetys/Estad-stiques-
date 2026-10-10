@@ -37,6 +37,7 @@ import { FoulResolutionModal, FoulModalData } from './components/FoulResolutionM
 import { SubscribersModal } from './components/SubscribersModal';
 import { AdminLiveMatchesModal } from './components/AdminLiveMatchesModal';
 import { TacticalBoardModal } from './components/TacticalBoardModal';
+import { LiveSpectatorQRModal } from './components/LiveSpectatorQRModal';
 import { detectAndInitUserRole, isMasterAdmin, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
@@ -786,6 +787,7 @@ export default function App() {
   const [showSubscribersModal, setShowSubscribersModal] = useState(false);
   const [showLiveMatchesModal, setShowLiveMatchesModal] = useState(false);
   const [showTacticalBoardModal, setShowTacticalBoardModal] = useState(false);
+  const [showSpectatorQRModal, setShowSpectatorQRModal] = useState(false);
 
   const handleRecordFreeThrowFromFoul = ({
     isOpponent,
@@ -1935,6 +1937,7 @@ export default function App() {
           onOpenTutorial={() => setShowTutorialModal(true)}
           onOpenCloudSync={() => setShowSyncPairingModal(true)}
           onOpenTacticalBoard={() => setShowTacticalBoardModal(true)}
+          onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
         />
       ) : (
         <>
@@ -2327,6 +2330,18 @@ export default function App() {
                         </div>
                         <div className="grid grid-cols-1 gap-0.5">
                           <button
+                            id="menu-spectator-qr-btn"
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowSpectatorQRModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-cyan-300 text-xs font-bold text-left transition"
+                          >
+                            <QrCode className="w-4 h-4 text-cyan-400 animate-pulse shrink-0" />
+                            <span>QR Seguidores en Vivo (Afición)</span>
+                          </button>
+
+                          <button
                             id="menu-sync-pairing-btn"
                             onClick={() => {
                               setShowMobileHeaderMenu(false);
@@ -2505,6 +2520,16 @@ export default function App() {
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
+                    id="subnav-spectator-qr-btn"
+                    onClick={() => setShowSpectatorQRModal(true)}
+                    className="px-2.5 py-1 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 transition flex items-center gap-1 text-xs font-bold uppercase shadow-sm"
+                    title="Ver código QR para que los seguidores y aficionados sigan el partido en directo"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                    <span>QR Seguidores</span>
+                  </button>
+
+                  <button
                     id="subnav-tactical-board-btn"
                     onClick={() => setShowTacticalBoardModal(true)}
                     className="px-2.5 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/60 transition flex items-center gap-1 text-xs font-bold uppercase shadow-sm"
@@ -2586,6 +2611,7 @@ export default function App() {
                 onOpenRosterModal={() => setShowRosterModal(true)}
                 onUpdateGame={handleUpdateGame}
                 onOpenTacticalBoard={() => setShowTacticalBoardModal(true)}
+                onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
               />
             )}
 
@@ -3061,6 +3087,15 @@ export default function App() {
           teamName={game.homeTeamName}
           opponentName={game.awayTeamName}
           onClose={() => setShowTacticalBoardModal(false)}
+        />
+      )}
+
+      {/* Live Spectator QR Modal (Acceso público y afición en tiempo real) */}
+      {showSpectatorQRModal && (
+        <LiveSpectatorQRModal
+          isOpen={showSpectatorQRModal}
+          onClose={() => setShowSpectatorQRModal(false)}
+          game={game}
         />
       )}
     </div>
