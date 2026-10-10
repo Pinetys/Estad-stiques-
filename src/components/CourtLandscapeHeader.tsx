@@ -70,6 +70,7 @@ interface CourtLandscapeHeaderProps {
   onOpenRivalRoster?: () => void;
   onOpenSpectatorQR?: () => void;
   onOpenAISubHelper?: () => void;
+  onOpenTacticalBoard?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -105,6 +106,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenRivalRoster,
   onOpenSpectatorQR,
   onOpenAISubHelper,
+  onOpenTacticalBoard,
 }) => {
   const totalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
     ? 6
@@ -374,6 +376,20 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             >
               <FileText className="w-3 h-3 text-sky-400" />
               <span className="hidden xl:inline">Acta PDF</span>
+            </button>
+          )}
+
+          {/* Tactical Board */}
+          {onOpenTacticalBoard && (
+            <button
+              type="button"
+              id="header-tactical-board-btn"
+              onClick={onOpenTacticalBoard}
+              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
+              title="Abrir Pizarra Táctica de Entrenador (HTML5 Canvas)"
+            >
+              <span className="text-[11px]">📋</span>
+              <span className="hidden xl:inline">Pizarra</span>
             </button>
           )}
 

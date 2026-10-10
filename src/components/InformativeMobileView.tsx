@@ -34,6 +34,7 @@ interface InformativeMobileViewProps {
   onOpenSubstitutionModal?: () => void;
   onOpenRosterModal?: () => void;
   onUpdateGame?: (updater: (prev: Game) => Game) => void;
+  onOpenTacticalBoard?: () => void;
 }
 
 export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
@@ -42,6 +43,7 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
   onOpenSubstitutionModal,
   onOpenRosterModal,
   onUpdateGame,
+  onOpenTacticalBoard,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'oncourt' | 'all' | 'team' | 'leaders'>('oncourt');
   const [selectedPlayerDetail, setSelectedPlayerDetail] = useState<Player | null>(null);
@@ -140,14 +142,28 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
           </div>
         </div>
 
-        <button
-          id="go-to-court-mode-banner-btn"
-          onClick={onToggleCourtMode}
-          className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs uppercase tracking-wider rounded-lg flex items-center gap-1.5 shadow-md active:scale-95 transition shrink-0"
-        >
-          <Zap className="w-3.5 h-3.5 fill-black" />
-          <span>Modo Pista</span>
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onOpenTacticalBoard && (
+            <button
+              id="informative-tactical-board-btn"
+              onClick={onOpenTacticalBoard}
+              className="px-2.5 py-2 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 font-bold text-xs uppercase tracking-wider rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition"
+              title="Abrir Pizarra Táctica de Entrenador"
+            >
+              <span>📋</span>
+              <span className="hidden xs:inline">Pizarra</span>
+            </button>
+          )}
+
+          <button
+            id="go-to-court-mode-banner-btn"
+            onClick={onToggleCourtMode}
+            className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs uppercase tracking-wider rounded-lg flex items-center gap-1.5 shadow-md active:scale-95 transition"
+          >
+            <Zap className="w-3.5 h-3.5 fill-black" />
+            <span>Modo Pista</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. SUB-TABS SELECTOR FOR MOBILE INFORMATIVE VIEW */}

@@ -95,6 +95,7 @@ interface CourtBenchModeProps {
   onCloseMatch?: () => void;
   onOpenTutorial?: () => void;
   onOpenCloudSync?: () => void;
+  onOpenTacticalBoard?: () => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -119,6 +120,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onCloseMatch,
   onOpenTutorial,
   onOpenCloudSync,
+  onOpenTacticalBoard,
 }) => {
   // Direct In-Game Substitution handler
   const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
@@ -1124,6 +1126,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onOpenCloudSync={onOpenCloudSync}
           onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
           onOpenAISubHelper={() => setShowAISubHelperModal(true)}
+          onOpenTacticalBoard={onOpenTacticalBoard}
         />
       ) : (
         <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0">
@@ -1280,6 +1283,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             >
               <FileText className="w-3 h-3 text-sky-400" />
               <span>Acta</span>
+            </button>
+          )}
+
+          {onOpenTacticalBoard && (
+            <button
+              type="button"
+              id="bench-portrait-tactical-board-btn"
+              onClick={onOpenTacticalBoard}
+              className="p-1 px-1.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+              title="Abrir Pizarra Táctica de Entrenador (HTML5 Canvas)"
+            >
+              <span className="text-xs">📋</span>
+              <span>Pizarra</span>
             </button>
           )}
 

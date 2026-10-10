@@ -36,6 +36,7 @@ import { TutorialModal } from './components/TutorialModal';
 import { FoulResolutionModal, FoulModalData } from './components/FoulResolutionModal';
 import { SubscribersModal } from './components/SubscribersModal';
 import { AdminLiveMatchesModal } from './components/AdminLiveMatchesModal';
+import { TacticalBoardModal } from './components/TacticalBoardModal';
 import { detectAndInitUserRole, isMasterAdmin, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
@@ -784,6 +785,7 @@ export default function App() {
   const [foulResolutionData, setFoulResolutionData] = useState<FoulModalData | null>(null);
   const [showSubscribersModal, setShowSubscribersModal] = useState(false);
   const [showLiveMatchesModal, setShowLiveMatchesModal] = useState(false);
+  const [showTacticalBoardModal, setShowTacticalBoardModal] = useState(false);
 
   const handleRecordFreeThrowFromFoul = ({
     isOpponent,
@@ -1932,6 +1934,7 @@ export default function App() {
           onOpenFoulResolutionModal={setFoulResolutionData}
           onOpenTutorial={() => setShowTutorialModal(true)}
           onOpenCloudSync={() => setShowSyncPairingModal(true)}
+          onOpenTacticalBoard={() => setShowTacticalBoardModal(true)}
         />
       ) : (
         <>
@@ -2189,6 +2192,18 @@ export default function App() {
                           >
                             <Crosshair className="w-4 h-4 text-orange-400 shrink-0" />
                             <span>Carta de Tiro Interactiva</span>
+                          </button>
+
+                          <button
+                            id="menu-tactical-board-btn"
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              setShowTacticalBoardModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-amber-300 text-xs font-bold text-left transition"
+                          >
+                            <span className="text-sm shrink-0">📋</span>
+                            <span>Pizarra Táctica (Entrenador)</span>
                           </button>
 
                           <button
@@ -2488,14 +2503,26 @@ export default function App() {
                   </button>
                 </div>
 
-                <button
-                  onClick={() => setShowOfficialSheet(true)}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/60 transition flex items-center gap-1 text-xs font-bold uppercase shadow-sm"
-                  title="Ver acta oficial del partido"
-                >
-                  <Share2 className="w-3 h-3 text-emerald-400" />
-                  <span>Acta</span>
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    id="subnav-tactical-board-btn"
+                    onClick={() => setShowTacticalBoardModal(true)}
+                    className="px-2.5 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/60 transition flex items-center gap-1 text-xs font-bold uppercase shadow-sm"
+                    title="Abrir pizarra táctica de entrenador"
+                  >
+                    <span className="text-xs">📋</span>
+                    <span>Pizarra</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowOfficialSheet(true)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/60 transition flex items-center gap-1 text-xs font-bold uppercase shadow-sm"
+                    title="Ver acta oficial del partido"
+                  >
+                    <Share2 className="w-3 h-3 text-emerald-400" />
+                    <span>Acta</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2558,6 +2585,7 @@ export default function App() {
                 onOpenSubstitutionModal={() => setShowSubModal(true)}
                 onOpenRosterModal={() => setShowRosterModal(true)}
                 onUpdateGame={handleUpdateGame}
+                onOpenTacticalBoard={() => setShowTacticalBoardModal(true)}
               />
             )}
 
@@ -2654,6 +2682,32 @@ export default function App() {
                     <div className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold uppercase tracking-wider px-4 py-2 rounded-xl text-xs shadow-lg mt-2">
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Ver Historial & Plan IA</span>
+                    </div>
+                  </button>
+
+                  <button
+                    id="scout-open-tactical-board-btn"
+                    onClick={() => setShowTacticalBoardModal(true)}
+                    className="sm:col-span-2 bg-[#0e224a] hover:bg-[#132a58] border-2 border-emerald-500/50 rounded-2xl p-4 sm:p-5 text-center space-y-2 transition shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3.5 text-left">
+                      <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+                        <span className="text-xl">📋</span>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-white uppercase tracking-wide flex items-center gap-2">
+                          <span>Pizarra Táctica Digital</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            CANVAS API
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-300 mt-0.5">
+                          Dibuja sistemas ofensivos y defensivos con flechas, bloqueos, pases y fichas de jugadores sobre la cancha de baloncesto.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black uppercase tracking-wider px-4 py-2 rounded-xl text-xs shadow-lg shrink-0">
+                      <span>Dibujar Jugada</span>
                     </div>
                   </button>
                 </div>
@@ -2998,6 +3052,17 @@ export default function App() {
           setActiveTab('live');
         }}
       />
+
+      {/* Tactical Board Modal (Pizarra Táctica de Entrenador HTML5 Canvas) */}
+      {showTacticalBoardModal && (
+        <TacticalBoardModal
+          game={game}
+          rosterPlayers={game.players}
+          teamName={game.homeTeamName}
+          opponentName={game.awayTeamName}
+          onClose={() => setShowTacticalBoardModal(false)}
+        />
+      )}
     </div>
   );
 }
