@@ -1,4 +1,5 @@
 import { Game, TeamProfile, Player } from '../types';
+import { isDemoGame } from './libraryUtils';
 
 export type AgeCategoryFamily =
   | 'infantil'
@@ -219,16 +220,21 @@ export function getMatchesForTeam(
   const seenIds = new Set<string>();
   const matches: Game[] = [];
 
-  // Consider current game ONLY IF it strictly belongs to this team
+  // Consider current game ONLY IF it strictly belongs to this team and has actual stats recorded
   const candidates: Game[] = [...games];
   if (currentGame && isGameForTeam(currentGame, team, allTeams)) {
-    if (!candidates.some(g => g.id === currentGame.id)) {
+    const isBlankUnplayed =
+      currentGame.events.length === 0 &&
+      currentGame.homeScore === 0 &&
+      currentGame.awayScore === 0;
+    if (!isBlankUnplayed && !isDemoGame(currentGame) && !candidates.some(g => g.id === currentGame.id)) {
       candidates.push(currentGame);
     }
   }
 
   candidates.forEach(g => {
     if (seenIds.has(g.id)) return;
+    if (isDemoGame(g)) return;
     if (isGameForTeam(g, team, allTeams)) {
       seenIds.add(g.id);
       matches.push(g);

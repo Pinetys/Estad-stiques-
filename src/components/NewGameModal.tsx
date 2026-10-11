@@ -115,7 +115,18 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   // Away Team Mode: 'recorded' | 'manual'
   const [awayTeamMode, setAwayTeamMode] = useState<'recorded' | 'manual'>('recorded');
   const [awaySearchFilter, setAwaySearchFilter] = useState('');
-  const [awayTeam, setAwayTeam] = useState(currentGame.awayTeamName || 'CB Leones');
+  const [awayTeam, setAwayTeam] = useState(() => {
+    const raw = currentGame.awayTeamName || '';
+    if (
+      !raw ||
+      raw.toLowerCase().includes('cb rival') ||
+      raw.toLowerCase().includes('cbrival') ||
+      raw.toLowerCase().includes('cb leones')
+    ) {
+      return 'Equipo Rival';
+    }
+    return raw;
+  });
   const [awayLogo, setAwayLogo] = useState<string | undefined>(
     currentGame.awayTeamLogo || '🛡️'
   );

@@ -138,7 +138,7 @@ function createInitialGame(targetTeam?: TeamProfile): Game {
       year: 'numeric',
     }),
     homeTeamName: teamToUse ? teamToUse.name : 'CB Triunfo',
-    awayTeamName: 'CB Rival',
+    awayTeamName: 'Equipo Rival',
     homeTeamColor: teamToUse?.primaryColor || '#f97316',
     awayTeamColor: '#3b82f6',
     homeTeamLogo: teamToUse?.logo || '🏀',
@@ -183,6 +183,12 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed) {
+          if (
+            (parsed.awayTeamName || '').trim().toLowerCase() === 'cb rival' ||
+            (parsed.awayTeamName || '').trim().toLowerCase() === 'cbrival'
+          ) {
+            parsed.awayTeamName = 'Equipo Rival';
+          }
           const isEscolaMatch = Boolean(
             parsed.category?.toLowerCase()?.includes('escola') ||
             parsed.settings?.quarterDurationMinutes === 8

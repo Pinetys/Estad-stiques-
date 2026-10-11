@@ -641,8 +641,19 @@ export function isDemoGame(game: Partial<Game>): boolean {
   if (!game) return true;
   if (game.id && DEMO_GAME_IDS.has(game.id)) return true;
   if (game.id && game.id.startsWith('game-sample-')) return true;
-  // Eliminate legacy demo teams
-  if (game.awayTeamName === 'CB Leones' || game.awayTeamName === 'Basket Titanes') return true;
+  // Eliminate legacy demo teams & mock rival fixtures
+  const away = (game.awayTeamName || '').trim().toLowerCase();
+  const home = (game.homeTeamName || '').trim().toLowerCase();
+  if (
+    away === 'cb rival' ||
+    away === 'cbrival' ||
+    away === 'cb leones' ||
+    away === 'basket titanes' ||
+    home === 'cb rival' ||
+    home === 'cbrival'
+  ) {
+    return true;
+  }
   return false;
 }
 
