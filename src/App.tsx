@@ -622,20 +622,43 @@ export default function App() {
       });
     });
 
-    // 5. Cloud Firestore live subscription (instant push between tablet and PC)
+    // 5. Cloud Firestore live subscription (instant push between tablet, PC and follower devices)
     const unsubFirestoreMatches = subscribeToMatches(firestoreMatches => {
       if (firestoreMatches && firestoreMatches.length > 0) {
         mergeCloudMatches(firestoreMatches);
         setLibraryGames(getSavedGamesFromStorage());
 
         setGame(currentGame => {
-          const matchInCloud = firestoreMatches.find(m => m.id === currentGame.id);
+          const currentRole = deviceRoleRef.current || getDeviceRole();
+          const watchedId = syncEngine.getWatchedMatchId();
+          const matchInCloud = firestoreMatches.find(
+            m => m.id === currentGame.id ||
+                 m.id?.toLowerCase() === currentGame.id?.toLowerCase() ||
+                 (watchedId && (m.id === watchedId || m.id?.toLowerCase() === watchedId.toLowerCase()))
+          );
+
           if (matchInCloud) {
             const remoteUpdated = matchInCloud.updatedAt ? new Date(matchInCloud.updatedAt).getTime() : 0;
             const localUpdated = currentGame.updatedAt ? new Date(currentGame.updatedAt).getTime() : 0;
+            const remoteEventsCount = matchInCloud.events?.length || 0;
+            const localEventsCount = currentGame.events?.length || 0;
+            const hasScoreDiff = matchInCloud.homeScore !== currentGame.homeScore || matchInCloud.awayScore !== currentGame.awayScore;
+            const hasQuarterDiff = matchInCloud.currentQuarter !== currentGame.currentQuarter;
+            const hasStatusDiff = matchInCloud.status !== currentGame.status;
+            const hasClockDiff = Math.abs((matchInCloud.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || matchInCloud.isClockRunning !== currentGame.isClockRunning;
+            const hasFoulsDiff = matchInCloud.homeQuarterFouls !== currentGame.homeQuarterFouls || matchInCloud.awayQuarterFouls !== currentGame.awayQuarterFouls;
+
             if (
-              (matchInCloud.events?.length || 0) > (currentGame.events?.length || 0) ||
-              remoteUpdated > localUpdated
+              currentRole === 'spectator' ||
+              currentRole === 'monitor' ||
+              remoteEventsCount !== localEventsCount ||
+              hasScoreDiff ||
+              hasQuarterDiff ||
+              hasStatusDiff ||
+              hasClockDiff ||
+              hasFoulsDiff ||
+              remoteUpdated >= localUpdated ||
+              localEventsCount === 0
             ) {
               isRemoteSyncInProgressRef.current = true;
               return matchInCloud;
@@ -1901,8 +1924,11 @@ export default function App() {
         onConnectCode={(code) => {
           handleConnectSpectator(code, null);
         }}
-        onRefresh={() => {
-          syncEngine.syncAll({ force: true }).catch(console.error);
+        onRefresh={async () => {
+          if (game.id) {
+            await syncEngine.checkWatchedMatchUpdate(game.id);
+          }
+          await syncEngine.syncAll({ force: true }).catch(console.error);
         }}
       />
     );

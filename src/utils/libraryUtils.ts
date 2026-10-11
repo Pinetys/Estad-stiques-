@@ -2,6 +2,7 @@ import { Game, PlayerAccumulatedStats, SeasonAggregatedStats, TeamProfile, Playe
 import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed } from './statsCalculator';
 import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from '../lib/firebase';
 import { isMasterAdmin } from './accessControl';
+import { getDeviceRole } from './deviceRole';
 
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
 export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
@@ -1201,10 +1202,17 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
     const existing = mergedMap.get(m.id);
     // Protect games against data regression: Never replace a game that has more events/data with an empty or fewer-events game!
     if (existing) {
+      const isSpectatorDevice = getDeviceRole() === 'spectator' || getDeviceRole() === 'monitor';
       const localEvents = existing.events?.length || 0;
       const cloudEvents = m.events?.length || 0;
-      if (localEvents > cloudEvents) {
-        // Keep local version with richer events
+      const cloudUpdated = m.updatedAt ? new Date(m.updatedAt).getTime() : 0;
+      const localUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+
+      // On spectator / monitor devices, always accept the cloud/server state as authoritative
+      if (isSpectatorDevice) {
+        mergedMap.set(m.id, m);
+      } else if (localEvents > cloudEvents && cloudUpdated <= localUpdated) {
+        // Keep local version with richer events only if cloud is not strictly newer
         mergedMap.set(m.id, existing);
       } else if (cloudEvents > localEvents) {
         mergedMap.set(m.id, m);
@@ -1217,8 +1225,6 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
         } else if (localScore > cloudScore) {
           mergedMap.set(m.id, existing);
         } else {
-          const cloudUpdated = m.updatedAt ? new Date(m.updatedAt).getTime() : 0;
-          const localUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
           if (cloudUpdated >= localUpdated) {
             mergedMap.set(m.id, m);
           } else {

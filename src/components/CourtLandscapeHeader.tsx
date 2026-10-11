@@ -26,6 +26,7 @@ import {
   QrCode,
   Sparkles,
   Radio,
+  History,
 } from 'lucide-react';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import { NotificationBellButton } from './NotificationBellButton';
@@ -71,6 +72,7 @@ interface CourtLandscapeHeaderProps {
   onOpenSpectatorQR?: () => void;
   onOpenAISubHelper?: () => void;
   onOpenTacticalBoard?: () => void;
+  onOpenHistoryModal?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -107,6 +109,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenSpectatorQR,
   onOpenAISubHelper,
   onOpenTacticalBoard,
+  onOpenHistoryModal,
 }) => {
   const totalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
     ? 6
@@ -427,6 +430,24 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             >
               <span className="text-[11px]">📋</span>
               <span className="hidden xl:inline">Pizarra</span>
+            </button>
+          )}
+
+          {/* Historial de Jugadas con Desplegable y Borrado */}
+          {onOpenHistoryModal && (
+            <button
+              type="button"
+              id="header-play-history-btn"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('light', game.settings.vibrationEnabled);
+                onOpenHistoryModal();
+              }}
+              className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
+              title="Desplegar historial de jugadas y eliminar jugadas erróneas"
+            >
+              <History className="w-3 h-3 text-amber-400" />
+              <span>Historial ({game.events.length})</span>
             </button>
           )}
 

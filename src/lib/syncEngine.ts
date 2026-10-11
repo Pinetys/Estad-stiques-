@@ -20,6 +20,7 @@ import {
   deleteMatchFromCloud,
   deleteTeamFromCloud,
   fetchAllMatchesFromCloud,
+  fetchMatchFromCloud,
   fetchAllTeamsFromCloud,
   isFirebaseConfigured,
   isFirestoreQuotaExceeded,
@@ -75,8 +76,9 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
   const gameId = typeof rawId === 'string' && rawId.trim() ? rawId.trim() : (rawId ? String(rawId).trim() : `match-${Date.now()}`);
 
   // 4. Map & sanitize events safely without dropping collisions or rejecting on minor quirks
+  const rawEventsList = Array.isArray(raw.events) ? raw.events : [];
   const seenEventIds = new Set<string>();
-  const normalizedEvents = (raw.events as any[])
+  const normalizedEvents = rawEventsList
     .filter(e => e && typeof e === 'object')
     .map((e, idx) => {
       let eventId = e.id !== undefined && e.id !== null ? String(e.id).trim() : '';
@@ -103,7 +105,8 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
     });
 
   // 5. Map & sanitize players
-  const normalizedPlayers = (raw.players as any[]).map((p, idx) => ({
+  const rawPlayersList = Array.isArray(raw.players) ? raw.players : [];
+  const normalizedPlayers = rawPlayersList.map((p, idx) => ({
     ...p,
     id: String(p.id ?? `p-${idx}`),
     name: String(p.name || `Jugador #${p.number ?? idx + 1}`),
@@ -114,6 +117,13 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
     fouls: typeof p.fouls === 'number' && !isNaN(p.fouls) ? p.fouls : 0,
     minutesPlayedSeconds: typeof p.minutesPlayedSeconds === 'number' && !isNaN(p.minutesPlayedSeconds) ? p.minutesPlayedSeconds : 0,
   }));
+
+  const normalizedSettings = raw.settings && typeof raw.settings === 'object' ? raw.settings : {
+    quarterDurationMinutes: 10,
+    totalQuarters: 4,
+    foulOutLimit: 5,
+    teamBonusFouls: 4,
+  };
 
   // 6. Build clean, type-safe Game object
   const normalizedGame: Game = {
@@ -131,6 +141,7 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
     homeTimeouts: typeof raw.homeTimeouts === 'number' && !isNaN(raw.homeTimeouts) ? raw.homeTimeouts : 2,
     awayTimeouts: typeof raw.awayTimeouts === 'number' && !isNaN(raw.awayTimeouts) ? raw.awayTimeouts : 2,
     status: raw.status || 'setup',
+    settings: normalizedSettings,
     players: normalizedPlayers,
     events: normalizedEvents,
     quarterScores: Array.isArray(raw.quarterScores) ? raw.quarterScores : [],
@@ -312,26 +323,65 @@ class AutoSyncManager {
   }
 
   /**
-   * Directly poll the tracked spectator match from server
+   * Directly poll the tracked spectator match with dual Server + Cloud Firestore redundancy
+   * Guarantees followers never block in 4th quarter or on network quirks.
    */
   public async checkWatchedMatchUpdate(matchId?: string): Promise<Game | null> {
     const targetId = matchId ? matchId.trim() : this.watchedMatchId;
     if (!targetId) return null;
 
+    let candidateServer: Game | null = null;
+    let candidateCloud: Game | null = null;
+
+    // 1. Fetch from server endpoint
     try {
       const res = await fetch(`/api/sync/match/${encodeURIComponent(targetId)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.game) {
-          const val = validateQRGameData(data.game, 'Watched Match Direct Poll');
+          const val = validateQRGameData(data.game, 'Watched Match Poll (Server)');
           if (val.isValid && val.game) {
-            this.handleRemoteMatchPush(val.game);
-            return val.game;
+            candidateServer = val.game;
           }
         }
       }
-    } catch (err) {
-      // Network or offline, ignore
+    } catch {
+      // Server network or offline
+    }
+
+    // 2. Dual redundancy: also query Cloud Firestore directly if configured
+    if (isFirebaseConfigured && !this.firestoreQuotaExceeded) {
+      try {
+        const cloudGame = await fetchMatchFromCloud(targetId);
+        if (cloudGame) {
+          const val = validateQRGameData(cloudGame, 'Watched Match Poll (Cloud)');
+          if (val.isValid && val.game) {
+            candidateCloud = val.game;
+          }
+        }
+      } catch {
+        // Cloud offline or timeout
+      }
+    }
+
+    // 3. Select freshest candidate
+    let bestGame: Game | null = candidateServer;
+    if (!bestGame && candidateCloud) {
+      bestGame = candidateCloud;
+    } else if (bestGame && candidateCloud) {
+      const serverEvents = bestGame.events?.length || 0;
+      const cloudEvents = candidateCloud.events?.length || 0;
+      const serverTime = bestGame.updatedAt ? new Date(bestGame.updatedAt).getTime() : 0;
+      const cloudTime = candidateCloud.updatedAt ? new Date(candidateCloud.updatedAt).getTime() : 0;
+
+      if (cloudEvents > serverEvents || cloudTime > serverTime) {
+        bestGame = candidateCloud;
+      }
+    }
+
+    if (bestGame) {
+      this.handleRemoteMatchPush(bestGame);
+      return bestGame;
     }
     return null;
   }
@@ -885,8 +935,12 @@ class AutoSyncManager {
 
     const validatedGame = validation.game;
 
-    // Merge into local library
-    mergeCloudMatches([validatedGame]);
+    // Merge into local library defensively
+    try {
+      mergeCloudMatches([validatedGame]);
+    } catch (err) {
+      console.warn('[syncEngine] Error al sincronizar con almacenamiento local (se propaga a la UI):', err);
+    }
 
     // Notify match update listeners
     this.matchUpdateListeners.forEach(fn => {

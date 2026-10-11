@@ -17,34 +17,37 @@ import {
   Maximize2,
   Minimize2,
   ChevronDown,
+  BookOpen,
+  Save,
+  Plus,
+  Play,
+  Pause,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  FilePlus,
+  Edit3,
+  Copy,
+  RefreshCw,
+  FolderOpen,
 } from 'lucide-react';
 import { Player } from '../types';
+import {
+  TacticalPlay,
+  TacticalFrame,
+  TacticalStroke,
+  TacticalToken,
+  TacticalPoint,
+  DrawingType,
+  CourtView,
+  PlayCategory,
+} from '../types/tactical';
+import { DEFAULT_TACTICAL_PLAYS } from '../data/defaultTacticalPlays';
+import { TacticalPlayHistoryModal } from './TacticalPlayHistoryModal';
 
-export type DrawingType = 'corte' | 'pase' | 'bloqueo' | 'tiro' | 'bote' | 'lapiz' | 'borrador';
-export type CourtView = 'half' | 'full';
+export type { DrawingType, CourtView, TacticalPoint, TacticalStroke, TacticalToken, TacticalFrame, TacticalPlay };
 
-export interface TacticalPoint {
-  x: number; // 0 to 100 on court
-  y: number; // 0 to 93.3 on half court (or 0 to 100 on full)
-}
-
-export interface TacticalStroke {
-  id: string;
-  type: DrawingType;
-  color: string;
-  width: number;
-  points: TacticalPoint[];
-}
-
-export interface TacticalToken {
-  id: string;
-  label: string;
-  type: 'offense' | 'defense' | 'ball' | 'cone';
-  x: number; // 0 to 100
-  y: number; // 0 to 93.3
-  playerName?: string;
-  dorsal?: number;
-}
+const STORAGE_KEY = 'basketstats_tactical_plays_v2';
 
 const DEFAULT_OFFENSE_HALF: TacticalToken[] = [
   { id: 'off-1', label: '1', type: 'offense', x: 50, y: 76, playerName: 'Base' },
@@ -160,30 +163,86 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const courtContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Selected drawing type from the dropdown menu
+  // Selected drawing type & styles
   const [drawingType, setDrawingType] = useState<DrawingType>('corte');
   const [inkColor, setInkColor] = useState<string>('#FACC15');
   const [strokeWidth, setStrokeWidth] = useState<number>(1.5);
   const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('parquet');
-  const [courtView, setCourtView] = useState<CourtView>('half');
 
-  // Strokes history
+  // Active stroke in progress
+  const activeStrokeRef = useRef<TacticalStroke | null>(null);
+  const isDrawingRef = useRef<boolean>(false);
+  const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
+
+  // -------------------------------------------------------------------------
+  // PLAYBOOK & MULTI-GRAPHIC SYSTEM STATE
+  // -------------------------------------------------------------------------
+  // All plays saved in localStorage
+  const [plays, setPlays] = useState<TacticalPlay[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_TACTICAL_PLAYS;
+  });
+
+  // Current play metadata
+  const [currentPlayId, setCurrentPlayId] = useState<string>('play-new-1');
+  const [playName, setPlayName] = useState<string>('Nueva Jugada');
+  const [playCategory, setPlayCategory] = useState<PlayCategory>('ataque');
+  const [playDescription, setPlayDescription] = useState<string>('');
+
+  // Frames / Graphics of the current play
+  const [frames, setFrames] = useState<TacticalFrame[]>([
+    {
+      id: 'frame-1',
+      title: 'Gráfico 1: Inicio',
+      notes: '',
+      strokes: [],
+      tokens: [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL],
+    },
+  ]);
+  const [activeFrameIndex, setActiveFrameIndex] = useState<number>(0);
+
+  // Live strokes and tokens for the currently active frame
   const [strokes, setStrokes] = useState<TacticalStroke[]>([]);
   const [redoStack, setRedoStack] = useState<TacticalStroke[]>([]);
-
-  // Tokens (players, ball, cones)
   const [tokens, setTokens] = useState<TacticalToken[]>([
     ...DEFAULT_OFFENSE_HALF,
     ...DEFAULT_DEFENSE_HALF,
     DEFAULT_BALL,
   ]);
-  const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
 
-  // Active stroke in progress
-  const activeStrokeRef = useRef<TacticalStroke | null>(null);
-  const isDrawingRef = useRef<boolean>(false);
+  // Modal / Drawer controls
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isEditingFrameTitle, setIsEditingFrameTitle] = useState<boolean>(false);
 
-  // Load starter players if provided
+  // Helper toast feedback
+  const showToastFeedback = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(prev => (prev === msg ? null : prev));
+    }, 2800);
+  }, []);
+
+  // Save plays to localStorage
+  const persistPlays = useCallback((newPlays: TacticalPlay[]) => {
+    setPlays(newPlays);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newPlays));
+    } catch (e) {
+      console.warn('Could not save plays to localStorage', e);
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // INITIAL ROSTER INTEGRATION
+  // -------------------------------------------------------------------------
   useEffect(() => {
     if (rosterPlayers && rosterPlayers.length > 0) {
       const courtStarters = rosterPlayers.filter(p => p.onCourt).slice(0, 5);
@@ -191,6 +250,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
 
       if (playersToUse.length > 0) {
         setTokens(prev => {
+          // If already customized with players, keep; else map roster
           const nonOffense = prev.filter(t => t.type !== 'offense');
           const newOffense: TacticalToken[] = playersToUse.map((p, idx) => {
             const basePos = DEFAULT_OFFENSE_HALF[idx] || { x: 30 + idx * 10, y: 60 };
@@ -210,34 +270,31 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     }
   }, [rosterPlayers]);
 
-  // Master Redraw on Canvas (coordinates normalized to 0..100 x 0..93.3)
+  // -------------------------------------------------------------------------
+  // CANVAS RENDERING & RESIZE
+  // -------------------------------------------------------------------------
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Reset transform and clear
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Apply scale mapping 0..100 -> canvas.width and 0..93.3 -> canvas.height
     const scaleX = canvas.width / 100;
     const scaleY = canvas.height / 93.3;
     ctx.scale(scaleX, scaleY);
 
-    // Render all saved strokes
     strokes.forEach(stroke => {
       drawTacticalStroke(ctx, stroke);
     });
 
-    // Render active stroke in progress
     if (activeStrokeRef.current) {
       drawTacticalStroke(ctx, activeStrokeRef.current);
     }
   }, [strokes]);
 
-  // Handle Resize: match canvas pixel buffer with its CSS display dimensions * devicePixelRatio
   useEffect(() => {
     const updateCanvasResolution = () => {
       const canvas = canvasRef.current;
@@ -279,7 +336,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     redrawCanvas();
   }, [redrawCanvas]);
 
-  // Precise pointer coordinate translation: converts screen pointer to court coordinates [0..100, 0..93.3]
+  // Pointer coordinate translator [0..100, 0..93.3]
   const getCourtCoordinates = (clientX: number, clientY: number): TacticalPoint | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -295,9 +352,9 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     return { x, y };
   };
 
-  // Erase stroke by distance
+  // Erase stroke by proximity
   const eraseStrokeAtPoint = (point: TacticalPoint) => {
-    const threshold = 3.5; // in court units
+    const threshold = 3.5;
     setStrokes(prev => {
       const filtered = prev.filter(stroke => {
         return !stroke.points.some(p => Math.hypot(p.x - point.x, p.y - point.y) < threshold);
@@ -309,14 +366,13 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     });
   };
 
-  // Pointer Down (Mouse / Touch / Stylus)
+  // Pointer Down (Draw)
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (draggingTokenId) return;
 
     const coords = getCourtCoordinates(e.clientX, e.clientY);
     if (!coords) return;
 
-    // Capture pointer to guarantee tracking even outside element boundaries
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {}
@@ -339,7 +395,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     redrawCanvas();
   };
 
-  // Pointer Move
+  // Pointer Move (Draw)
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
 
@@ -354,17 +410,15 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     if (!activeStrokeRef.current) return;
 
     if (drawingType === 'lapiz') {
-      // Continuous freehand path
       activeStrokeRef.current.points.push(coords);
     } else {
-      // Vector shapes: start point and current destination tip
       activeStrokeRef.current.points = [activeStrokeRef.current.points[0], coords];
     }
 
     redrawCanvas();
   };
 
-  // Pointer Up
+  // Pointer Up (Draw)
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
@@ -383,7 +437,6 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
         const p2 = pts[pts.length - 1];
         const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
 
-        // Discard accidental zero-distance micro-taps for vector lines
         if (finalStroke.type === 'lapiz' || dist > 1.2) {
           setStrokes(prev => [...prev, finalStroke]);
           setRedoStack([]);
@@ -394,7 +447,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     redrawCanvas();
   };
 
-  // Undo / Redo controls
+  // Undo / Redo
   const handleUndo = () => {
     if (strokes.length === 0) return;
     const last = strokes[strokes.length - 1];
@@ -409,7 +462,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     setStrokes(prev => [...prev, next]);
   };
 
-  // Clear Board
+  // Clear current graphic's strokes
   const handleClearBoard = () => {
     if (strokes.length === 0) return;
     setStrokes([]);
@@ -423,6 +476,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       ...DEFAULT_DEFENSE_HALF,
       DEFAULT_BALL,
     ]);
+    showToastFeedback('Posiciones iniciales restablecidas');
   };
 
   // Tactical Formations
@@ -439,6 +493,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           return t;
         })
       );
+      showToastFeedback('Formación: 5 Abiertos aplicada');
     } else if (formation === '4out1in') {
       setTokens(prev =>
         prev.map(t => {
@@ -451,18 +506,20 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           return t;
         })
       );
+      showToastFeedback('Formación: 4-Out 1-In aplicada');
     } else if (formation === 'horns') {
       setTokens(prev =>
         prev.map(t => {
-          if (t.id === 'off-1') return { ...t, x: 50, y: 80 };
-          if (t.id === 'off-2') return { ...t, x: 12, y: 25 };
-          if (t.id === 'off-3') return { ...t, x: 88, y: 25 };
-          if (t.id === 'off-4') return { ...t, x: 35, y: 53 };
-          if (t.id === 'off-5') return { ...t, x: 65, y: 53 };
-          if (t.id === 'ball-1') return { ...t, x: 50, y: 86 };
+          if (t.id === 'off-1') return { ...t, x: 50, y: 78 };
+          if (t.id === 'off-2') return { ...t, x: 12, y: 32 };
+          if (t.id === 'off-3') return { ...t, x: 88, y: 32 };
+          if (t.id === 'off-4') return { ...t, x: 38, y: 46 };
+          if (t.id === 'off-5') return { ...t, x: 62, y: 46 };
+          if (t.id === 'ball-1') return { ...t, x: 50, y: 84 };
           return t;
         })
       );
+      showToastFeedback('Formación: Cuernos (Horns) aplicada');
     } else if (formation === 'zone23') {
       setTokens(prev =>
         prev.map(t => {
@@ -474,10 +531,11 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           return t;
         })
       );
+      showToastFeedback('Defensa: Zona 2-3 aplicada');
     }
   };
 
-  // Dragging tokens across the court
+  // Dragging tokens
   const handleTokenPointerDown = (tokenId: string, e: React.PointerEvent) => {
     e.stopPropagation();
     setDraggingTokenId(tokenId);
@@ -505,7 +563,287 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     }
   };
 
-  // Export board as high-res PNG image
+  // -------------------------------------------------------------------------
+  // MULTI-GRAPHIC / FRAME MANAGEMENT
+  // -------------------------------------------------------------------------
+
+  // Switch active graphic
+  const handleSwitchFrame = (targetIndex: number) => {
+    if (targetIndex < 0 || targetIndex >= frames.length || targetIndex === activeFrameIndex) return;
+
+    // First save current frame strokes and tokens
+    setFrames(prevFrames => {
+      const copy = [...prevFrames];
+      copy[activeFrameIndex] = {
+        ...copy[activeFrameIndex],
+        strokes: strokes,
+        tokens: tokens,
+      };
+      return copy;
+    });
+
+    const targetFrame = frames[targetIndex];
+    setActiveFrameIndex(targetIndex);
+    setStrokes(targetFrame.strokes || []);
+    setTokens(targetFrame.tokens || [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL]);
+    setRedoStack([]);
+  };
+
+  // Add a new graphic/frame to the play
+  const handleAddFrame = (mode: 'transition' | 'clean' | 'duplicate' = 'transition') => {
+    // 1. Commit active frame
+    const currentUpdatedFrames = [...frames];
+    currentUpdatedFrames[activeFrameIndex] = {
+      ...currentUpdatedFrames[activeFrameIndex],
+      strokes: strokes,
+      tokens: tokens,
+    };
+
+    const newIndex = currentUpdatedFrames.length;
+    const newFrameId = `frame-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+
+    let newTokens: TacticalToken[];
+    let newStrokes: TacticalStroke[];
+
+    if (mode === 'duplicate') {
+      newTokens = tokens.map(t => ({ ...t }));
+      newStrokes = strokes.map(s => ({ ...s, id: `s-${Date.now()}-${Math.random().toString(36).substr(2, 4)}` }));
+    } else if (mode === 'clean') {
+      newTokens = [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL];
+      newStrokes = [];
+    } else {
+      // Transition: keep token positions from current frame (natural basketball continuity) + clean drawing
+      newTokens = tokens.map(t => ({ ...t }));
+      newStrokes = [];
+    }
+
+    const newFrame: TacticalFrame = {
+      id: newFrameId,
+      title: `Gráfico ${newIndex + 1}`,
+      notes: '',
+      tokens: newTokens,
+      strokes: newStrokes,
+    };
+
+    const nextFrames = [...currentUpdatedFrames, newFrame];
+    setFrames(nextFrames);
+    setActiveFrameIndex(newIndex);
+    setTokens(newTokens);
+    setStrokes(newStrokes);
+    setRedoStack([]);
+
+    showToastFeedback(`Gráfico ${newIndex + 1} añadido a "${playName}"`);
+  };
+
+  // Delete a graphic/frame
+  const handleDeleteFrame = (indexToDelete: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (frames.length <= 1) {
+      showToastFeedback('La jugada debe tener al menos un gráfico');
+      return;
+    }
+
+    const nextFrames = frames.filter((_, idx) => idx !== indexToDelete);
+    let nextIndex = activeFrameIndex;
+    if (indexToDelete === activeFrameIndex) {
+      nextIndex = Math.max(0, indexToDelete - 1);
+    } else if (indexToDelete < activeFrameIndex) {
+      nextIndex = activeFrameIndex - 1;
+    }
+
+    setFrames(nextFrames);
+    setActiveFrameIndex(nextIndex);
+    const target = nextFrames[nextIndex];
+    setTokens(target.tokens || [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL]);
+    setStrokes(target.strokes || []);
+    setRedoStack([]);
+    showToastFeedback(`Gráfico eliminado (${nextFrames.length} restantes)`);
+  };
+
+  // Update current graphic's title or notes
+  const handleUpdateFrameTitle = (newTitle: string) => {
+    setFrames(prev => {
+      const copy = [...prev];
+      copy[activeFrameIndex] = {
+        ...copy[activeFrameIndex],
+        title: newTitle,
+      };
+      return copy;
+    });
+  };
+
+  // -------------------------------------------------------------------------
+  // PLAYBACK / ANIMATION STEPPER
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (frames.length <= 1) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setActiveFrameIndex(prevIdx => {
+        const nextIdx = (prevIdx + 1) % frames.length;
+        const targetFrame = frames[nextIdx];
+        if (targetFrame) {
+          setTokens(targetFrame.tokens);
+          setStrokes(targetFrame.strokes);
+          setRedoStack([]);
+        }
+        return nextIdx;
+      });
+    }, 2400);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, frames]);
+
+  // -------------------------------------------------------------------------
+  // SAVE & LOAD PLAYS (PLAYBOOK LIBRARY)
+  // -------------------------------------------------------------------------
+  // Save current play
+  const handleSavePlay = () => {
+    const trimmedName = playName.trim() || 'Jugada sin título';
+
+    // Sync active frame into frames list
+    const currentUpdatedFrames = [...frames];
+    currentUpdatedFrames[activeFrameIndex] = {
+      ...currentUpdatedFrames[activeFrameIndex],
+      strokes: strokes,
+      tokens: tokens,
+    };
+
+    const targetPlayId = currentPlayId.startsWith('play-new-')
+      ? `play-${Date.now()}`
+      : currentPlayId;
+
+    const playToSave: TacticalPlay = {
+      id: targetPlayId,
+      name: trimmedName,
+      category: playCategory,
+      description: playDescription,
+      frames: currentUpdatedFrames,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const existsIndex = plays.findIndex(p => p.id === targetPlayId);
+    let updatedPlaysList: TacticalPlay[];
+    if (existsIndex >= 0) {
+      updatedPlaysList = [...plays];
+      updatedPlaysList[existsIndex] = playToSave;
+    } else {
+      updatedPlaysList = [playToSave, ...plays];
+    }
+
+    setCurrentPlayId(targetPlayId);
+    setFrames(currentUpdatedFrames);
+    persistPlays(updatedPlaysList);
+    showToastFeedback(`¡Jugada "${trimmedName}" guardada en el historial!`);
+  };
+
+  // Start fresh new play
+  const handleNewPlay = () => {
+    const newId = `play-new-${Date.now()}`;
+    setCurrentPlayId(newId);
+    setPlayName('Nueva Jugada');
+    setPlayCategory('ataque');
+    setPlayDescription('');
+
+    const initialTokens = [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL];
+    const initialFrames: TacticalFrame[] = [
+      {
+        id: `frame-${Date.now()}`,
+        title: 'Gráfico 1: Inicio',
+        notes: '',
+        strokes: [],
+        tokens: initialTokens,
+      },
+    ];
+
+    setFrames(initialFrames);
+    setActiveFrameIndex(0);
+    setTokens(initialTokens);
+    setStrokes([]);
+    setRedoStack([]);
+    showToastFeedback('Nueva jugada creada. Dibuja y añade los gráficos necesarios.');
+  };
+
+  // Load play from history modal
+  const handleSelectPlayFromHistory = (selectedPlay: TacticalPlay) => {
+    setCurrentPlayId(selectedPlay.id);
+    setPlayName(selectedPlay.name);
+    setPlayCategory(selectedPlay.category || 'ataque');
+    setPlayDescription(selectedPlay.description || '');
+
+    const validFrames =
+      selectedPlay.frames && selectedPlay.frames.length > 0
+        ? selectedPlay.frames
+        : [
+            {
+              id: 'frame-1',
+              title: 'Gráfico 1: Inicio',
+              notes: '',
+              strokes: [],
+              tokens: [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL],
+            },
+          ];
+
+    setFrames(validFrames);
+    setActiveFrameIndex(0);
+    setTokens(validFrames[0].tokens || [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL]);
+    setStrokes(validFrames[0].strokes || []);
+    setRedoStack([]);
+    showToastFeedback(`Jugada "${selectedPlay.name}" cargada con ${validFrames.length} gráfico(s)`);
+  };
+
+  // Delete play from history modal
+  const handleDeletePlayFromHistory = (playIdToDelete: string) => {
+    const updated = plays.filter(p => p.id !== playIdToDelete);
+    persistPlays(updated);
+
+    if (currentPlayId === playIdToDelete) {
+      handleNewPlay();
+    }
+    showToastFeedback('Jugada eliminada del historial');
+  };
+
+  // Duplicate play from history modal
+  const handleDuplicatePlayFromHistory = (playToDuplicate: TacticalPlay) => {
+    const duplicate: TacticalPlay = {
+      ...playToDuplicate,
+      id: `play-${Date.now()}`,
+      name: `Copia de ${playToDuplicate.name}`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      frames: playToDuplicate.frames.map((f, i) => ({
+        ...f,
+        id: `f-${Date.now()}-${i}`,
+        tokens: f.tokens.map(t => ({ ...t })),
+        strokes: f.strokes.map(s => ({ ...s })),
+      })),
+    };
+
+    const updated = [duplicate, ...plays];
+    persistPlays(updated);
+    showToastFeedback(`Copia creada: "${duplicate.name}"`);
+  };
+
+  // Reset default plays
+  const handleResetDefaultPlays = () => {
+    persistPlays(DEFAULT_TACTICAL_PLAYS);
+    showToastFeedback('Jugadas de muestra restauradas');
+  };
+
+  // Import plays
+  const handleImportPlays = (imported: TacticalPlay[]) => {
+    const updated = [...imported, ...plays];
+    persistPlays(updated);
+  };
+
+  // -------------------------------------------------------------------------
+  // EXPORT CURRENT GRAPHIC OR PLAY AS PNG
+  // -------------------------------------------------------------------------
   const handleExportImage = () => {
     const container = courtContainerRef.current;
     if (!container) return;
@@ -519,7 +857,6 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     const ctx = exportCanvas.getContext('2d');
     if (!ctx) return;
 
-    // Draw court background SVG onto export canvas via Image
     const svgElement = container.querySelector('svg');
     if (!svgElement) return;
 
@@ -532,7 +869,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       ctx.drawImage(img, 0, 0, width, height);
       URL.revokeObjectURL(blobURL);
 
-      // Draw all tactical strokes on export
+      // Strokes
       ctx.save();
       const scaleX = width / 100;
       const scaleY = height / 93.3;
@@ -542,7 +879,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       });
       ctx.restore();
 
-      // Draw tokens
+      // Tokens
       tokens.forEach(token => {
         const px = (token.x / 100) * width;
         const py = (token.y / 93.3) * height;
@@ -591,29 +928,38 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
         ctx.restore();
       });
 
-      // Title header watermark
+      // Watermark header with play name & frame number
       ctx.save();
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.fillRect(16, 16, 360, 54);
-      ctx.strokeStyle = '#D4AF37';
+      ctx.fillStyle = 'rgba(11, 20, 46, 0.9)';
+      ctx.fillRect(16, 16, 420, 68);
+      ctx.strokeStyle = '#F59E0B';
       ctx.lineWidth = 2;
-      ctx.strokeRect(16, 16, 360, 54);
+      ctx.strokeRect(16, 16, 420, 68);
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 18px system-ui, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(`PIZARRA TÁCTICA • ${teamName}`, 28, 24);
+      ctx.fillText(playName.toUpperCase(), 28, 24);
 
-      ctx.fillStyle = '#F5C542';
-      ctx.font = '13px system-ui, sans-serif';
-      ctx.fillText(`${new Date().toLocaleDateString('es-ES')} • BasketStats PRO`, 28, 46);
+      ctx.fillStyle = '#F59E0B';
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.fillText(
+        `${frames[activeFrameIndex]?.title || `Gráfico ${activeFrameIndex + 1}`} (Paso ${activeFrameIndex + 1}/${frames.length})`,
+        28,
+        48
+      );
+
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.fillText(`${teamName} • BasketStats PRO`, 28, 66);
       ctx.restore();
 
       const dataUrl = exportCanvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = `pizarra_tactica_${Date.now()}.png`;
+      const cleanFileName = playName.toLowerCase().replace(/[^a-z0-9]/gi, '_');
+      a.download = `${cleanFileName}_grafico_${activeFrameIndex + 1}.png`;
       a.click();
     };
     img.src = blobURL;
@@ -622,91 +968,150 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const activeOption = DRAWING_OPTIONS.find(o => o.id === drawingType) || DRAWING_OPTIONS[0];
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#070c1e] text-slate-100 select-none">
-      {/* 1. TOP TOOLBAR: Dropdown for Drawing Type, Inks, Actions */}
-      <div className="bg-[#0c1633] border-b border-blue-900/60 p-2 sm:p-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-20 shadow-md">
-        {/* Left: Prominent Dropdown Menu for Drawing Type */}
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <label
-              htmlFor="tactical-drawing-type-select"
-              className="text-[10px] font-mono uppercase font-extrabold text-amber-400 block mb-0.5"
-            >
-              Tipo de Jugada / Flecha:
+    <div className="flex flex-col h-full w-full bg-[#070c1e] text-slate-100 select-none overflow-hidden relative">
+      {/* Toast feedback banner */}
+      {toastMessage && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 border border-amber-300 animate-in fade-in slide-in-from-top-2 duration-150">
+          <Check className="w-4 h-4 stroke-[3]" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* 1. TOP BAR: PLAY NAME & PLAYBOOK HISTORY CONTROLS */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="bg-gradient-to-r from-[#0c1633] via-[#0f1f4b] to-[#0c1633] border-b border-blue-900/70 px-2.5 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30 shadow-md">
+        {/* Left: Play Name input and Category Selector */}
+        <div className="flex items-center gap-2 flex-1 min-w-[260px]">
+          <div className="relative flex-1 max-w-sm sm:max-w-md">
+            <label htmlFor="play-name-input" className="sr-only">
+              Nombre de la jugada
             </label>
             <div className="relative flex items-center">
-              <select
-                id="tactical-drawing-type-select"
-                value={drawingType}
-                onChange={e => setDrawingType(e.target.value as DrawingType)}
-                className="appearance-none bg-[#0a1638] hover:bg-[#0f2154] text-white font-black text-xs sm:text-sm pl-8 pr-8 py-2 rounded-xl border-2 border-amber-500/80 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition cursor-pointer shadow-md min-w-[200px]"
-              >
-                {DRAWING_OPTIONS.map(opt => (
-                  <option key={opt.id} value={opt.id} className="bg-[#0a1638] text-white py-1">
-                    {opt.icon} {opt.label} ({opt.badge})
-                  </option>
-                ))}
-              </select>
-
-              {/* Leading Icon */}
-              <span className="absolute left-2.5 text-base pointer-events-none text-amber-400">
-                {activeOption.icon}
+              <input
+                id="play-name-input"
+                type="text"
+                value={playName}
+                onChange={e => setPlayName(e.target.value)}
+                placeholder="Nombre de la jugada (ej. Cuernos Salida 2)..."
+                className="w-full bg-[#091129] hover:bg-[#0d183a] focus:bg-[#0d183a] text-white font-black text-xs sm:text-sm pl-7 pr-3 py-1.5 rounded-xl border border-amber-500/70 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition placeholder-slate-400"
+              />
+              <span className="absolute left-2.5 text-amber-400 text-xs pointer-events-none">
+                🏷️
               </span>
-
-              {/* Trailing Chevron */}
-              <ChevronDown className="w-4 h-4 text-amber-400 absolute right-2.5 pointer-events-none" />
             </div>
           </div>
 
-          {/* Quick Active Badge Feedback */}
-          <div className="hidden md:flex flex-col justify-center text-[10px] text-slate-300 font-mono pl-1">
+          {/* Category Dropdown */}
+          <select
+            value={playCategory}
+            onChange={e => setPlayCategory(e.target.value as PlayCategory)}
+            className="bg-[#091129] text-amber-300 font-bold text-xs px-2.5 py-1.5 rounded-xl border border-blue-800/80 focus:outline-none focus:border-amber-400 cursor-pointer hidden sm:inline"
+            title="Categoría táctica"
+          >
+            <option value="ataque">Ataque</option>
+            <option value="defensa">Defensa</option>
+            <option value="fondo">Saque Fondo</option>
+            <option value="banda">Saque Banda</option>
+            <option value="transicion">Transición</option>
+            <option value="especial">Especial / ATO</option>
+          </select>
+        </div>
+
+        {/* Right: Save Play, New Play, & Open History Button */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleSavePlay}
+            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            title="Guardar jugada y sus gráficos en el historial"
+          >
+            <Save className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Guardar Jugada</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNewPlay}
+            className="px-2.5 py-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/70 font-bold text-xs flex items-center gap-1 transition"
+            title="Empezar una nueva jugada en blanco"
+          >
+            <FilePlus className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden xs:inline">Nueva</span>
+          </button>
+
+          {/* Historial de Jugadas Button */}
+          <button
+            type="button"
+            onClick={() => setShowHistoryModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs flex items-center gap-1.5 transition shadow-md active:scale-95"
+            title="Ver biblioteca e historial de jugadas guardadas"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Historial ({plays.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* 2. SECONDARY BAR: DRAWING TOOLS, PALETTES & ACTIONS */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="bg-[#091129] border-b border-blue-900/60 px-2 sm:px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-20">
+        {/* Left: Dropdown Drawing Type */}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <select
+              id="tactical-drawing-type-select"
+              value={drawingType}
+              onChange={e => setDrawingType(e.target.value as DrawingType)}
+              className="appearance-none bg-[#0a1638] hover:bg-[#0f2154] text-white font-black text-xs pl-7 pr-7 py-1.5 rounded-xl border border-amber-500/80 focus:border-amber-400 focus:outline-none transition cursor-pointer shadow-xs min-w-[170px]"
+            >
+              {DRAWING_OPTIONS.map(opt => (
+                <option key={opt.id} value={opt.id} className="bg-[#0a1638] text-white py-1">
+                  {opt.icon} {opt.label} ({opt.badge})
+                </option>
+              ))}
+            </select>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm pointer-events-none text-amber-400">
+              {activeOption.icon}
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 text-amber-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          <div className="hidden lg:flex items-center text-[10px] text-slate-300 font-mono">
             <span className="font-bold text-amber-300">{activeOption.badge}</span>
-            <span className="text-slate-400 truncate max-w-[160px]">{activeOption.description}</span>
           </div>
         </div>
 
-        {/* Center: Ink Color Palette Controls */}
-        <div className="flex items-center gap-1.5 bg-[#091129] p-1 rounded-xl border border-blue-900/60">
-          <Palette className="w-3.5 h-3.5 text-slate-400 ml-1 shrink-0" />
+        {/* Center: Ink Colors & Stroke Width */}
+        <div className="flex items-center gap-1.5 bg-[#060c1e] p-1 rounded-xl border border-blue-900/60">
+          <Palette className="w-3 h-3 text-slate-400 ml-0.5 shrink-0 hidden xs:inline" />
           <div className="flex items-center gap-1">
             {INK_COLORS.map(c => (
               <button
                 key={c.value}
                 type="button"
                 onClick={() => setInkColor(c.value)}
-                className={`w-6 h-6 rounded-full transition-transform flex items-center justify-center relative ${
+                className={`w-5 h-5 rounded-full transition-transform flex items-center justify-center ${
                   inkColor === c.value
-                    ? 'ring-2 ring-white scale-110 shadow-sm z-10'
+                    ? 'ring-2 ring-white scale-110 shadow-xs'
                     : 'opacity-85 hover:opacity-100 hover:scale-105'
                 }`}
                 style={{ backgroundColor: c.value }}
-                title={`Color de tinta: ${c.name}`}
+                title={`Color: ${c.name}`}
               >
                 {inkColor === c.value && (
                   <Check
-                    className={`w-3 h-3 ${
+                    className={`w-2.5 h-2.5 ${
                       c.value === '#FFFFFF' || c.value === '#FACC15' ? 'text-black' : 'text-white'
                     }`}
                   />
                 )}
               </button>
             ))}
-
-            {/* Custom native color picker */}
-            <label
-              className="w-6 h-6 rounded-full border border-dashed border-slate-400 cursor-pointer flex items-center justify-center bg-gradient-to-tr from-pink-500 via-amber-400 to-cyan-400 text-[10px] overflow-hidden"
-              title="Personalizar color de tinta"
-            >
-              <input
-                type="color"
-                value={inkColor}
-                onChange={e => setInkColor(e.target.value)}
-                className="opacity-0 w-0 h-0 cursor-pointer"
-              />
-            </label>
           </div>
 
-          <div className="h-4 w-px bg-blue-900 mx-0.5" />
+          <div className="h-3.5 w-px bg-blue-900 mx-0.5" />
 
           {/* Stroke Width Toggle */}
           <div className="flex items-center gap-0.5">
@@ -715,12 +1120,12 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                 key={sw.value}
                 type="button"
                 onClick={() => setStrokeWidth(sw.value)}
-                className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition ${
+                className={`px-1.5 py-0.5 text-[9px] font-mono rounded transition ${
                   strokeWidth === sw.value
                     ? 'bg-blue-600 text-white font-bold'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title={`Grosor de trazo: ${sw.label}`}
+                title={`Grosor: ${sw.label}`}
               >
                 {sw.label[0]}
               </button>
@@ -728,158 +1133,221 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           </div>
         </div>
 
-        {/* Right: Actions (Undo, Redo, Clear Board, Export) */}
+        {/* Right: Undo, Redo, Clear, Export PNG */}
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={handleUndo}
             disabled={strokes.length === 0}
-            className="p-1.5 rounded-lg bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/60 disabled:opacity-40 transition shadow-xs"
-            title="Deshacer último trazo (Undo)"
+            className="p-1.5 rounded-lg bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/60 disabled:opacity-30 transition"
+            title="Deshacer trazo"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
           <button
             type="button"
             onClick={handleRedo}
             disabled={redoStack.length === 0}
-            className="p-1.5 rounded-lg bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/60 disabled:opacity-40 transition shadow-xs"
-            title="Rehacer trazo (Redo)"
+            className="p-1.5 rounded-lg bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/60 disabled:opacity-30 transition"
+            title="Rehacer trazo"
           >
-            <RotateCw className="w-4 h-4" />
+            <RotateCw className="w-3.5 h-3.5" />
           </button>
 
           <button
             type="button"
-            id="tactical-board-clear-btn"
             onClick={handleClearBoard}
             disabled={strokes.length === 0}
-            className="px-2.5 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 disabled:opacity-40 text-xs font-bold transition flex items-center gap-1 shadow-xs"
-            title="Limpiar todos los dibujos de la pizarra"
+            className="px-2 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 disabled:opacity-30 text-xs font-bold transition flex items-center gap-1"
+            title="Limpiar trazos del gráfico actual"
           >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            <span>Limpiar</span>
+            <Trash2 className="w-3 h-3 text-rose-400" />
+            <span className="hidden xs:inline">Limpiar</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportImage}
-            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm active:scale-95"
-            title="Descargar imagen PNG de la jugada"
+            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-xs"
+            title="Descargar imagen PNG del gráfico actual"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Guardar</span>
+            <Download className="w-3 h-3" />
+            <span className="hidden sm:inline">PNG</span>
           </button>
         </div>
       </div>
 
-      {/* 2. SUB-TOOLBAR: Parquet Theme Toggle & Formations */}
-      <div className="bg-[#091129] border-b border-blue-950 px-2.5 py-1 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 z-10">
-        <div className="flex items-center gap-2 font-mono text-[11px]">
-          {/* Theme switcher: Parquet identical to shot map vs Dark arena */}
-          <div className="flex items-center bg-black/40 p-0.5 rounded-lg border border-blue-900/60">
+      {/* ----------------------------------------------------------------- */}
+      {/* 3. MULTI-GRAPHICS STEPPER BAR: ADD/SWITCH/ANIMATE GRAPHICS */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="bg-[#0b142e] border-b border-blue-950 px-2 sm:px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-10 text-xs">
+        {/* Left: Graphic Tabs & Add Graphic Button */}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto scrollbar-none py-0.5">
+          <div className="flex items-center gap-1 text-[11px] font-mono text-amber-400 font-extrabold shrink-0 mr-1">
+            <Layers className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">Gráficos:</span>
+          </div>
+
+          {/* Frame Buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            {frames.map((frame, idx) => {
+              const isActive = idx === activeFrameIndex;
+              return (
+                <div
+                  key={frame.id || idx}
+                  className={`group relative flex items-center rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm ring-1 ring-amber-300'
+                      : 'bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-900/60 font-semibold'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchFrame(idx)}
+                    className="px-2.5 py-1 text-xs flex items-center gap-1 truncate max-w-[130px]"
+                    title={`Ver ${frame.title || `Gráfico ${idx + 1}`}`}
+                  >
+                    <span>{idx + 1}.</span>
+                    <span className="truncate">{frame.title || `Gráfico ${idx + 1}`}</span>
+                  </button>
+
+                  {/* Delete Frame if > 1 frame */}
+                  {frames.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={e => handleDeleteFrame(idx, e)}
+                      className={`p-1 pr-1.5 rounded-r-lg transition opacity-60 hover:opacity-100 ${
+                        isActive ? 'hover:bg-amber-600 text-slate-950' : 'hover:bg-rose-900 text-rose-300'
+                      }`}
+                      title={`Eliminar Gráfico ${idx + 1}`}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add Frame Button */}
+          <button
+            type="button"
+            onClick={() => handleAddFrame('transition')}
+            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 transition shadow-xs shrink-0 active:scale-95"
+            title="Añadir un nuevo gráfico a la jugada (las fichas inician donde quedaron en el gráfico anterior)"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Añadir Gráfico</span>
+          </button>
+        </div>
+
+        {/* Right: Stepper Navigation (Previous, Next, Playback) & Formations */}
+        <div className="flex items-center gap-1.5 shrink-0 text-xs">
+          {/* Frame Step Controls */}
+          <div className="flex items-center bg-[#060c1e] p-0.5 rounded-lg border border-blue-900/60">
             <button
               type="button"
-              onClick={() => setCourtTheme('parquet')}
-              className={`px-2.5 py-1 rounded-md transition font-black flex items-center gap-1 ${
-                courtTheme === 'parquet'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={() => handleSwitchFrame(activeFrameIndex - 1)}
+              disabled={activeFrameIndex === 0}
+              className="p-1 rounded text-slate-300 hover:text-white disabled:opacity-30 transition"
+              title="Gráfico anterior"
             >
-              <span>🪵</span>
-              <span>Parquet Real FIBA</span>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <span className="px-1.5 text-[11px] font-mono font-bold text-slate-300">
+              {activeFrameIndex + 1}/{frames.length}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => handleSwitchFrame(activeFrameIndex + 1)}
+              disabled={activeFrameIndex === frames.length - 1}
+              className="p-1 rounded text-slate-300 hover:text-white disabled:opacity-30 transition"
+              title="Gráfico siguiente"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* Play/Pause Sequence Animation */}
+            {frames.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setIsPlaying(prev => !prev)}
+                className={`p-1 rounded ml-1 transition ${
+                  isPlaying
+                    ? 'bg-amber-500 text-slate-950'
+                    : 'bg-blue-900/80 hover:bg-blue-800 text-cyan-300'
+                }`}
+                title={isPlaying ? 'Pausar reproducción' : 'Reproducir secuencia de gráficos paso a paso'}
+              >
+                {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+
+          {/* Formations Quick Dropdown */}
+          <div className="hidden md:flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleApplyFormation('5out')}
+              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60 text-[11px] font-mono"
+              title="5 Abiertos"
+            >
+              5 Out
             </button>
             <button
               type="button"
-              onClick={() => setCourtTheme('dark')}
-              className={`px-2.5 py-1 rounded-md transition font-black flex items-center gap-1 ${
-                courtTheme === 'dark'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={() => handleApplyFormation('horns')}
+              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60 text-[11px] font-mono"
+              title="Cuernos"
             >
-              <span>🏟️</span>
-              <span>Pista Oscura</span>
+              Horns
+            </button>
+            <button
+              type="button"
+              onClick={handleResetPositions}
+              className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-mono"
+              title="Reset Fichas"
+            >
+              Reset
             </button>
           </div>
         </div>
-
-        {/* Quick Set Plays & Reset Tokens */}
-        <div className="flex items-center gap-1.5 text-[11px] font-mono">
-          <span className="text-slate-400 text-[10px] uppercase font-bold hidden sm:inline">
-            Alineación:
-          </span>
-          <button
-            type="button"
-            onClick={() => handleApplyFormation('5out')}
-            className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60"
-            title="Alineación 5 Abiertos"
-          >
-            5 Abiertos
-          </button>
-          <button
-            type="button"
-            onClick={() => handleApplyFormation('4out1in')}
-            className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60"
-            title="Alineación 4 Abiertos + 1 Interior"
-          >
-            4-Out 1-In
-          </button>
-          <button
-            type="button"
-            onClick={() => handleApplyFormation('horns')}
-            className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60"
-            title="Alineación Cuernos"
-          >
-            Cuernos
-          </button>
-          <button
-            type="button"
-            onClick={() => handleApplyFormation('zone23')}
-            className="px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60"
-            title="Defensa Zona 2-3"
-          >
-            Zona 2-3
-          </button>
-
-          <button
-            type="button"
-            onClick={handleResetPositions}
-            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
-            title="Restablecer fichas"
-          >
-            Reset Fichas
-          </button>
-        </div>
       </div>
 
-      {/* 3. MAIN COURT: Exact Parquet Background from Shot Selection + Interactive Canvas */}
+      {/* ----------------------------------------------------------------- */}
+      {/* 4. MAIN BASKETBALL COURT: LOCKED TO EXACT FIBA RATIO [100 / 93.3] */}
+      {/* ----------------------------------------------------------------- */}
       <div className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center p-1 sm:p-2.5 relative touch-none select-none bg-[#050a18]">
-        {/* Court Container locked to exact FIBA aspect ratio [100 / 93.3] */}
+        {/* Court Container: Locked aspect ratio without deformation */}
         <div
           ref={courtContainerRef}
-          className="relative max-h-full max-w-full aspect-[100/93.3] rounded-2xl border-2 border-neutral-700 shadow-2xl overflow-hidden touch-none"
-          style={{ width: '100%', height: '100%' }}
+          className="relative max-h-full max-w-full aspect-[100/93.333] rounded-2xl border-2 border-neutral-700 shadow-2xl overflow-hidden touch-none mx-auto shrink-0"
+          style={{
+            aspectRatio: '100 / 93.333',
+            height: '100%',
+            width: 'auto',
+            maxHeight: '100%',
+            maxWidth: '100%',
+          }}
         >
-          {/* 3.1 EXACT BASKETBALL COURT SVG FROM SHOT SELECTION (PlayerShotMap.tsx / ShotChartModal.tsx) */}
+          {/* BASKETBALL COURT SVG */}
           <svg
             viewBox="0 0 100 93.3"
-            preserveAspectRatio="none"
+            preserveAspectRatio="xMidYMid meet"
             className="absolute inset-0 w-full h-full pointer-events-none select-none"
           >
             <defs>
-              {/* Ultra-realistic Maple Hardwood Court Pattern identical to Shot Chart */}
+              {/* Maple Hardwood Court Pattern */}
               <pattern
                 id="tactical-parquet-floor"
                 width="24"
                 height="8"
                 patternUnits="userSpaceOnUse"
               >
-                {/* Natural maple base wood tone */}
                 <rect width="24" height="8" fill="#c9975a" />
-                {/* Alternating plank tones */}
                 <rect x="0" y="0" width="10" height="2" fill="#d7a96d" opacity="0.32" />
                 <rect x="10" y="0" width="14" height="2" fill="#bc894c" opacity="0.22" />
                 <rect x="0" y="2" width="16" height="2" fill="#b98547" opacity="0.25" />
@@ -888,20 +1356,18 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                 <rect x="7" y="4" width="17" height="2" fill="#be8c4e" opacity="0.2" />
                 <rect x="0" y="6" width="13" height="2" fill="#bc8849" opacity="0.26" />
                 <rect x="13" y="6" width="11" height="2" fill="#ddaf73" opacity="0.34" />
-                {/* Fine horizontal plank seams */}
                 <line x1="0" y1="0" x2="24" y2="0" stroke="#7e5321" strokeWidth="0.16" opacity="0.75" />
                 <line x1="0" y1="2" x2="24" y2="2" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
                 <line x1="0" y1="4" x2="24" y2="4" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
                 <line x1="0" y1="6" x2="24" y2="6" stroke="#7e5321" strokeWidth="0.14" opacity="0.6" />
                 <line x1="0" y1="8" x2="24" y2="8" stroke="#7e5321" strokeWidth="0.16" opacity="0.75" />
-                {/* Staggered vertical end joints */}
                 <line x1="10" y1="0" x2="10" y2="2" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
                 <line x1="16" y1="2" x2="16" y2="4" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
                 <line x1="7" y1="4" x2="7" y2="6" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
                 <line x1="13" y1="6" x2="13" y2="8" stroke="#684217" strokeWidth="0.16" opacity="0.8" />
               </pattern>
 
-              {/* Dark Arena Parquet Pattern */}
+              {/* Dark Arena Pattern */}
               <pattern
                 id="tactical-dark-arena"
                 width="24"
@@ -913,19 +1379,15 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                 <line x1="0" y1="2" x2="24" y2="2" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
                 <line x1="0" y1="4" x2="24" y2="4" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
                 <line x1="0" y1="6" x2="24" y2="6" stroke="#090b10" strokeWidth="0.14" opacity="0.75" />
-                <line x1="10" y1="0" x2="10" y2="2" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
-                <line x1="16" y1="2" x2="16" y2="4" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
-                <line x1="7" y1="4" x2="7" y2="6" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
-                <line x1="13" y1="6" x2="13" y2="8" stroke="#090b10" strokeWidth="0.16" opacity="0.8" />
               </pattern>
 
-              {/* Key / Paint Lane Gradient Stain */}
+              {/* Key / Paint Lane Gradient */}
               <linearGradient id="tactical-fiba-key" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.45" />
                 <stop offset="100%" stopColor="#172554" stopOpacity="0.55" />
               </linearGradient>
 
-              {/* Arena Spotlight Overhead Glow */}
+              {/* Arena Spotlight Glow */}
               <radialGradient id="tactical-spotlight" cx="50%" cy="32%" r="68%">
                 <stop offset="0%" stopColor="#ffffff" stopOpacity={courtTheme === 'parquet' ? '0.12' : '0.06'} />
                 <stop offset="65%" stopColor="#ffffff" stopOpacity="0" />
@@ -933,10 +1395,10 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
               </radialGradient>
             </defs>
 
-            {/* 1. Out of Bounds Apron Perimeter */}
+            {/* Perimeter */}
             <rect x="0" y="0" width="100" height="93.3" fill="#0b0e14" />
 
-            {/* 2. Playing Court Hardwood Floor */}
+            {/* Court Floor */}
             <rect
               x="2.5"
               y="2"
@@ -946,7 +1408,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
               fill={courtTheme === 'parquet' ? 'url(#tactical-parquet-floor)' : 'url(#tactical-dark-arena)'}
             />
 
-            {/* 3. Key / Paint Lane Painted Area */}
+            {/* Key / Paint */}
             <rect
               x="33.7"
               y="2"
@@ -955,65 +1417,43 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
               fill="url(#tactical-fiba-key)"
             />
 
-            {/* 4. Center Jump Circle Area (half-circle on court) */}
+            {/* Center Jump Circle */}
             <path
               d="M 38 91.3 A 12 12 0 0 1 62 91.3 Z"
               fill="url(#tactical-fiba-key)"
               fillOpacity="0.4"
             />
 
-            {/* 5. FIBA Regulation Court Lines (Crisp White High Contrast) */}
+            {/* FIBA Lines */}
             <g stroke="#ffffff" strokeWidth="0.75" fill="none" opacity="0.95">
-              {/* Outer Boundary Perimeter Line */}
               <rect x="2.5" y="2" width="95" height="89.3" />
-
-              {/* Half-Court Line */}
               <line x1="2.5" y1="91.3" x2="97.5" y2="91.3" />
-
-              {/* Center Circle */}
               <path d="M 38 91.3 A 12 12 0 0 1 62 91.3" />
-
-              {/* 3-Point Straight Baseline Corners (FIBA 6.75m layout) */}
               <line x1="7.5" y1="2" x2="7.5" y2="28" strokeWidth="0.8" />
               <line x1="92.5" y1="2" x2="92.5" y2="28" strokeWidth="0.8" />
-
-              {/* 3-Point Arc */}
               <path d="M 7.5 28 A 43.5 43.5 0 0 0 92.5 28" strokeWidth="0.8" />
-
-              {/* Key / Paint Lane Border */}
               <rect x="33.7" y="2" width="32.6" height="38.6" />
-
-              {/* Free Throw Line */}
               <line x1="33.7" y1="40.6" x2="66.3" y2="40.6" strokeWidth="0.8" />
-
-              {/* Free Throw Circle: Solid half towards half-court */}
               <path d="M 33.7 40.6 A 16.3 16.3 0 0 0 66.3 40.6" />
-
-              {/* Free Throw Circle: Dashed half inside key */}
               <path
                 d="M 33.7 40.6 A 16.3 16.3 0 0 1 66.3 40.6"
                 strokeDasharray="1.6, 1.6"
                 opacity="0.8"
               />
-
-              {/* Key Rebound Hash Marks */}
               <line x1="32.3" y1="17.5" x2="33.7" y2="17.5" strokeWidth="0.6" />
               <rect x="31.8" y="22.7" width="1.9" height="1.6" fill="#ffffff" stroke="none" />
               <line x1="32.3" y1="29.5" x2="33.7" y2="29.5" strokeWidth="0.6" />
               <line x1="32.3" y1="35.5" x2="33.7" y2="35.5" strokeWidth="0.6" />
-
               <line x1="66.3" y1="17.5" x2="67.7" y2="17.5" strokeWidth="0.6" />
               <rect x="66.3" y="22.7" width="1.9" height="1.6" fill="#ffffff" stroke="none" />
               <line x1="66.3" y1="29.5" x2="67.7" y2="29.5" strokeWidth="0.6" />
               <line x1="66.3" y1="35.5" x2="67.7" y2="35.5" strokeWidth="0.6" />
-
-              {/* Restricted Area Arc */}
               <path d="M 41.7 11 A 8.3 8.3 0 0 0 58.3 11" strokeWidth="0.75" />
               <line x1="41.7" y1="11" x2="41.7" y2="7.5" strokeWidth="0.75" />
               <line x1="58.3" y1="11" x2="58.3" y2="7.5" strokeWidth="0.75" />
             </g>
 
-            {/* 6. Backboard, Orange Rim & Net */}
+            {/* Rim & Net */}
             <g>
               <line x1="39" y1="7.5" x2="61" y2="7.5" stroke="#ffffff" strokeWidth="1.2" />
               <rect x="45.5" y="7.3" width="9" height="0.4" fill="none" stroke="#ffffff" strokeWidth="0.5" />
@@ -1029,11 +1469,11 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
               />
             </g>
 
-            {/* 7. Arena Spotlight Overlay */}
+            {/* Spotlight */}
             <rect x="2.5" y="2" width="95" height="89.3" fill="url(#tactical-spotlight)" pointerEvents="none" />
           </svg>
 
-          {/* 3.2 HTML5 CANVAS DRAWING LAYER: Completely Synced with Court Coordinates */}
+          {/* HTML5 CANVAS DRAWING LAYER */}
           <canvas
             ref={canvasRef}
             onPointerDown={handlePointerDown}
@@ -1044,7 +1484,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             style={{ touchAction: 'none' }}
           />
 
-          {/* 3.3 DRAGGABLE PLAYER & BALL TOKENS OVERLAY */}
+          {/* DRAGGABLE PLAYER & BALL TOKENS */}
           <div className="absolute inset-0 pointer-events-none z-30">
             {tokens.map(token => {
               const isOffense = token.type === 'offense';
@@ -1101,7 +1541,18 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             })}
           </div>
 
-          {/* Tactical Legend Floating Note */}
+          {/* Current Frame Title & Notes Header Overlay on Court */}
+          <div className="absolute top-2 left-2 z-20 bg-black/80 backdrop-blur-xs border border-white/10 rounded-lg px-2.5 py-1 text-[11px] font-mono text-slate-200 flex items-center gap-2">
+            <span className="text-amber-400 font-black">
+              {frames[activeFrameIndex]?.title || `Gráfico ${activeFrameIndex + 1}`}
+            </span>
+            <span className="text-slate-500">•</span>
+            <span className="text-slate-400 text-[10px]">
+              Fase {activeFrameIndex + 1} de {frames.length}
+            </span>
+          </div>
+
+          {/* Floating Legend */}
           <div className="absolute bottom-2 left-2 z-20 bg-black/80 backdrop-blur-xs border border-white/10 rounded-lg px-2.5 py-1 text-[10px] font-mono text-slate-300 flex items-center gap-3 pointer-events-none">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-white" />
@@ -1118,6 +1569,21 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* 5. TACTICAL PLAY HISTORY MODAL (PLAYBOOK) */}
+      {/* ----------------------------------------------------------------- */}
+      <TacticalPlayHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        plays={plays}
+        onSelectPlay={handleSelectPlayFromHistory}
+        onDeletePlay={handleDeletePlayFromHistory}
+        onDuplicatePlay={handleDuplicatePlayFromHistory}
+        onResetDefaultPlays={handleResetDefaultPlays}
+        onImportPlays={handleImportPlays}
+        currentPlayId={currentPlayId}
+      />
     </div>
   );
 };
@@ -1141,8 +1607,6 @@ function drawTacticalStroke(ctx: CanvasRenderingContext2D, stroke: TacticalStrok
   const pEnd = pts[pts.length - 1];
 
   if (stroke.type === 'lapiz') {
-    // Smooth continuous freehand path
-    ctx.setLineDash([]);
     ctx.beginPath();
     ctx.moveTo(pStart.x, pStart.y);
     for (let i = 1; i < pts.length; i++) {
@@ -1150,31 +1614,21 @@ function drawTacticalStroke(ctx: CanvasRenderingContext2D, stroke: TacticalStrok
     }
     ctx.stroke();
   } else if (stroke.type === 'corte') {
-    // CORTE: Solid directional movement arrow
-    ctx.setLineDash([]);
-    drawArrowVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
+    drawStraightArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
   } else if (stroke.type === 'pase') {
-    // PASE: Dashed line with solid arrowhead
-    ctx.setLineDash([2.2, 1.6]);
-    drawArrowVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
+    drawDashedArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
   } else if (stroke.type === 'bloqueo') {
-    // BLOQUEO: Screen line ending in perpendicular T-bar cap
-    ctx.setLineDash([]);
     drawScreenVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
   } else if (stroke.type === 'tiro') {
-    // TIRO: Dotted shot line ending in target ring at hoop
-    ctx.setLineDash([1.2, 1.2]);
     drawShotVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
   } else if (stroke.type === 'bote') {
-    // BOTE: Zigzag line of dribbling penetration ending in arrowhead
-    ctx.setLineDash([]);
     drawDribbleVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
   }
 
   ctx.restore();
 }
 
-function drawArrowVector(
+function drawStraightArrow(
   ctx: CanvasRenderingContext2D,
   x1: number,
   y1: number,
@@ -1182,18 +1636,14 @@ function drawArrowVector(
   y2: number,
   strokeW: number
 ) {
-  const headLength = Math.max(3.2, strokeW * 2.2);
   const angle = Math.atan2(y2 - y1, x2 - x1);
+  const headLength = Math.max(3.2, strokeW * 2.2);
 
-  // Main line
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
 
-  // Solid arrowhead
-  ctx.save();
-  ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(x2, y2);
   ctx.lineTo(
@@ -1206,7 +1656,39 @@ function drawArrowVector(
   );
   ctx.closePath();
   ctx.fill();
+}
+
+function drawDashedArrow(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  strokeW: number
+) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const headLength = Math.max(3.4, strokeW * 2.4);
+
+  ctx.save();
+  ctx.setLineDash([2.2, 1.8]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
   ctx.restore();
+
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(
+    x2 - headLength * Math.cos(angle - Math.PI / 6),
+    y2 - headLength * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    x2 - headLength * Math.cos(angle + Math.PI / 6),
+    y2 - headLength * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawScreenVector(
@@ -1217,28 +1699,25 @@ function drawScreenVector(
   y2: number,
   strokeW: number
 ) {
-  const tLength = Math.max(4.2, strokeW * 3.2);
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  const perpAngle = angle + Math.PI / 2;
+  const barLength = Math.max(4.0, strokeW * 2.8);
 
-  // Main line
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
 
-  // Perpendicular T-bar cap
+  const perpAngle = angle + Math.PI / 2;
+  const bx1 = x2 - (barLength / 2) * Math.cos(perpAngle);
+  const by1 = y2 - (barLength / 2) * Math.sin(perpAngle);
+  const bx2 = x2 + (barLength / 2) * Math.cos(perpAngle);
+  const by2 = y2 + (barLength / 2) * Math.sin(perpAngle);
+
   ctx.save();
-  ctx.lineWidth = strokeW * 1.5;
+  ctx.lineWidth = Math.max(1.8, strokeW * 1.3);
   ctx.beginPath();
-  ctx.moveTo(
-    x2 - (tLength / 2) * Math.cos(perpAngle),
-    y2 - (tLength / 2) * Math.sin(perpAngle)
-  );
-  ctx.lineTo(
-    x2 + (tLength / 2) * Math.cos(perpAngle),
-    y2 + (tLength / 2) * Math.sin(perpAngle)
-  );
+  ctx.moveTo(bx1, by1);
+  ctx.lineTo(bx2, by2);
   ctx.stroke();
   ctx.restore();
 }
@@ -1251,28 +1730,23 @@ function drawShotVector(
   y2: number,
   strokeW: number
 ) {
-  // Main dotted trajectory line
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
 
-  // Shot destination: Target bulls-eye ring at the rim
   ctx.save();
   ctx.setLineDash([]);
 
-  // Outer target ring
   ctx.lineWidth = Math.max(0.6, strokeW * 0.6);
   ctx.beginPath();
   ctx.arc(x2, y2, 2.6, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Inner center bullseye
   ctx.beginPath();
   ctx.arc(x2, y2, 1.0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Arrowhead pointing into the target
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const headLength = Math.max(2.5, strokeW * 1.8);
   const tipX = x2 - 2.8 * Math.cos(angle);
@@ -1328,7 +1802,6 @@ function drawDribbleVector(
   ctx.lineTo(x2, y2);
   ctx.stroke();
 
-  // End arrowhead
   const headLength = Math.max(3.2, strokeW * 2.2);
   ctx.save();
   ctx.beginPath();

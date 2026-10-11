@@ -428,3 +428,5 @@ export interface TeamBoxScore {
   trueShootingPercentage: number;
   effectiveFieldGoalPercentage: number;
 }
+
+export * from './types/tactical';

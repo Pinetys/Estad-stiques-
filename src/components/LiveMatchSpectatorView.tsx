@@ -117,19 +117,42 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
     return () => unsub();
   }, []);
 
-  // Dedicated active live polling for spectator follower mode (reliable even if SSE fails or mobile sleeps)
+  // Dedicated active live polling for spectator follower mode (reliable even in final quarter, finished status or mobile sleep)
   useEffect(() => {
     if (game.id) {
       syncEngine.setWatchedMatchId(game.id);
     }
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible' && game.status !== 'finished' && game.id) {
+
+    const pollUpdate = () => {
+      if (game.id) {
         syncEngine.checkWatchedMatchUpdate(game.id).catch(() => {});
       }
-    }, 3500);
+    };
 
-    return () => clearInterval(interval);
-  }, [game.id, game.status]);
+    // Immediate poll check on mount or match change
+    pollUpdate();
+
+    // Fast polling (2.5s) during active game / clock running, 5s when finished/paused so post-game edits are never missed
+    const intervalTime = (game.isClockRunning || game.status === 'live') ? 2500 : 5000;
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && game.id) {
+        pollUpdate();
+      }
+    }, intervalTime);
+
+    // Immediate sync as soon as mobile wakes up or tab becomes visible again
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && game.id) {
+        pollUpdate();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [game.id, game.status, game.isClockRunning]);
 
   // Update last sync time whenever game changes
   useEffect(() => {
