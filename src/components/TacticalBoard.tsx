@@ -149,9 +149,9 @@ const INK_COLORS = [
 ];
 
 const STROKE_WIDTHS = [
-  { label: 'Fino', value: 0.8 },
-  { label: 'Medio', value: 1.5 },
-  { label: 'Grueso', value: 2.6 },
+  { label: 'Fino', value: 0.38 },
+  { label: 'Medio', value: 0.62 },
+  { label: 'Grueso', value: 0.95 },
 ];
 
 interface TacticalBoardProps {
@@ -173,10 +173,10 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const courtContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Selected drawing type & styles
+  // Selected drawing type & styles (proporcionados y limpios para diagramación táctica)
   const [drawingType, setDrawingType] = useState<DrawingType>('corte');
   const [inkColor, setInkColor] = useState<string>('#FACC15');
-  const [strokeWidth, setStrokeWidth] = useState<number>(1.5);
+  const [strokeWidth, setStrokeWidth] = useState<number>(0.62);
   const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('parquet');
 
   // Active stroke in progress
@@ -1243,22 +1243,27 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           <div className="h-3.5 w-px bg-blue-900 mx-0.5" />
 
           {/* Stroke Width Toggle */}
-          <div className="flex items-center gap-0.5">
-            {STROKE_WIDTHS.map(sw => (
-              <button
-                key={sw.value}
-                type="button"
-                onClick={() => setStrokeWidth(sw.value)}
-                className={`px-1.5 py-0.5 text-[9px] font-mono rounded transition ${
-                  strokeWidth === sw.value
-                    ? 'bg-blue-600 text-white font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title={`Grosor: ${sw.label}`}
-              >
-                {sw.label[0]}
-              </button>
-            ))}
+          <div className="flex items-center gap-1 bg-black/40 px-1.5 py-0.5 rounded-lg border border-blue-900/60" title="Grosor de trazo proporcionado">
+            {STROKE_WIDTHS.map(sw => {
+              const isSelected = strokeWidth === sw.value;
+              const barHeight = sw.value <= 0.4 ? 'h-[2px]' : sw.value <= 0.7 ? 'h-[3.5px]' : 'h-[5px]';
+              return (
+                <button
+                  key={sw.value}
+                  type="button"
+                  onClick={() => setStrokeWidth(sw.value)}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono rounded transition ${
+                    isSelected
+                      ? 'bg-blue-600 text-white font-bold shadow-xs'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                  title={`Trazo ${sw.label} proporcionado`}
+                >
+                  <span className={`w-3 ${barHeight} bg-current rounded-full inline-block`} />
+                  <span className="hidden sm:inline">{sw.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1726,10 +1731,14 @@ function drawTacticalStroke(ctx: CanvasRenderingContext2D, stroke: TacticalStrok
   const pts = stroke.points;
   if (!pts || pts.length === 0) return;
 
+  // Normalize legacy thick stroke widths (e.g. 1.4 - 2.6 down to proportionate ~0.45 - 0.75)
+  const rawWidth = stroke.width || 0.62;
+  const effectiveWidth = rawWidth >= 1.2 ? rawWidth * 0.42 : rawWidth;
+
   ctx.save();
   ctx.strokeStyle = stroke.color;
   ctx.fillStyle = stroke.color;
-  ctx.lineWidth = stroke.width;
+  ctx.lineWidth = effectiveWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
@@ -1744,15 +1753,15 @@ function drawTacticalStroke(ctx: CanvasRenderingContext2D, stroke: TacticalStrok
     }
     ctx.stroke();
   } else if (stroke.type === 'corte') {
-    drawStraightArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
+    drawStraightArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
   } else if (stroke.type === 'pase') {
-    drawDashedArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
+    drawDashedArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
   } else if (stroke.type === 'bloqueo') {
-    drawScreenVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
+    drawScreenVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
   } else if (stroke.type === 'tiro') {
-    drawShotVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
+    drawShotVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
   } else if (stroke.type === 'bote') {
-    drawDribbleVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, stroke.width);
+    drawDribbleVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
   }
 
   ctx.restore();
@@ -1767,7 +1776,7 @@ function drawStraightArrow(
   strokeW: number
 ) {
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  const headLength = Math.max(3.2, strokeW * 2.2);
+  const headLength = Math.max(1.8, strokeW * 3.0);
 
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -1777,12 +1786,12 @@ function drawStraightArrow(
   ctx.beginPath();
   ctx.moveTo(x2, y2);
   ctx.lineTo(
-    x2 - headLength * Math.cos(angle - Math.PI / 6),
-    y2 - headLength * Math.sin(angle - Math.PI / 6)
+    x2 - headLength * Math.cos(angle - Math.PI / 6.2),
+    y2 - headLength * Math.sin(angle - Math.PI / 6.2)
   );
   ctx.lineTo(
-    x2 - headLength * Math.cos(angle + Math.PI / 6),
-    y2 - headLength * Math.sin(angle + Math.PI / 6)
+    x2 - headLength * Math.cos(angle + Math.PI / 6.2),
+    y2 - headLength * Math.sin(angle + Math.PI / 6.2)
   );
   ctx.closePath();
   ctx.fill();
@@ -1797,10 +1806,10 @@ function drawDashedArrow(
   strokeW: number
 ) {
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  const headLength = Math.max(3.4, strokeW * 2.4);
+  const headLength = Math.max(1.8, strokeW * 3.0);
 
   ctx.save();
-  ctx.setLineDash([2.2, 1.8]);
+  ctx.setLineDash([1.4, 1.1]);
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
@@ -1810,12 +1819,12 @@ function drawDashedArrow(
   ctx.beginPath();
   ctx.moveTo(x2, y2);
   ctx.lineTo(
-    x2 - headLength * Math.cos(angle - Math.PI / 6),
-    y2 - headLength * Math.sin(angle - Math.PI / 6)
+    x2 - headLength * Math.cos(angle - Math.PI / 6.2),
+    y2 - headLength * Math.sin(angle - Math.PI / 6.2)
   );
   ctx.lineTo(
-    x2 - headLength * Math.cos(angle + Math.PI / 6),
-    y2 - headLength * Math.sin(angle + Math.PI / 6)
+    x2 - headLength * Math.cos(angle + Math.PI / 6.2),
+    y2 - headLength * Math.sin(angle + Math.PI / 6.2)
   );
   ctx.closePath();
   ctx.fill();
@@ -1830,7 +1839,7 @@ function drawScreenVector(
   strokeW: number
 ) {
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  const barLength = Math.max(4.0, strokeW * 2.8);
+  const barLength = Math.max(2.4, strokeW * 4.0);
 
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -1844,7 +1853,7 @@ function drawScreenVector(
   const by2 = y2 + (barLength / 2) * Math.sin(perpAngle);
 
   ctx.save();
-  ctx.lineWidth = Math.max(1.8, strokeW * 1.3);
+  ctx.lineWidth = Math.max(strokeW * 1.35, 0.75);
   ctx.beginPath();
   ctx.moveTo(bx1, by1);
   ctx.lineTo(bx2, by2);
@@ -1868,29 +1877,32 @@ function drawShotVector(
   ctx.save();
   ctx.setLineDash([]);
 
-  ctx.lineWidth = Math.max(0.6, strokeW * 0.6);
+  const targetRadius = Math.max(1.5, strokeW * 2.4);
+  const dotRadius = Math.max(0.5, strokeW * 0.8);
+  const headLength = Math.max(1.6, strokeW * 2.6);
+
+  ctx.lineWidth = Math.max(0.4, strokeW * 0.7);
   ctx.beginPath();
-  ctx.arc(x2, y2, 2.6, 0, Math.PI * 2);
+  ctx.arc(x2, y2, targetRadius, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(x2, y2, 1.0, 0, Math.PI * 2);
+  ctx.arc(x2, y2, dotRadius, 0, Math.PI * 2);
   ctx.fill();
 
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  const headLength = Math.max(2.5, strokeW * 1.8);
-  const tipX = x2 - 2.8 * Math.cos(angle);
-  const tipY = y2 - 2.8 * Math.sin(angle);
+  const tipX = x2 - (targetRadius + 0.3) * Math.cos(angle);
+  const tipY = y2 - (targetRadius + 0.3) * Math.sin(angle);
 
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
   ctx.lineTo(
-    tipX - headLength * Math.cos(angle - Math.PI / 6),
-    tipY - headLength * Math.sin(angle - Math.PI / 6)
+    tipX - headLength * Math.cos(angle - Math.PI / 6.2),
+    tipY - headLength * Math.sin(angle - Math.PI / 6.2)
   );
   ctx.lineTo(
-    tipX - headLength * Math.cos(angle + Math.PI / 6),
-    tipY - headLength * Math.sin(angle + Math.PI / 6)
+    tipX - headLength * Math.cos(angle + Math.PI / 6.2),
+    tipY - headLength * Math.sin(angle + Math.PI / 6.2)
   );
   ctx.closePath();
   ctx.fill();
@@ -1910,9 +1922,9 @@ function drawDribbleVector(
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const perpAngle = angle + Math.PI / 2;
 
-  const segmentLength = 3.6;
-  const numSegments = Math.max(2, Math.floor(dist / segmentLength));
-  const amplitude = 1.8;
+  const segmentLength = 2.4;
+  const numSegments = Math.max(3, Math.floor(dist / segmentLength));
+  const amplitude = Math.max(0.85, strokeW * 1.4);
 
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -1932,17 +1944,17 @@ function drawDribbleVector(
   ctx.lineTo(x2, y2);
   ctx.stroke();
 
-  const headLength = Math.max(3.2, strokeW * 2.2);
+  const headLength = Math.max(1.8, strokeW * 3.0);
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(x2, y2);
   ctx.lineTo(
-    x2 - headLength * Math.cos(angle - Math.PI / 6),
-    y2 - headLength * Math.sin(angle - Math.PI / 6)
+    x2 - headLength * Math.cos(angle - Math.PI / 6.2),
+    y2 - headLength * Math.sin(angle - Math.PI / 6.2)
   );
   ctx.lineTo(
-    x2 - headLength * Math.cos(angle + Math.PI / 6),
-    y2 - headLength * Math.sin(angle + Math.PI / 6)
+    x2 - headLength * Math.cos(angle + Math.PI / 6.2),
+    y2 - headLength * Math.sin(angle + Math.PI / 6.2)
   );
   ctx.closePath();
   ctx.fill();

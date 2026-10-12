@@ -33,7 +33,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-h1-1',
             type: 'pase',
             color: '#FACC15',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 50, y: 76 },
               { x: 40, y: 50 },
@@ -44,7 +44,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-h1-2',
             type: 'corte',
             color: '#22C55E',
-            width: 1.5,
+            width: 0.62,
             points: [
               { x: 48, y: 74 },
               { x: 66, y: 54 },
@@ -55,7 +55,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-h1-3',
             type: 'bloqueo',
             color: '#EF4444',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 60, y: 48 },
               { x: 54, y: 62 },
@@ -86,7 +86,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-h2-1',
             type: 'pase',
             color: '#FACC15',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 38, y: 48 },
               { x: 32, y: 62 },
@@ -97,7 +97,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-h2-2',
             type: 'tiro',
             color: '#EF4444',
-            width: 1.8,
+            width: 0.62,
             points: [
               { x: 30, y: 64 },
               { x: 50, y: 12 },
@@ -108,7 +108,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-h2-3',
             type: 'corte',
             color: '#38BDF8',
-            width: 1.4,
+            width: 0.62,
             points: [
               { x: 50, y: 30 },
               { x: 50, y: 16 },
@@ -149,7 +149,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-f1-1',
             type: 'pase',
             color: '#FACC15',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 50, y: 4 },
               { x: 50, y: 53 },
@@ -159,7 +159,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-f1-2',
             type: 'bloqueo',
             color: '#EF4444',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 44, y: 38 },
               { x: 48, y: 50 },
@@ -190,7 +190,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-f2-1',
             type: 'bote',
             color: '#F97316',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 42, y: 46 },
               { x: 42, y: 26 },
@@ -201,7 +201,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-f2-2',
             type: 'pase',
             color: '#FACC15',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 42, y: 30 },
               { x: 50, y: 16 },
@@ -212,7 +212,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-f2-3',
             type: 'tiro',
             color: '#22C55E',
-            width: 1.8,
+            width: 0.62,
             points: [
               { x: 50, y: 20 },
               { x: 50, y: 11 },
@@ -254,7 +254,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-z1-1',
             type: 'pase',
             color: '#FACC15',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 3, y: 55 },
               { x: 48, y: 68 },
@@ -265,7 +265,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-z1-2',
             type: 'bloqueo',
             color: '#EF4444',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 50, y: 40 },
               { x: 50, y: 52 },
@@ -276,7 +276,7 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
             id: 'stroke-z1-3',
             type: 'tiro',
             color: '#38BDF8',
-            width: 1.6,
+            width: 0.62,
             points: [
               { x: 50, y: 68 },
               { x: 50, y: 12 },
