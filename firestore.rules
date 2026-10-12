@@ -20,5 +20,10 @@ service cloud.firestore {
     match /subscribers/{subscriberId} {
       allow read, write: if true;
     }
+
+    // Tactical Plays collection (Pizarra Táctica compartida / permanente)
+    match /tactical_plays/{playId} {
+      allow read, write: if true;
+    }
   }
 }

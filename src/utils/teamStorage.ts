@@ -41,6 +41,15 @@ export const DEMO_TEAM_IDS = new Set(['demo-sample-team-99']);
 
 export function isDemoTeam(team: Partial<TeamProfile>): boolean {
   if (!team || !team.id) return false;
+  const name = (team.name || '').trim().toLowerCase();
+  if (
+    name.includes('cb rival') ||
+    name.includes('cbrival') ||
+    name.includes('cb leones') ||
+    name.includes('basket titanes')
+  ) {
+    return true;
+  }
   return DEMO_TEAM_IDS.has(team.id);
 }
 

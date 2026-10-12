@@ -28,6 +28,7 @@ interface TacticalPlayHistoryModalProps {
   onResetDefaultPlays: () => void;
   onImportPlays?: (imported: TacticalPlay[]) => void;
   currentPlayId?: string;
+  initialAgeCategoryFilter?: string;
 }
 
 const CATEGORY_LABELS: Record<PlayCategory, { label: string; color: string }> = {
@@ -49,26 +50,56 @@ export const TacticalPlayHistoryModal: React.FC<TacticalPlayHistoryModalProps> =
   onResetDefaultPlays,
   onImportPlays,
   currentPlayId,
+  initialAgeCategoryFilter,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // Always default to 'all' so ALL plays are immediately visible in any new or existing match
+  const [selectedAgeCategory, setSelectedAgeCategory] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  // Collect all unique specific age categories from saved plays + current match category
+  const availableAgeCategories = useMemo(() => {
+    const set = new Set<string>();
+    plays.forEach(p => {
+      const raw = p.ageCategory?.trim();
+      if (raw && raw.toLowerCase() !== 'todas' && raw.toLowerCase() !== 'all') {
+        set.add(raw);
+      }
+    });
+    if (initialAgeCategoryFilter && initialAgeCategoryFilter.trim()) {
+      const initTrimmed = initialAgeCategoryFilter.trim();
+      if (initTrimmed.toLowerCase() !== 'todas' && initTrimmed.toLowerCase() !== 'all') {
+        set.add(initTrimmed);
+      }
+    }
+    return Array.from(set).sort();
+  }, [plays, initialAgeCategoryFilter]);
 
   // Filter plays
   const filteredPlays = useMemo(() => {
     return plays
       .filter(p => {
         const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
+        const pAge = (p.ageCategory || '').trim().toLowerCase();
+        const isUniversal = !p.ageCategory || pAge === 'todas' || pAge === 'all';
+        // When 'all' is selected: show every play.
+        // When a specific category is selected: show plays of that category PLUS universal plays.
+        const matchesAge =
+          selectedAgeCategory === 'all' ||
+          isUniversal ||
+          pAge === selectedAgeCategory.toLowerCase().trim();
         const matchesQuery =
           !searchQuery.trim() ||
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (p.ageCategory && p.ageCategory.toLowerCase().includes(searchQuery.toLowerCase())) ||
           p.frames.some(f => f.title.toLowerCase().includes(searchQuery.toLowerCase()));
-        return matchesCat && matchesQuery;
+        return matchesCat && matchesAge && matchesQuery;
       })
       .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [plays, selectedCategory, searchQuery]);
+  }, [plays, selectedCategory, selectedAgeCategory, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -219,39 +250,61 @@ export const TacticalPlayHistoryModal: React.FC<TacticalPlayHistoryModalProps> =
             )}
           </div>
 
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                selectedCategory === 'all'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'bg-blue-950/80 text-slate-300 hover:bg-blue-900'
-              }`}
-            >
-              Todas ({plays.length})
-            </button>
-
-            {(Object.keys(CATEGORY_LABELS) as PlayCategory[]).map(catKey => {
-              const count = plays.filter(p => p.category === catKey).length;
-              if (count === 0 && selectedCategory !== catKey) return null;
-              return (
-                <button
-                  key={catKey}
-                  type="button"
-                  onClick={() => setSelectedCategory(catKey)}
-                  className={`px-2 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 ${
-                    selectedCategory === catKey
-                      ? 'bg-amber-500 text-slate-950 shadow-sm'
-                      : 'bg-blue-950/60 text-slate-300 hover:bg-blue-900'
-                  }`}
+          {/* Category Filter Pills & Age Category Selector */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Age Category Selector (Infantil, Cadete, Junior, etc.) */}
+            {availableAgeCategories.length > 0 && (
+              <div className="flex items-center gap-1 bg-[#0b1633] px-2 py-0.5 rounded-lg border border-purple-500/40 text-xs">
+                <span className="text-[10px] uppercase font-bold text-purple-300">Equipo:</span>
+                <select
+                  value={selectedAgeCategory}
+                  onChange={e => setSelectedAgeCategory(e.target.value)}
+                  className="bg-transparent text-purple-200 font-bold text-xs focus:outline-none cursor-pointer"
+                  title="Filtrar por categoría del equipo"
                 >
-                  <span>{CATEGORY_LABELS[catKey].label}</span>
-                  <span className="text-[10px] opacity-75 font-mono">({count})</span>
-                </button>
-              );
-            })}
+                  <option value="all" className="bg-[#0b1633] text-white">Todas las categorías</option>
+                  {availableAgeCategories.map(cat => (
+                    <option key={cat} value={cat} className="bg-[#0b1633] text-white">
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory('all')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                  selectedCategory === 'all'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'bg-blue-950/80 text-slate-300 hover:bg-blue-900'
+                }`}
+              >
+                Todas ({plays.length})
+              </button>
+
+              {(Object.keys(CATEGORY_LABELS) as PlayCategory[]).map(catKey => {
+                const count = plays.filter(p => p.category === catKey).length;
+                if (count === 0 && selectedCategory !== catKey) return null;
+                return (
+                  <button
+                    key={catKey}
+                    type="button"
+                    onClick={() => setSelectedCategory(catKey)}
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 ${
+                      selectedCategory === catKey
+                        ? 'bg-amber-500 text-slate-950 shadow-sm'
+                        : 'bg-blue-950/60 text-slate-300 hover:bg-blue-900'
+                    }`}
+                  >
+                    <span>{CATEGORY_LABELS[catKey].label}</span>
+                    <span className="text-[10px] opacity-75 font-mono">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -323,9 +376,18 @@ export const TacticalPlayHistoryModal: React.FC<TacticalPlayHistoryModalProps> =
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border ${catInfo.color}">
+                            <span className={`text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border ${catInfo.color}`}>
                               {catInfo.label}
                             </span>
+                            {play.ageCategory && play.ageCategory.toLowerCase() !== 'todas' && play.ageCategory.toLowerCase() !== 'all' ? (
+                              <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border bg-purple-500/20 text-purple-300 border-purple-500/40">
+                                🏀 {play.ageCategory}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                                🌐 Universal
+                              </span>
+                            )}
                             {isCurrentActive && (
                               <span className="text-[10px] font-mono font-bold bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded">
                                 EN PIZARRA

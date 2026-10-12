@@ -184,8 +184,8 @@ export default function App() {
         const parsed = JSON.parse(saved);
         if (parsed) {
           if (
-            (parsed.awayTeamName || '').trim().toLowerCase() === 'cb rival' ||
-            (parsed.awayTeamName || '').trim().toLowerCase() === 'cbrival'
+            (parsed.awayTeamName || '').trim().toLowerCase().includes('cb rival') ||
+            (parsed.awayTeamName || '').trim().toLowerCase().includes('cbrival')
           ) {
             parsed.awayTeamName = 'Equipo Rival';
           }

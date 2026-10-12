@@ -645,12 +645,14 @@ export function isDemoGame(game: Partial<Game>): boolean {
   const away = (game.awayTeamName || '').trim().toLowerCase();
   const home = (game.homeTeamName || '').trim().toLowerCase();
   if (
-    away === 'cb rival' ||
-    away === 'cbrival' ||
-    away === 'cb leones' ||
-    away === 'basket titanes' ||
-    home === 'cb rival' ||
-    home === 'cbrival'
+    away.includes('cb rival') ||
+    away.includes('cbrival') ||
+    away.includes('cb leones') ||
+    away.includes('basket titanes') ||
+    home.includes('cb rival') ||
+    home.includes('cbrival') ||
+    home.includes('cb leones') ||
+    home.includes('basket titanes')
   ) {
     return true;
   }

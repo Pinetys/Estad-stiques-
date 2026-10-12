@@ -115,6 +115,8 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
             rosterPlayers={effectivePlayers}
             teamName={effectiveTeamName}
             opponentName={effectiveOpponentName}
+            gameCategory={game?.category}
+            teamId={game?.teamId}
             onClose={onClose}
           />
         </div>

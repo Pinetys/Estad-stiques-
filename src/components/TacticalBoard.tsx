@@ -44,6 +44,12 @@ import {
 } from '../types/tactical';
 import { DEFAULT_TACTICAL_PLAYS } from '../data/defaultTacticalPlays';
 import { TacticalPlayHistoryModal } from './TacticalPlayHistoryModal';
+import {
+  syncTacticalPlayToCloud,
+  deleteTacticalPlayFromCloud,
+  fetchAllTacticalPlaysFromCloud,
+} from '../lib/firebase';
+import { getRegisteredTeams, getActiveTeamId } from '../utils/teamStorage';
 
 export type { DrawingType, CourtView, TacticalPoint, TacticalStroke, TacticalToken, TacticalFrame, TacticalPlay };
 
@@ -152,6 +158,8 @@ interface TacticalBoardProps {
   rosterPlayers?: Player[];
   teamName?: string;
   opponentName?: string;
+  gameCategory?: string;
+  teamId?: string;
   onClose?: () => void;
 }
 
@@ -159,6 +167,8 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   rosterPlayers = [],
   teamName = 'Nuestro Equipo',
   opponentName = 'Rival',
+  gameCategory,
+  teamId,
 }) => {
   const courtContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -177,13 +187,18 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   // -------------------------------------------------------------------------
   // PLAYBOOK & MULTI-GRAPHIC SYSTEM STATE
   // -------------------------------------------------------------------------
-  // All plays saved in localStorage
+  // All plays saved in localStorage (with legacy key fallback)
   const [plays, setPlays] = useState<TacticalPlay[]>(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('basketstats_tactical_plays');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p: any) => ({
+            ...p,
+            ageCategory: p.ageCategory?.trim() || 'Todas',
+          }));
+        }
       }
     } catch {}
     return DEFAULT_TACTICAL_PLAYS;
@@ -193,7 +208,43 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const [currentPlayId, setCurrentPlayId] = useState<string>('play-new-1');
   const [playName, setPlayName] = useState<string>('Nueva Jugada');
   const [playCategory, setPlayCategory] = useState<PlayCategory>('ataque');
+  const [playAgeCategory, setPlayAgeCategory] = useState<string>(() => {
+    return gameCategory?.trim() || 'Todas';
+  });
   const [playDescription, setPlayDescription] = useState<string>('');
+
+  // Synchronize tactical plays with Firebase Cloud Firestore on mount
+  useEffect(() => {
+    fetchAllTacticalPlaysFromCloud()
+      .then(cloudPlays => {
+        if (Array.isArray(cloudPlays) && cloudPlays.length > 0) {
+          setPlays(prevLocal => {
+            const map = new Map<string, TacticalPlay>();
+            prevLocal.forEach(p => map.set(p.id, p));
+            let hasNew = false;
+            cloudPlays.forEach((cp: any) => {
+              if (cp && cp.id && cp.name) {
+                const existing = map.get(cp.id);
+                if (!existing || (cp.updatedAt && cp.updatedAt > (existing.updatedAt || 0))) {
+                  map.set(cp.id, {
+                    ...cp,
+                    ageCategory: cp.ageCategory?.trim() || 'Todas',
+                  });
+                  hasNew = true;
+                }
+              }
+            });
+            if (!hasNew) return prevLocal;
+            const merged = Array.from(map.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Frames / Graphics of the current play
   const [frames, setFrames] = useState<TacticalFrame[]>([
@@ -717,13 +768,18 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       ? `play-${Date.now()}`
       : currentPlayId;
 
+    const existingPlay = plays.find(p => p.id === targetPlayId);
+    const resolvedAgeCategory = playAgeCategory?.trim() || 'Todas';
+
     const playToSave: TacticalPlay = {
       id: targetPlayId,
       name: trimmedName,
       category: playCategory,
+      ageCategory: resolvedAgeCategory,
+      teamId: teamId || undefined,
       description: playDescription,
       frames: currentUpdatedFrames,
-      createdAt: Date.now(),
+      createdAt: existingPlay?.createdAt || Date.now(),
       updatedAt: Date.now(),
     };
 
@@ -739,7 +795,15 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     setCurrentPlayId(targetPlayId);
     setFrames(currentUpdatedFrames);
     persistPlays(updatedPlaysList);
-    showToastFeedback(`¡Jugada "${trimmedName}" guardada en el historial!`);
+
+    // Sync to Cloud Firestore in the background
+    syncTacticalPlayToCloud(playToSave).catch(() => {});
+
+    showToastFeedback(
+      resolvedAgeCategory === 'Todas'
+        ? `¡Jugada "${trimmedName}" guardada en ${playCategory.toUpperCase()} (Universal para todos los partidos)!`
+        : `¡Jugada "${trimmedName}" guardada en ${playCategory.toUpperCase()} (${resolvedAgeCategory})!`
+    );
   };
 
   // Start fresh new play
@@ -748,6 +812,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     setCurrentPlayId(newId);
     setPlayName('Nueva Jugada');
     setPlayCategory('ataque');
+    setPlayAgeCategory(gameCategory?.trim() || 'Todas');
     setPlayDescription('');
 
     const initialTokens = [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL];
@@ -774,6 +839,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     setCurrentPlayId(selectedPlay.id);
     setPlayName(selectedPlay.name);
     setPlayCategory(selectedPlay.category || 'ataque');
+    setPlayAgeCategory(selectedPlay.ageCategory?.trim() || 'Todas');
     setPlayDescription(selectedPlay.description || '');
 
     const validFrames =
@@ -801,6 +867,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const handleDeletePlayFromHistory = (playIdToDelete: string) => {
     const updated = plays.filter(p => p.id !== playIdToDelete);
     persistPlays(updated);
+    deleteTacticalPlayFromCloud(playIdToDelete).catch(() => {});
 
     if (currentPlayId === playIdToDelete) {
       handleNewPlay();
@@ -814,6 +881,8 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       ...playToDuplicate,
       id: `play-${Date.now()}`,
       name: `Copia de ${playToDuplicate.name}`,
+      category: playToDuplicate.category,
+      ageCategory: playToDuplicate.ageCategory || 'Todas',
       createdAt: Date.now(),
       updatedAt: Date.now(),
       frames: playToDuplicate.frames.map((f, i) => ({
@@ -826,12 +895,14 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
 
     const updated = [duplicate, ...plays];
     persistPlays(updated);
+    syncTacticalPlayToCloud(duplicate).catch(() => {});
     showToastFeedback(`Copia creada: "${duplicate.name}"`);
   };
 
   // Reset default plays
   const handleResetDefaultPlays = () => {
     persistPlays(DEFAULT_TACTICAL_PLAYS);
+    DEFAULT_TACTICAL_PLAYS.forEach(p => syncTacticalPlayToCloud(p).catch(() => {}));
     showToastFeedback('Jugadas de muestra restauradas');
   };
 
@@ -839,6 +910,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const handleImportPlays = (imported: TacticalPlay[]) => {
     const updated = [...imported, ...plays];
     persistPlays(updated);
+    imported.forEach(p => syncTacticalPlayToCloud(p).catch(() => {}));
   };
 
   // -------------------------------------------------------------------------
@@ -981,9 +1053,9 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       {/* 1. TOP BAR: PLAY NAME & PLAYBOOK HISTORY CONTROLS */}
       {/* ----------------------------------------------------------------- */}
       <div className="bg-gradient-to-r from-[#0c1633] via-[#0f1f4b] to-[#0c1633] border-b border-blue-900/70 px-2.5 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30 shadow-md">
-        {/* Left: Play Name input and Category Selector */}
-        <div className="flex items-center gap-2 flex-1 min-w-[260px]">
-          <div className="relative flex-1 max-w-sm sm:max-w-md">
+        {/* Left: Play Name input and Category Selectors */}
+        <div className="flex items-center gap-2 flex-1 min-w-[280px] flex-wrap sm:flex-nowrap">
+          <div className="relative flex-1 min-w-[170px] max-w-sm sm:max-w-md">
             <label htmlFor="play-name-input" className="sr-only">
               Nombre de la jugada
             </label>
@@ -1002,20 +1074,77 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             </div>
           </div>
 
-          {/* Category Dropdown */}
+          {/* Tactical Category Dropdown */}
           <select
             value={playCategory}
             onChange={e => setPlayCategory(e.target.value as PlayCategory)}
-            className="bg-[#091129] text-amber-300 font-bold text-xs px-2.5 py-1.5 rounded-xl border border-blue-800/80 focus:outline-none focus:border-amber-400 cursor-pointer hidden sm:inline"
-            title="Categoría táctica"
+            className="bg-[#091129] text-amber-300 font-bold text-xs px-2.5 py-1.5 rounded-xl border border-blue-800/80 focus:outline-none focus:border-amber-400 cursor-pointer"
+            title="Categoría táctica de la jugada"
           >
-            <option value="ataque">Ataque</option>
-            <option value="defensa">Defensa</option>
-            <option value="fondo">Saque Fondo</option>
-            <option value="banda">Saque Banda</option>
-            <option value="transicion">Transición</option>
-            <option value="especial">Especial / ATO</option>
+            <option value="ataque">⚡ Ataque</option>
+            <option value="defensa">🛡️ Defensa</option>
+            <option value="fondo">📐 Saque Fondo</option>
+            <option value="banda">📏 Saque Banda</option>
+            <option value="transicion">🏃 Transición</option>
+            <option value="especial">⏱️ Especial / ATO</option>
           </select>
+
+          {/* Age / Team Category Selector */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={
+                playAgeCategory === 'Todas' || playAgeCategory === 'all'
+                  ? 'Todas'
+                  : ['Senior', 'Junior', 'Cadete', 'Infantil', 'Pre-Infantil', 'Minibasket', 'Escola', gameCategory].filter(Boolean).includes(playAgeCategory)
+                  ? playAgeCategory
+                  : 'custom'
+              }
+              onChange={e => {
+                const val = e.target.value;
+                if (val === 'custom') {
+                  const custom = prompt('Escribe el nombre de la categoría para esta jugada:', playAgeCategory !== 'Todas' ? playAgeCategory : '');
+                  if (custom && custom.trim()) {
+                    setPlayAgeCategory(custom.trim());
+                  }
+                } else {
+                  setPlayAgeCategory(val);
+                }
+              }}
+              className="bg-[#091129] text-purple-300 font-bold text-xs px-2.5 py-1.5 rounded-xl border border-purple-800/60 focus:outline-none focus:border-purple-400 cursor-pointer"
+              title="Categoría de equipo o ámbito (Universal para todos los partidos o por categoría)"
+            >
+              <option value="Todas">🌐 Universal (Todos los partidos)</option>
+              {gameCategory && gameCategory.trim() && gameCategory.trim() !== 'Todas' && (
+                <option value={gameCategory.trim()}>
+                  🏀 {gameCategory.trim()} (Partido actual)
+                </option>
+              )}
+              <option value="Senior">🏀 Senior</option>
+              <option value="Junior">🏀 Junior</option>
+              <option value="Cadete">🏀 Cadete</option>
+              <option value="Infantil">🏀 Infantil</option>
+              <option value="Pre-Infantil">🏀 Pre-Infantil</option>
+              <option value="Minibasket">🏀 Minibasket / Escola</option>
+              {playAgeCategory &&
+                !['Todas', 'all', 'Senior', 'Junior', 'Cadete', 'Infantil', 'Pre-Infantil', 'Minibasket', 'Escola', gameCategory].includes(playAgeCategory) && (
+                  <option value={playAgeCategory}>✏️ {playAgeCategory}</option>
+                )}
+              <option value="custom">✏️ Otra categoría...</option>
+            </select>
+
+            {playAgeCategory === 'Todas' ? (
+              <span
+                className="hidden xl:inline-flex text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-lg whitespace-nowrap"
+                title="Esta jugada se guardará para todas las categorías y siempre saldrá en todos los partidos nuevos"
+              >
+                🌐 Siempre en partidos nuevos
+              </span>
+            ) : (
+              <span className="hidden xl:inline-flex text-[10px] font-bold text-purple-300 bg-purple-950/60 border border-purple-800/60 px-2 py-0.5 rounded-lg whitespace-nowrap">
+                🏀 {playAgeCategory}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Right: Save Play, New Play, & Open History Button */}
@@ -1024,7 +1153,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             type="button"
             onClick={handleSavePlay}
             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Guardar jugada y sus gráficos en el historial"
+            title="Guardar jugada grabada por categoría (se mantendrá en todos los partidos)"
           >
             <Save className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Guardar Jugada</span>
@@ -1045,7 +1174,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             type="button"
             onClick={() => setShowHistoryModal(true)}
             className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs flex items-center gap-1.5 transition shadow-md active:scale-95"
-            title="Ver biblioteca e historial de jugadas guardadas"
+            title="Ver biblioteca e historial de jugadas guardadas por categoría"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Historial ({plays.length})</span>
@@ -1583,6 +1712,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
         onResetDefaultPlays={handleResetDefaultPlays}
         onImportPlays={handleImportPlays}
         currentPlayId={currentPlayId}
+        initialAgeCategoryFilter={gameCategory}
       />
     </div>
   );

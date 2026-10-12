@@ -531,3 +531,56 @@ export function subscribeToSubscribers(onUpdate: (subscribers: any[]) => void): 
   }
 }
 
+/**
+ * Cloud Firestore Tactical Plays synchronization (permanentes por categoría)
+ */
+export async function syncTacticalPlayToCloud(play: any): Promise<boolean> {
+  if (!isFirebaseConfigured || isFirestoreQuotaExceeded || !play || !play.id) return false;
+  try {
+    const docRef = doc(db, 'tactical_plays', play.id);
+    const sanitized = cleanForFirestore({
+      ...play,
+      updatedAt: play.updatedAt || Date.now(),
+    });
+    await withTimeout(setDoc(docRef, sanitized, { merge: true }), 4000, `syncTacticalPlayToCloud-${play.id}`);
+    return true;
+  } catch (err: any) {
+    if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
+      isFirestoreQuotaExceeded = true;
+    }
+    handleFirestoreError(err, OperationType.WRITE, `tactical_plays/${play.id}`);
+    return false;
+  }
+}
+
+export async function deleteTacticalPlayFromCloud(playId: string): Promise<boolean> {
+  if (!isFirebaseConfigured || !playId) return false;
+  try {
+    const docRef = doc(db, 'tactical_plays', playId);
+    await withTimeout(deleteDoc(docRef), 4000, `deleteTacticalPlayFromCloud-${playId}`);
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `tactical_plays/${playId}`);
+    return false;
+  }
+}
+
+export async function fetchAllTacticalPlaysFromCloud(): Promise<any[]> {
+  if (!isFirebaseConfigured) return [];
+  try {
+    const colRef = collection(db, 'tactical_plays');
+    const snap = await getDocs(colRef);
+    const plays: any[] = [];
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data && data.id && data.name) {
+        plays.push(data);
+      }
+    });
+    return plays;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'tactical_plays');
+    return [];
+  }
+}
+

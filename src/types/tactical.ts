@@ -38,7 +38,9 @@ export interface TacticalPlay {
   id: string;
   name: string;
   description?: string;
-  category: PlayCategory;
+  category: PlayCategory; // Tipo táctico: ataque, defensa, fondo, banda, transicion, especial
+  ageCategory?: string; // Categoría por edad / equipo: Infantil, Cadete, Junior, Senior, Escola, Todas...
+  teamId?: string; // ID del equipo asociado opcional
   frames: TacticalFrame[];
   createdAt: number;
   updatedAt: number;
