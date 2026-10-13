@@ -149,9 +149,9 @@ const INK_COLORS = [
 ];
 
 const STROKE_WIDTHS = [
-  { label: 'Fino', value: 0.38 },
-  { label: 'Medio', value: 0.62 },
-  { label: 'Grueso', value: 0.95 },
+  { label: 'Fino', value: 0.20 },
+  { label: 'Medio', value: 0.32 },
+  { label: 'Grueso', value: 0.46 },
 ];
 
 interface TacticalBoardProps {
@@ -175,8 +175,10 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
 
   // Selected drawing type & styles (proporcionados y limpios para diagramación táctica)
   const [drawingType, setDrawingType] = useState<DrawingType>('corte');
+  const [prevDrawingType, setPrevDrawingType] = useState<DrawingType>('corte');
+  const [drawMode, setDrawMode] = useState<'freehand' | 'straight'>('freehand');
   const [inkColor, setInkColor] = useState<string>('#FACC15');
-  const [strokeWidth, setStrokeWidth] = useState<number>(0.62);
+  const [strokeWidth, setStrokeWidth] = useState<number>(0.32);
   const [courtTheme, setCourtTheme] = useState<'parquet' | 'dark'>('parquet');
 
   // Active stroke in progress
@@ -403,23 +405,69 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     return { x, y };
   };
 
-  // Erase stroke by proximity
+  // Precise distance from point P to line segment A -> B
+  const distanceToSegment = (p: TacticalPoint, a: TacticalPoint, b: TacticalPoint): number => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const projX = a.x + t * dx;
+    const projY = a.y + t * dy;
+    return Math.hypot(p.x - projX, p.y - projY);
+  };
+
+  // Precise minimum distance from point P to any segment in a stroke polyline
+  const distanceToStroke = (point: TacticalPoint, stroke: TacticalStroke): number => {
+    const pts = stroke.points;
+    if (!pts || pts.length === 0) return Infinity;
+    if (pts.length === 1) {
+      return Math.hypot(point.x - pts[0].x, point.y - pts[0].y);
+    }
+    let minDist = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const d = distanceToSegment(point, pts[i], pts[i + 1]);
+      if (d < minDist) minDist = d;
+    }
+    return minDist;
+  };
+
+  // Erase stroke by proximity: deletes the exact single line clicked or touched
   const eraseStrokeAtPoint = (point: TacticalPoint) => {
-    const threshold = 3.5;
+    const threshold = 3.2; // Generous hit radius in court coordinates
     setStrokes(prev => {
-      const filtered = prev.filter(stroke => {
-        return !stroke.points.some(p => Math.hypot(p.x - point.x, p.y - point.y) < threshold);
+      let closestIdx = -1;
+      let minDistance = Infinity;
+
+      prev.forEach((stroke, idx) => {
+        const d = distanceToStroke(point, stroke);
+        if (d < threshold && d < minDistance) {
+          minDistance = d;
+          closestIdx = idx;
+        }
       });
-      if (filtered.length !== prev.length) {
-        setRedoStack([]);
+
+      if (closestIdx !== -1) {
+        const removed = prev[closestIdx];
+        setRedoStack(r => [...r, removed]);
+        showToastFeedback('Línea borrada');
+        return prev.filter((_, idx) => idx !== closestIdx);
       }
-      return filtered;
+      return prev;
     });
   };
 
-  // Pointer Down (Draw)
+  // Pointer Down (Draw or Erase)
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (draggingTokenId) return;
+
+    // Right-click always acts as quick eraser without having to switch tool
+    if (e.button === 2) {
+      const coords = getCourtCoordinates(e.clientX, e.clientY);
+      if (coords) eraseStrokeAtPoint(coords);
+      return;
+    }
 
     const coords = getCourtCoordinates(e.clientX, e.clientY);
     if (!coords) return;
@@ -440,13 +488,13 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       type: drawingType,
       color: inkColor,
       width: strokeWidth,
-      points: [coords, coords],
+      points: [coords],
     };
 
     redrawCanvas();
   };
 
-  // Pointer Move (Draw)
+  // Pointer Move (Draw following mouse trajectory or Erase while dragging)
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
 
@@ -460,16 +508,23 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
 
     if (!activeStrokeRef.current) return;
 
-    if (drawingType === 'lapiz') {
-      activeStrokeRef.current.points.push(coords);
+    const pts = activeStrokeRef.current.points;
+    const lastPt = pts[pts.length - 1];
+
+    if (drawMode === 'straight') {
+      // Straight vector mode: connect start and current cursor
+      activeStrokeRef.current.points = [pts[0], coords];
     } else {
-      activeStrokeRef.current.points = [activeStrokeRef.current.points[0], coords];
+      // Freehand drawing as if writing with the mouse ("el dibujo que yo hago con el raton, como si escribiera")
+      if (!lastPt || Math.hypot(coords.x - lastPt.x, coords.y - lastPt.y) > 0.28) {
+        activeStrokeRef.current.points.push(coords);
+      }
     }
 
     redrawCanvas();
   };
 
-  // Pointer Up (Draw)
+  // Pointer Up (Finalize Stroke)
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
@@ -488,7 +543,8 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
         const p2 = pts[pts.length - 1];
         const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
 
-        if (finalStroke.type === 'lapiz' || dist > 1.2) {
+        // Keep stroke if it has multiple points or minimal motion
+        if (pts.length >= 2 || dist > 0.4) {
           setStrokes(prev => [...prev, finalStroke]);
           setRedoStack([]);
         }
@@ -499,25 +555,65 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   };
 
   // Undo / Redo
-  const handleUndo = () => {
-    if (strokes.length === 0) return;
-    const last = strokes[strokes.length - 1];
-    setStrokes(prev => prev.slice(0, -1));
-    setRedoStack(prev => [...prev, last]);
-  };
+  const handleUndo = useCallback(() => {
+    setStrokes(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setRedoStack(r => [...r, last]);
+      showToastFeedback('Línea deshecha');
+      return prev.slice(0, -1);
+    });
+  }, []);
 
-  const handleRedo = () => {
-    if (redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
-    setRedoStack(prev => prev.slice(0, -1));
-    setStrokes(prev => [...prev, next]);
-  };
+  const handleRedo = useCallback(() => {
+    setRedoStack(prev => {
+      if (prev.length === 0) return prev;
+      const next = prev[prev.length - 1];
+      setStrokes(s => [...s, next]);
+      return prev.slice(0, -1);
+    });
+  }, []);
+
+  // Keyboard shortcut listener for effortless undo/redo & deleting mistaken lines
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        e.preventDefault();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        handleRedo();
+        e.preventDefault();
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        handleUndo();
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   // Clear current graphic's strokes
   const handleClearBoard = () => {
     if (strokes.length === 0) return;
     setStrokes([]);
     setRedoStack([]);
+    showToastFeedback('Pizarra limpiada');
   };
 
   // Reset player tokens
@@ -955,7 +1051,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       tokens.forEach(token => {
         const px = (token.x / 100) * width;
         const py = (token.y / 93.3) * height;
-        const radius = token.type === 'ball' ? 20 : 25;
+        const radius = token.type === 'ball' ? 9 : 25;
 
         ctx.save();
         ctx.beginPath();
@@ -986,16 +1082,35 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           ctx.textBaseline = 'middle';
           ctx.fillText(token.label, px, py);
         } else if (token.type === 'ball') {
-          ctx.fillStyle = '#D97706';
+          const ballRadius = 8.5;
+          ctx.beginPath();
+          ctx.arc(px, py, ballRadius, 0, Math.PI * 2);
+          ctx.fillStyle = '#EA580C';
           ctx.fill();
-          ctx.lineWidth = 2.5;
+          ctx.lineWidth = 1.0;
           ctx.strokeStyle = '#FFFFFF';
           ctx.stroke();
 
-          ctx.font = '24px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('🏀', px, py + 1);
+          // Authentic basketball seams
+          ctx.strokeStyle = '#7C2D12';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(px, py - ballRadius);
+          ctx.lineTo(px, py + ballRadius);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(px - ballRadius, py);
+          ctx.lineTo(px + ballRadius, py);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(px - ballRadius * 0.7, py, ballRadius * 0.8, -Math.PI * 0.35, Math.PI * 0.35);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(px + ballRadius * 0.7, py, ballRadius * 0.8, Math.PI * 0.65, Math.PI * 1.35);
+          ctx.stroke();
         }
         ctx.restore();
       });
@@ -1186,14 +1301,19 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       {/* 2. SECONDARY BAR: DRAWING TOOLS, PALETTES & ACTIONS */}
       {/* ----------------------------------------------------------------- */}
       <div className="bg-[#091129] border-b border-blue-900/60 px-2 sm:px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-20">
-        {/* Left: Dropdown Drawing Type */}
-        <div className="flex items-center gap-2">
+        {/* Left: Tool dropdown, Freehand/Straight mode, and Quick Eraser Button */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Tool Selector Dropdown */}
           <div className="relative">
             <select
               id="tactical-drawing-type-select"
               value={drawingType}
-              onChange={e => setDrawingType(e.target.value as DrawingType)}
-              className="appearance-none bg-[#0a1638] hover:bg-[#0f2154] text-white font-black text-xs pl-7 pr-7 py-1.5 rounded-xl border border-amber-500/80 focus:border-amber-400 focus:outline-none transition cursor-pointer shadow-xs min-w-[170px]"
+              onChange={e => {
+                const val = e.target.value as DrawingType;
+                setDrawingType(val);
+                if (val !== 'borrador') setPrevDrawingType(val);
+              }}
+              className="appearance-none bg-[#0a1638] hover:bg-[#0f2154] text-white font-black text-xs pl-7 pr-7 py-1.5 rounded-xl border border-amber-500/80 focus:border-amber-400 focus:outline-none transition cursor-pointer shadow-xs min-w-[160px]"
             >
               {DRAWING_OPTIONS.map(opt => (
                 <option key={opt.id} value={opt.id} className="bg-[#0a1638] text-white py-1">
@@ -1207,8 +1327,63 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             <ChevronDown className="w-3.5 h-3.5 text-amber-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          <div className="hidden lg:flex items-center text-[10px] text-slate-300 font-mono">
-            <span className="font-bold text-amber-300">{activeOption.badge}</span>
+          {/* Dedicated Eraser (Goma de Borrar) Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (drawingType === 'borrador') {
+                setDrawingType(prevDrawingType || 'corte');
+              } else {
+                setPrevDrawingType(drawingType);
+                setDrawingType('borrador');
+              }
+            }}
+            className={`px-2.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition shadow-xs active:scale-95 border ${
+              drawingType === 'borrador'
+                ? 'bg-rose-500 hover:bg-rose-600 text-white border-rose-300 ring-2 ring-rose-300/80 shadow-rose-950/60 animate-pulse'
+                : 'bg-rose-950/40 hover:bg-rose-950/80 text-rose-300 border-rose-800/60'
+            }`}
+            title={
+              drawingType === 'borrador'
+                ? 'Borrador ACTIVO: haz clic en cualquier línea para borrarla (o pulsa de nuevo para salir)'
+                : 'Goma de borrar: haz clic para eliminar líneas individuales'
+            }
+          >
+            <Eraser className="w-3.5 h-3.5 stroke-[2.4]" />
+            <span>{drawingType === 'borrador' ? 'Borrando...' : 'Borrador'}</span>
+          </button>
+
+          {/* Freehand vs Straight Mode Toggle ("hagas el dibujo que yo hago con el raton. como si escribiera") */}
+          <div
+            className="flex items-center bg-[#060c1e] p-0.5 rounded-xl border border-blue-900/60"
+            title="Modo de trazo: Mano alzada con el ratón (como escribir) o Línea recta"
+          >
+            <button
+              type="button"
+              onClick={() => setDrawMode('freehand')}
+              className={`px-2 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition ${
+                drawMode === 'freehand'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Mano alzada: Dibuja libremente siguiendo tu mano/ratón como si escribieras"
+            >
+              <span>✍️</span>
+              <span className="hidden sm:inline">Mano alzada</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawMode('straight')}
+              className={`px-2 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition ${
+                drawMode === 'straight'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Línea recta: Dibuja vectores directos entre punto inicial y final"
+            >
+              <span>📏</span>
+              <span className="hidden sm:inline">Recta</span>
+            </button>
           </div>
         </div>
 
@@ -1246,7 +1421,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           <div className="flex items-center gap-1 bg-black/40 px-1.5 py-0.5 rounded-lg border border-blue-900/60" title="Grosor de trazo proporcionado">
             {STROKE_WIDTHS.map(sw => {
               const isSelected = strokeWidth === sw.value;
-              const barHeight = sw.value <= 0.4 ? 'h-[2px]' : sw.value <= 0.7 ? 'h-[3.5px]' : 'h-[5px]';
+              const barHeight = sw.value <= 0.25 ? 'h-[1.5px]' : sw.value <= 0.35 ? 'h-[2.5px]' : 'h-[4px]';
               return (
                 <button
                   key={sw.value}
@@ -1259,7 +1434,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                   }`}
                   title={`Trazo ${sw.label} proporcionado`}
                 >
-                  <span className={`w-3 ${barHeight} bg-current rounded-full inline-block`} />
+                  <span className={`w-2.5 ${barHeight} bg-current rounded-full inline-block`} />
                   <span className="hidden sm:inline">{sw.label}</span>
                 </button>
               );
@@ -1273,18 +1448,19 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             type="button"
             onClick={handleUndo}
             disabled={strokes.length === 0}
-            className="p-1.5 rounded-lg bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/60 disabled:opacity-30 transition"
-            title="Deshacer trazo"
+            className="px-2 py-1.5 rounded-xl bg-blue-950/90 hover:bg-blue-900 text-slate-200 border border-blue-800/70 disabled:opacity-30 transition flex items-center gap-1 text-xs font-bold"
+            title="Deshacer última línea (Ctrl+Z o Backspace)"
           >
             <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Deshacer</span>
           </button>
 
           <button
             type="button"
             onClick={handleRedo}
             disabled={redoStack.length === 0}
-            className="p-1.5 rounded-lg bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/60 disabled:opacity-30 transition"
-            title="Rehacer trazo"
+            className="p-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 text-slate-200 border border-blue-800/60 disabled:opacity-30 transition"
+            title="Rehacer trazo (Ctrl+Y)"
           >
             <RotateCw className="w-3.5 h-3.5" />
           </button>
@@ -1293,8 +1469,8 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             type="button"
             onClick={handleClearBoard}
             disabled={strokes.length === 0}
-            className="px-2 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 disabled:opacity-30 text-xs font-bold transition flex items-center gap-1"
-            title="Limpiar trazos del gráfico actual"
+            className="px-2 py-1 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 disabled:opacity-30 text-xs font-bold transition flex items-center gap-1"
+            title="Limpiar todas las líneas del gráfico actual"
           >
             <Trash2 className="w-3 h-3 text-rose-400" />
             <span className="hidden xs:inline">Limpiar</span>
@@ -1303,7 +1479,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           <button
             type="button"
             onClick={handleExportImage}
-            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-xs"
+            className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-xs"
             title="Descargar imagen PNG del gráfico actual"
           >
             <Download className="w-3 h-3" />
@@ -1614,9 +1790,25 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            className="absolute inset-0 w-full h-full cursor-crosshair touch-none z-20"
+            onContextMenu={e => {
+              e.preventDefault();
+              const coords = getCourtCoordinates(e.clientX, e.clientY);
+              if (coords) eraseStrokeAtPoint(coords);
+            }}
+            className={`absolute inset-0 w-full h-full touch-none z-20 ${
+              drawingType === 'borrador' ? 'cursor-pointer' : 'cursor-crosshair'
+            }`}
             style={{ touchAction: 'none' }}
           />
+
+          {/* Active Eraser Mode Banner on Court */}
+          {drawingType === 'borrador' && (
+            <div className="absolute top-2 right-2 z-30 bg-rose-950/90 border border-rose-500/70 text-rose-100 text-xs px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-2 backdrop-blur-xs animate-in fade-in slide-in-from-top-1 pointer-events-none">
+              <Eraser className="w-3.5 h-3.5 text-rose-400 stroke-[2.5]" />
+              <span className="font-bold">Modo Borrador:</span>
+              <span className="text-rose-200">Haz clic sobre cualquier línea para eliminarla</span>
+            </div>
+          )}
 
           {/* DRAGGABLE PLAYER & BALL TOKENS */}
           <div className="absolute inset-0 pointer-events-none z-30">
@@ -1633,13 +1825,15 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                   onPointerMove={e => handleTokenPointerMove(token.id, e)}
                   onPointerUp={e => handleTokenPointerUp(token.id, e)}
                   className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing pointer-events-auto touch-none select-none transition-transform duration-75 flex flex-col items-center justify-center ${
-                    draggingTokenId === token.id ? 'scale-125 z-40' : 'hover:scale-110'
+                    draggingTokenId === token.id
+                      ? (isBall ? 'scale-115 z-40' : 'scale-125 z-40')
+                      : 'hover:scale-110'
                   }`}
                   style={{
                     left: `${token.x}%`,
                     top: `${(token.y / 93.3) * 100}%`,
                   }}
-                  title={token.playerName ? `${token.label} (${token.playerName})` : token.label}
+                  title={token.playerName ? `${token.label} (${token.playerName})` : token.type === 'ball' ? 'Balón' : token.label}
                 >
                   {isOffense && (
                     <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-orange-950/60 drop-shadow-md">
@@ -1654,8 +1848,17 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                   )}
 
                   {isBall && (
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center text-sm shadow-xl border-2 border-white ring-2 ring-amber-950 drop-shadow-md">
-                      🏀
+                    <div
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-gradient-to-br from-orange-500 via-amber-600 to-orange-700 flex items-center justify-center shadow-sm border border-white ring-1 ring-black/50 drop-shadow select-none"
+                      title="Balón (arrastra para posicionarlo)"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10" stroke="#7c2d12" strokeWidth="1.8" fill="#ea580c" />
+                        <line x1="12" y1="2" x2="12" y2="22" stroke="#7c2d12" strokeWidth="1.4" />
+                        <line x1="2" y1="12" x2="22" y2="12" stroke="#7c2d12" strokeWidth="1.4" />
+                        <path d="M4.5 4.5c4.5 4 4.5 11 0 15" stroke="#7c2d12" strokeWidth="1.3" />
+                        <path d="M19.5 4.5c-4.5 4-4.5 11 0 15" stroke="#7c2d12" strokeWidth="1.3" />
+                      </svg>
                     </div>
                   )}
 
@@ -1727,13 +1930,73 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
 // CANVAS VECTOR RENDERING HELPERS: Pase, Bloqueo, Corte, Tiro, Bote, Lápiz
 // =========================================================================
 
+function getEndAngle(pts: TacticalPoint[]): number {
+  if (pts.length < 2) return 0;
+  const pEnd = pts[pts.length - 1];
+  let pPrev = pts[0];
+  for (let i = pts.length - 2; i >= 0; i--) {
+    if (Math.hypot(pEnd.x - pts[i].x, pEnd.y - pts[i].y) >= 0.7) {
+      pPrev = pts[i];
+      break;
+    }
+  }
+  return Math.atan2(pEnd.y - pPrev.y, pEnd.x - pPrev.x);
+}
+
+function drawArrowHead(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  strokeW: number
+) {
+  const headLength = Math.max(1.2, strokeW * 2.8);
+  const spread = Math.PI / 6.5;
+
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(
+    x - headLength * Math.cos(angle - spread),
+    y - headLength * Math.sin(angle - spread)
+  );
+  ctx.lineTo(
+    x - headLength * Math.cos(angle + spread),
+    y - headLength * Math.sin(angle + spread)
+  );
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawScreenTBar(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  strokeW: number
+) {
+  const barLength = Math.max(1.8, strokeW * 3.6);
+  const perpAngle = angle + Math.PI / 2;
+  const bx1 = x - (barLength / 2) * Math.cos(perpAngle);
+  const by1 = y - (barLength / 2) * Math.sin(perpAngle);
+  const bx2 = x + (barLength / 2) * Math.cos(perpAngle);
+  const by2 = y + (barLength / 2) * Math.sin(perpAngle);
+
+  ctx.save();
+  ctx.lineWidth = Math.max(strokeW * 1.25, 0.42);
+  ctx.beginPath();
+  ctx.moveTo(bx1, by1);
+  ctx.lineTo(bx2, by2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawTacticalStroke(ctx: CanvasRenderingContext2D, stroke: TacticalStroke) {
   const pts = stroke.points;
   if (!pts || pts.length === 0) return;
 
-  // Normalize legacy thick stroke widths (e.g. 1.4 - 2.6 down to proportionate ~0.45 - 0.75)
-  const rawWidth = stroke.width || 0.62;
-  const effectiveWidth = rawWidth >= 1.2 ? rawWidth * 0.42 : rawWidth;
+  // Clean, proportionate stroke width (normalize any legacy oversized values)
+  const rawWidth = stroke.width || 0.32;
+  const effectiveWidth = rawWidth >= 0.9 ? rawWidth * 0.45 : rawWidth;
 
   ctx.save();
   ctx.strokeStyle = stroke.color;
@@ -1742,221 +2005,116 @@ function drawTacticalStroke(ctx: CanvasRenderingContext2D, stroke: TacticalStrok
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  const pStart = pts[0];
   const pEnd = pts[pts.length - 1];
+  const angle = getEndAngle(pts);
 
   if (stroke.type === 'lapiz') {
     ctx.beginPath();
-    ctx.moveTo(pStart.x, pStart.y);
+    ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) {
       ctx.lineTo(pts[i].x, pts[i].y);
     }
     ctx.stroke();
   } else if (stroke.type === 'corte') {
-    drawStraightArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
+    // Cut / movement follows exact mouse trajectory with sleek arrowhead at the tip
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+    drawArrowHead(ctx, pEnd.x, pEnd.y, angle, effectiveWidth);
   } else if (stroke.type === 'pase') {
-    drawDashedArrow(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
+    // Pass follows mouse trajectory with dashed line and sleek arrowhead at the tip
+    ctx.save();
+    ctx.setLineDash([1.1, 0.9]);
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+    ctx.restore();
+    drawArrowHead(ctx, pEnd.x, pEnd.y, angle, effectiveWidth);
   } else if (stroke.type === 'bloqueo') {
-    drawScreenVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
+    // Screen follows mouse trajectory with T-bar perpendicular to arrival direction
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+    drawScreenTBar(ctx, pEnd.x, pEnd.y, angle, effectiveWidth);
   } else if (stroke.type === 'tiro') {
-    drawShotVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
+    // Shot vector / arc with target bullseye at the rim or target point
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+
+    ctx.save();
+    const targetRadius = Math.max(1.2, effectiveWidth * 2.2);
+    const dotRadius = Math.max(0.4, effectiveWidth * 0.7);
+
+    ctx.lineWidth = Math.max(0.28, effectiveWidth * 0.7);
+    ctx.beginPath();
+    ctx.arc(pEnd.x, pEnd.y, targetRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(pEnd.x, pEnd.y, dotRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tipX = pEnd.x - (targetRadius + 0.2) * Math.cos(angle);
+    const tipY = pEnd.y - (targetRadius + 0.2) * Math.sin(angle);
+    drawArrowHead(ctx, tipX, tipY, angle, effectiveWidth);
+    ctx.restore();
   } else if (stroke.type === 'bote') {
-    drawDribbleVector(ctx, pStart.x, pStart.y, pEnd.x, pEnd.y, effectiveWidth);
+    // Dribble / bote: zigzag or wave along user trajectory
+    if (pts.length <= 2) {
+      const x1 = pts[0].x;
+      const y1 = pts[0].y;
+      const x2 = pEnd.x;
+      const y2 = pEnd.y;
+      const dist = Math.hypot(x2 - x1, y2 - y1);
+      const perpAngle = angle + Math.PI / 2;
+      const segmentLength = 2.0;
+      const numSegments = Math.max(3, Math.floor(dist / segmentLength));
+      const amplitude = Math.max(0.65, effectiveWidth * 1.3);
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      for (let i = 1; i < numSegments; i++) {
+        const t = i / numSegments;
+        const midX = x1 + (x2 - x1) * t;
+        const midY = y1 + (y2 - y1) * t;
+        const offset = (i % 2 === 0 ? 1 : -1) * amplitude;
+        ctx.lineTo(midX + offset * Math.cos(perpAngle), midY + offset * Math.sin(perpAngle));
+      }
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    } else {
+      // Freehand dribble path with subtle bounce ripples
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const prev = pts[i - 1];
+        const curr = pts[i];
+        const midX = (prev.x + curr.x) / 2;
+        const midY = (prev.y + curr.y) / 2;
+        const segAngle = Math.atan2(curr.y - prev.y, curr.x - prev.x) + Math.PI / 2;
+        const waveOffset = (i % 2 === 0 ? 0.45 : -0.45) * Math.min(1.0, effectiveWidth * 1.5);
+        const waveX = midX + waveOffset * Math.cos(segAngle);
+        const waveY = midY + waveOffset * Math.sin(segAngle);
+        ctx.quadraticCurveTo(waveX, waveY, curr.x, curr.y);
+      }
+      ctx.stroke();
+    }
+
+    drawArrowHead(ctx, pEnd.x, pEnd.y, angle, effectiveWidth);
   }
 
-  ctx.restore();
-}
-
-function drawStraightArrow(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  strokeW: number
-) {
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const headLength = Math.max(1.8, strokeW * 3.0);
-
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(
-    x2 - headLength * Math.cos(angle - Math.PI / 6.2),
-    y2 - headLength * Math.sin(angle - Math.PI / 6.2)
-  );
-  ctx.lineTo(
-    x2 - headLength * Math.cos(angle + Math.PI / 6.2),
-    y2 - headLength * Math.sin(angle + Math.PI / 6.2)
-  );
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawDashedArrow(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  strokeW: number
-) {
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const headLength = Math.max(1.8, strokeW * 3.0);
-
-  ctx.save();
-  ctx.setLineDash([1.4, 1.1]);
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(
-    x2 - headLength * Math.cos(angle - Math.PI / 6.2),
-    y2 - headLength * Math.sin(angle - Math.PI / 6.2)
-  );
-  ctx.lineTo(
-    x2 - headLength * Math.cos(angle + Math.PI / 6.2),
-    y2 - headLength * Math.sin(angle + Math.PI / 6.2)
-  );
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawScreenVector(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  strokeW: number
-) {
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const barLength = Math.max(2.4, strokeW * 4.0);
-
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-
-  const perpAngle = angle + Math.PI / 2;
-  const bx1 = x2 - (barLength / 2) * Math.cos(perpAngle);
-  const by1 = y2 - (barLength / 2) * Math.sin(perpAngle);
-  const bx2 = x2 + (barLength / 2) * Math.cos(perpAngle);
-  const by2 = y2 + (barLength / 2) * Math.sin(perpAngle);
-
-  ctx.save();
-  ctx.lineWidth = Math.max(strokeW * 1.35, 0.75);
-  ctx.beginPath();
-  ctx.moveTo(bx1, by1);
-  ctx.lineTo(bx2, by2);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawShotVector(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  strokeW: number
-) {
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-
-  ctx.save();
-  ctx.setLineDash([]);
-
-  const targetRadius = Math.max(1.5, strokeW * 2.4);
-  const dotRadius = Math.max(0.5, strokeW * 0.8);
-  const headLength = Math.max(1.6, strokeW * 2.6);
-
-  ctx.lineWidth = Math.max(0.4, strokeW * 0.7);
-  ctx.beginPath();
-  ctx.arc(x2, y2, targetRadius, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(x2, y2, dotRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const tipX = x2 - (targetRadius + 0.3) * Math.cos(angle);
-  const tipY = y2 - (targetRadius + 0.3) * Math.sin(angle);
-
-  ctx.beginPath();
-  ctx.moveTo(tipX, tipY);
-  ctx.lineTo(
-    tipX - headLength * Math.cos(angle - Math.PI / 6.2),
-    tipY - headLength * Math.sin(angle - Math.PI / 6.2)
-  );
-  ctx.lineTo(
-    tipX - headLength * Math.cos(angle + Math.PI / 6.2),
-    tipY - headLength * Math.sin(angle + Math.PI / 6.2)
-  );
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawDribbleVector(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  strokeW: number
-) {
-  const dist = Math.hypot(x2 - x1, y2 - y1);
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const perpAngle = angle + Math.PI / 2;
-
-  const segmentLength = 2.4;
-  const numSegments = Math.max(3, Math.floor(dist / segmentLength));
-  const amplitude = Math.max(0.85, strokeW * 1.4);
-
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-
-  for (let i = 1; i < numSegments; i++) {
-    const t = i / numSegments;
-    const midX = x1 + (x2 - x1) * t;
-    const midY = y1 + (y2 - y1) * t;
-    const offset = (i % 2 === 0 ? 1 : -1) * amplitude;
-
-    ctx.lineTo(
-      midX + offset * Math.cos(perpAngle),
-      midY + offset * Math.sin(perpAngle)
-    );
-  }
-
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-
-  const headLength = Math.max(1.8, strokeW * 3.0);
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(
-    x2 - headLength * Math.cos(angle - Math.PI / 6.2),
-    y2 - headLength * Math.sin(angle - Math.PI / 6.2)
-  );
-  ctx.lineTo(
-    x2 - headLength * Math.cos(angle + Math.PI / 6.2),
-    y2 - headLength * Math.sin(angle + Math.PI / 6.2)
-  );
-  ctx.closePath();
-  ctx.fill();
   ctx.restore();
 }
