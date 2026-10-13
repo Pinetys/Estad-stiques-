@@ -28,8 +28,9 @@ import {
   FilePlus,
   Edit3,
   Copy,
-  RefreshCw,
   FolderOpen,
+  Shield,
+  ShieldOff,
 } from 'lucide-react';
 import { Player } from '../types';
 import {
@@ -623,7 +624,51 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       ...DEFAULT_DEFENSE_HALF,
       DEFAULT_BALL,
     ]);
-    showToastFeedback('Posiciones iniciales restablecidas');
+    showToastFeedback('Posiciones iniciales restablecidas (5c5 con balón)');
+  };
+
+  // Defenders management (5c0, 5c5, toggle, remove individual)
+  const handleRemoveAllDefenders = () => {
+    setTokens(prev => prev.filter(t => t.type !== 'defense'));
+    showToastFeedback('Defensores eliminados (Ataque 5 contra 0)');
+  };
+
+  const handleRestoreDefenders = () => {
+    setTokens(prev => {
+      const nonDefense = prev.filter(t => t.type !== 'defense');
+      return [...nonDefense, ...DEFAULT_DEFENSE_HALF];
+    });
+    showToastFeedback('5 Defensores añadidos a la cancha');
+  };
+
+  const handleRemoveSingleToken = (tokenId: string) => {
+    setTokens(prev => {
+      const target = prev.find(t => t.id === tokenId);
+      const name = target ? (target.type === 'defense' ? `Defensor ${target.label}` : target.label) : 'Ficha';
+      showToastFeedback(`${name} eliminado`);
+      return prev.filter(t => t.id !== tokenId);
+    });
+  };
+
+  const handleAddDefender = () => {
+    setTokens(prev => {
+      const currentDefs = prev.filter(t => t.type === 'defense');
+      if (currentDefs.length >= 5) {
+        showToastFeedback('Ya están los 5 defensores en pista');
+        return prev;
+      }
+      const nextIdx = currentDefs.length;
+      const base = DEFAULT_DEFENSE_HALF[nextIdx] || { x: 50, y: 50 };
+      const newDef: TacticalToken = {
+        id: `def-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        label: `X${nextIdx + 1}`,
+        type: 'defense',
+        x: base.x,
+        y: base.y,
+      };
+      showToastFeedback(`Defensor X${nextIdx + 1} añadido`);
+      return [...prev, newDef];
+    });
   };
 
   // Tactical Formations
@@ -682,8 +727,14 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     }
   };
 
-  // Dragging tokens
+  // Dragging tokens (or deleting if eraser is selected)
   const handleTokenPointerDown = (tokenId: string, e: React.PointerEvent) => {
+    // If eraser tool is selected, clicking any token deletes it directly!
+    if (drawingType === 'borrador') {
+      e.stopPropagation();
+      handleRemoveSingleToken(tokenId);
+      return;
+    }
     e.stopPropagation();
     setDraggingTokenId(tokenId);
     try {
@@ -1597,32 +1648,70 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             )}
           </div>
 
-          {/* Formations Quick Dropdown */}
-          <div className="hidden md:flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => handleApplyFormation('5out')}
-              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60 text-[11px] font-mono"
-              title="5 Abiertos"
-            >
-              5 Out
-            </button>
-            <button
-              type="button"
-              onClick={() => handleApplyFormation('horns')}
-              className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60 text-[11px] font-mono"
-              title="Cuernos"
-            >
-              Horns
-            </button>
-            <button
-              type="button"
-              onClick={handleResetPositions}
-              className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-mono"
-              title="Reset Fichas"
-            >
-              Reset
-            </button>
+          {/* Defenders & Formations Controls */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {/* Toggle / Remove Defenders Button */}
+            {tokens.some(t => t.type === 'defense') ? (
+              <button
+                type="button"
+                onClick={handleRemoveAllDefenders}
+                className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/70 text-[11px] font-mono font-bold flex items-center gap-1 transition shadow-xs active:scale-95"
+                title="Eliminar todos los defensores de la pizarra para diagramar ataque 5 contra 0"
+              >
+                <ShieldOff className="w-3.5 h-3.5 text-rose-400 stroke-[2.2]" />
+                <span>Quitar Defensores ({tokens.filter(t => t.type === 'defense').length})</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRestoreDefenders}
+                className="px-2 py-1 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/70 text-[11px] font-mono font-bold flex items-center gap-1 transition shadow-xs active:scale-95"
+                title="Añadir los 5 defensores a la pizarra (defensa 5 contra 5)"
+              >
+                <Shield className="w-3.5 h-3.5 text-indigo-400 stroke-[2.2]" />
+                <span>+ Poner Defensores</span>
+              </button>
+            )}
+
+            {/* Quick button to add 1 defender if 1..4 present */}
+            {tokens.filter(t => t.type === 'defense').length > 0 &&
+              tokens.filter(t => t.type === 'defense').length < 5 && (
+                <button
+                  type="button"
+                  onClick={handleAddDefender}
+                  className="px-1.5 py-1 rounded-lg bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60 text-[11px] font-mono font-bold transition active:scale-95"
+                  title="Añadir 1 defensor más a la pizarra"
+                >
+                  + Def
+                </button>
+              )}
+
+            <div className="hidden md:flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleApplyFormation('5out')}
+                className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60 text-[11px] font-mono"
+                title="5 Abiertos"
+              >
+                5 Out
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApplyFormation('horns')}
+                className="px-2 py-0.5 rounded bg-blue-950/80 hover:bg-blue-900 text-cyan-300 border border-blue-800/60 text-[11px] font-mono"
+                title="Cuernos"
+              >
+                Horns
+              </button>
+              <button
+                type="button"
+                onClick={handleResetPositions}
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-mono"
+                title="Restablecer todas las fichas a la posición inicial (5c5)"
+              >
+                Reset
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1824,6 +1913,13 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                   onPointerDown={e => handleTokenPointerDown(token.id, e)}
                   onPointerMove={e => handleTokenPointerMove(token.id, e)}
                   onPointerUp={e => handleTokenPointerUp(token.id, e)}
+                  onContextMenu={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (isDefense) {
+                      handleRemoveSingleToken(token.id);
+                    }
+                  }}
                   className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing pointer-events-auto touch-none select-none transition-transform duration-75 flex flex-col items-center justify-center ${
                     draggingTokenId === token.id
                       ? (isBall ? 'scale-115 z-40' : 'scale-125 z-40')
@@ -1833,7 +1929,15 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                     left: `${token.x}%`,
                     top: `${(token.y / 93.3) * 100}%`,
                   }}
-                  title={token.playerName ? `${token.label} (${token.playerName})` : token.type === 'ball' ? 'Balón' : token.label}
+                  title={
+                    token.playerName
+                      ? `${token.label} (${token.playerName})`
+                      : token.type === 'ball'
+                      ? 'Balón'
+                      : isDefense
+                      ? `${token.label} (Clic derecho o ✕ para eliminar)`
+                      : token.label
+                  }
                 >
                   {isOffense && (
                     <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-orange-950/60 drop-shadow-md">
@@ -1842,8 +1946,23 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
                   )}
 
                   {isDefense && (
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-blue-950/60 drop-shadow-md">
-                      {token.label}
+                    <div className="relative group/def">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-blue-950/60 drop-shadow-md">
+                        {token.label}
+                      </div>
+                      {/* Delete individual defender button */}
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleRemoveSingleToken(token.id);
+                        }}
+                        onPointerDown={e => e.stopPropagation()}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center text-[10px] font-black shadow-md border border-white opacity-80 sm:opacity-0 group-hover/def:opacity-100 transition-opacity active:scale-90 z-50 pointer-events-auto"
+                        title={`Eliminar defensor ${token.label}`}
+                      >
+                        ✕
+                      </button>
                     </div>
                   )}
 
