@@ -31,6 +31,8 @@ import {
   FolderOpen,
   Shield,
   ShieldOff,
+  Camera,
+  Share2,
 } from 'lucide-react';
 import { Player } from '../types';
 import {
@@ -186,6 +188,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const activeStrokeRef = useRef<TacticalStroke | null>(null);
   const isDrawingRef = useRef<boolean>(false);
   const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // -------------------------------------------------------------------------
   // PLAYBOOK & MULTI-GRAPHIC SYSTEM STATE
@@ -1065,19 +1068,33 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   // -------------------------------------------------------------------------
   const handleExportImage = () => {
     const container = courtContainerRef.current;
-    if (!container) return;
+    if (!container || isExporting) return;
+
+    setIsExporting(true);
+    showToastFeedback('Capturando diseño de la cancha...');
 
     const exportCanvas = document.createElement('canvas');
-    const width = 1200;
-    const height = Math.round((1200 * 93.3) / 100);
+    // High-resolution canvas (1600px width) for ultra-sharp tactical diagrams
+    const width = 1600;
+    const height = Math.round((1600 * 93.3) / 100);
     exportCanvas.width = width;
     exportCanvas.height = height;
 
     const ctx = exportCanvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setIsExporting(false);
+      return;
+    }
 
     const svgElement = container.querySelector('svg');
-    if (!svgElement) return;
+    if (!svgElement) {
+      setIsExporting(false);
+      return;
+    }
+
+    // Solid court base color to prevent transparency issues
+    ctx.fillStyle = courtTheme === 'parquet' ? '#c9975a' : '#141720';
+    ctx.fillRect(0, 0, width, height);
 
     const svgString = new XMLSerializer().serializeToString(svgElement);
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
@@ -1088,7 +1105,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       ctx.drawImage(img, 0, 0, width, height);
       URL.revokeObjectURL(blobURL);
 
-      // Strokes
+      // 1. Draw all tactical strokes (freehand, cuts, passes, screens, shots, dribbles)
       ctx.save();
       const scaleX = width / 100;
       const scaleY = height / 93.3;
@@ -1098,53 +1115,86 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       });
       ctx.restore();
 
-      // Tokens
+      // 2. Draw all player and ball tokens
       tokens.forEach(token => {
         const px = (token.x / 100) * width;
         const py = (token.y / 93.3) * height;
-        const radius = token.type === 'ball' ? 9 : 25;
+        const radius = token.type === 'ball' ? 12 : 32;
 
         ctx.save();
         ctx.beginPath();
         ctx.arc(px, py, radius, 0, Math.PI * 2);
 
         if (token.type === 'offense') {
-          ctx.fillStyle = '#EA580C';
+          // Offense player circle with gradient
+          const grad = ctx.createLinearGradient(px - radius, py - radius, px + radius, py + radius);
+          grad.addColorStop(0, '#F97316');
+          grad.addColorStop(1, '#D97706');
+          ctx.fillStyle = grad;
           ctx.fill();
-          ctx.lineWidth = 3.5;
+          ctx.lineWidth = 4;
           ctx.strokeStyle = '#FFFFFF';
           ctx.stroke();
 
+          // Dorsal / label
           ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 20px system-ui, sans-serif';
+          ctx.font = 'bold 24px system-ui, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(token.label, px, py);
+
+          // Player name badge underneath (crucial for sharing strategy with team members)
+          if (token.playerName) {
+            const shortName = token.playerName.split(' ')[0];
+            ctx.save();
+            ctx.font = 'bold 15px system-ui, sans-serif';
+            const m = ctx.measureText(shortName);
+            const badgeW = m.width + 16;
+            const badgeH = 22;
+            const badgeY = py + radius + 5;
+            ctx.fillStyle = 'rgba(10, 15, 30, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(px - badgeW / 2, badgeY, badgeW, badgeH, 6);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(249, 115, 22, 0.7)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(shortName, px, badgeY + badgeH / 2);
+            ctx.restore();
+          }
         } else if (token.type === 'defense') {
-          ctx.fillStyle = '#2563EB';
+          // Defense player circle
+          const grad = ctx.createLinearGradient(px - radius, py - radius, px + radius, py + radius);
+          grad.addColorStop(0, '#2563EB');
+          grad.addColorStop(1, '#1D4ED8');
+          ctx.fillStyle = grad;
           ctx.fill();
-          ctx.lineWidth = 3.5;
+          ctx.lineWidth = 4;
           ctx.strokeStyle = '#FFFFFF';
           ctx.stroke();
 
           ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 18px system-ui, sans-serif';
+          ctx.font = 'bold 22px system-ui, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(token.label, px, py);
         } else if (token.type === 'ball') {
-          const ballRadius = 8.5;
+          // Basketball with realistic seams
+          const ballRadius = 11;
           ctx.beginPath();
           ctx.arc(px, py, ballRadius, 0, Math.PI * 2);
           ctx.fillStyle = '#EA580C';
           ctx.fill();
-          ctx.lineWidth = 1.0;
+          ctx.lineWidth = 1.4;
           ctx.strokeStyle = '#FFFFFF';
           ctx.stroke();
 
-          // Authentic basketball seams
           ctx.strokeStyle = '#7C2D12';
-          ctx.lineWidth = 0.8;
+          ctx.lineWidth = 1.0;
           ctx.beginPath();
           ctx.moveTo(px, py - ballRadius);
           ctx.lineTo(px, py + ballRadius);
@@ -1162,44 +1212,123 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           ctx.beginPath();
           ctx.arc(px + ballRadius * 0.7, py, ballRadius * 0.8, Math.PI * 0.65, Math.PI * 1.35);
           ctx.stroke();
+        } else if (token.type === 'cone') {
+          ctx.fillStyle = '#F59E0B';
+          ctx.beginPath();
+          ctx.moveTo(px, py - radius * 0.8);
+          ctx.lineTo(px - radius * 0.7, py + radius * 0.7);
+          ctx.lineTo(px + radius * 0.7, py + radius * 0.7);
+          ctx.closePath();
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.stroke();
         }
         ctx.restore();
       });
 
-      // Watermark header with play name & frame number
+      // 3. Strategy Header Card / Watermark on top-left of image
       ctx.save();
-      ctx.fillStyle = 'rgba(11, 20, 46, 0.9)';
-      ctx.fillRect(16, 16, 420, 68);
+      const cardW = 540;
+      const cardH = 92;
+      ctx.fillStyle = 'rgba(7, 12, 30, 0.94)';
+      ctx.beginPath();
+      ctx.roundRect(20, 20, cardW, cardH, 12);
+      ctx.fill();
       ctx.strokeStyle = '#F59E0B';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(16, 16, 420, 68);
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
 
+      // Title
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 18px system-ui, sans-serif';
+      ctx.font = 'bold 22px system-ui, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(playName.toUpperCase(), 28, 24);
+      const cleanTitle = playName.length > 28 ? playName.substring(0, 26) + '...' : playName;
+      ctx.fillText(cleanTitle.toUpperCase(), 36, 32);
 
-      ctx.fillStyle = '#F59E0B';
-      ctx.font = 'bold 13px system-ui, sans-serif';
+      // Step & Frame details
+      ctx.fillStyle = '#FBBF24';
+      ctx.font = 'bold 15px system-ui, sans-serif';
+      const frameTitle = frames[activeFrameIndex]?.title || `Gráfico ${activeFrameIndex + 1}`;
       ctx.fillText(
-        `${frames[activeFrameIndex]?.title || `Gráfico ${activeFrameIndex + 1}`} (Paso ${activeFrameIndex + 1}/${frames.length})`,
-        28,
-        48
+        `${frameTitle} • Paso ${activeFrameIndex + 1}/${frames.length}`,
+        36,
+        60
       );
 
+      // Team & Category footer
       ctx.fillStyle = '#94A3B8';
-      ctx.font = '11px system-ui, sans-serif';
-      ctx.fillText(`${teamName} • BasketStats PRO`, 28, 66);
+      ctx.font = '13px system-ui, sans-serif';
+      const catBadge = playCategory.toUpperCase();
+      const ageBadge = playAgeCategory && playAgeCategory !== 'Todas' ? ` [${playAgeCategory}]` : '';
+      ctx.fillText(`${teamName} • ${catBadge}${ageBadge} • BasketStats PRO`, 36, 82);
       ctx.restore();
 
-      const dataUrl = exportCanvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      const cleanFileName = playName.toLowerCase().replace(/[^a-z0-9]/gi, '_');
-      a.download = `${cleanFileName}_grafico_${activeFrameIndex + 1}.png`;
-      a.click();
+      // 4. Tactical Notes Badge (if current frame or play has instructions)
+      const currentNotes = frames[activeFrameIndex]?.notes?.trim() || playDescription?.trim();
+      if (currentNotes) {
+        ctx.save();
+        const notesW = Math.min(width - 40, 800);
+        const notesH = 64;
+        const notesY = height - notesH - 20;
+        ctx.fillStyle = 'rgba(7, 12, 30, 0.94)';
+        ctx.beginPath();
+        ctx.roundRect(20, notesY, notesW, notesH, 10);
+        ctx.fill();
+        ctx.strokeStyle = '#38BDF8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#38BDF8';
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('📋 INSTRUCCIONES TÁCTICAS:', 36, notesY + 12);
+
+        ctx.fillStyle = '#F1F5F9';
+        ctx.font = '14px system-ui, sans-serif';
+        const displayNotes = currentNotes.length > 95 ? currentNotes.substring(0, 92) + '...' : currentNotes;
+        ctx.fillText(displayNotes, 36, notesY + 34);
+        ctx.restore();
+      }
+
+      // 5. Generate PNG file & trigger download / Web Share
+      exportCanvas.toBlob(async blob => {
+        setIsExporting(false);
+        if (!blob) return;
+
+        const cleanFileName = playName.toLowerCase().replace(/[^a-z0-9]/gi, '_');
+        const fileName = `Estrategia_${cleanFileName}_grafico_${activeFrameIndex + 1}.png`;
+
+        // Direct browser download
+        const dataUrl = exportCanvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = fileName;
+        a.click();
+
+        // Native share if supported on mobile/tablet
+        const file = new File([blob], fileName, { type: 'image/png' });
+        if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: `Estrategia: ${playName}`,
+              text: `Pizarra Táctica: ${playName} - ${frames[activeFrameIndex]?.title || `Gráfico ${activeFrameIndex + 1}`}`,
+              files: [file],
+            });
+          } catch {}
+        }
+
+        showToastFeedback('📸 Cancha capturada: Imagen PNG descargada para compartir');
+      }, 'image/png');
     };
+
+    img.onerror = () => {
+      setIsExporting(false);
+      showToastFeedback('Error al exportar la imagen de la cancha');
+    };
+
     img.src = blobURL;
   };
 
@@ -1313,8 +1442,20 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           </div>
         </div>
 
-        {/* Right: Save Play, New Play, & Open History Button */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right: Save Play, New Play, Capture PNG, & Open History Button */}
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={handleExportImage}
+            disabled={isExporting}
+            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 border border-emerald-400/40 disabled:opacity-50 cursor-pointer"
+            title="Capturar diseño actual de la cancha como imagen PNG descargable para compartir la estrategia con el equipo"
+          >
+            <Camera className="w-3.5 h-3.5 stroke-[2.2]" />
+            <span className="hidden sm:inline">Capturar Cancha (PNG)</span>
+            <span className="sm:hidden">Capturar PNG</span>
+          </button>
+
           <button
             type="button"
             onClick={handleSavePlay}
@@ -1530,11 +1671,13 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           <button
             type="button"
             onClick={handleExportImage}
-            className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-xs"
-            title="Descargar imagen PNG del gráfico actual"
+            disabled={isExporting}
+            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition flex items-center gap-1.5 shadow-xs border border-emerald-400/30 active:scale-95 disabled:opacity-50 cursor-pointer"
+            title="Capturar y descargar diseño actual de la cancha en imagen PNG para compartir con el equipo"
           >
-            <Download className="w-3 h-3" />
-            <span className="hidden sm:inline">PNG</span>
+            <Camera className="w-3.5 h-3.5 stroke-[2.2]" />
+            <span className="hidden sm:inline">Capturar PNG</span>
+            <span className="sm:hidden">PNG</span>
           </button>
         </div>
       </div>
@@ -2007,6 +2150,23 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
               Fase {activeFrameIndex + 1} de {frames.length}
             </span>
           </div>
+
+          {/* Quick Capture Button on Court Overlay */}
+          {drawingType !== 'borrador' && (
+            <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 pointer-events-auto">
+              <button
+                type="button"
+                onClick={handleExportImage}
+                disabled={isExporting}
+                className="bg-emerald-600/90 hover:bg-emerald-500 active:bg-emerald-700 text-white text-[11px] font-black px-2.5 py-1 rounded-lg border border-emerald-400/50 shadow-lg flex items-center gap-1.5 backdrop-blur-xs transition active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Capturar diseño actual de la cancha como imagen PNG descargable para compartir con el equipo"
+              >
+                <Camera className="w-3.5 h-3.5 stroke-[2.2]" />
+                <span className="hidden sm:inline">Capturar Cancha (PNG)</span>
+                <span className="sm:hidden">PNG</span>
+              </button>
+            </div>
+          )}
 
           {/* Floating Legend */}
           <div className="absolute bottom-2 left-2 z-20 bg-black/80 backdrop-blur-xs border border-white/10 rounded-lg px-2.5 py-1 text-[10px] font-mono text-slate-300 flex items-center gap-3 pointer-events-none">
