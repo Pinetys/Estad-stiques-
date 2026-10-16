@@ -16,6 +16,8 @@ interface TacticalBoardModalProps {
   rosterPlayers?: Player[];
   teamName?: string;
   opponentName?: string;
+  gameCategory?: string;
+  teamId?: string;
 }
 
 export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
@@ -24,6 +26,8 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
   rosterPlayers,
   teamName,
   opponentName,
+  gameCategory,
+  teamId,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -115,8 +119,8 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
             rosterPlayers={effectivePlayers}
             teamName={effectiveTeamName}
             opponentName={effectiveOpponentName}
-            gameCategory={game?.category}
-            teamId={game?.teamId}
+            gameCategory={gameCategory || game?.category}
+            teamId={teamId || game?.teamId}
             onClose={onClose}
           />
         </div>

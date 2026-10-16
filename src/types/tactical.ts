@@ -34,6 +34,14 @@ export interface TacticalFrame {
 
 export type PlayCategory = 'ataque' | 'defensa' | 'fondo' | 'banda' | 'transicion' | 'especial';
 
+export interface TacticalStep {
+  id: string;
+  stepNumber: number;
+  title: string;
+  instruction: string;
+  frameIndex?: number;
+}
+
 export interface TacticalPlay {
   id: string;
   name: string;
@@ -42,6 +50,8 @@ export interface TacticalPlay {
   ageCategory?: string; // Categoría por edad / equipo: Infantil, Cadete, Junior, Senior, Escola, Todas...
   teamId?: string; // ID del equipo asociado opcional
   frames: TacticalFrame[];
+  steps?: TacticalStep[];
   createdAt: number;
   updatedAt: number;
 }
+

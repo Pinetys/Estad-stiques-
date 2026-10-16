@@ -17,6 +17,7 @@ import {
   Maximize2,
   Minimize2,
   ChevronDown,
+  ChevronUp,
   BookOpen,
   Save,
   Plus,
@@ -33,11 +34,14 @@ import {
   ShieldOff,
   Camera,
   Share2,
+  ListOrdered,
+  Eye,
 } from 'lucide-react';
 import { Player } from '../types';
 import {
   TacticalPlay,
   TacticalFrame,
+  TacticalStep,
   TacticalStroke,
   TacticalToken,
   TacticalPoint,
@@ -54,7 +58,7 @@ import {
 } from '../lib/firebase';
 import { getRegisteredTeams, getActiveTeamId } from '../utils/teamStorage';
 
-export type { DrawingType, CourtView, TacticalPoint, TacticalStroke, TacticalToken, TacticalFrame, TacticalPlay };
+export type { DrawingType, CourtView, TacticalPoint, TacticalStroke, TacticalToken, TacticalFrame, TacticalStep, TacticalPlay };
 
 const STORAGE_KEY = 'basketstats_tactical_plays_v2';
 
@@ -272,6 +276,21 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     ...DEFAULT_DEFENSE_HALF,
     DEFAULT_BALL,
   ]);
+
+  // -------------------------------------------------------------------------
+  // PLAY STEPS SYSTEM ("descripcion de la jugada por pasos en la parte izquierda")
+  // -------------------------------------------------------------------------
+  const [steps, setSteps] = useState<TacticalStep[]>([
+    {
+      id: 'step-1',
+      stepNumber: 1,
+      title: 'Paso 1: Inicio y Spacing',
+      instruction: 'Base 1 sube balón en cabecera. 4 y 5 colocados en los codos (Horns).',
+      frameIndex: 0,
+    },
+  ]);
+  const [showStepsPanel, setShowStepsPanel] = useState<boolean>(true);
+  const [isEnlargedCourt, setIsEnlargedCourt] = useState<boolean>(false);
 
   // Modal / Drawer controls
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
@@ -605,12 +624,16 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         handleUndo();
         e.preventDefault();
+      } else if (e.key === 'Escape' && isEnlargedCourt) {
+        setIsEnlargedCourt(false);
+        e.preventDefault();
+        e.stopPropagation();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [handleUndo, handleRedo, isEnlargedCourt]);
 
   // Clear current graphic's strokes
   const handleClearBoard = () => {
@@ -900,6 +923,62 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   }, [isPlaying, frames]);
 
   // -------------------------------------------------------------------------
+  // PLAY STEPS MANAGEMENT ("descripcion de la jugada por pasos")
+  // -------------------------------------------------------------------------
+  const handleAddStep = () => {
+    const nextNumber = steps.length + 1;
+    const newStep: TacticalStep = {
+      id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      stepNumber: nextNumber,
+      title: `Paso ${nextNumber}`,
+      instruction: '',
+      frameIndex: Math.min(activeFrameIndex, Math.max(0, frames.length - 1)),
+    };
+    setSteps(prev => [...prev, newStep]);
+    showToastFeedback(`Paso ${nextNumber} añadido a la descripción`);
+  };
+
+  const handleUpdateStepTitle = (stepId: string, title: string) => {
+    setSteps(prev => prev.map(s => (s.id === stepId ? { ...s, title } : s)));
+  };
+
+  const handleUpdateStepInstruction = (stepId: string, instruction: string) => {
+    setSteps(prev => prev.map(s => (s.id === stepId ? { ...s, instruction } : s)));
+  };
+
+  const handleUpdateStepFrameIndex = (stepId: string, frameIndex?: number) => {
+    setSteps(prev => prev.map(s => (s.id === stepId ? { ...s, frameIndex } : s)));
+  };
+
+  const handleDeleteStep = (stepId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (steps.length <= 1) {
+      setSteps(prev => prev.map(s => (s.id === stepId ? { ...s, title: 'Paso 1', instruction: '' } : s)));
+      showToastFeedback('Paso restablecido');
+      return;
+    }
+    setSteps(prev => {
+      const filtered = prev.filter(s => s.id !== stepId);
+      return filtered.map((s, idx) => ({ ...s, stepNumber: idx + 1 }));
+    });
+    showToastFeedback('Paso eliminado');
+  };
+
+  const handleMoveStep = (stepIndex: number, direction: 'up' | 'down', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetIdx = direction === 'up' ? stepIndex - 1 : stepIndex + 1;
+    if (targetIdx < 0 || targetIdx >= steps.length) return;
+
+    setSteps(prev => {
+      const copy = [...prev];
+      const temp = copy[stepIndex];
+      copy[stepIndex] = copy[targetIdx];
+      copy[targetIdx] = temp;
+      return copy.map((s, idx) => ({ ...s, stepNumber: idx + 1 }));
+    });
+  };
+
+  // -------------------------------------------------------------------------
   // SAVE & LOAD PLAYS (PLAYBOOK LIBRARY)
   // -------------------------------------------------------------------------
   // Save current play
@@ -929,6 +1008,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       teamId: teamId || undefined,
       description: playDescription,
       frames: currentUpdatedFrames,
+      steps: steps,
       createdAt: existingPlay?.createdAt || Date.now(),
       updatedAt: Date.now(),
     };
@@ -981,6 +1061,15 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     setTokens(initialTokens);
     setStrokes([]);
     setRedoStack([]);
+    setSteps([
+      {
+        id: `step-${Date.now()}`,
+        stepNumber: 1,
+        title: 'Paso 1: Inicio y Spacing',
+        instruction: '',
+        frameIndex: 0,
+      },
+    ]);
     showToastFeedback('Nueva jugada creada. Dibuja y añade los gráficos necesarios.');
   };
 
@@ -1010,6 +1099,21 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
     setTokens(validFrames[0].tokens || [...DEFAULT_OFFENSE_HALF, ...DEFAULT_DEFENSE_HALF, DEFAULT_BALL]);
     setStrokes(validFrames[0].strokes || []);
     setRedoStack([]);
+
+    if (selectedPlay.steps && selectedPlay.steps.length > 0) {
+      setSteps(selectedPlay.steps);
+    } else {
+      setSteps(
+        validFrames.map((f, idx) => ({
+          id: `step-${idx + 1}`,
+          stepNumber: idx + 1,
+          title: f.title || `Paso ${idx + 1}`,
+          instruction: f.notes || '',
+          frameIndex: idx,
+        }))
+      );
+    }
+
     showToastFeedback(`Jugada "${selectedPlay.name}" cargada con ${validFrames.length} gráfico(s)`);
   };
 
@@ -1335,7 +1439,13 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
   const activeOption = DRAWING_OPTIONS.find(o => o.id === drawingType) || DRAWING_OPTIONS[0];
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#070c1e] text-slate-100 select-none overflow-hidden relative">
+    <div
+      className={
+        isEnlargedCourt
+          ? 'fixed inset-0 z-50 w-screen h-screen flex flex-col bg-[#030713] text-slate-100 select-none overflow-hidden font-sans animate-in fade-in duration-150'
+          : 'flex flex-col h-full w-full bg-[#070c1e] text-slate-100 select-none overflow-hidden relative font-sans'
+      }
+    >
       {/* Toast feedback banner */}
       {toastMessage && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 border border-amber-300 animate-in fade-in slide-in-from-top-2 duration-150">
@@ -1345,9 +1455,121 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       )}
 
       {/* ----------------------------------------------------------------- */}
-      {/* 1. TOP BAR: PLAY NAME & PLAYBOOK HISTORY CONTROLS */}
+      {/* TOP HEADER: PRESENTATION BAR IF ENLARGED, OTHERWISE 3 STANDARD BARS */}
       {/* ----------------------------------------------------------------- */}
-      <div className="bg-gradient-to-r from-[#0c1633] via-[#0f1f4b] to-[#0c1633] border-b border-blue-900/70 px-2.5 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30 shadow-md">
+      {isEnlargedCourt ? (
+        <div className="h-14 bg-gradient-to-r from-[#070e24] via-[#0d1c47] to-[#070e24] border-b-2 border-amber-500/50 px-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-30 select-none shadow-xl">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shrink-0 text-lg shadow-inner">
+              🏀
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-sm sm:text-base md:text-lg font-black text-white truncate uppercase tracking-wide">
+                  {playName}
+                </h1>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-orange-600/30 border border-orange-500/40 text-orange-400 uppercase shrink-0">
+                  {playCategory}
+                </span>
+                {playAgeCategory && playAgeCategory !== 'Todas' && (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-600/30 border border-purple-500/40 text-purple-300 shrink-0">
+                    {playAgeCategory}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] font-mono text-slate-300 truncate">
+                {teamName} • Fase {activeFrameIndex + 1} de {frames.length} • Pizarra Pantalla Grande para Jugadores
+              </p>
+            </div>
+          </div>
+
+          {/* Stepper / Playback controls in enlarged mode */}
+          <div className="flex items-center gap-2 bg-[#050a18] px-3 py-1 rounded-xl border border-blue-900/80">
+            <button
+              type="button"
+              onClick={() => handleSwitchFrame(activeFrameIndex - 1)}
+              disabled={activeFrameIndex === 0}
+              className="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 transition font-bold text-xs flex items-center gap-1 cursor-pointer"
+              title="Paso anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Anterior</span>
+            </button>
+
+            <div className="flex items-center gap-1 px-1">
+              {frames.map((_, fIdx) => (
+                <button
+                  key={fIdx}
+                  type="button"
+                  onClick={() => handleSwitchFrame(fIdx)}
+                  className={`w-6 h-6 rounded-md font-mono text-xs font-bold transition cursor-pointer ${
+                    fIdx === activeFrameIndex
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'bg-blue-950 text-slate-300 hover:bg-blue-900'
+                  }`}
+                  title={`Ver Gráfico ${fIdx + 1}`}
+                >
+                  {fIdx + 1}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleSwitchFrame(activeFrameIndex + 1)}
+              disabled={activeFrameIndex === frames.length - 1}
+              className="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 transition font-bold text-xs flex items-center gap-1 cursor-pointer"
+              title="Paso siguiente"
+            >
+              <span className="hidden sm:inline">Siguiente</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {frames.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setIsPlaying(p => !p)}
+                className={`ml-1 px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition cursor-pointer ${
+                  isPlaying ? 'bg-amber-500 text-slate-950' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+                title={isPlaying ? 'Pausar animación' : 'Reproducir secuencia animada'}
+              >
+                {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{isPlaying ? 'Pausar' : 'Animar'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Right: Big Minimizar Pista Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportImage}
+              disabled={isExporting}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 border border-emerald-400/30 transition active:scale-95 hidden sm:flex cursor-pointer"
+              title="Capturar diseño en PNG"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>PNG</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsEnlargedCourt(false)}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-xl transition active:scale-95 cursor-pointer ring-2 ring-amber-300"
+              title="Volver a la vista normal y minimizar pista (Esc)"
+            >
+              <Minimize2 className="w-4 h-4 stroke-[2.8]" />
+              <span>Minimizar Pista</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* ----------------------------------------------------------------- */}
+          {/* 1. TOP BAR: PLAY NAME & PLAYBOOK HISTORY CONTROLS */}
+          {/* ----------------------------------------------------------------- */}
+          <div className="bg-gradient-to-r from-[#0c1633] via-[#0f1f4b] to-[#0c1633] border-b border-blue-900/70 px-2.5 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30 shadow-md">
         {/* Left: Play Name input and Category Selectors */}
         <div className="flex items-center gap-2 flex-1 min-w-[280px] flex-wrap sm:flex-nowrap">
           <div className="relative flex-1 min-w-[170px] max-w-sm sm:max-w-md">
@@ -1442,8 +1664,20 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           </div>
         </div>
 
-        {/* Right: Save Play, New Play, Capture PNG, & Open History Button */}
+        {/* Right: Save Play, New Play, Capture PNG, Enlarge Court & Open History Button */}
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+          {/* Ampliar Pista / Pantalla Grande Button ("ampliar la imagen de la pista y volverla a minimizar") */}
+          <button
+            type="button"
+            onClick={() => setIsEnlargedCourt(true)}
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-black text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 border border-indigo-400/50 cursor-pointer"
+            title="Ampliar imagen de la pista a pantalla grande con la descripción para que los jugadores la vean bien"
+          >
+            <Maximize2 className="w-3.5 h-3.5 stroke-[2.2]" />
+            <span className="hidden sm:inline">Ampliar Pista</span>
+            <span className="sm:hidden">Ampliar</span>
+          </button>
+
           <button
             type="button"
             onClick={handleExportImage}
@@ -1495,6 +1729,25 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
       <div className="bg-[#091129] border-b border-blue-900/60 px-2 sm:px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-20">
         {/* Left: Tool dropdown, Freehand/Straight mode, and Quick Eraser Button */}
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Toggle Steps Panel Button */}
+          <button
+            type="button"
+            onClick={() => setShowStepsPanel(prev => !prev)}
+            className={`px-2.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition shadow-xs active:scale-95 border cursor-pointer ${
+              showStepsPanel
+                ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400 ring-1 ring-blue-300'
+                : 'bg-blue-950/70 hover:bg-blue-900 text-slate-300 border-blue-900/60'
+            }`}
+            title={
+              showStepsPanel
+                ? 'Ocultar panel de descripción por pasos de la izquierda'
+                : 'Mostrar panel de descripción por pasos en la parte izquierda'
+            }
+          >
+            <ListOrdered className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Pasos ({steps.length})</span>
+            <span className="sm:hidden">Pasos</span>
+          </button>
           {/* Tool Selector Dropdown */}
           <div className="relative">
             <select
@@ -1858,25 +2111,257 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           </div>
         </div>
       </div>
+    </>
+  )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* 4. MAIN BASKETBALL COURT: LOCKED TO EXACT FIBA RATIO [100 / 93.3] */}
-      {/* ----------------------------------------------------------------- */}
-      <div className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center p-1 sm:p-2.5 relative touch-none select-none bg-[#050a18]">
-        {/* Court Container: Locked aspect ratio without deformation */}
+  {/* ----------------------------------------------------------------- */}
+  {/* 4. MAIN WORKSPACE: LEFT STEPS PANEL + BASKETBALL COURT */}
+  {/* ----------------------------------------------------------------- */}
+  <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col md:flex-row bg-[#050a18] relative">
+    {/* LEFT COLUMN: DESCRIPCIÓN DE LA JUGADA POR PASOS */}
+    {showStepsPanel && (
+      <aside
+        className={`shrink-0 border-b md:border-b-0 md:border-r border-blue-900/60 bg-[#070e24] flex flex-col z-20 overflow-hidden shadow-2xl select-auto ${
+          isEnlargedCourt
+            ? 'w-full md:w-80 lg:w-[380px] xl:w-[420px] h-48 md:h-full'
+            : 'w-full md:w-80 lg:w-96 h-52 md:h-full'
+        }`}
+      >
+        {/* Header of Steps Panel */}
         <div
-          ref={courtContainerRef}
-          className="relative max-h-full max-w-full aspect-[100/93.333] rounded-2xl border-2 border-neutral-700 shadow-2xl overflow-hidden touch-none mx-auto shrink-0"
-          style={{
-            aspectRatio: '100 / 93.333',
-            height: '100%',
-            width: 'auto',
-            maxHeight: '100%',
-            maxWidth: '100%',
-          }}
+          className={`px-3.5 py-2.5 bg-[#091330] border-b border-blue-900/60 flex items-center justify-between gap-2 shrink-0 ${
+            isEnlargedCourt ? 'bg-gradient-to-r from-[#0b193d] to-[#091330]' : ''
+          }`}
         >
-          {/* BASKETBALL COURT SVG */}
-          <svg
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-amber-400 text-sm">📋</span>
+            <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider truncate">
+              {isEnlargedCourt ? 'Instrucciones Jugadores' : 'Descripción por Pasos'}
+            </h3>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold shrink-0">
+              {steps.length} {steps.length === 1 ? 'paso' : 'pasos'}
+            </span>
+          </div>
+          {!isEnlargedCourt && (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={handleAddStep}
+                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-[11px] font-bold flex items-center gap-1 transition shadow-xs active:scale-95 cursor-pointer"
+                title="Añadir un nuevo paso a la descripción de la jugada"
+              >
+                <Plus className="w-3 h-3 stroke-[2.5]" />
+                <span>Añadir Paso</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* General Description / Objective */}
+        {playDescription ? (
+          <div className="p-2.5 sm:p-3 bg-[#081026]/90 border-b border-blue-950 shrink-0">
+            <label className="text-[10px] font-mono font-bold text-amber-400 uppercase flex items-center gap-1 mb-1">
+              <span>🎯 Objetivo Táctico:</span>
+            </label>
+            {isEnlargedCourt ? (
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-sans">
+                {playDescription}
+              </p>
+            ) : (
+              <textarea
+                value={playDescription}
+                onChange={e => setPlayDescription(e.target.value)}
+                placeholder="Ej: Salida de presión tras canasta o Pick & Roll central para buscar tiro liberado en esquina..."
+                rows={2}
+                className="w-full bg-[#050a18] border border-blue-900/60 rounded-lg p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition resize-none leading-snug"
+              />
+            )}
+          </div>
+        ) : !isEnlargedCourt ? (
+          <div className="p-2 bg-[#081026]/90 border-b border-blue-950 shrink-0">
+            <textarea
+              value={playDescription}
+              onChange={e => setPlayDescription(e.target.value)}
+              placeholder="Objetivo o resumen táctico (ej. Salida de presión tras canasta)..."
+              rows={1}
+              className="w-full bg-[#050a18] border border-blue-900/60 rounded-lg p-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition resize-none leading-snug"
+            />
+          </div>
+        ) : null}
+
+        {/* Steps List */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-3 space-y-2.5 scrollbar-thin scrollbar-thumb-blue-900">
+          {steps.map((step, idx) => {
+            const isStepActive = step.frameIndex === activeFrameIndex;
+            return (
+              <div
+                key={step.id || idx}
+                onClick={() => {
+                  if (step.frameIndex !== undefined && isEnlargedCourt) {
+                    handleSwitchFrame(step.frameIndex);
+                  }
+                }}
+                className={`rounded-xl p-2.5 sm:p-3 border transition-all ${
+                  isStepActive
+                    ? 'bg-[#0f1f47] border-amber-500/80 shadow-lg ring-2 ring-amber-500/40'
+                    : 'bg-[#0b1530] border-blue-900/50 hover:border-blue-700/60'
+                } ${isEnlargedCourt ? 'cursor-pointer hover:bg-[#12234e]' : ''}`}
+              >
+                {/* Step Card Header */}
+                <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className={`text-[10px] sm:text-xs font-black px-2 py-0.5 rounded uppercase tracking-wider shrink-0 ${
+                        isStepActive
+                          ? 'bg-amber-500 text-slate-950 font-black'
+                          : 'bg-blue-950 text-amber-400 border border-amber-500/30'
+                      }`}
+                    >
+                      Paso {step.stepNumber}
+                    </span>
+
+                    {isStepActive && (
+                      <span className="text-[9px] font-mono font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-500/40 shrink-0 animate-pulse">
+                        ● En Pista
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {/* Step Navigation to Court Frame */}
+                    {step.frameIndex !== undefined && (
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleSwitchFrame(step.frameIndex!);
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition flex items-center gap-0.5 cursor-pointer ${
+                          isStepActive
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'bg-blue-900/60 hover:bg-blue-800 text-cyan-300'
+                        }`}
+                        title={`Ver Gráfico ${(step.frameIndex ?? 0) + 1} en la pizarra`}
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span className="hidden xs:inline">Gráf. {(step.frameIndex ?? 0) + 1}</span>
+                      </button>
+                    )}
+
+                    {!isEnlargedCourt && (
+                      <>
+                        {/* Reorder Up / Down */}
+                        <button
+                          type="button"
+                          onClick={e => handleMoveStep(idx, 'up', e)}
+                          disabled={idx === 0}
+                          className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 transition"
+                          title="Subir paso"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={e => handleMoveStep(idx, 'down', e)}
+                          disabled={idx === steps.length - 1}
+                          className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 transition"
+                          title="Bajar paso"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+
+                        {/* Delete Step */}
+                        <button
+                          type="button"
+                          onClick={e => handleDeleteStep(step.id, e)}
+                          className="p-1 rounded text-slate-400 hover:text-rose-400 transition"
+                          title="Eliminar este paso"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step Title */}
+                {isEnlargedCourt ? (
+                  <h4 className="text-xs sm:text-sm font-bold text-white mb-1">
+                    {step.title || `Paso ${step.stepNumber}`}
+                  </h4>
+                ) : (
+                  <input
+                    type="text"
+                    value={step.title}
+                    onChange={e => handleUpdateStepTitle(step.id, e.target.value)}
+                    placeholder={`Título del paso ${step.stepNumber}...`}
+                    className="w-full bg-[#050a18] border border-blue-900/70 rounded-lg px-2 py-1 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 mb-1.5 transition"
+                  />
+                )}
+
+                {/* Step Instruction */}
+                {isEnlargedCourt ? (
+                  step.instruction ? (
+                    <p className="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+                      {step.instruction}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic font-mono">
+                      (Sin notas adicionales para este paso)
+                    </p>
+                  )
+                ) : (
+                  <textarea
+                    value={step.instruction}
+                    onChange={e => handleUpdateStepInstruction(step.id, e.target.value)}
+                    placeholder="Instrucciones del paso (desplazamientos, bloqueos, opciones de pase)..."
+                    rows={2}
+                    className="w-full bg-[#050a18] border border-blue-900/70 rounded-lg p-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-400 transition resize-none leading-relaxed"
+                  />
+                )}
+
+                {/* Associated Graphic Selector (editor only) */}
+                {!isEnlargedCourt && (
+                  <div className="flex items-center justify-between gap-1 text-[10px] font-mono text-slate-400 mt-1">
+                    <span>Gráfico en pista:</span>
+                    <select
+                      value={step.frameIndex ?? 0}
+                      onChange={e => handleUpdateStepFrameIndex(step.id, Number(e.target.value))}
+                      className="bg-[#050a18] border border-blue-900/60 rounded px-1.5 py-0.5 text-[10px] text-cyan-300 font-bold focus:outline-none focus:border-amber-400 cursor-pointer"
+                    >
+                      {frames.map((f, fIdx) => (
+                        <option key={f.id || fIdx} value={fIdx}>
+                          Gráfico {fIdx + 1}: {f.title || `Fase ${fIdx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </aside>
+    )}
+
+    {/* RIGHT COLUMN: BASKETBALL COURT (SCALED FOR MAX PREVIEW / PRESENTATION) */}
+    <div className="flex-1 min-h-0 min-w-0 h-full overflow-hidden flex items-center justify-center p-1 sm:p-2 md:p-3 relative touch-none select-none bg-[#050a18]">
+      {/* Court Container: Locked aspect ratio without deformation */}
+      <div
+        ref={courtContainerRef}
+        className={`relative max-h-full max-w-full aspect-[100/93.333] rounded-2xl shadow-2xl overflow-hidden touch-none mx-auto shrink-0 transition-all ${
+          isEnlargedCourt ? 'border-4 border-amber-500/70 shadow-amber-950/40' : 'border-2 border-neutral-700'
+        }`}
+        style={{
+          aspectRatio: '100 / 93.333',
+          height: '100%',
+          width: 'auto',
+          maxHeight: '100%',
+          maxWidth: '100%',
+        }}
+      >
+        {/* BASKETBALL COURT SVG */}
+        <svg
             viewBox="0 0 100 93.3"
             preserveAspectRatio="xMidYMid meet"
             className="absolute inset-0 w-full h-full pointer-events-none select-none"
@@ -2151,9 +2636,24 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
             </span>
           </div>
 
-          {/* Quick Capture Button on Court Overlay */}
+          {/* Quick Capture & Enlarge Buttons on Court Overlay */}
           {drawingType !== 'borrador' && (
             <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => setIsEnlargedCourt(prev => !prev)}
+                className="bg-indigo-600/90 hover:bg-indigo-500 active:bg-indigo-700 text-white text-[11px] font-black px-2.5 py-1 rounded-lg border border-indigo-400/50 shadow-lg flex items-center gap-1.5 backdrop-blur-xs transition active:scale-95 cursor-pointer"
+                title={isEnlargedCourt ? 'Minimizar pista a vista normal (Esc)' : 'Ampliar imagen de la pista a pantalla grande con la descripción'}
+              >
+                {isEnlargedCourt ? (
+                  <Minimize2 className="w-3.5 h-3.5 stroke-[2.2]" />
+                ) : (
+                  <Maximize2 className="w-3.5 h-3.5 stroke-[2.2]" />
+                )}
+                <span className="hidden sm:inline">{isEnlargedCourt ? 'Minimizar' : 'Ampliar Pista'}</span>
+                <span className="sm:hidden">{isEnlargedCourt ? 'Min' : 'Ampliar'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleExportImage}
@@ -2185,6 +2685,7 @@ export const TacticalBoard: React.FC<TacticalBoardProps> = ({
           </div>
         </div>
       </div>
+    </div>
 
       {/* ----------------------------------------------------------------- */}
       {/* 5. TACTICAL PLAY HISTORY MODAL (PLAYBOOK) */}

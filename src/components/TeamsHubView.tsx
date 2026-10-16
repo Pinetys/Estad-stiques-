@@ -39,6 +39,7 @@ interface TeamsHubViewProps {
   onOpenRosterModal: (team: TeamProfile) => void;
   onOpenStatsForCategory: (category: string, teamId?: string) => void;
   onOpenTeamStatsReport?: (team: TeamProfile) => void;
+  onOpenTacticalBoard?: (team?: TeamProfile) => void;
   onOpenLibrary: () => void;
   onOpenCloudBackup: () => void;
   onOpenTeamEditor: (team: TeamProfile | null) => void;
@@ -62,6 +63,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   onLoadCloudGame,
   onOpenRosterModal,
   onOpenTeamStatsReport,
+  onOpenTacticalBoard,
   onOpenTeamEditor,
   onOpenTutorial,
   onDeleteGame,
@@ -198,6 +200,22 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
             >
               <HelpCircle className="w-4 h-4 text-amber-400" />
               <span>Tutorial</span>
+            </button>
+          )}
+
+          {onOpenTacticalBoard && (
+            <button
+              id="hub-tactical-board-btn"
+              type="button"
+              onClick={() => {
+                playSound('click', soundEnabled);
+                onOpenTacticalBoard();
+              }}
+              className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95"
+              title="Abrir Pizarra Táctica y crear jugadas para tus equipos"
+            >
+              <span className="text-sm">📋</span>
+              <span>Pizarra Táctica</span>
             </button>
           )}
 
@@ -540,19 +558,19 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                     <span>Ver Partidos ({teamMatches.length})</span>
                   </button>
 
-                  {/* Actions 3 & 4: Roster and Stats */}
-                  <div className="grid grid-cols-2 gap-1.5">
+                  {/* Actions 3, 4 & 5: Plantilla, Estadísticas y Pizarra Táctica para crear jugadas */}
+                  <div className="grid grid-cols-3 gap-1.5">
                     <button
                       type="button"
                       onClick={() => {
                         playSound('click', soundEnabled);
                         onOpenRosterModal(team);
                       }}
-                      className="py-1.5 px-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-200 border border-gray-800 text-xs font-bold flex items-center justify-center gap-1 transition"
-                      title="Ver y editar jugadores y dorsales de este equipo"
+                      className="py-1.5 px-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-gray-200 border border-gray-800 text-xs font-bold flex items-center justify-center gap-1 transition"
+                      title={`Ver y editar plantilla de jugadores de ${team.name}`}
                     >
-                      <Users className="w-3.5 h-3.5 text-orange-400" />
-                      <span>Plantilla</span>
+                      <Users className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                      <span className="truncate">Plantilla</span>
                     </button>
 
                     <button
@@ -565,11 +583,26 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
                           onSelectTeam(team.id);
                         }
                       }}
-                      className="py-1.5 px-2 rounded-lg bg-orange-950/40 hover:bg-orange-900/60 text-orange-300 border border-orange-700/40 text-xs font-bold flex items-center justify-center gap-1 transition"
+                      className="py-1.5 px-1.5 rounded-lg bg-orange-950/40 hover:bg-orange-900/60 text-orange-300 border border-orange-700/40 text-xs font-bold flex items-center justify-center gap-1 transition"
                       title="Ver estadísticas acumuladas y mapa de tiro de esta categoría"
                     >
-                      <BarChart3 className="w-3.5 h-3.5 text-orange-400" />
-                      <span>Estadísticas</span>
+                      <BarChart3 className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                      <span className="truncate">Estadísticas</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playSound('click', soundEnabled);
+                        if (onOpenTacticalBoard) {
+                          onOpenTacticalBoard(team);
+                        }
+                      }}
+                      className="py-1.5 px-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-xs font-bold flex items-center justify-center gap-1 transition group"
+                      title={`Abrir Pizarra Táctica y crear jugadas para ${team.name}`}
+                    >
+                      <span className="text-xs group-hover:scale-110 transition-transform">📋</span>
+                      <span className="truncate">Pizarra</span>
                     </button>
                   </div>
                 </div>

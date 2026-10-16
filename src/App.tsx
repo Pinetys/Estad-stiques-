@@ -816,6 +816,7 @@ export default function App() {
   const [showSubscribersModal, setShowSubscribersModal] = useState(false);
   const [showLiveMatchesModal, setShowLiveMatchesModal] = useState(false);
   const [showTacticalBoardModal, setShowTacticalBoardModal] = useState(false);
+  const [tacticalBoardTeam, setTacticalBoardTeam] = useState<TeamProfile | null>(null);
   const [showSpectatorQRModal, setShowSpectatorQRModal] = useState(false);
 
   const handleRecordFreeThrowFromFoul = ({
@@ -2622,6 +2623,15 @@ export default function App() {
                   setLibraryGames(getSavedGamesFromStorage());
                 }}
                 onOpenTeamStatsReport={handleOpenTeamStatsReport}
+                onOpenTacticalBoard={team => {
+                  if (team) {
+                    handleSelectTeam(team.id, team);
+                    setTacticalBoardTeam(team);
+                  } else {
+                    setTacticalBoardTeam(null);
+                  }
+                  setShowTacticalBoardModal(true);
+                }}
                 onOpenLibrary={() => setShowLibraryModal(true)}
                 onOpenCloudBackup={() => setShowCloudBackupModal(true)}
                 onOpenTeamEditor={team => {
@@ -3115,10 +3125,15 @@ export default function App() {
       {showTacticalBoardModal && (
         <TacticalBoardModal
           game={game}
-          rosterPlayers={game.players}
-          teamName={game.homeTeamName}
-          opponentName={game.awayTeamName}
-          onClose={() => setShowTacticalBoardModal(false)}
+          rosterPlayers={tacticalBoardTeam ? tacticalBoardTeam.roster : game.players}
+          teamName={tacticalBoardTeam ? tacticalBoardTeam.name : game.homeTeamName}
+          opponentName={tacticalBoardTeam ? undefined : game.awayTeamName}
+          gameCategory={tacticalBoardTeam?.category || game.category}
+          teamId={tacticalBoardTeam?.id || game.teamId}
+          onClose={() => {
+            setShowTacticalBoardModal(false);
+            setTacticalBoardTeam(null);
+          }}
         />
       )}
 

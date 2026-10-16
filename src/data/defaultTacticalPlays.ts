@@ -7,6 +7,22 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
     category: 'ataque',
     ageCategory: 'Todas',
     description: 'Ataque clásico de cuernos con poste alto, bloqueo ciego flare y continuación agresiva al aro.',
+    steps: [
+      {
+        id: 'step-horns-1',
+        stepNumber: 1,
+        title: 'Inicio y Pase al Codo (4)',
+        instruction: 'Base 1 sube con balón por cabecera. 4 y 5 colocados en los codos (formación Horns). 1 da pase a 4 y corta hacia el lado débil aprovechando el bloqueo de 5.',
+        frameIndex: 0,
+      },
+      {
+        id: 'step-horns-2',
+        stepNumber: 2,
+        title: 'Bloqueo Flare a 2 y Finalización',
+        instruction: '5 cambia de dirección y pone bloqueo ciego indirecto (Flare) para la salida del escolta 2 a 45º. 4 asiste a 2 para tiro liberado de 3 puntos o pase picado al corte de 5 al aro.',
+        frameIndex: 1,
+      },
+    ],
     createdAt: 1710000000000,
     updatedAt: 1710000000000,
     frames: [
@@ -124,6 +140,22 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
     category: 'fondo',
     ageCategory: 'Todas',
     description: 'Saque de fondo tras tiempo muerto con pick & roll central y bloqueo indirecto ciego de escolta al pívot rival.',
+    steps: [
+      {
+        id: 'step-fondo-1',
+        stepNumber: 1,
+        title: 'Entrada de Balón y Pantalla de 4',
+        instruction: 'Alero 3 saca de fondo. 4 pone pantalla previa a 1 que sube a recibir el pase en cabecera.',
+        frameIndex: 0,
+      },
+      {
+        id: 'step-fondo-2',
+        stepNumber: 2,
+        title: 'Bloqueo España y Alley-Oop de 5',
+        instruction: 'Pívot 5 sube a poner Pick & Roll directo a 1. Inmediatamente el escolta 2 pone bloqueo ciego (Backscreen España) al defensor X5. 1 penetra y asiste al roll liberado de 5 o tiro.',
+        frameIndex: 1,
+      },
+    ],
     createdAt: 1710100000000,
     updatedAt: 1710100000000,
     frames: [
@@ -228,6 +260,15 @@ export const DEFAULT_TACTICAL_PLAYS: TacticalPlay[] = [
     category: 'banda',
     ageCategory: 'Todas',
     description: 'Saque lateral con corte Zipper hacia el centro para generar tiro en cabecera o inversión rápida.',
+    steps: [
+      {
+        id: 'step-zipper-1',
+        stepNumber: 1,
+        title: 'Corte Zipper y Salida a Cabecera',
+        instruction: '3 saca de banda. 5 coloca bloqueo vertical Zipper en el poste bajo. El escolta 2 sube a cabecera para recibir y lanzar directo o continuar con inversión de balón.',
+        frameIndex: 0,
+      },
+    ],
     createdAt: 1710200000000,
     updatedAt: 1710200000000,
     frames: [
