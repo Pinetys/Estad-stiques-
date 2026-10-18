@@ -22,6 +22,8 @@ import {
   ChevronUp,
   Clock,
   X,
+  Plus,
+  AlertTriangle,
 } from 'lucide-react';
 import { FoulModalData } from './FoulResolutionModal';
 
@@ -470,6 +472,31 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
               </button>
             );
           })}
+
+          {/* Missing player slot placeholders to complete 5 */}
+          {Array.from({ length: Math.max(0, 5 - playersOnCourt.length) }).map((_, missingIdx) => (
+            <button
+              key={`missing-fast-track-${missingIdx}`}
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('medium', game.settings.vibrationEnabled);
+                onOpenSubstitutionModal();
+              }}
+              className="relative rounded p-1.5 sm:p-2 text-center transition-all flex flex-col items-center justify-center border-2 border-dashed border-amber-500/80 bg-amber-950/20 hover:bg-amber-900/30 text-amber-300 active:scale-95 animate-pulse min-h-[78px] shadow-sm group"
+              title="Falta 1 jugador en pista para completar 5. Toca para incorporar al 5º jugador."
+            >
+              <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-0.5 group-hover:scale-110 transition">
+                <Plus className="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              <span className="text-[11px] font-black text-amber-200 leading-tight">
+                + 5º Jugador
+              </span>
+              <span className="text-[8.5px] text-amber-400/80">
+                Completar 5
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 

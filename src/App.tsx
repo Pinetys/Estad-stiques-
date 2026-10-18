@@ -48,7 +48,7 @@ import {
   getSavedGamesFromStorage,
   saveGamesToStorage,
 } from './utils/libraryUtils';
-import { sanitizeAndIsolateLibraryGames } from './utils/teamIsolation';
+import { sanitizeAndIsolateLibraryGames, ensureFivePlayersOnCourt } from './utils/teamIsolation';
 import {
   getRegisteredTeams,
   saveRegisteredTeams,
@@ -224,6 +224,7 @@ export default function App() {
               minutesPlayedSeconds: p.minutesPlayedSeconds || 0,
               quarterSeconds: p.quarterSeconds || {},
             }));
+          parsed.players = ensureFivePlayersOnCourt(parsed.players, parsed.settings?.foulOutLimit || 5);
         }
         return parsed;
       }
@@ -924,6 +925,22 @@ export default function App() {
       // Storage quota or private mode
     }
   }, [game]);
+
+  // Auto-enforce exactly 5 players on court for match integrity
+  useEffect(() => {
+    if (!game.players || game.players.length < 5) return;
+    const count = game.players.filter(p => p.onCourt).length;
+    if (count !== 5) {
+      setGame(prev => {
+        const curCount = (prev.players || []).filter(p => p.onCourt).length;
+        if (curCount === 5) return prev;
+        return {
+          ...prev,
+          players: ensureFivePlayersOnCourt(prev.players, prev.settings?.foulOutLimit || 5),
+        };
+      });
+    }
+  }, [game.players, game.settings?.foulOutLimit]);
 
   // Handle Team Switch
   const handleSelectTeam = (teamId: string, explicitTeam?: TeamProfile) => {
@@ -1684,30 +1701,39 @@ export default function App() {
   const handlePerformSubstitution = (playerOutId: string, playerInId: string) => {
     setGame(prev => {
       const updated = prev.players.map(p => {
-        if (p.id === playerOutId) return { ...p, onCourt: false, currentStintSeconds: 0 };
-        if (p.id === playerInId) return { ...p, onCourt: true, currentStintSeconds: 0 };
+        if (playerOutId && p.id === playerOutId) return { ...p, onCourt: false, currentStintSeconds: 0 };
+        if (playerInId && p.id === playerInId) return { ...p, onCourt: true, currentStintSeconds: 0 };
         return p;
       });
-      return { ...prev, players: updated };
+      return {
+        ...prev,
+        players: ensureFivePlayersOnCourt(updated, prev.settings?.foulOutLimit || 5),
+      };
     });
-    setSelectedPlayerId(playerInId);
+    if (playerInId) {
+      setSelectedPlayerId(playerInId);
+    }
   };
 
   // Perform Multiple Player Substitutions simultaneously
   const handlePerformMultipleSubstitutions = (subs: Array<{ playerOutId: string; playerInId: string }>) => {
     if (!subs || subs.length === 0) return;
     setGame(prev => {
-      const outSet = new Set(subs.map(s => s.playerOutId));
-      const inSet = new Set(subs.map(s => s.playerInId));
+      const outSet = new Set(subs.map(s => s.playerOutId).filter(Boolean));
+      const inSet = new Set(subs.map(s => s.playerInId).filter(Boolean));
       const updated = prev.players.map(p => {
         if (outSet.has(p.id)) return { ...p, onCourt: false, currentStintSeconds: 0 };
         if (inSet.has(p.id)) return { ...p, onCourt: true, currentStintSeconds: 0 };
         return p;
       });
-      return { ...prev, players: updated };
+      return {
+        ...prev,
+        players: ensureFivePlayersOnCourt(updated, prev.settings?.foulOutLimit || 5),
+      };
     });
-    if (subs.length > 0) {
-      setSelectedPlayerId(subs[subs.length - 1].playerInId);
+    const lastInId = subs[subs.length - 1]?.playerInId;
+    if (lastInId) {
+      setSelectedPlayerId(lastInId);
     }
   };
 
@@ -2907,7 +2933,10 @@ export default function App() {
           players={game.players}
           activeTeam={teams.find(t => t.id === activeTeamId) || teams[0]}
           onUpdatePlayers={newPlayers => {
-            setGame(prev => ({ ...prev, players: newPlayers }));
+            setGame(prev => ({
+              ...prev,
+              players: ensureFivePlayersOnCourt(newPlayers, prev.settings?.foulOutLimit || 5),
+            }));
           }}
           onUpdateMasterRoster={newMasterRoster => {
             const currentTeam = teams.find(t => t.id === activeTeamId) || teams[0];

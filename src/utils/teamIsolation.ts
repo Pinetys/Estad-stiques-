@@ -434,3 +434,4 @@ export function createInitialGameForTeam(team: TeamProfile): Game {
     ],
   };
 }
+export { ensureFivePlayersOnCourt } from './statsCalculator';

@@ -1,5 +1,5 @@
 import { Game, PlayerAccumulatedStats, SeasonAggregatedStats, TeamProfile, Player, PlayEvent } from '../types';
-import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed } from './statsCalculator';
+import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed, ensureFivePlayersOnCourt } from './statsCalculator';
 import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from '../lib/firebase';
 import { isMasterAdmin } from './accessControl';
 import { getDeviceRole } from './deviceRole';
@@ -268,7 +268,9 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     ? raw.jugadores
     : [];
 
-  const players: Player[] = rawPlayers.map((p: any, idx: number) => {
+  const foulOutLimit = Number.isFinite(Number(raw.settings?.foulOutLimit)) ? Number(raw.settings.foulOutLimit) : 5;
+
+  let players: Player[] = rawPlayers.map((p: any, idx: number) => {
     const pNumber = Number.isFinite(Number(p.number ?? p.dorsal ?? p.jerseyNumber))
       ? Number(p.number ?? p.dorsal ?? p.jerseyNumber)
       : idx + 4;
@@ -276,7 +278,6 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     const name = String(p.name || p.playerName || p.nombre || `Jugador #${pNumber}`).trim();
     const position = ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B';
     const foulsCount = Math.max(0, Number.isFinite(Number(p.foulsCount ?? p.fouls ?? p.faltas)) ? Number(p.foulsCount ?? p.fouls ?? p.faltas) : 0);
-    const foulOutLimit = Number.isFinite(Number(raw.settings?.foulOutLimit)) ? Number(raw.settings.foulOutLimit) : 5;
     const rawMinutes = p.minutesPlayedSeconds ?? p.minutos ?? p.minutes ?? p.playingTime ?? p.secondsPlayed;
     const minutesPlayedSeconds = parsePlayerMinutesPlayedSeconds(rawMinutes, p.quarterSeconds);
     const quarterSeconds = parsePlayerQuarterSeconds(p.quarterSeconds, minutesPlayedSeconds);
@@ -345,6 +346,11 @@ export function validateAndNormalizeGame(raw: any): Game | null {
         });
       }
     }
+  }
+
+  // Ensure exactly 5 players are on court
+  if (players.length >= 5) {
+    players = ensureFivePlayersOnCourt(players, foulOutLimit);
   }
 
   // Quarter scores mapping

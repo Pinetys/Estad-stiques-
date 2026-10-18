@@ -21,6 +21,7 @@ import {
   Scale,
   Zap,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { SubstitutionAIHelper } from './SubstitutionAIHelper';
 
@@ -472,6 +473,46 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                   </button>
                 );
               })}
+
+              {/* Empty slot buttons if fewer than 5 players are on court */}
+              {Array.from({ length: Math.max(0, 5 - playersOnCourt.length) }).map((_, emptyIdx) => {
+                const isStagedFreeEntry = plannedSubs.some(s => s.playerOutId === '' && s.playerInId);
+                return (
+                  <button
+                    key={`empty-court-slot-${emptyIdx}`}
+                    type="button"
+                    onClick={() => {
+                      if (!pendingInId) {
+                        setGuideNotice('Primero toca un jugador del BANQUILLO para incorporarlo a este puesto libre.');
+                        return;
+                      }
+                      const newSub: PlannedSub = {
+                        playerInId: pendingInId,
+                        playerOutId: '',
+                      };
+                      playSound('sub', game.settings.soundEnabled);
+                      triggerHaptic('medium', game.settings.vibrationEnabled);
+                      setPlannedSubs(prev => [...prev.filter(s => s.playerInId !== pendingInId), newSub]);
+                      setPendingInId(null);
+                      setGuideNotice(`¡Jugador #${pendingInPlayer?.number} entrará a pista para completar los 5 jugadores!`);
+                    }}
+                    className={`p-1.5 rounded-xl text-center border-2 border-dashed transition relative flex flex-col items-center justify-center min-h-[76px] sm:min-h-[82px] active:scale-95 shadow-sm ${
+                      isStagedFreeEntry
+                        ? 'bg-emerald-950/50 border-emerald-500 text-emerald-300'
+                        : pendingInId
+                        ? 'bg-amber-950/40 border-amber-400 text-amber-300 animate-pulse ring-2 ring-amber-400/50'
+                        : 'bg-[#181a24]/60 border-neutral-700 text-neutral-400 hover:border-amber-500/60'
+                    }`}
+                    title="Puesto libre en pista. Toca para asignar el jugador que entra."
+                  >
+                    <Plus className="w-5 h-5 text-amber-400 mb-1" />
+                    <span className="text-[10px] font-bold leading-tight">Puesto Libre</span>
+                    <span className="text-[7.5px] text-neutral-400 mt-0.5">
+                      {pendingInId ? 'Toca para ENTRAR' : '5º Jugador'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -511,10 +552,18 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
                       <span className="text-emerald-400 font-bold truncate">
                         ENTRA #{inP?.number} {inP?.name.split(' ')[0]}
                       </span>
-                      <ArrowRight className="w-3 h-3 text-neutral-500 shrink-0" />
-                      <span className="text-rose-400 font-bold truncate">
-                        SALE #{outP?.number} {outP?.name.split(' ')[0]}
-                      </span>
+                      {outP ? (
+                        <>
+                          <ArrowRight className="w-3 h-3 text-neutral-500 shrink-0" />
+                          <span className="text-rose-400 font-bold truncate">
+                            SALE #{outP.number} {outP.name.split(' ')[0]}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-amber-400 font-bold truncate px-1 py-0.2 rounded bg-amber-950/60 border border-amber-500/40 text-[9px]">
+                          + COMPLETA 5 EN PISTA
+                        </span>
+                      )}
                     </div>
 
                     <button

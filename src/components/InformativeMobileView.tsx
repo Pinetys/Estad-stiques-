@@ -21,6 +21,7 @@ import {
   Target,
   ArrowRightLeft,
   QrCode,
+  Plus,
 } from 'lucide-react';
 import { PlayerShotMap } from './PlayerShotMap';
 import { StartingFiveModal } from './StartingFiveModal';
@@ -288,6 +289,34 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {playersOnCourt.length < 5 && onOpenSubstitutionModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  onOpenSubstitutionModal();
+                }}
+                className="col-span-full p-2.5 rounded-xl border-2 border-dashed border-amber-500/80 bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 font-mono transition flex items-center justify-between active:scale-98 animate-pulse shadow-md"
+                title="Falta 1 jugador en pista para completar 5. Toca para incorporar al 5º jugador."
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-black text-amber-200">
+                      ⚠️ Hay {playersOnCourt.length} jugadores en pista (deben ser 5)
+                    </div>
+                    <div className="text-[10px] text-amber-400/80">
+                      Toca aquí para incorporar al 5º jugador desde el banquillo
+                    </div>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-black text-xs uppercase shadow">
+                  Completar 5
+                </span>
+              </button>
+            )}
             {playersOnCourt.map((player, idx) => {
               const stats = calculatePlayerStats(player, game.events);
               const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);

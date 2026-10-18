@@ -78,6 +78,24 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
     setTimeout(() => setWarningMessage(null), 3500);
   };
 
+  // Ensure exactly 5 players are on court before closing
+  const handleConfirmAndClose = () => {
+    let updated = [...players];
+    const courtCount = updated.filter(p => p.onCourt).length;
+    if (courtCount < 5 && updated.length >= 5) {
+      let needed = 5 - courtCount;
+      updated = updated.map(p => {
+        if (!p.onCourt && needed > 0) {
+          needed--;
+          return { ...p, onCourt: true, starter: true };
+        }
+        return p;
+      });
+      onUpdatePlayers(updated);
+    }
+    onClose();
+  };
+
   // Toggle whether a player attends this specific match
   const handleToggleAttendance = (player: Player) => {
     playSound('click', soundEnabled);
@@ -313,13 +331,41 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleConfirmAndClose}
             className="w-7 h-7 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white flex items-center justify-center text-xs font-mono transition"
-            title="Cerrar"
+            title="Cerrar y asegurar 5 en pista"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Incomplete starters alert */}
+        {startersCount < 5 && players.length >= 5 && (
+          <div className="p-2.5 rounded-xl bg-amber-950/70 border border-amber-500/60 text-amber-200 text-xs font-mono flex items-center justify-between gap-2 shrink-0 animate-in fade-in">
+            <div className="flex items-center gap-1.5 font-bold">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Hay {startersCount} de 5 titulares en pista.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                let needed = 5 - startersCount;
+                const updated = players.map(p => {
+                  if (!p.onCourt && needed > 0) {
+                    needed--;
+                    return { ...p, onCourt: true, starter: true };
+                  }
+                  return p;
+                });
+                onUpdatePlayers(updated);
+                playSound('sub', soundEnabled);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] uppercase transition shrink-0 shadow-sm"
+            >
+              Completar 5 Titulares
+            </button>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="flex items-center bg-[#161820] p-1 rounded-xl border border-gray-800 shrink-0 text-xs font-mono">
@@ -659,7 +705,7 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
 
         {/* Footer Return Button */}
         <button
-          onClick={onClose}
+          onClick={handleConfirmAndClose}
           className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl text-xs uppercase font-mono transition shadow-lg shrink-0"
         >
           Confirmar Convocatoria y Volver al Partido

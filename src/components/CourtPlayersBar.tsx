@@ -10,7 +10,7 @@ import {
   CONTINUOUS_FATIGUE_LIMIT_SECONDS,
 } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { ArrowRightLeft, Users, Clock, Flame, Scale, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRightLeft, Users, Clock, Flame, Scale, Zap, ChevronLeft, ChevronRight, Plus, AlertTriangle } from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 import {
   PlayerStatNumber,
@@ -29,6 +29,7 @@ interface CourtPlayersBarProps {
   onOpenSubstitutionModal: () => void;
   onOpenStartingFiveModal: () => void;
   onOpenMinutesBalanceModal?: () => void;
+  onPerformSubstitution?: (playerOutId: string, playerInId: string) => void;
 }
 
 export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
@@ -42,6 +43,7 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
   onOpenSubstitutionModal,
   onOpenStartingFiveModal,
   onOpenMinutesBalanceModal,
+  onPerformSubstitution,
 }) => {
   const [viewMode, setViewMode] = useState<'court' | 'bench'>('court');
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -218,6 +220,33 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
             >
               <Scale className="w-2.5 h-2.5 text-sky-400" />
               <span>{lowMinuteBenchPlayers.length} pocos min</span>
+            </button>
+          )}
+
+          {/* Incomplete 5 players alert */}
+          {playersOnCourt.length < 5 && (
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('medium', game.settings.vibrationEnabled);
+                if (benchPlayers.length > 0 && onPerformSubstitution) {
+                  const availableBench = benchPlayers.find(p => {
+                    const stats = playerStatsMap.get(p.id) || calculatePlayerStats(p, game.events);
+                    return stats.foulsPersonal < (game.settings.foulOutLimit || 5);
+                  }) || benchPlayers[0];
+                  if (availableBench) {
+                    onPerformSubstitution('', availableBench.id);
+                    return;
+                  }
+                }
+                onOpenSubstitutionModal();
+              }}
+              className="px-2 py-0.5 rounded-full bg-red-600/30 hover:bg-red-600/50 text-red-200 border border-red-500 text-[9.5px] font-black flex items-center gap-1 animate-pulse transition active:scale-95"
+              title="Solo hay 4 jugadores en pista (deben ser 5). Toca para completar el quinteto."
+            >
+              <AlertTriangle className="w-3 h-3 text-red-400" />
+              <span>⚠️ ¡{playersOnCourt.length}/5 en pista! Completar</span>
             </button>
           )}
         </div>
@@ -431,6 +460,41 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                   </button>
                 );
               })}
+
+              {/* Missing player slot placeholders to ensure 5 */}
+              {Array.from({ length: Math.max(0, 5 - playersOnCourt.length) }).map((_, missingIdx) => (
+                <button
+                  key={`missing-slot-${missingIdx}`}
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('medium', game.settings.vibrationEnabled);
+                    if (benchPlayers.length > 0 && onPerformSubstitution) {
+                      const availableBench = benchPlayers.find(p => {
+                        const stats = playerStatsMap.get(p.id) || calculatePlayerStats(p, game.events);
+                        return stats.foulsPersonal < (game.settings.foulOutLimit || 5);
+                      }) || benchPlayers[0];
+                      if (availableBench) {
+                        onPerformSubstitution('', availableBench.id);
+                        return;
+                      }
+                    }
+                    onOpenSubstitutionModal();
+                  }}
+                  className="flex flex-col items-center justify-center p-1.5 rounded-xl border-2 border-dashed border-amber-500/80 bg-amber-950/20 hover:bg-amber-900/30 text-amber-300 font-mono transition active:scale-95 text-center min-h-[82px] sm:min-h-[92px] animate-pulse group shadow-sm"
+                  title="Falta 1 jugador en pista para completar 5. Toca para incorporar al 5º jugador desde el banquillo."
+                >
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                    <Plus className="w-3.5 h-3.5 text-amber-400" />
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-black text-amber-300 leading-tight">
+                    + 5º Jugador
+                  </span>
+                  <span className="text-[8px] text-amber-400/80 mt-0.5">
+                    Completar 5
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -496,13 +560,21 @@ export const CourtPlayersBar: React.FC<CourtPlayersBarProps> = ({
                           e.stopPropagation();
                           playSound('click', game.settings.soundEnabled);
                           triggerHaptic('light', game.settings.vibrationEnabled);
-                          onOpenSubstitutionModal();
+                          if (playersOnCourt.length < 5 && onPerformSubstitution) {
+                            onPerformSubstitution('', player.id);
+                          } else {
+                            onOpenSubstitutionModal();
+                          }
                         }}
-                        className="w-full mt-1 py-0.5 rounded bg-sky-600/80 hover:bg-sky-500 text-white font-black text-[8px] sm:text-[9px] uppercase tracking-wider flex items-center justify-center gap-0.5 transition active:scale-95 shadow-xs"
-                        title={`Sustituir y dar entrada a ${player.name}`}
+                        className={`w-full mt-1 py-0.5 rounded font-black text-[8px] sm:text-[9px] uppercase tracking-wider flex items-center justify-center gap-0.5 transition active:scale-95 shadow-xs ${
+                          playersOnCourt.length < 5
+                            ? 'bg-amber-500 hover:bg-amber-400 text-black animate-pulse'
+                            : 'bg-sky-600/80 hover:bg-sky-500 text-white'
+                        }`}
+                        title={playersOnCourt.length < 5 ? `Entrar a pista como 5º jugador` : `Sustituir y dar entrada a ${player.name}`}
                       >
                         <ArrowRightLeft className="w-2 h-2" />
-                        <span>Entrar</span>
+                        <span>{playersOnCourt.length < 5 ? '¡Entrar a Pista!' : 'Entrar'}</span>
                       </button>
                     </div>
                   );

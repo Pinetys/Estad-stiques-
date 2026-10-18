@@ -11,6 +11,7 @@ import {
   calculateTeamMinutesDistribution,
   isPlayerLowMinutes,
   CONTINUOUS_FATIGUE_LIMIT_SECONDS,
+  ensureFivePlayersOnCourt,
 } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { saveGameToLibrary } from '../utils/libraryUtils';
@@ -133,13 +134,18 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     } else {
       onUpdateGame(prev => ({
         ...prev,
-        players: prev.players.map(p => {
-          if (p.id === playerOutId) return { ...p, onCourt: false, currentStintSeconds: 0 };
-          if (p.id === playerInId) return { ...p, onCourt: true, currentStintSeconds: 0 };
-          return p;
-        }),
+        players: ensureFivePlayersOnCourt(
+          prev.players.map(p => {
+            if (playerOutId && p.id === playerOutId) return { ...p, onCourt: false, currentStintSeconds: 0 };
+            if (playerInId && p.id === playerInId) return { ...p, onCourt: true, currentStintSeconds: 0 };
+            return p;
+          }),
+          prev.settings.foulOutLimit || 5
+        ),
       }));
-      onSelectPlayer(playerInId);
+      if (playerInId) {
+        onSelectPlayer(playerInId);
+      }
     }
   };
 
@@ -1623,6 +1629,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onOpenSubstitutionModal={onOpenSubstitutionModal}
           onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
           onOpenMinutesBalanceModal={() => setShowMinutesBalanceModal(true)}
+          onPerformSubstitution={handlePerformDirectSub}
         />
       )}
 

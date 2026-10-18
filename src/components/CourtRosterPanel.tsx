@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   Maximize2,
+  Plus,
 } from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 import {
@@ -229,6 +230,16 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
     // If we have a court player pending to go out -> EXECUTE SWAP IMMEDIATELY!
     if (pendingOutId) {
       handleExecuteSwap(pendingOutId, player.id);
+      return;
+    }
+
+    // If court has fewer than 5 players, direct entry to complete the 5
+    if (playersOnCourt.length < 5) {
+      playSound('sub', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      onPerformSubstitution('', player.id);
+      setSwapToast(`Entra a pista #${player.number} ${player.name.split(' ')[0]} (completa 5 jugadores)`);
+      setTimeout(() => setSwapToast(null), 3000);
       return;
     }
 
@@ -662,6 +673,50 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                 </div>
               );
             })}
+
+            {/* Missing slot button in CourtRosterPanel */}
+            {Array.from({ length: Math.max(0, 5 - playersOnCourt.length) }).map((_, missingIdx) => (
+              <button
+                key={`roster-panel-missing-${missingIdx}`}
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('medium', game.settings.vibrationEnabled);
+                  if (benchPlayers.length > 0) {
+                    const availableBench = benchPlayers.find(p => {
+                      const stats = playerStatsMap.get(p.id) || calculatePlayerStats(p, game.events);
+                      return stats.foulsPersonal < (game.settings.foulOutLimit || 5);
+                    }) || benchPlayers[0];
+                    if (availableBench) {
+                      onPerformSubstitution('', availableBench.id);
+                      setSwapToast(`Entra #${availableBench.number} ${availableBench.name.split(' ')[0]} para completar el quinteto`);
+                      setTimeout(() => setSwapToast(null), 3000);
+                      return;
+                    }
+                  }
+                  onOpenSubstitutionModal();
+                }}
+                className="w-full p-2.5 rounded-xl border-2 border-dashed border-amber-500/80 bg-amber-950/20 hover:bg-amber-900/30 text-amber-300 font-mono transition flex items-center justify-between active:scale-98 animate-pulse shadow-md"
+                title="Falta 1 jugador en pista para completar 5. Toca para incorporar al 5º jugador."
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-black text-amber-300 uppercase">
+                      + Incorporar 5º Jugador
+                    </div>
+                    <div className="text-[10px] text-amber-400/80">
+                      Toca aquí para completar los 5 reglamentarios
+                    </div>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded bg-amber-500 text-black text-[10px] font-black uppercase">
+                  Completar
+                </span>
+              </button>
+            ))}
 
             {/* SEPARADOR Y LISTA DE JUGADORES DEL BANQUILLO DESPLAZABLES HACIA ABAJO */}
             {benchPlayers.length > 0 && (

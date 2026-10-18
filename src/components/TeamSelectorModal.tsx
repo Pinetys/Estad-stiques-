@@ -154,6 +154,21 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
       };
     });
 
+    let finalRoster = processedRoster.length > 0 ? processedRoster : editingTeam?.roster || [];
+    if (finalRoster.length >= 5) {
+      let starterCount = finalRoster.filter(p => p.starter || p.onCourt).length;
+      if (starterCount < 5) {
+        let needed = 5 - starterCount;
+        finalRoster = finalRoster.map(p => {
+          if (!p.starter && !p.onCourt && needed > 0) {
+            needed--;
+            return { ...p, starter: true, onCourt: true };
+          }
+          return p;
+        });
+      }
+    }
+
     const teamToSave: TeamProfile = {
       id: editingTeam ? editingTeam.id : `team-${Date.now()}`,
       name: formName.trim(),
@@ -161,7 +176,7 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
       season: formSeason.trim() || '2025/2026',
       primaryColor: formColor,
       logo: formLogo,
-      roster: processedRoster.length > 0 ? processedRoster : editingTeam?.roster || [],
+      roster: finalRoster,
       createdAt: editingTeam?.createdAt || new Date().toISOString(),
     };
 

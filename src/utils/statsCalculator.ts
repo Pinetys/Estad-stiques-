@@ -572,3 +572,72 @@ export function exportGameToCSV(game: Game, playerStats: PlayerBoxScore[]): stri
 
   return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
 }
+
+/**
+ * Ensures that exactly 5 players are on court (FIBA/basketball requirement).
+ * If fewer than 5 are on court:
+ *   1. Promotes bench players marked as starter who are not fouled out
+ *   2. Promotes any available bench players not fouled out
+ *   3. Promotes any remaining bench player if needed
+ * If more than 5 are on court:
+ *   Keeps only the first 5 on court and benches the rest.
+ * If the team has fewer than 5 players total, puts all available players on court.
+ */
+export function ensureFivePlayersOnCourt(players: Player[], foulLimit: number = 5): Player[] {
+  if (!players || !Array.isArray(players) || players.length === 0) return [];
+  if (players.length < 5) {
+    return players.map(p => ({ ...p, onCourt: true }));
+  }
+
+  const onCourtCount = players.filter(p => p.onCourt).length;
+  if (onCourtCount === 5) {
+    return players;
+  }
+
+  if (onCourtCount < 5) {
+    let needed = 5 - onCourtCount;
+    const updated = [...players];
+
+    // Priority 1: Bench players marked as starter who are not fouled out
+    for (let i = 0; i < updated.length && needed > 0; i++) {
+      const p = updated[i];
+      if (!p.onCourt && p.starter && (p.foulsCount || 0) < foulLimit && !p.isFouledOut) {
+        updated[i] = { ...p, onCourt: true, currentStintSeconds: 0 };
+        needed--;
+      }
+    }
+
+    // Priority 2: Any bench player who is not fouled out
+    for (let i = 0; i < updated.length && needed > 0; i++) {
+      const p = updated[i];
+      if (!p.onCourt && (p.foulsCount || 0) < foulLimit && !p.isFouledOut) {
+        updated[i] = { ...p, onCourt: true, currentStintSeconds: 0 };
+        needed--;
+      }
+    }
+
+    // Priority 3: Any remaining bench player
+    for (let i = 0; i < updated.length && needed > 0; i++) {
+      const p = updated[i];
+      if (!p.onCourt) {
+        updated[i] = { ...p, onCourt: true, currentStintSeconds: 0 };
+        needed--;
+      }
+    }
+
+    return updated;
+  }
+
+  // More than 5 on court: keep only first 5
+  let count = 0;
+  return players.map(p => {
+    if (p.onCourt) {
+      count++;
+      if (count > 5) {
+        return { ...p, onCourt: false, currentStintSeconds: 0 };
+      }
+    }
+    return p;
+  });
+}
+
