@@ -82,6 +82,7 @@ interface CourtBenchModeProps {
   onAttachAssist?: (assistantId: string) => void;
   onUndoLastAction: () => void;
   onDeleteEvent?: (eventId: string) => void;
+  onEditEvent?: (event: PlayEvent) => void;
   onOpenSubstitutionModal: () => void;
   onPerformSubstitution?: (playerOutId: string, playerInId: string) => void;
   onOpenRosterModal?: () => void;
@@ -108,6 +109,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onAttachAssist,
   onUndoLastAction,
   onDeleteEvent,
+  onEditEvent,
   onOpenSubstitutionModal,
   onPerformSubstitution,
   onOpenRosterModal,
@@ -1689,6 +1691,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               }}
               onUndoLastAction={onUndoLastAction}
               onDeleteEvent={onDeleteEvent}
+              onEditEvent={onEditEvent}
               onOpenHistoryModal={() => setShowHistoryDrawer(true)}
               recentEvent={recentEvent}
               isActionsLocked={isActionsLocked}
@@ -2427,6 +2430,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         isOpen={showHistoryDrawer}
         onClose={() => setShowHistoryDrawer(false)}
         onDeleteEvent={onDeleteEvent}
+        onEditEvent={onEditEvent}
         onUndoLastAction={onUndoLastAction}
         recentEvent={recentEvent}
         isActionsLocked={isActionsLocked}

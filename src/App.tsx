@@ -38,6 +38,7 @@ import { SubscribersModal } from './components/SubscribersModal';
 import { AdminLiveMatchesModal } from './components/AdminLiveMatchesModal';
 import { TacticalBoardModal } from './components/TacticalBoardModal';
 import { LiveSpectatorQRModal } from './components/LiveSpectatorQRModal';
+import { EditPlayEventModal } from './components/EditPlayEventModal';
 import { detectAndInitUserRole, isMasterAdmin, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
@@ -819,6 +820,7 @@ export default function App() {
   const [showTacticalBoardModal, setShowTacticalBoardModal] = useState(false);
   const [tacticalBoardTeam, setTacticalBoardTeam] = useState<TeamProfile | null>(null);
   const [showSpectatorQRModal, setShowSpectatorQRModal] = useState(false);
+  const [editingPlayEvent, setEditingPlayEvent] = useState<PlayEvent | null>(null);
 
   const handleRecordFreeThrowFromFoul = ({
     isOpponent,
@@ -1697,6 +1699,95 @@ export default function App() {
     });
   };
 
+  // Edit Specific Event from Play-by-Play, Fast Track, or History Modal
+  const handleEditEvent = (updatedEvent: PlayEvent) => {
+    setGame(prev => {
+      const oldEvent = prev.events.find(e => e.id === updatedEvent.id);
+      if (!oldEvent) return prev;
+
+      const newEvents = prev.events.map(e => (e.id === updatedEvent.id ? updatedEvent : e));
+
+      // 1. Calculate Score Deltas
+      const oldHomePts = oldEvent.isOpponentAction ? 0 : (oldEvent.pointsAdded || 0);
+      const newHomePts = updatedEvent.isOpponentAction ? 0 : (updatedEvent.pointsAdded || 0);
+      const homeDelta = newHomePts - oldHomePts;
+      const newHomeScore = Math.max(0, prev.homeScore + homeDelta);
+
+      const oldAwayPts = oldEvent.isOpponentAction ? (oldEvent.pointsAdded || 0) : 0;
+      const newAwayPts = updatedEvent.isOpponentAction ? (updatedEvent.pointsAdded || 0) : 0;
+      const awayDelta = newAwayPts - oldAwayPts;
+      const newAwayScore = Math.max(0, prev.awayScore + awayDelta);
+
+      // 2. Quarter Team Fouls adjustment (if in current quarter)
+      let newHomeQuarterFouls = prev.homeQuarterFouls;
+      let newAwayQuarterFouls = prev.awayQuarterFouls;
+
+      const oldDef = ACTION_DEFINITIONS[oldEvent.actionType];
+      const newDef = ACTION_DEFINITIONS[updatedEvent.actionType];
+      const oldWasHomeFoul = !oldEvent.isOpponentAction && oldDef?.category === 'fouls';
+      const oldWasAwayFoul = oldEvent.isOpponentAction && oldEvent.actionType === 'OPP_FOUL';
+      const newIsHomeFoul = !updatedEvent.isOpponentAction && newDef?.category === 'fouls';
+      const newIsAwayFoul = updatedEvent.isOpponentAction && updatedEvent.actionType === 'OPP_FOUL';
+
+      if (oldEvent.quarter === prev.currentQuarter) {
+        if (oldWasHomeFoul) newHomeQuarterFouls = Math.max(0, newHomeQuarterFouls - 1);
+        if (oldWasAwayFoul) newAwayQuarterFouls = Math.max(0, newAwayQuarterFouls - 1);
+      }
+      if (updatedEvent.quarter === prev.currentQuarter) {
+        if (newIsHomeFoul) newHomeQuarterFouls = newHomeQuarterFouls + 1;
+        if (newIsAwayFoul) newAwayQuarterFouls = newAwayQuarterFouls + 1;
+      }
+
+      // 3. Quarter Breakdown Scores
+      const updatedQuarterScores = prev.quarterScores.map(qs => {
+        let h = qs.home;
+        let a = qs.away;
+        if (qs.quarter === oldEvent.quarter) {
+          if (oldEvent.isOpponentAction) {
+            a = Math.max(0, a - (oldEvent.pointsAdded || 0));
+          } else {
+            h = Math.max(0, h - (oldEvent.pointsAdded || 0));
+          }
+        }
+        if (qs.quarter === updatedEvent.quarter) {
+          if (updatedEvent.isOpponentAction) {
+            a = a + (updatedEvent.pointsAdded || 0);
+          } else {
+            h = h + (updatedEvent.pointsAdded || 0);
+          }
+        }
+        return { ...qs, home: h, away: a };
+      });
+
+      // 4. Recalculate player fouls & foul-out status accurately from all events
+      const updatedPlayers = prev.players.map(p => {
+        const totalFouls = newEvents.filter(
+          e => !e.isOpponentAction && e.playerId === p.id && ACTION_DEFINITIONS[e.actionType]?.category === 'fouls'
+        ).length;
+        const foulLimit = prev.settings?.foulOutLimit || 5;
+        return {
+          ...p,
+          foulsCount: totalFouls,
+          isFouledOut: totalFouls >= foulLimit,
+        };
+      });
+
+      const validatedPlayers = ensureFivePlayersOnCourt(updatedPlayers, prev.settings?.foulOutLimit || 5);
+
+      return {
+        ...prev,
+        homeScore: newHomeScore,
+        awayScore: newAwayScore,
+        homeQuarterFouls: newHomeQuarterFouls,
+        awayQuarterFouls: newAwayQuarterFouls,
+        players: validatedPlayers,
+        events: newEvents,
+        quarterScores: updatedQuarterScores,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  };
+
   // Perform Player Substitution
   const handlePerformSubstitution = (playerOutId: string, playerInId: string) => {
     setGame(prev => {
@@ -1978,6 +2069,7 @@ export default function App() {
           onAttachAssist={handleAttachAssistToLastEvent}
           onUndoLastAction={handleUndoLastAction}
           onDeleteEvent={handleDeleteEvent}
+          onEditEvent={setEditingPlayEvent}
           onOpenSubstitutionModal={() => setShowSubModal(true)}
           onOpenRosterModal={() => setShowRosterModal(true)}
           onPerformSubstitution={handlePerformSubstitution}
@@ -2697,7 +2789,11 @@ export default function App() {
             {activeTab === 'charts' && <ChartsAndStats game={game} />}
 
             {activeTab === 'playbyplay' && (
-              <PlayByPlay game={game} onDeleteEvent={handleDeleteEvent} />
+              <PlayByPlay
+                game={game}
+                onDeleteEvent={handleDeleteEvent}
+                onEditEvent={setEditingPlayEvent}
+              />
             )}
 
             {activeTab === 'scout' && (
@@ -3172,6 +3268,17 @@ export default function App() {
           isOpen={showSpectatorQRModal}
           onClose={() => setShowSpectatorQRModal(false)}
           game={game}
+        />
+      )}
+
+      {/* Edit Play Event Modal (Edición de Jugada en Historial) */}
+      {editingPlayEvent && (
+        <EditPlayEventModal
+          isOpen={Boolean(editingPlayEvent)}
+          event={editingPlayEvent}
+          game={game}
+          onClose={() => setEditingPlayEvent(null)}
+          onSaveEvent={handleEditEvent}
         />
       )}
     </div>

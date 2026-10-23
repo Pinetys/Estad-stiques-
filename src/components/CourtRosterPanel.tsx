@@ -28,6 +28,7 @@ import {
   ChevronUp,
   Maximize2,
   Plus,
+  Edit2,
 } from 'lucide-react';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 import {
@@ -50,6 +51,7 @@ interface CourtRosterPanelProps {
   onOpenMinutesBalanceModal?: () => void;
   onUndoLastAction?: () => void;
   onDeleteEvent?: (eventId: string) => void;
+  onEditEvent?: (event: PlayEvent) => void;
   onOpenHistoryModal?: () => void;
   recentEvent?: PlayEvent | null;
   isActionsLocked?: boolean;
@@ -69,6 +71,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   onOpenMinutesBalanceModal,
   onUndoLastAction,
   onDeleteEvent,
+  onEditEvent,
   onOpenHistoryModal,
   recentEvent,
   isActionsLocked = false,
@@ -1169,48 +1172,68 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       )}
                     </div>
 
-                    {onDeleteEvent && (
-                      isConfirming ? (
-                        <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
+                      {onEditEvent && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isActionsLocked) return;
+                            playSound('click', game.settings.soundEnabled);
+                            triggerHaptic('light', game.settings.vibrationEnabled);
+                            onEditEvent(event);
+                          }}
+                          disabled={isActionsLocked}
+                          className="p-1 hover:bg-[#16356E] text-slate-400 hover:text-amber-300 rounded transition shrink-0 active:scale-95 disabled:opacity-30"
+                          title="Editar esta jugada"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                        </button>
+                      )}
+
+                      {onDeleteEvent && (
+                        isConfirming ? (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isActionsLocked) return;
+                                playSound('click', game.settings.soundEnabled);
+                                triggerHaptic('medium', game.settings.vibrationEnabled);
+                                onDeleteEvent(event.id);
+                                setConfirmDeleteId(null);
+                              }}
+                              className="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-black transition active:scale-95"
+                              title="Confirmar eliminación"
+                            >
+                              Borrar
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(null);
+                              }}
+                              className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px]"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               if (isActionsLocked) return;
-                              playSound('click', game.settings.soundEnabled);
-                              triggerHaptic('medium', game.settings.vibrationEnabled);
-                              onDeleteEvent(event.id);
-                              setConfirmDeleteId(null);
+                              setConfirmDeleteId(event.id);
                             }}
-                            className="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-black transition active:scale-95"
-                            title="Confirmar eliminación"
+                            disabled={isActionsLocked}
+                            className="p-1 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 rounded transition shrink-0 active:scale-95"
+                            title="Eliminar esta jugada marcada por error"
                           >
-                            Borrar
+                            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfirmDeleteId(null);
-                            }}
-                            className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px]"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isActionsLocked) return;
-                            setConfirmDeleteId(event.id);
-                          }}
-                          disabled={isActionsLocked}
-                          className="p-1 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 rounded transition shrink-0 active:scale-95"
-                          title="Eliminar esta jugada marcada por error"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                        </button>
-                      )
-                    )}
+                        )
+                      )}
+                    </div>
                   </div>
                 );
               })

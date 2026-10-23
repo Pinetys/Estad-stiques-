@@ -24,6 +24,7 @@ import {
   X,
   Plus,
   AlertTriangle,
+  Edit2,
 } from 'lucide-react';
 import { FoulModalData } from './FoulResolutionModal';
 
@@ -37,6 +38,7 @@ interface CourtFastTrackProps {
   onAttachAssist?: (assistantId: string) => void;
   onUndoLastAction: () => void;
   onDeleteEvent?: (eventId: string) => void;
+  onEditEvent?: (event: PlayEvent) => void;
   onOpenSubstitutionModal: () => void;
   selectedPlayerId: string | null;
   onSelectPlayer: (playerId: string) => void;
@@ -53,6 +55,7 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
   onAttachAssist,
   onUndoLastAction,
   onDeleteEvent,
+  onEditEvent,
   onOpenSubstitutionModal,
   selectedPlayerId,
   onSelectPlayer,
@@ -876,6 +879,20 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
                       <span className="text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-700 px-1.5 py-0.5 rounded">
                         +{event.pointsAdded}p
                       </span>
+                    )}
+                    {onEditEvent && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playSound('click', game.settings.soundEnabled);
+                          triggerHaptic('light', game.settings.vibrationEnabled);
+                          onEditEvent(event);
+                        }}
+                        className="p-1.5 bg-[#132a58] hover:bg-[#1c3f84] text-amber-300 hover:text-white rounded border border-[#28498f] transition active:scale-95"
+                        title="Editar esta jugada"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                      </button>
                     )}
                     <button
                       onClick={() =>

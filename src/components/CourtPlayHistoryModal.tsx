@@ -15,6 +15,7 @@ import {
   Clock,
   ArrowDownUp,
   AlertCircle,
+  Edit2,
 } from 'lucide-react';
 
 interface CourtPlayHistoryModalProps {
@@ -22,6 +23,7 @@ interface CourtPlayHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDeleteEvent?: (eventId: string) => void;
+  onEditEvent?: (event: PlayEvent) => void;
   onUndoLastAction?: () => void;
   recentEvent?: PlayEvent | null;
   isActionsLocked?: boolean;
@@ -32,6 +34,7 @@ export const CourtPlayHistoryModal: React.FC<CourtPlayHistoryModalProps> = ({
   isOpen,
   onClose,
   onDeleteEvent,
+  onEditEvent,
   onUndoLastAction,
   recentEvent,
   isActionsLocked = false,
@@ -453,6 +456,24 @@ export const CourtPlayHistoryModal: React.FC<CourtPlayHistoryModalProps> = ({
                         <span className="text-slate-500 mx-1">-</span>
                         <span className="text-sky-400">{event.scoreSnapshot.away}</span>
                       </div>
+                    )}
+
+                    {onEditEvent && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isActionsLocked) return;
+                          playSound('click', game.settings.soundEnabled);
+                          triggerHaptic('light', game.settings.vibrationEnabled);
+                          onEditEvent(event);
+                        }}
+                        disabled={isActionsLocked}
+                        className="px-2 py-1 bg-[#132a58] hover:bg-[#1c3f84] text-amber-300 hover:text-white rounded-lg border border-[#28498f] hover:border-amber-400/60 flex items-center gap-1 text-[11px] font-bold transition active:scale-95 disabled:opacity-30 disabled:pointer-events-none shadow-xs"
+                        title="Editar esta jugada (cambiar jugador, acción, puntos o cuarto)"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="hidden xs:inline">Editar</span>
+                      </button>
                     )}
 
                     {onDeleteEvent && (

@@ -15,14 +15,16 @@ import {
   ShieldAlert,
   Flame,
   Filter,
+  Edit2,
 } from 'lucide-react';
 
 interface PlayByPlayProps {
   game: Game;
   onDeleteEvent: (eventId: string) => void;
+  onEditEvent?: (event: PlayEvent) => void;
 }
 
-export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, onDeleteEvent }) => {
+export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, onDeleteEvent, onEditEvent }) => {
   const [groupByQuarter, setGroupByQuarter] = useState<boolean>(true);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc'); // desc = más reciente primero
   const [filterQuarter, setFilterQuarter] = useState<number | undefined>(undefined);
@@ -374,6 +376,7 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, onDeleteEvent }) =
                           awayName={awayName}
                           soundEnabled={game.settings.soundEnabled}
                           onDeleteEvent={onDeleteEvent}
+                          onEditEvent={onEditEvent}
                         />
                       ))
                     )}
@@ -394,6 +397,7 @@ export const PlayByPlay: React.FC<PlayByPlayProps> = ({ game, onDeleteEvent }) =
               awayName={awayName}
               soundEnabled={game.settings.soundEnabled}
               onDeleteEvent={onDeleteEvent}
+              onEditEvent={onEditEvent}
             />
           ))}
         </div>
@@ -408,6 +412,7 @@ interface PlayByPlayRowProps {
   awayName: string;
   soundEnabled: boolean;
   onDeleteEvent: (id: string) => void;
+  onEditEvent?: (event: PlayEvent) => void;
 }
 
 const PlayByPlayRow: React.FC<PlayByPlayRowProps> = ({
@@ -416,6 +421,7 @@ const PlayByPlayRow: React.FC<PlayByPlayRowProps> = ({
   awayName,
   soundEnabled,
   onDeleteEvent,
+  onEditEvent,
 }) => {
   const isOpponent = Boolean(event.isOpponentAction);
   const actionDef = ACTION_DEFINITIONS[event.actionType];
@@ -522,6 +528,20 @@ const PlayByPlayRow: React.FC<PlayByPlayRowProps> = ({
             <span className="text-sky-400">{event.scoreSnapshot?.away ?? 0}</span>
           </span>
         </div>
+
+        {onEditEvent && (
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click', soundEnabled);
+              onEditEvent(event);
+            }}
+            className="p-1.5 rounded-lg text-amber-400/80 hover:text-amber-300 hover:bg-amber-950/40 transition active:scale-90"
+            title="Editar esta jugada"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+        )}
 
         <button
           type="button"
