@@ -987,19 +987,6 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <div className="text-[11px] sm:text-xs text-slate-400 italic font-mono">Esperando jugada...</div>
             )}
           </div>
-
-          {/* Quick QR Seguidores button on bottom bar */}
-          <button
-            type="button"
-            id="bottombar-spectator-qr-btn"
-            onClick={handleOpenSpectatorQR}
-            className="px-2 py-1 bg-gradient-to-r from-cyan-950 via-[#0e2a52] to-blue-950 hover:bg-[#16356E] text-cyan-200 border border-cyan-400/80 rounded-lg text-[10px] sm:text-[11px] font-mono font-black flex items-center gap-1.5 shrink-0 transition active:scale-95 shadow-md shadow-cyan-950/80 ring-1 ring-cyan-500/40 cursor-pointer"
-            title="Mostrar Código QR para seguidores y afición en directo"
-          >
-            <QrCode className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
-            <span className="hidden xs:inline">QR SEGUIDORES</span>
-            <span className="xs:hidden">QR</span>
-          </button>
         </div>
       </div>
     );
@@ -1219,18 +1206,6 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             isCompact={true}
             className="p-1 px-1.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[11px] shadow-sm shrink-0"
           />
-
-          {/* Botón QR Seguidores para enlazar con la vista en directo de aficionados */}
-          <button
-            type="button"
-            id="portrait-spectator-qr-btn-tools"
-            onClick={handleOpenSpectatorQR}
-            className="p-1 px-2.5 bg-gradient-to-r from-cyan-950 to-blue-950 hover:bg-[#16356E] text-cyan-300 border border-cyan-400/80 rounded-lg text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1.5 transition active:scale-95 shadow-md shadow-cyan-950 shrink-0 ring-1 ring-cyan-500/40 cursor-pointer"
-            title="Ver código QR para que los seguidores y aficionados sigan el partido en directo"
-          >
-            <QrCode className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span className="font-extrabold uppercase">QR Afición</span>
-          </button>
 
           {onOpenOfficialSheet && (
             <button

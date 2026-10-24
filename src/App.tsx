@@ -2232,16 +2232,16 @@ export default function App() {
                 onOpenSyncModal={() => setShowSyncPairingModal(true)}
               />
 
-              {/* Botón rápido Vincular Tablet / Ordenador por QR */}
+              {/* Botón rápido Vincular Tablet / Mesa por PIN o Red */}
               <button
                 type="button"
                 id="header-quick-pair-btn"
                 onClick={() => setShowSyncPairingModal(true)}
                 className="hidden sm:flex px-2 py-1.5 rounded-lg bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 border border-cyan-500/50 text-xs font-mono font-bold items-center gap-1 transition active:scale-95 shadow-sm"
-                title="Vincular Tablet con Ordenador mediante Código QR o PIN"
+                title="Vincular Tablet con la Mesa de Control u Ordenador mediante Código PIN o Red Local"
               >
-                <QrCode className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="text-[11px]">Vincular QR</span>
+                <Radio className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[11px]">Vincular Mesa</span>
               </button>
 
               {/* Multi-Device Access Management Button */}
@@ -2500,8 +2500,8 @@ export default function App() {
                             }}
                             className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-cyan-300 text-xs font-bold text-left transition"
                           >
-                            <QrCode className="w-4 h-4 text-cyan-400 shrink-0" />
-                            <span>Vincular Tablet ↔ Ordenador (QR)</span>
+                            <Radio className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>Vincular Tablet ↔ Mesa (PIN)</span>
                           </button>
 
                           <button

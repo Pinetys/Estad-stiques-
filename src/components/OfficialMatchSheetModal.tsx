@@ -31,6 +31,7 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
   const printRef = useRef<HTMLDivElement>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [showMinutes, setShowMinutes] = useState<boolean>(false);
 
   const playerStatsList: PlayerBoxScore[] = game.players.map(p =>
     calculatePlayerStats(p, game.events)
@@ -62,10 +63,17 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
     window.print();
   };
 
+  const handlePrintWithMinutes = () => {
+    setShowMinutes(true);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
   const handleDownloadPdf = () => {
     try {
       setIsExporting(true);
-      downloadActaPdf(game);
+      downloadActaPdf(game, { showMinutes: false });
       playSound('score', game.settings.soundEnabled);
       triggerHaptic('medium', game.settings.vibrationEnabled);
       setToastMessage('¡Acta en PDF descargada con éxito!');
@@ -79,12 +87,29 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
     }
   };
 
+  const handleDownloadPdfWithMinutes = () => {
+    try {
+      setIsExporting(true);
+      downloadActaPdf(game, { showMinutes: true });
+      playSound('score', game.settings.soundEnabled);
+      triggerHaptic('medium', game.settings.vibrationEnabled);
+      setToastMessage('¡Acta con minutos jugados descargada!');
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err) {
+      console.error('Error downloading PDF with minutes:', err);
+      setToastMessage('Error al generar el PDF. Inténtalo de nuevo.');
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleSharePdf = async () => {
     try {
       setIsExporting(true);
       playSound('click', game.settings.soundEnabled);
       triggerHaptic('light', game.settings.vibrationEnabled);
-      const res = await shareActaPdf(game);
+      const res = await shareActaPdf(game, { showMinutes: false });
       if (res.method === 'download_fallback') {
         setToastMessage('PDF descargado para adjuntar en tu app favorita.');
       } else {
@@ -94,6 +119,26 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
     } catch (err) {
       console.error('Error sharing PDF:', err);
       handleDownloadPdf();
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleSharePdfWithMinutes = async () => {
+    try {
+      setIsExporting(true);
+      playSound('click', game.settings.soundEnabled);
+      triggerHaptic('light', game.settings.vibrationEnabled);
+      const res = await shareActaPdf(game, { showMinutes: true });
+      if (res.method === 'download_fallback') {
+        setToastMessage('PDF con minutos descargado.');
+      } else {
+        setToastMessage('¡Acta con minutos compartida con éxito!');
+      }
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err) {
+      console.error('Error sharing PDF with minutes:', err);
+      handleDownloadPdfWithMinutes();
     } finally {
       setIsExporting(false);
     }
@@ -143,28 +188,66 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
 
           {/* Action Buttons: Mobile & Tablet Optimized */}
           <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Toggle show minutes */}
+            <button
+              type="button"
+              onClick={() => setShowMinutes(!showMinutes)}
+              className={`px-2.5 py-2 rounded-xl text-xs font-mono font-bold border transition flex items-center gap-1.5 active:scale-95 ${
+                showMinutes
+                  ? 'bg-amber-500/25 border-amber-400 text-amber-300 shadow-sm shadow-amber-500/20'
+                  : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-white'
+              }`}
+              title="Mostrar u ocultar los minutos jugados en el acta"
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span>Minutos: {showMinutes ? 'ACTIVO' : 'NO'}</span>
+            </button>
+
+            {/* Print Official Acta WITH MINUTES */}
+            <button
+              type="button"
+              onClick={handlePrintWithMinutes}
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:from-amber-700 active:to-orange-700 text-white rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-amber-400"
+              title="Imprimir Acta Oficial reflejando los minutos jugados de cada jugador"
+            >
+              <Printer className="w-4 h-4 text-amber-200" />
+              <span>IMPRIMIR ACTA CON MINUTOS</span>
+            </button>
+
             {/* Primary: Download PDF */}
             <button
               type="button"
               onClick={handleDownloadPdf}
               disabled={isExporting}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-emerald-400"
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-emerald-400"
               title="Descargar archivo PDF al móvil o tablet"
             >
-              <Download className="w-4 h-4" />
-              <span>DESCARGAR PDF</span>
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF ESTÁNDAR</span>
+            </button>
+
+            {/* Download PDF with Minutes */}
+            <button
+              type="button"
+              onClick={handleDownloadPdfWithMinutes}
+              disabled={isExporting}
+              className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-900 text-amber-300 rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-amber-500/50"
+              title="Descargar Acta en PDF con los minutos de cada jugador"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-400" />
+              <span>PDF MINUTOS</span>
             </button>
 
             {/* Primary: Native Share PDF */}
             <button
               type="button"
-              onClick={handleSharePdf}
+              onClick={showMinutes ? handleSharePdfWithMinutes : handleSharePdf}
               disabled={isExporting}
-              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-blue-400"
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl text-xs font-black font-mono shadow-md flex items-center gap-1.5 transition active:scale-95 border border-blue-400"
               title="Compartir o enviar archivo PDF por WhatsApp, Telegram, etc."
             >
-              <Share2 className="w-4 h-4" />
-              <span>ENVIAR PDF</span>
+              <Share2 className="w-3.5 h-3.5" />
+              <span>ENVIAR</span>
             </button>
 
             {/* WhatsApp Text */}
@@ -175,16 +258,6 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
               title="Enviar resumen por WhatsApp"
             >
               <MessageCircle className="w-4 h-4 fill-white" />
-            </button>
-
-            {/* Desktop Print */}
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="hidden sm:flex px-2.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 rounded-xl text-xs font-mono font-bold items-center gap-1 transition"
-              title="Imprimir"
-            >
-              <Printer className="w-3.5 h-3.5" />
             </button>
 
             <button
@@ -281,6 +354,11 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                     <th className="border border-neutral-300 p-1 text-center w-8">Nº</th>
                     <th className="border border-neutral-300 p-1 text-left">Jugador / Licencia</th>
                     <th className="border border-neutral-300 p-1 text-center w-10">Pos</th>
+                    {showMinutes && (
+                      <th className="border border-neutral-300 p-1 text-center w-12 bg-amber-100 text-amber-900 font-black">
+                        MIN
+                      </th>
+                    )}
                     <th className="border border-neutral-300 p-1 text-center" colSpan={5}>
                       Faltas Personales (1 2 3 4 5)
                     </th>
@@ -309,6 +387,11 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                         <td className="border border-neutral-300 p-1 text-center text-neutral-600">
                           {p.player.position}
                         </td>
+                        {showMinutes && (
+                          <td className="border border-neutral-300 p-1 text-center font-bold text-amber-900 bg-amber-50">
+                            {p.minutesPlayedFormatted}
+                          </td>
+                        )}
                         {/* 5 Fouls Slots */}
                         {[1, 2, 3, 4, 5].map(slot => (
                           <td
@@ -346,6 +429,11 @@ export const OfficialMatchSheetModal: React.FC<OfficialMatchSheetModalProps> = (
                     <td colSpan={3} className="border border-neutral-300 p-1 text-right">
                       TOTALES EQUIPO:
                     </td>
+                    {showMinutes && (
+                      <td className="border border-neutral-300 p-1 text-center font-bold text-amber-900 bg-amber-100">
+                        200'
+                      </td>
+                    )}
                     <td colSpan={5} className="border border-neutral-300 p-1 text-center">
                       {teamStats.foulsPersonal} Faltas
                     </td>

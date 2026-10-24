@@ -342,24 +342,6 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </span>
           </button>
 
-          {/* QR Seguidores en Vivo (Acceso rápido herramientas) */}
-          {onOpenSpectatorQR && (
-            <button
-              type="button"
-              id="landscape-spectator-qr-btn-tools"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                onOpenSpectatorQR();
-              }}
-              className="px-2 py-0.5 rounded border border-cyan-500/70 bg-gradient-to-r from-cyan-950/80 to-blue-950/80 hover:from-cyan-900 hover:to-blue-900 text-cyan-300 text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm shadow-cyan-950 shrink-0 cursor-pointer"
-              title="Mostrar Código QR para que el público y seguidores sigan el partido en directo desde sus móviles"
-            >
-              <QrCode className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span>QR Afición</span>
-            </button>
-          )}
-
           {/* Shot Chart Modal */}
           {onOpenShotChart && (
             <button

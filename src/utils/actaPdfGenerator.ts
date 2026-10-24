@@ -7,7 +7,8 @@ import { getShotCoordinates } from '../components/PlayerShotMap';
  * Generates an official, beautifully structured FIBA/FEB-compliant PDF match sheet (Acta Oficial)
  * using pure vector rendering in jsPDF for 100% reliable mobile downloading and sharing.
  */
-export function generateOfficialActaPdf(game: Game): jsPDF {
+export function generateOfficialActaPdf(game: Game, options?: { showMinutes?: boolean }): jsPDF {
+  const showMinutes = Boolean(options?.showMinutes);
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -34,12 +35,12 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(220, 220, 220);
-  const subheader = `Categoría: ${game.category || 'Oficial'}  |  Fecha: ${game.date}  |  Estado: ${game.status === 'finished' ? 'FINALIZADO' : 'EN JUEGO'}`;
+  const subheader = `Categoría: ${game.category || 'Oficial'}  |  Fecha: ${game.date}  |  Estado: ${game.status === 'finished' ? 'FINALIZADO' : 'EN JUEGO'}${showMinutes ? '  |  CON MINUTOS JUGADOS' : ''}`;
   doc.text(subheader, pageWidth / 2, y + 15, { align: 'center' });
 
   doc.setFontSize(8);
   doc.setTextColor(249, 115, 22);
-  doc.text('CERTIFICACIÓN Y ESTADÍSTICA DIGITALIZADA • BASKETSTATS PRO', pageWidth / 2, y + 20, { align: 'center' });
+  doc.text(showMinutes ? 'CERTIFICACIÓN CON CONTROL DE MINUTOS JUGADOS • BASKETSTATS PRO' : 'CERTIFICACIÓN Y ESTADÍSTICA DIGITALIZADA • BASKETSTATS PRO', pageWidth / 2, y + 20, { align: 'center' });
 
   y += 28;
 
@@ -119,27 +120,45 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text(`PLANTILLA Y ESTADÍSTICAS: ${game.homeTeamName.toUpperCase()}`, 14, y + 4.2);
+  doc.text(`PLANTILLA Y ESTADÍSTICAS${showMinutes ? ' (CON MINUTOS JUGADOS)' : ''}: ${game.homeTeamName.toUpperCase()}`, 14, y + 4.2);
 
   y += 8;
 
   // Table Column Headers
-  const tableHeaders = [
-    { label: 'Nº', x: 12, align: 'left' },
-    { label: 'JUGADOR', x: 20, align: 'left' },
-    { label: '5I', x: 62, align: 'center' },
-    { label: 'PTS', x: 70, align: 'center' },
-    { label: 'T2', x: 82, align: 'center' },
-    { label: 'T3', x: 96, align: 'center' },
-    { label: 'TL', x: 110, align: 'center' },
-    { label: 'REB', x: 124, align: 'center' },
-    { label: 'AST', x: 136, align: 'center' },
-    { label: 'ROB', x: 146, align: 'center' },
-    { label: 'PER', x: 156, align: 'center' },
-    { label: 'TAP', x: 166, align: 'center' },
-    { label: 'FALTAS', x: 178, align: 'center' },
-    { label: 'VAL', x: 194, align: 'center' },
-  ];
+  const tableHeaders = showMinutes
+    ? [
+        { label: 'Nº', x: 12, align: 'left' },
+        { label: 'JUGADOR', x: 19, align: 'left' },
+        { label: 'MIN', x: 55, align: 'center' },
+        { label: '5I', x: 65, align: 'center' },
+        { label: 'PTS', x: 73, align: 'center' },
+        { label: 'T2', x: 84, align: 'center' },
+        { label: 'T3', x: 97, align: 'center' },
+        { label: 'TL', x: 110, align: 'center' },
+        { label: 'REB', x: 123, align: 'center' },
+        { label: 'AST', x: 135, align: 'center' },
+        { label: 'ROB', x: 145, align: 'center' },
+        { label: 'PER', x: 155, align: 'center' },
+        { label: 'TAP', x: 165, align: 'center' },
+        { label: 'FALTAS', x: 178, align: 'center' },
+        { label: 'VAL', x: 194, align: 'center' },
+      ]
+    : [
+        { label: 'Nº', x: 12, align: 'left' },
+        { label: 'JUGADOR', x: 20, align: 'left' },
+        { label: '5I', x: 62, align: 'center' },
+        { label: 'PTS', x: 70, align: 'center' },
+        { label: 'T2', x: 82, align: 'center' },
+        { label: 'T3', x: 96, align: 'center' },
+        { label: 'TL', x: 110, align: 'center' },
+        { label: 'REB', x: 124, align: 'center' },
+        { label: 'AST', x: 136, align: 'center' },
+        { label: 'ROB', x: 146, align: 'center' },
+        { label: 'PER', x: 156, align: 'center' },
+        { label: 'TAP', x: 166, align: 'center' },
+        { label: 'FALTAS', x: 178, align: 'center' },
+        { label: 'VAL', x: 194, align: 'center' },
+      ];
 
   doc.setFillColor(235, 238, 243);
   doc.rect(10, y - 2, pageWidth - 20, 5, 'F');
@@ -165,23 +184,49 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
     doc.text(`#${p.player.number}`, 12, y + 1);
 
     doc.setFont('helvetica', 'normal');
-    doc.text(p.player.name.slice(0, 24), 20, y + 1);
+    if (showMinutes) {
+      doc.text(p.player.name.slice(0, 19), 19, y + 1);
 
-    doc.text(p.player.starter ? '★' : '-', 62, y + 1, { align: 'center' });
+      // Dedicated Minutes column
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(234, 88, 12);
+      doc.text(p.minutesPlayedFormatted || '00:00', 55, y + 1, { align: 'center' });
+      doc.setTextColor(15, 23, 42);
 
-    doc.setFont('helvetica', 'bold');
-    doc.text(String(p.points), 70, y + 1, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.text(p.player.starter ? '★' : '-', 65, y + 1, { align: 'center' });
 
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${p.twoPointsMade}/${p.twoPointsAttempted}`, 82, y + 1, { align: 'center' });
-    doc.text(`${p.threePointsMade}/${p.threePointsAttempted}`, 96, y + 1, { align: 'center' });
-    doc.text(`${p.freeThrowsMade}/${p.freeThrowsAttempted}`, 110, y + 1, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(p.points), 73, y + 1, { align: 'center' });
 
-    doc.text(String(p.totalRebounds), 124, y + 1, { align: 'center' });
-    doc.text(String(p.assists), 136, y + 1, { align: 'center' });
-    doc.text(String(p.steals), 146, y + 1, { align: 'center' });
-    doc.text(String(p.turnovers), 156, y + 1, { align: 'center' });
-    doc.text(String(p.blocks), 166, y + 1, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${p.twoPointsMade}/${p.twoPointsAttempted}`, 84, y + 1, { align: 'center' });
+      doc.text(`${p.threePointsMade}/${p.threePointsAttempted}`, 97, y + 1, { align: 'center' });
+      doc.text(`${p.freeThrowsMade}/${p.freeThrowsAttempted}`, 110, y + 1, { align: 'center' });
+
+      doc.text(String(p.totalRebounds), 123, y + 1, { align: 'center' });
+      doc.text(String(p.assists), 135, y + 1, { align: 'center' });
+      doc.text(String(p.steals), 145, y + 1, { align: 'center' });
+      doc.text(String(p.turnovers), 155, y + 1, { align: 'center' });
+      doc.text(String(p.blocks), 165, y + 1, { align: 'center' });
+    } else {
+      doc.text(p.player.name.slice(0, 24), 20, y + 1);
+      doc.text(p.player.starter ? '★' : '-', 62, y + 1, { align: 'center' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(p.points), 70, y + 1, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${p.twoPointsMade}/${p.twoPointsAttempted}`, 82, y + 1, { align: 'center' });
+      doc.text(`${p.threePointsMade}/${p.threePointsAttempted}`, 96, y + 1, { align: 'center' });
+      doc.text(`${p.freeThrowsMade}/${p.freeThrowsAttempted}`, 110, y + 1, { align: 'center' });
+
+      doc.text(String(p.totalRebounds), 124, y + 1, { align: 'center' });
+      doc.text(String(p.assists), 136, y + 1, { align: 'center' });
+      doc.text(String(p.steals), 146, y + 1, { align: 'center' });
+      doc.text(String(p.turnovers), 156, y + 1, { align: 'center' });
+      doc.text(String(p.blocks), 166, y + 1, { align: 'center' });
+    }
 
     // Fouls representation: discreet vector circles (no encoding error, not oversized)
     const foulsCount = Math.min(5, Math.max(0, p.foulsPersonal || 0));
@@ -216,16 +261,33 @@ export function generateOfficialActaPdf(game: Game): jsPDF {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('TOTALES EQUIPO', 20, y + 1.2);
-  doc.text(String(teamStats.points), 70, y + 1.2, { align: 'center' });
-  doc.text(`${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted}`, 82, y + 1.2, { align: 'center' });
-  doc.text(`${teamStats.threePointsMade}/${teamStats.threePointsAttempted}`, 96, y + 1.2, { align: 'center' });
-  doc.text(`${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted}`, 110, y + 1.2, { align: 'center' });
-  doc.text(String(teamStats.totalRebounds), 124, y + 1.2, { align: 'center' });
-  doc.text(String(teamStats.assists), 136, y + 1.2, { align: 'center' });
-  doc.text(String(teamStats.steals), 146, y + 1.2, { align: 'center' });
-  doc.text(String(teamStats.turnovers), 156, y + 1.2, { align: 'center' });
-  doc.text(String(teamStats.blocks), 166, y + 1.2, { align: 'center' });
+  doc.text('TOTALES EQUIPO', showMinutes ? 19 : 20, y + 1.2);
+  if (showMinutes) {
+    const totalMinutesSecs = playerStatsList.reduce((acc, p) => acc + (p.player.minutesPlayedSeconds || 0), 0);
+    const totalMinM = Math.floor(totalMinutesSecs / 60);
+    doc.setTextColor(234, 88, 12);
+    doc.text(`${totalMinM}'`, 55, y + 1.2, { align: 'center' });
+    doc.setTextColor(15, 23, 42);
+    doc.text(String(teamStats.points), 73, y + 1.2, { align: 'center' });
+    doc.text(`${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted}`, 84, y + 1.2, { align: 'center' });
+    doc.text(`${teamStats.threePointsMade}/${teamStats.threePointsAttempted}`, 97, y + 1.2, { align: 'center' });
+    doc.text(`${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted}`, 110, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.totalRebounds), 123, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.assists), 135, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.steals), 145, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.turnovers), 155, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.blocks), 165, y + 1.2, { align: 'center' });
+  } else {
+    doc.text(String(teamStats.points), 70, y + 1.2, { align: 'center' });
+    doc.text(`${teamStats.twoPointsMade}/${teamStats.twoPointsAttempted}`, 82, y + 1.2, { align: 'center' });
+    doc.text(`${teamStats.threePointsMade}/${teamStats.threePointsAttempted}`, 96, y + 1.2, { align: 'center' });
+    doc.text(`${teamStats.freeThrowsMade}/${teamStats.freeThrowsAttempted}`, 110, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.totalRebounds), 124, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.assists), 136, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.steals), 146, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.turnovers), 156, y + 1.2, { align: 'center' });
+    doc.text(String(teamStats.blocks), 166, y + 1.2, { align: 'center' });
+  }
   doc.text(`${teamStats.foulsPersonal || 0}F`, 178, y + 1.2, { align: 'center' });
   doc.text(String(teamStats.efficiency), 194, y + 1.2, { align: 'center' });
 
@@ -798,9 +860,10 @@ function renderTeamShotChartPage(doc: jsPDF, game: Game, teamStats: any) {
 /**
  * Downloads the official Acta PDF directly to device (works seamlessly on iOS Safari, Android Chrome, and Desktop)
  */
-export function downloadActaPdf(game: Game) {
-  const doc = generateOfficialActaPdf(game);
-  const fileName = `Acta_${game.homeTeamName.replace(/\s+/g, '_')}_vs_${game.awayTeamName.replace(/\s+/g, '_')}_${game.date.replace(/\//g, '-')}.pdf`;
+export function downloadActaPdf(game: Game, options?: { showMinutes?: boolean }) {
+  const doc = generateOfficialActaPdf(game, options);
+  const prefix = options?.showMinutes ? 'Acta_Con_Minutos_' : 'Acta_';
+  const fileName = `${prefix}${game.homeTeamName.replace(/\s+/g, '_')}_vs_${game.awayTeamName.replace(/\s+/g, '_')}_${game.date.replace(/\//g, '-')}.pdf`;
   
   // Use Blob download method for maximum mobile compatibility
   const blob = doc.output('blob');
@@ -819,9 +882,10 @@ export function downloadActaPdf(game: Game) {
 /**
  * Shares the official Acta PDF using native mobile share sheet (WhatsApp, Telegram, AirDrop, Mail, Save)
  */
-export async function shareActaPdf(game: Game): Promise<{ success: boolean; method: 'native' | 'whatsapp_fallback' | 'download_fallback' }> {
-  const doc = generateOfficialActaPdf(game);
-  const fileName = `Acta_${game.homeTeamName.replace(/\s+/g, '_')}_vs_${game.awayTeamName.replace(/\s+/g, '_')}_${game.date.replace(/\//g, '-')}.pdf`;
+export async function shareActaPdf(game: Game, options?: { showMinutes?: boolean }): Promise<{ success: boolean; method: 'native' | 'whatsapp_fallback' | 'download_fallback' }> {
+  const doc = generateOfficialActaPdf(game, options);
+  const prefix = options?.showMinutes ? 'Acta_Con_Minutos_' : 'Acta_';
+  const fileName = `${prefix}${game.homeTeamName.replace(/\s+/g, '_')}_vs_${game.awayTeamName.replace(/\s+/g, '_')}_${game.date.replace(/\//g, '-')}.pdf`;
   const blob = doc.output('blob');
   const file = new File([blob], fileName, { type: 'application/pdf' });
 
@@ -829,8 +893,8 @@ export async function shareActaPdf(game: Game): Promise<{ success: boolean; meth
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({
-        title: `Acta Oficial: ${game.homeTeamName} vs ${game.awayTeamName}`,
-        text: `Adjunto el acta oficial del partido ${game.homeTeamName} ${game.homeScore} - ${game.awayScore} ${game.awayTeamName} (${game.date}).`,
+        title: `Acta Oficial${options?.showMinutes ? ' (con minutos)' : ''}: ${game.homeTeamName} vs ${game.awayTeamName}`,
+        text: `Adjunto el acta oficial ${options?.showMinutes ? 'con minutos jugados ' : ''}del partido ${game.homeTeamName} ${game.homeScore} - ${game.awayScore} ${game.awayTeamName} (${game.date}).`,
         files: [file],
       });
       return { success: true, method: 'native' };
@@ -843,6 +907,6 @@ export async function shareActaPdf(game: Game): Promise<{ success: boolean; meth
   }
 
   // 2. Fallback: Download file directly so user has the PDF file
-  downloadActaPdf(game);
+  downloadActaPdf(game, options);
   return { success: true, method: 'download_fallback' };
 }

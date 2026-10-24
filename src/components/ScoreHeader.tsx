@@ -25,7 +25,6 @@ import {
   Lock,
   CheckCircle2,
   Save,
-  QrCode,
 } from 'lucide-react';
 import { DeviceRole } from '../utils/deviceRole';
 import { SyncStatusBar } from './SyncStatusBar';

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import QRCode from 'qrcode';
 import { Game, TeamProfile } from '../types';
 import { DeviceRole, setDeviceRole as persistDeviceRole } from '../utils/deviceRole';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
@@ -8,7 +7,6 @@ import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { buildSpectatorUrl } from '../utils/urlHelper';
 import { formatGameTime } from '../utils/statsCalculator';
 import {
-  QrCode,
   Laptop,
   Tablet,
   Radio,
@@ -27,8 +25,6 @@ import {
   AlertTriangle,
   Play,
   Eye,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 
 interface SyncPairingModalProps {
@@ -50,8 +46,6 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'emit' | 'receive' | 'role'>('emit');
   const [pinCode, setPinCode] = useState<string | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [showQrCode, setShowQrCode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
@@ -111,22 +105,8 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
       // 1. Generate human PIN
       const code = await syncEngine.generateTransferCode(currentGame);
       setPinCode(code);
-
-      // 2. Generate direct URL with auto-pair and monitor mode (preserving subpaths)
-      const pairUrl = buildSpectatorUrl(code, currentGame.id);
-
-      // 3. Generate QR Code image
-      const qrImage = await QRCode.toDataURL(pairUrl, {
-        width: 260,
-        margin: 1.5,
-        color: {
-          dark: '#000000',
-          light: '#ffffff',
-        },
-      });
-      setQrDataUrl(qrImage);
     } catch (err: any) {
-      console.error('Error generating pairing code/QR:', err);
+      console.error('Error generating pairing code:', err);
       setErrorMsg(err.message || 'Error generando código de emparejamiento');
     } finally {
       setIsGenerating(false);
@@ -362,34 +342,6 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
                       <span>{copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace'}</span>
                     </button>
                   </div>
-                </div>
-
-                {/* Optional QR Code fold (solo si alguien quiere escanear con móvil) */}
-                <div className="pt-1 border-t border-gray-800">
-                  <button
-                    type="button"
-                    onClick={() => setShowQrCode(!showQrCode)}
-                    className="text-[11px] text-gray-400 hover:text-gray-200 font-mono flex items-center justify-center gap-1.5 mx-auto py-1 transition cursor-pointer"
-                  >
-                    <QrCode className="w-3.5 h-3.5" />
-                    <span>{showQrCode ? 'Ocultar Código QR' : 'Mostrar Código QR (opcional si usas cámara de móvil)'}</span>
-                    {showQrCode ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  </button>
-
-                  {showQrCode && qrDataUrl && (
-                    <div className="mt-3 flex flex-col items-center justify-center animate-in fade-in">
-                      <div className="bg-white p-3 rounded-2xl shadow-xl border-2 border-orange-400">
-                        <img
-                          src={qrDataUrl}
-                          alt="Código QR opcional"
-                          className="w-36 h-36 object-contain"
-                        />
-                      </div>
-                      <span className="text-[10px] text-gray-400 mt-1 font-mono">
-                        Escaneo opcional para teléfonos de aficionados
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
 

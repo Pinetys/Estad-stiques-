@@ -3,7 +3,7 @@ import { Game } from '../types';
 import { calculatePlayerStats, calculateTeamStats, exportGameToCSV, generateShareText } from '../utils/statsCalculator';
 import { downloadActaPdf, shareActaPdf } from '../utils/actaPdfGenerator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { Share2, Copy, Download, Printer, Check, MessageCircle, FileText, FileJson, BarChart3, Target } from 'lucide-react';
+import { Share2, Copy, Download, Printer, Check, MessageCircle, FileText, FileJson, BarChart3, Target, Clock } from 'lucide-react';
 
 interface ShareExportModalProps {
   game: Game;
@@ -49,6 +49,14 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
     playSound('score', game.settings.soundEnabled);
     triggerHaptic('medium', game.settings.vibrationEnabled);
     setPdfToast('¡Acta en PDF descargada!');
+    setTimeout(() => setPdfToast(null), 2500);
+  };
+
+  const handleDownloadPdfWithMinutes = () => {
+    downloadActaPdf(game, { showMinutes: true });
+    playSound('score', game.settings.soundEnabled);
+    triggerHaptic('medium', game.settings.vibrationEnabled);
+    setPdfToast('¡Acta con Minutos Jugados descargada!');
     setTimeout(() => setPdfToast(null), 2500);
   };
 
@@ -296,6 +304,16 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
 
         {/* Quick Share Buttons */}
         <div className="grid grid-cols-2 gap-2 font-mono">
+          {/* Acta con Minutos Jugados (PDF) */}
+          <button
+            onClick={handleDownloadPdfWithMinutes}
+            className="p-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:from-amber-700 active:to-orange-700 text-white font-black rounded-xl flex items-center justify-center gap-1.5 text-xs uppercase shadow-md transition col-span-2 border border-amber-400/60 active:scale-[0.99]"
+            title="Descargar acta oficial con los minutos jugados de cada jugador para imprimir o archivar"
+          >
+            <Clock className="w-4 h-4 text-amber-200" />
+            <span>Imprimir / Descargar Acta con Minutos Jugados (PDF)</span>
+          </button>
+
           {/* Direct PDF Download */}
           <button
             onClick={handleDownloadPdf}

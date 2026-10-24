@@ -18,7 +18,7 @@ export function getShotCoordinates(event: PlayEvent, index = 0): { x: number; y:
       index * 17
   );
 
-  const isThree = ['3PM', '3PA'].includes(event.actionType);
+  const isThree = ['3PM', '3PA', 'OPP_3P'].includes(event.actionType) || event.pointsAdded === 3;
   if (isThree) {
     // 3-point arc: angles between -65 and +65 degrees
     const angleDeg = -65 + (hash % 130);

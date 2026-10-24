@@ -1,7 +1,7 @@
 import React from 'react';
 import { Game } from '../types';
 import { formatGameTime } from '../utils/statsCalculator';
-import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown, Edit2, QrCode } from 'lucide-react';
+import { Play, Pause, Lock, SlidersHorizontal, Timer, Crown, Edit2 } from 'lucide-react';
 import {
   MasterClockNumber,
   ShotClockNumber,
@@ -79,19 +79,6 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
         </button>
 
         <div className="flex items-center gap-1.5">
-          {onOpenSpectatorQR && (
-            <button
-              type="button"
-              id="scoreboard-spectator-qr-btn"
-              onClick={onOpenSpectatorQR}
-              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-950 via-[#0e2a52] to-blue-950 border border-cyan-400 text-[9px] font-mono font-black text-cyan-200 hover:bg-cyan-900 transition active:scale-95 shadow-sm ring-1 ring-cyan-400/50 cursor-pointer"
-              title="Mostrar Código QR para que el público siga el partido en directo desde su móvil"
-            >
-              <QrCode className="w-3 h-3 text-cyan-300 animate-pulse" />
-              <span>QR SEGUIDORES</span>
-            </button>
-          )}
-
           {onOpenProBenefits && (
             <button
               type="button"
