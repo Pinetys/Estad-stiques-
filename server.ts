@@ -91,6 +91,60 @@ function broadcastSync(event: { type: string; data?: any }) {
   }
 }
 
+async function syncServerWithFirestore() {
+  try {
+    const { fetchAllMatchesFromCloud, fetchAllTeamsFromCloud } = await import('./src/lib/firebase');
+    const cloudMatches = await fetchAllMatchesFromCloud();
+    const cloudTeams = await fetchAllTeamsFromCloud();
+
+    let changed = false;
+    if (Array.isArray(cloudTeams)) {
+      for (const t of cloudTeams) {
+        if (t && t.id && !serverDb.teams[t.id]) {
+          serverDb.teams[t.id] = t;
+          changed = true;
+        }
+      }
+    }
+
+    if (Array.isArray(cloudMatches) && cloudMatches.length > 0) {
+      for (const m of cloudMatches) {
+        if (!m || !m.id) continue;
+        const existing = serverDb.matches[m.id];
+        const clEvents = m.events?.length || 0;
+        const exEvents = existing?.events?.length || 0;
+        if (!existing || clEvents >= exEvents) {
+          serverDb.matches[m.id] = m;
+          changed = true;
+        }
+      }
+
+      // Check for most recent match to set as activeMatch
+      const sortedMatches = Object.values(serverDb.matches).sort((a: any, b: any) => {
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.date ? new Date(a.date).getTime() : 0);
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.date ? new Date(b.date).getTime() : 0);
+        return timeB - timeA;
+      });
+
+      const mostRecent = sortedMatches[0];
+      if (mostRecent && (!serverDb.activeMatch || serverDb.activeMatch.id !== mostRecent.id)) {
+        if (mostRecent.events && mostRecent.events.length > 0) {
+          serverDb.activeMatch = mostRecent;
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      saveServerSyncDb();
+      console.log(`[Server] Synced with Cloud Firestore: ${Object.keys(serverDb.matches).length} matches total. Active match: ${serverDb.activeMatch?.id} (${serverDb.activeMatch?.homeTeamName} vs ${serverDb.activeMatch?.awayTeamName})`);
+      broadcastSync({ type: 'bulk_synced', data: { matchesCount: Object.keys(serverDb.matches).length } });
+    }
+  } catch (err) {
+    console.warn('[Server] Note on Firestore background sync:', err);
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -1004,6 +1058,9 @@ Revisa las estadísticas acumuladas en la biblioteca para planificar tus sesione
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`BasketStats Server running on http://0.0.0.0:${PORT}`);
+    // Sync with Cloud Firestore on boot and periodically
+    syncServerWithFirestore();
+    setInterval(syncServerWithFirestore, 60000);
   });
 }
 

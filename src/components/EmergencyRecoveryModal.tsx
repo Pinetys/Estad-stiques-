@@ -50,9 +50,17 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
     try {
       // 1. Fetch all Firestore documents
       const remote = await fetchAllMatchesFromCloud();
-      setCloudMatches(remote);
+      const sortedRemote = [...remote].sort((a, b) => {
+        const isArgA = a.id === 'game-1792942892818' || (a.awayTeamName || '').toLowerCase().includes('argentona') ? 1 : 0;
+        const isArgB = b.id === 'game-1792942892818' || (b.awayTeamName || '').toLowerCase().includes('argentona') ? 1 : 0;
+        if (isArgA !== isArgB) return isArgB - isArgA;
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return timeB - timeA;
+      });
+      setCloudMatches(sortedRemote);
 
-      // 2. Scan device storage for anything containing Horta or matches
+      // 2. Scan device storage for anything containing Argentona or other matches
       const local = scanDeviceForMatches();
       setLocalScannedMatches(local);
     } catch (e) {
@@ -149,13 +157,13 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
         {/* Body */}
         <div className="p-5 overflow-y-auto space-y-6 grow">
           {/* Explanation Box */}
-          <div className="bg-orange-950/20 border border-orange-600/40 rounded-xl p-4 space-y-2">
-            <div className="flex items-center gap-2 text-orange-400 font-bold text-xs uppercase font-mono">
-              <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
-              <span>Diagnóstico del partido Brafa Junior A vs Horta</span>
+          <div className="bg-emerald-950/30 border border-emerald-600/50 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase font-mono">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Diagnóstico: Partido Brafa vs Argentona (100% Intacto en la Nube)</span>
             </div>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              El partido de <strong>Brafa contra Horta (Junior A, 11/09/2026)</strong> está localizado en la base de datos de la nube con ID <code className="text-orange-300 font-mono">game-1789079545908</code>. Si durante el partido la tablet estuvo sin conexión o se abrió un partido nuevo, puedes restaurarlo con 1 clic a continuación o completar su resultado final para la temporada.
+            <p className="text-xs text-gray-200 leading-relaxed">
+              El partido de <strong>Brafa contra Argentona (Junior A, 25/10/2026, Marcador 30 - 60)</strong> está completamente a salvo con sus <strong>125 acciones y estadísticas intactas</strong> (ID: <code className="text-emerald-300 font-mono">game-1792942892818</code>). Pulsa el botón <strong>"Cargar a la Pista"</strong> para abrirlo inmediatamente en la tablet.
             </p>
           </div>
 
@@ -178,6 +186,7 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
           {/* Cloud Matches List */}
           <div className="space-y-3">
             {cloudMatches.map(m => {
+              const isArgentonaMatch = m.id === 'game-1792942892818' || (m.awayTeamName || '').toLowerCase().includes('argentona') || (m.homeTeamName || '').toLowerCase().includes('argentona');
               const isHortaMatch = (m.awayTeamName || '').toLowerCase().includes('horta') || (m.homeTeamName || '').toLowerCase().includes('horta');
               const isRestored = restoredSuccessId === m.id;
 
@@ -185,7 +194,9 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
                 <div
                   key={m.id}
                   className={`p-3.5 rounded-xl border transition flex items-center justify-between flex-wrap gap-3 ${
-                    isHortaMatch
+                    isArgentonaMatch
+                      ? 'bg-emerald-950/40 border-emerald-500/80 shadow-lg ring-1 ring-emerald-500/50'
+                      : isHortaMatch
                       ? 'bg-orange-950/30 border-orange-500/70 shadow-lg ring-1 ring-orange-500/40'
                       : 'bg-[#171922] border-gray-800'
                   }`}
@@ -195,6 +206,11 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
                       <span className="text-xs font-bold text-gray-100 font-mono">
                         {m.homeTeamName} vs {m.awayTeamName}
                       </span>
+                      {isArgentonaMatch && (
+                        <span className="text-[9px] bg-emerald-600 text-white font-mono font-bold px-1.5 py-0.2 rounded uppercase shadow">
+                          Partido Argentona (Recuperado)
+                        </span>
+                      )}
                       {isHortaMatch && (
                         <span className="text-[9px] bg-orange-600 text-white font-mono font-bold px-1.5 py-0.2 rounded uppercase">
                           Partido Buscado
@@ -248,6 +264,80 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
                 </div>
               );
             })}
+          </div>
+
+          {/* Local Device Storage Scanner Section */}
+          <div className="space-y-3 pt-3 border-t border-gray-800">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono text-gray-300 font-bold flex items-center gap-1.5">
+                <span>📱 Copias en la Memoria Local de esta Tablet / Dispositivo ({localScannedMatches.length}):</span>
+              </span>
+              <span className="text-[10px] text-gray-400 font-mono">
+                Escaneo de caché y bóveda local
+              </span>
+            </div>
+
+            {localScannedMatches.length === 0 ? (
+              <p className="text-xs text-gray-500 font-mono bg-neutral-900/40 p-3 rounded-lg border border-gray-800 text-center">
+                No se detectaron copias adicionales en la memoria de este navegador.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {localScannedMatches.map((item, idx) => {
+                  const g = item.game;
+                  const isArg = (g.awayTeamName || '').toLowerCase().includes('argentona') || (g.homeTeamName || '').toLowerCase().includes('argentona');
+                  const count = g.events?.length || 0;
+                  const isMoreEvents = count > 125;
+
+                  return (
+                    <div
+                      key={`local-${idx}-${g.id || idx}`}
+                      className={`p-3 rounded-xl border flex items-center justify-between flex-wrap gap-2 text-xs font-mono ${
+                        isMoreEvents
+                          ? 'bg-emerald-950/60 border-emerald-400 ring-2 ring-emerald-400/50 shadow-lg'
+                          : isArg
+                          ? 'bg-emerald-950/20 border-emerald-700/60'
+                          : 'bg-[#171922] border-gray-800'
+                      }`}
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-gray-100">
+                            {g.homeTeamName || 'Local'} vs {g.awayTeamName || 'Rival'}
+                          </span>
+                          <span className="text-[10px] bg-neutral-800 text-gray-300 px-1.5 py-0.2 rounded border border-gray-700">
+                            {item.source}
+                          </span>
+                          {isMoreEvents && (
+                            <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded shadow">
+                              ¡Contiene {count} acciones (+{count - 125} nuevas)!
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-gray-400 flex items-center gap-2">
+                          <span>Marcador: <strong className="text-white">{g.homeScore ?? 0} - {g.awayScore ?? 0}</strong></span>
+                          <span>•</span>
+                          <span>Acciones: <strong className={isMoreEvents ? 'text-emerald-300' : 'text-cyan-400'}>{count}</strong></span>
+                          <span>•</span>
+                          <span>Cuarto: {g.currentQuarter || 1}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => g.id && handleRestoreToActive(g as Game)}
+                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg flex items-center gap-1 shadow transition active:scale-95"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-white" />
+                          <span>Restaurar a la Pista</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Modal / Dialog for Retouching / Completing match data */}

@@ -250,7 +250,7 @@ export async function fetchAllMatchesFromCloud(): Promise<Game[]> {
   if (!isFirebaseConfigured) return [];
   try {
     const colRef = collection(db, 'matches');
-    const snap = await withTimeout(getDocs(colRef), 6000, 'fetchAllMatchesFromCloud');
+    const snap = await withTimeout(getDocs(colRef), 20000, 'fetchAllMatchesFromCloud');
     const matches: Game[] = [];
     snap.forEach(docSnap => {
       const data = docSnap.data() as Game;
@@ -278,7 +278,7 @@ export async function fetchMatchFromCloud(matchId: string): Promise<Game | null>
   if (!isFirebaseConfigured || !matchId) return null;
   try {
     const docRef = doc(db, 'matches', matchId);
-    const snap = await withTimeout(getDoc(docRef), 5000, `fetchMatchFromCloud-${matchId}`);
+    const snap = await withTimeout(getDoc(docRef), 12000, `fetchMatchFromCloud-${matchId}`);
     if (snap.exists()) {
       return snap.data() as Game;
     }

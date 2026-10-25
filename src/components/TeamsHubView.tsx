@@ -235,7 +235,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
       </div>
 
       {/* Cross-Device Live Match Banner (Detected from Tablet or other device) */}
-      {activeCloudMatch && activeCloudMatch.activeGameId !== currentGame.id && activeCloudMatch.status === 'live' && (
+      {activeCloudMatch && activeCloudMatch.activeGameId !== currentGame.id && (
         <div className="bg-gradient-to-r from-blue-950/80 via-[#131A29] to-[#0e1420] border border-blue-500/60 rounded-xl px-4 py-3.5 shadow-xl flex items-center justify-between gap-3 flex-wrap animate-in fade-in">
           <div className="flex items-center gap-3">
             <span className="flex h-3 w-3 relative">
@@ -267,7 +267,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
             className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95"
           >
             <Cloud className="w-3.5 h-3.5" />
-            <span>Cargar y Sincronizar en Móvil</span>
+            <span>Cargar y Continuar en Pista</span>
           </button>
         </div>
       )}

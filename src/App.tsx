@@ -568,12 +568,17 @@ export default function App() {
           const hasClockDiff = Math.abs((validRemote.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || validRemote.isClockRunning !== currentGame.isClockRunning;
           const hasFoulsDiff = validRemote.homeQuarterFouls !== currentGame.homeQuarterFouls || validRemote.awayQuarterFouls !== currentGame.awayQuarterFouls;
 
-          // Spectators, monitors and connected devices ALWAYS accept freshest server/recorder state
+          // Prevent cloud from downgrading local events on scorer tablet
+          if (currentRole === 'recorder' && localEventsCount > remoteEventsCount) {
+            return currentGame;
+          }
+
+          // Spectators, monitors and connected devices accept freshest server/recorder state
           if (
             currentRole === 'spectator' ||
             currentRole === 'monitor' ||
             isWatchedMatch ||
-            remoteEventsCount !== localEventsCount ||
+            remoteEventsCount > localEventsCount ||
             hasScoreDiff ||
             hasQuarterDiff ||
             hasStatusDiff ||
@@ -656,10 +661,15 @@ export default function App() {
             const hasClockDiff = Math.abs((matchInCloud.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || matchInCloud.isClockRunning !== currentGame.isClockRunning;
             const hasFoulsDiff = matchInCloud.homeQuarterFouls !== currentGame.homeQuarterFouls || matchInCloud.awayQuarterFouls !== currentGame.awayQuarterFouls;
 
+            // Prevent Firestore from downgrading local events on scorer tablet
+            if (currentRole === 'recorder' && localEventsCount > remoteEventsCount) {
+              return currentGame;
+            }
+
             if (
               currentRole === 'spectator' ||
               currentRole === 'monitor' ||
-              remoteEventsCount !== localEventsCount ||
+              remoteEventsCount > localEventsCount ||
               hasScoreDiff ||
               hasQuarterDiff ||
               hasStatusDiff ||
@@ -692,17 +702,23 @@ export default function App() {
 
         setGame(currentGame => {
           const isUntouchedLocal =
-            currentGame.events.length === 0 &&
-            currentGame.homeScore === 0 &&
-            currentGame.awayScore === 0 &&
-            !currentGame.isClockRunning &&
-            currentGame.status === 'setup';
+            (currentGame.events?.length === 0 || !currentGame.events) &&
+            (currentGame.homeScore || 0) === 0 &&
+            (currentGame.awayScore || 0) === 0 &&
+            !currentGame.isClockRunning;
 
           if (isUntouchedLocal) {
-            const candidate = res.matches.find(m => m.status === 'live' && (m.events.length > 0 || m.homeScore > 0)) ||
+            const candidate =
+              (res.activeMatch && (res.activeMatch.events?.length > 0 || res.activeMatch.homeScore > 0 || res.activeMatch.awayScore > 0) ? res.activeMatch : null) ||
+              res.matches.find(m => m.id === 'game-1792942892818') ||
+              res.matches.find(m => m.status === 'live' && (m.events?.length > 0 || m.homeScore > 0)) ||
               res.matches.find(m => m.events && m.events.length > 0);
             if (candidate) {
               isRemoteSyncInProgressRef.current = true;
+              if (candidate.teamId) {
+                setActiveTeamId(candidate.teamId);
+                setActiveTeamIdState(candidate.teamId);
+              }
               return candidate;
             }
           }
@@ -779,11 +795,14 @@ export default function App() {
     if (target) {
       isRemoteSyncInProgressRef.current = true;
       syncEngine.setWatchedMatchId(target.id);
-      if (target.status === 'live' && deviceRoleRef.current === 'recorder') {
-        deviceRoleRef.current = 'monitor';
-        setDeviceRoleState('monitor');
-        persistDeviceRole('monitor');
+      if (target.teamId) {
+        setActiveTeamId(target.teamId);
+        setActiveTeamIdState(target.teamId);
       }
+      saveGameToLibrary(target);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(target));
+      } catch {}
       setGame(target);
       setActiveTab('live');
       playSound('score', game.settings.soundEnabled);

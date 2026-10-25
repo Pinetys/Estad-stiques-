@@ -495,7 +495,10 @@ class AutoSyncManager {
           cloudMatches = fMatches;
           cloudTeams = fTeams;
         } catch (fErr: any) {
-          this.firestoreQuotaExceeded = true;
+          const isQuota = fErr?.message?.includes('RESOURCE_EXHAUSTED') || fErr?.message?.includes('Quota exceeded');
+          if (isQuota) {
+            this.firestoreQuotaExceeded = true;
+          }
           console.warn('Firestore sync note (using primary Server Sync):', fErr?.message || fErr);
         }
       }

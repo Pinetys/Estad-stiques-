@@ -77,7 +77,10 @@ export function scanDeviceForMatches(query: string = ''): Array<{ source: string
 
   try {
     // 1. Check active game storage
-    const activeRaw = localStorage.getItem('basketstats_active_game_v1') || localStorage.getItem('basketstats_active_game');
+    const activeRaw =
+      localStorage.getItem('basketstats_current_game_v3') ||
+      localStorage.getItem('basketstats_active_game_v1') ||
+      localStorage.getItem('basketstats_active_game');
     if (activeRaw) {
       const parsed = JSON.parse(activeRaw);
       if (parsed && parsed.id) {
@@ -86,6 +89,22 @@ export function scanDeviceForMatches(query: string = ''): Array<{ source: string
           results.push({ source: 'Almacenamiento Local (Partido Activo)', game: parsed });
         }
       }
+    }
+
+    // 1b. Check safety backup storage
+    const safetyRaw = localStorage.getItem('basketstats_matches_backup_safety');
+    if (safetyRaw) {
+      try {
+        const parsed = JSON.parse(safetyRaw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(g => {
+            const text = JSON.stringify(g).toLowerCase();
+            if (!normalized || text.includes(normalized)) {
+              results.push({ source: 'Copia de Seguridad de Emergencia', game: g });
+            }
+          });
+        }
+      } catch {}
     }
 
     // 2. Check games library storage
@@ -110,6 +129,49 @@ export function scanDeviceForMatches(query: string = ''): Array<{ source: string
         results.push({ source: `Bóveda de Respaldo (${s.dateFormatted})`, game: s.gameData });
       }
     });
+
+    // 4. Exhaustive search across any other keys in localStorage & sessionStorage
+    const searchStorage = (storage: Storage, label: string) => {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (!key) continue;
+        if (
+          key === 'basketstats_current_game_v3' ||
+          key === 'basketstats_matches_backup_safety' ||
+          key === 'basketstats_games_library_v2' ||
+          key === VAULT_STORAGE_KEY
+        ) {
+          continue;
+        }
+        try {
+          const val = storage.getItem(key);
+          if (!val || val.length < 30) continue;
+          if (val.includes('events') || val.includes('homeScore') || val.toLowerCase().includes('argentona')) {
+            const parsed = JSON.parse(val);
+            if (parsed && typeof parsed === 'object') {
+              if (parsed.id && (Array.isArray(parsed.events) || parsed.homeScore !== undefined)) {
+                const text = JSON.stringify(parsed).toLowerCase();
+                if (!normalized || text.includes(normalized)) {
+                  results.push({ source: `${label} (${key})`, game: parsed });
+                }
+              } else if (Array.isArray(parsed)) {
+                parsed.forEach((item, idx) => {
+                  if (item && item.id && (Array.isArray(item.events) || item.homeScore !== undefined)) {
+                    const text = JSON.stringify(item).toLowerCase();
+                    if (!normalized || text.includes(normalized)) {
+                      results.push({ source: `${label} (${key} #${idx + 1})`, game: item });
+                    }
+                  }
+                });
+              }
+            }
+          }
+        } catch {}
+      }
+    };
+
+    if (typeof localStorage !== 'undefined') searchStorage(localStorage, 'Memoria Local');
+    if (typeof sessionStorage !== 'undefined') searchStorage(sessionStorage, 'Memoria Sesión');
   } catch (e) {
     console.warn('Error scanning storage:', e);
   }
