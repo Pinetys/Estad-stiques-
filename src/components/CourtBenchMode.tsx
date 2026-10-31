@@ -15,12 +15,15 @@ import {
 } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { saveGameToLibrary } from '../utils/libraryUtils';
+import { sendMatchToCoachPinety } from '../utils/pinetySync';
 import {
   Play,
   Pause,
   ArrowRightLeft,
   Undo2,
   Trash2,
+  Send,
+  RefreshCw,
   History,
   ZapOff,
   Flame,
@@ -157,6 +160,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showBenchInModal, setShowBenchInModal] = useState(false);
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [matchClosedSuccess, setMatchClosedSuccess] = useState(false);
+  const [isSyncingPinety, setIsSyncingPinety] = useState(false);
   const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
   const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
   const isLandscapeTablet = useIsLandscapeTablet();
@@ -1273,19 +1277,41 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               )}
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('medium', game.settings.vibrationEnabled);
-                setShowCloseConfirmModal(true);
-              }}
-              className="p-1 px-2 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-              title="Finalizar y cerrar el partido ahora (guardar en biblioteca)"
-            >
-              <Flag className="w-3 h-3 text-red-400" />
-              <span className="uppercase">Cerrar Partido</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={async () => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('medium', game.settings.vibrationEnabled);
+                  setIsSyncingPinety(true);
+                  await sendMatchToCoachPinety(game, { force: true });
+                  setIsSyncingPinety(false);
+                }}
+                disabled={isSyncingPinety}
+                className="p-1 px-2 bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+                title="Enviar partido y estadísticas a Coach Pinety (POST HTTP)"
+              >
+                {isSyncingPinety ? (
+                  <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                ) : (
+                  <Send className="w-3 h-3 text-emerald-400" />
+                )}
+                <span className="uppercase hidden xs:inline">Coach Pinety</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('medium', game.settings.vibrationEnabled);
+                  setShowCloseConfirmModal(true);
+                }}
+                className="p-1 px-2 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
+                title="Finalizar y cerrar el partido ahora (guardar en biblioteca)"
+              >
+                <Flag className="w-3 h-3 text-red-400" />
+                <span className="uppercase">Cerrar Partido</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -2259,6 +2285,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   onUpdateGame(() => finishedGame);
                   // Save directly to library
                   saveGameToLibrary(finishedGame);
+                  // Automatically synchronize with Coach Pinety
+                  sendMatchToCoachPinety(finishedGame, { force: true }).catch(() => {});
 
                   setShowCloseConfirmModal(false);
                   setIsEditingFinishedGame(false);

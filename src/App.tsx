@@ -109,6 +109,8 @@ import {
   Laptop,
   Radio,
   QrCode,
+  Send,
+  RefreshCw,
 } from 'lucide-react';
 import { DeviceRole, getDeviceRole, setDeviceRole as persistDeviceRole } from './utils/deviceRole';
 import { SyncStatusBar } from './components/SyncStatusBar';
@@ -116,6 +118,8 @@ import { SyncPairingModal } from './components/SyncPairingModal';
 import { LiveMatchSpectatorView } from './components/LiveMatchSpectatorView';
 import { NotificationBellButton } from './components/NotificationBellButton';
 import { checkAndNotifyMatchAlerts } from './utils/notificationService';
+import { PinetySyncToast } from './components/PinetySyncToast';
+import { sendMatchToCoachPinety } from './utils/pinetySync';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
 
@@ -239,6 +243,7 @@ export default function App() {
   const [statsSubMode, setStatsSubMode] = useState<'match' | 'accumulated'>('match');
   const [libraryGames, setLibraryGames] = useState<Game[]>(() => getSavedGamesFromStorage());
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [isSyncingWithPinety, setIsSyncingWithPinety] = useState(false);
 
   // Multi-Team Management
   const [teams, setTeams] = useState<TeamProfile[]>(() => getRegisteredTeams());
@@ -2280,6 +2285,29 @@ export default function App() {
                 </span>
               </button>
 
+              {/* Botón Enviar a Coach Pinety */}
+              <button
+                type="button"
+                id="header-pinety-sync-btn"
+                onClick={async () => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('medium', game.settings.vibrationEnabled);
+                  setIsSyncingWithPinety(true);
+                  await sendMatchToCoachPinety(game, { force: true });
+                  setIsSyncingWithPinety(false);
+                }}
+                disabled={isSyncingWithPinety}
+                className="hidden sm:flex px-2 sm:px-2.5 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/60 text-emerald-300 hover:text-white text-xs font-mono font-bold items-center gap-1.5 transition active:scale-95 shadow-sm shrink-0"
+                title="Enviar datos y estadísticas de este partido a Coach Pinety (POST HTTP)"
+              >
+                {isSyncingWithPinety ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-300" />
+                ) : (
+                  <Send className="w-3.5 h-3.5 text-emerald-400" />
+                )}
+                <span className="hidden md:inline text-[11px]">Coach Pinety</span>
+              </button>
+
               <button
                 id="toggle-court-mode-btn"
                 onClick={toggleCourtMode}
@@ -2354,6 +2382,26 @@ export default function App() {
                           >
                             <Share2 className="w-4 h-4 text-emerald-400 shrink-0" />
                             <span>Compartir Acta Oficial</span>
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              setShowMobileHeaderMenu(false);
+                              playSound('click', game.settings.soundEnabled);
+                              triggerHaptic('medium', game.settings.vibrationEnabled);
+                              setIsSyncingWithPinety(true);
+                              await sendMatchToCoachPinety(game, { force: true });
+                              setIsSyncingWithPinety(false);
+                            }}
+                            disabled={isSyncingWithPinety}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 text-xs font-bold text-left transition"
+                          >
+                            {isSyncingWithPinety ? (
+                              <RefreshCw className="w-4 h-4 animate-spin text-emerald-400 shrink-0" />
+                            ) : (
+                              <Send className="w-4 h-4 text-emerald-400 shrink-0" />
+                            )}
+                            <span>Enviar a Coach Pinety</span>
                           </button>
 
                           <button
@@ -3300,6 +3348,9 @@ export default function App() {
           onSaveEvent={handleEditEvent}
         />
       )}
+
+      {/* Global Green Notification Banner for Coach Pinety Synchronizations */}
+      <PinetySyncToast />
     </div>
   );
 }

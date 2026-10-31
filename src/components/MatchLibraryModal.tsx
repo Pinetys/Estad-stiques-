@@ -57,7 +57,9 @@ import {
   AlertTriangle,
   Archive,
   RotateCcw,
+  Send,
 } from 'lucide-react';
+import { sendMatchToCoachPinety } from '../utils/pinetySync';
 
 interface MatchLibraryModalProps {
   currentGame: Game;
@@ -88,6 +90,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const [trashToast, setTrashToast] = useState<string | null>(null);
   const [seasonStats, setSeasonStats] = useState<SeasonAggregatedStats | null>(null);
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('ALL');
+  const [syncingPinetyMatchId, setSyncingPinetyMatchId] = useState<string | null>(null);
 
   // Filter library matches so only the selected team's matches appear, or ALL if selected
   const filteredLibrary = React.useMemo(() => {
@@ -725,7 +728,26 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        playSound('click', currentGame.settings.soundEnabled);
+                        setSyncingPinetyMatchId(argentonaMatch.id);
+                        await sendMatchToCoachPinety(argentonaMatch, { force: true });
+                        setSyncingPinetyMatchId(null);
+                      }}
+                      disabled={syncingPinetyMatchId === argentonaMatch.id}
+                      className="px-3 py-2 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white text-xs font-bold font-mono rounded-lg flex items-center gap-1.5 border border-emerald-500/60 shadow transition active:scale-95 shrink-0"
+                      title="Enviar partido y estadísticas de Argentona a Coach Pinety (POST HTTP)"
+                    >
+                      {syncingPinetyMatchId === argentonaMatch.id ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-300" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5 text-emerald-300" />
+                      )}
+                      <span>{syncingPinetyMatchId === argentonaMatch.id ? 'Enviando...' : 'Enviar a Coach Pinety'}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -981,15 +1003,37 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Top Scorer & Load Button */}
+                      {/* Top Scorer & Load / Pinety Sync Buttons */}
                       <div className="flex items-center justify-between text-[11px] font-mono pt-1">
-                        <span className="text-slate-300 truncate max-w-[65%]">
+                        <span className="text-slate-300 truncate max-w-[55%]">
                           ⭐ #{topScorer.number} {topScorer.name}: <strong className="text-[#F5C542]">{topScorer.points} pts</strong>
                         </span>
-                        <span className="text-orange-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition">
-                          <span>Cargar</span>
-                          <Play className="w-3 h-3 fill-orange-400" />
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              playSound('click', currentGame.settings.soundEnabled);
+                              setSyncingPinetyMatchId(game.id);
+                              await sendMatchToCoachPinety(game, { force: true });
+                              setSyncingPinetyMatchId(null);
+                            }}
+                            disabled={syncingPinetyMatchId === game.id}
+                            className="py-1 px-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-xs"
+                            title="Enviar partido y estadísticas a Coach Pinety (POST HTTP)"
+                          >
+                            {syncingPinetyMatchId === game.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                            ) : (
+                              <Send className="w-3 h-3 text-emerald-400" />
+                            )}
+                            <span className="hidden xs:inline">Coach Pinety</span>
+                          </button>
+                          <span className="text-orange-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition">
+                            <span>Cargar</span>
+                            <Play className="w-3 h-3 fill-orange-400" />
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );

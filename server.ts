@@ -676,6 +676,53 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // 8.5. Synchronize match with external Coach Pinety app (URL & JSON schema requested)
+  app.post('/api/coach-pinety/sync', async (req, res) => {
+    try {
+      const payload = req.body;
+      const targetUrl = 'https://ais-dev-p2ebksn5kpqg6a55tkjzbi-418405343356.europe-west2.run.app/api/sync-match';
+
+      console.log('[Coach Pinety] Transmitiendo datos de partido a Coach Pinety:', {
+        channelCode: payload?.channelCode,
+        rival: payload?.match?.rival,
+        score: `${payload?.match?.scoreUs} - ${payload?.match?.scoreThem}`,
+        playersCount: payload?.match?.players?.length,
+      });
+
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        redirect: 'follow',
+      });
+
+      const status = response.status;
+      let responseData: any = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        responseData = await response.json().catch(() => null);
+      } else {
+        const text = await response.text().catch(() => '');
+        responseData = { text: text.substring(0, 500) };
+      }
+
+      res.json({
+        success: true,
+        statusCode: status,
+        data: responseData,
+        message: 'Partido sincronizado con éxito con Coach Pinety',
+      });
+    } catch (err: any) {
+      console.error('[Coach Pinety] Error transmitiendo a Coach Pinety:', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Error en comunicación con Coach Pinety',
+      });
+    }
+  });
+
   // 9. Instant 6-Digit Transfer Code (Tablet to PC/Phone)
   app.post('/api/sync/create-transfer-code', (req, res) => {
     try {

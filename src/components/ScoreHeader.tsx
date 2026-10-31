@@ -25,7 +25,10 @@ import {
   Lock,
   CheckCircle2,
   Save,
+  Send,
+  RefreshCw,
 } from 'lucide-react';
+import { sendMatchToCoachPinety } from '../utils/pinetySync';
 import { DeviceRole } from '../utils/deviceRole';
 import { SyncStatusBar } from './SyncStatusBar';
 import {
@@ -73,6 +76,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
   const [editingLogoTeam, setEditingLogoTeam] = useState<'home' | 'away' | null>(null);
   const [showCloseMatchModal, setShowCloseMatchModal] = useState(false);
+  const [isSyncingPinety, setIsSyncingPinety] = useState(false);
 
   // Opponent player number scouting modal
   const [scoutingOppAction, setScoutingOppAction] = useState<'OPP_1P' | 'OPP_2P' | 'OPP_3P' | 'OPP_FOUL' | null>(null);
@@ -125,15 +129,17 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   const handleCloseMatch = () => {
     playSound('buzzer', game.settings.soundEnabled);
     triggerHaptic('heavy', game.settings.vibrationEnabled);
-    onUpdateGame(prev => ({
-      ...prev,
+    const finishedGame: Game = {
+      ...game,
       status: 'finished',
       isClockRunning: false,
       isShotClockRunning: false,
       currentSecondsRemaining: 0,
       shotClockSeconds: 0,
       updatedAt: new Date().toISOString(),
-    }));
+    };
+    onUpdateGame(() => finishedGame);
+    sendMatchToCoachPinety(finishedGame, { force: true }).catch(() => {});
     setShowCloseMatchModal(false);
   };
 
@@ -378,39 +384,83 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
             {/* Match Close & Edit Buttons */}
             {isGameFinished ? (
-              <button
-                type="button"
-                onClick={onToggleEditFinishedGame}
-                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-mono font-black flex items-center gap-1.5 shadow-md active:scale-95 transition ${
-                  isEditingFinishedGame
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                    : 'bg-amber-600 hover:bg-amber-500 text-white'
-                }`}
-                title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar y retocar datos del partido'}
-              >
-                {isEditingFinishedGame ? (
-                  <>
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Bloquear Partido</span>
-                  </>
-                ) : (
-                  <>
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Editar Datos</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('medium', game.settings.vibrationEnabled);
+                    setIsSyncingPinety(true);
+                    await sendMatchToCoachPinety(game, { force: true });
+                    setIsSyncingPinety(false);
+                  }}
+                  disabled={isSyncingPinety}
+                  className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                  title="Enviar partido y estadísticas a Coach Pinety (POST HTTP)"
+                >
+                  {isSyncingPinety ? (
+                    <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                  ) : (
+                    <Send className="w-3 h-3 text-emerald-400" />
+                  )}
+                  <span className="hidden xs:inline">Coach Pinety</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onToggleEditFinishedGame}
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-mono font-black flex items-center gap-1.5 shadow-md active:scale-95 transition ${
+                    isEditingFinishedGame
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      : 'bg-amber-600 hover:bg-amber-500 text-white'
+                  }`}
+                  title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar y retocar datos del partido'}
+                >
+                  {isEditingFinishedGame ? (
+                    <>
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Bloquear</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Editar</span>
+                    </>
+                  )}
+                </button>
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setShowCloseMatchModal(true)}
-                className="px-2 py-1 bg-neutral-900 hover:bg-rose-950 text-neutral-300 hover:text-rose-200 border border-neutral-700 hover:border-rose-700 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
-                title="Cerrar partido: pone el reloj a cero y bloquea el registro"
-              >
-                <CheckCircle2 className="w-3 h-3 text-rose-400" />
-                <span className="hidden sm:inline">Cerrar Partido</span>
-                <span className="sm:hidden">Cerrar</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('medium', game.settings.vibrationEnabled);
+                    setIsSyncingPinety(true);
+                    await sendMatchToCoachPinety(game, { force: true });
+                    setIsSyncingPinety(false);
+                  }}
+                  disabled={isSyncingPinety}
+                  className="px-2 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                  title="Enviar partido y estadísticas a Coach Pinety (POST HTTP)"
+                >
+                  {isSyncingPinety ? (
+                    <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                  ) : (
+                    <Send className="w-3 h-3 text-emerald-400" />
+                  )}
+                  <span className="hidden xs:inline">Coach Pinety</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCloseMatchModal(true)}
+                  className="px-2 py-1 bg-neutral-900 hover:bg-rose-950 text-neutral-300 hover:text-rose-200 border border-neutral-700 hover:border-rose-700 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+                  title="Cerrar partido: pone el reloj a cero y bloquea el registro"
+                >
+                  <CheckCircle2 className="w-3 h-3 text-rose-400" />
+                  <span className="hidden sm:inline">Cerrar Partido</span>
+                  <span className="sm:hidden">Cerrar</span>
+                </button>
+              </div>
             )}
           </div>
 
