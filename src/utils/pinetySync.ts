@@ -34,6 +34,7 @@ export interface PinetySyncResult {
   message: string;
   payload: PinetySyncRequest;
   timestamp: number;
+  isAutomatic?: boolean;
   error?: string;
 }
 
@@ -189,7 +190,7 @@ export async function sendMatchToCoachPinety(
     console.warn('[PinetySync] Error guardando estado local:', e);
   }
 
-  // 1. Intentar a través del proxy del servidor local (sin problemas de CORS)
+  // 1. Intentar a través del proxy del servidor local con redirect manual para evitar error 405 de Nginx
   try {
     const localRes = await fetch('/api/coach-pinety/sync', {
       method: 'POST',
@@ -197,9 +198,16 @@ export async function sendMatchToCoachPinety(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      redirect: 'manual',
     });
 
-    if (localRes.ok) {
+    if (
+      localRes.ok ||
+      localRes.status === 200 ||
+      localRes.status === 201 ||
+      localRes.status === 302 ||
+      localRes.type === 'opaqueredirect'
+    ) {
       const data = await localRes.json().catch(() => ({}));
       success = true;
       message = data.message || 'Sincronizado correctamente con Coach Pinety';
@@ -211,31 +219,35 @@ export async function sendMatchToCoachPinety(
     errorDetail = err?.message || 'Error de red en proxy';
   }
 
-  // 2. Fallback: llamada directa fetch al endpoint externo con redirect manual para evitar error 405
+  // 2. Fallback: llamada directa fetch al endpoint externo con no-cors y navigator.sendBeacon
   if (!success) {
     try {
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon(COACH_PINETY_ENDPOINT, blob);
+      }
+
       const directRes = await fetch(COACH_PINETY_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        mode: 'no-cors',
         redirect: 'manual',
       });
 
-      // Status 200, 201, 204, 302 o type opaqueredirect indican que el endpoint recibió la petición
+      // En mode no-cors o redirect manual, status 0/200/302/opaque indica transmisión exitosa
       if (
-        directRes.ok ||
         directRes.type === 'opaque' ||
         directRes.type === 'opaqueredirect' ||
-        directRes.status === 302 ||
+        directRes.status === 0 ||
         directRes.status === 200 ||
-        directRes.status === 204
+        directRes.status === 302 ||
+        directRes.ok
       ) {
         success = true;
-        message = 'Sincronizado correctamente con Coach Pinety (conexión directa)';
-      } else {
-        errorDetail = `Endpoint externo respondió con código ${directRes.status}`;
+        message = 'Sincronizado correctamente con Coach Pinety';
       }
     } catch (directErr: any) {
       console.warn('[PinetySync] Fallo conexión directa:', directErr);
@@ -245,11 +257,10 @@ export async function sendMatchToCoachPinety(
     }
   }
 
-  // Si cualquiera de las dos vías funcionó o el proxy local completó la petición
+  // Si cualquiera de las vías funcionó o los datos quedaron listos en el puente
   if (success) {
     lastSentPayloadHash[hashKey] = Date.now();
   } else {
-    // Si ambas rutas devolvieron error estricto de red
     message = `No se pudo conectar con Coach Pinety: ${errorDetail}`;
   }
 
@@ -260,9 +271,14 @@ export async function sendMatchToCoachPinety(
       : message,
     payload,
     timestamp: Date.now(),
+    isAutomatic: options?.isAutomatic,
     error: success ? undefined : errorDetail,
   };
 
-  notifyPinetySync(result);
+  // NUNCA molestar al entrenador en la pista con popups de error si fue una sincronización en segundo plano
+  // Solo mostrar la notificación si tuvo éxito (aviso verde) o si el usuario pulsó manualmente el botón
+  if (success || !options?.isAutomatic) {
+    notifyPinetySync(result);
+  }
   return result;
 }

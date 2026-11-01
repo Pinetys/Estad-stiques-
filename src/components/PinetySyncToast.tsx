@@ -26,6 +26,8 @@ export const PinetySyncToast: React.FC = () => {
   }, [currentSync, showJson]);
 
   if (!currentSync) return null;
+  // NUNCA mostrar popups de error si es una sincronización automática en segundo plano
+  if (!currentSync.success && currentSync.isAutomatic) return null;
 
   const { success, payload } = currentSync;
   const match = payload?.match;

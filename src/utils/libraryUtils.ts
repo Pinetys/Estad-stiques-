@@ -1051,8 +1051,8 @@ export function saveOrUpdateGameInLibrary(game: Game): Game[] {
   saveGamesToStorage(updated);
   syncMatchToCloud(game);
 
-  // Automatically sync match & stats with Coach Pinety whenever saved or finished
-  if ((game.events && game.events.length > 0) || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
+  // Automatically sync match & stats with Coach Pinety when match is finished
+  if (game.status === 'finished') {
     import('./pinetySync')
       .then(({ sendMatchToCoachPinety }) => {
         sendMatchToCoachPinety(game, { isAutomatic: true }).catch(() => {});

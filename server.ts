@@ -153,6 +153,17 @@ async function startServer() {
 
   app.use(express.json({ limit: '25mb' }));
 
+  // CORS middleware to support tablet, PWA, and external Coach Pinety cross-origin API calls
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   // Initialize Gemini client lazily
   let aiClient: GoogleGenAI | null = null;
   function getGeminiClient(): GoogleGenAI {
@@ -678,7 +689,6 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // 8.5. Synchronize match with external Coach Pinety app (URL & JSON schema requested)
   // 8.5. Synchronize match with external Coach Pinety app (URL & JSON schema requested)
   app.post('/api/coach-pinety/sync', async (req, res) => {
     try {
