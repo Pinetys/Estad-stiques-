@@ -60,7 +60,7 @@ export const PinetySyncToast: React.FC = () => {
               }`}
             >
               {success ? (
-                <CheckCircle2 className="w-5 h-5" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-300" />
               ) : (
                 <Send className="w-5 h-5 text-rose-300" />
               )}
@@ -73,11 +73,21 @@ export const PinetySyncToast: React.FC = () => {
                     ? 'Sincronizado con Coach Pinety'
                     : 'Error al Sincronizar'}
                 </h4>
-                <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-400/40">
+                <span
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                    success
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                      : 'bg-rose-500/20 text-rose-300 border-rose-400/40'
+                  }`}
+                >
                   {payload.channelCode}
                 </span>
               </div>
-              <p className="text-xs text-emerald-100/90 font-medium leading-snug">
+              <p
+                className={`text-xs font-medium leading-snug ${
+                  success ? 'text-emerald-100/90' : 'text-rose-100/90'
+                }`}
+              >
                 {currentSync.message}
               </p>
             </div>
@@ -86,7 +96,11 @@ export const PinetySyncToast: React.FC = () => {
           <button
             type="button"
             onClick={() => setCurrentSync(null)}
-            className="text-emerald-300/80 hover:text-white p-1 rounded-lg transition shrink-0"
+            className={`p-1 rounded-lg transition shrink-0 ${
+              success
+                ? 'text-emerald-300/80 hover:text-white'
+                : 'text-rose-300/80 hover:text-white'
+            }`}
             title="Cerrar aviso"
           >
             <X className="w-4 h-4" />
@@ -95,37 +109,78 @@ export const PinetySyncToast: React.FC = () => {
 
         {/* Match Details Preview */}
         {match && (
-          <div className="mt-2.5 pt-2.5 border-t border-emerald-800/60 bg-emerald-900/30 -mx-1 px-3 py-2 rounded-xl text-xs space-y-1">
+          <div
+            className={`mt-2.5 pt-2.5 border-t -mx-1 px-3 py-2 rounded-xl text-xs space-y-1 ${
+              success
+                ? 'border-emerald-800/60 bg-emerald-900/30'
+                : 'border-rose-800/60 bg-rose-900/30'
+            }`}
+          >
             <div className="flex items-center justify-between font-mono">
-              <span className="text-emerald-200 truncate font-bold">
+              <span
+                className={`truncate font-bold ${
+                  success ? 'text-emerald-200' : 'text-rose-200'
+                }`}
+              >
                 vs {match.rival}
               </span>
-              <span className="text-white font-extrabold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-700/60">
+              <span
+                className={`font-extrabold px-2 py-0.5 rounded border ${
+                  success
+                    ? 'text-white bg-emerald-950 border-emerald-700/60'
+                    : 'text-white bg-rose-950 border-rose-700/60'
+                }`}
+              >
                 {match.scoreUs} - {match.scoreThem}
               </span>
             </div>
-            <div className="flex items-center justify-between text-[11px] text-emerald-300/90 font-mono">
+            <div
+              className={`flex items-center justify-between text-[11px] font-mono ${
+                success ? 'text-emerald-300/90' : 'text-rose-300/90'
+              }`}
+            >
               <span>{match.category} • {match.date}</span>
               <span>{match.players?.length || 0} jugadores</span>
             </div>
           </div>
         )}
 
-        {/* Expandable JSON details */}
-        <div className="mt-2.5 flex items-center justify-between pt-1">
-          <button
-            type="button"
-            onClick={() => setShowJson(!showJson)}
-            className="text-[11px] font-mono text-emerald-300 hover:text-white flex items-center gap-1 transition"
-          >
-            {showJson ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            <span>{showJson ? 'Ocultar JSON' : 'Ver datos enviados (JSON)'}</span>
-          </button>
+        {/* Action Buttons */}
+        <div className="mt-2.5 flex items-center justify-between pt-1 gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowJson(!showJson)}
+              className={`text-[11px] font-mono hover:text-white flex items-center gap-1 transition ${
+                success ? 'text-emerald-300' : 'text-rose-300'
+              }`}
+            >
+              {showJson ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              <span>{showJson ? 'Ocultar JSON' : 'Ver datos enviados (JSON)'}</span>
+            </button>
+
+            <a
+              href="https://ais-dev-p2ebksn5kpqg6a55tkjzbi-418405343356.europe-west2.run.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`text-[11px] font-mono hover:text-white flex items-center gap-1 transition underline ${
+                success ? 'text-emerald-300/80' : 'text-rose-300/80'
+              }`}
+              title="Abrir Coach Pinety en otra pestaña"
+            >
+              <span>Coach Pinety</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
 
           <button
             type="button"
             onClick={handleCopyJson}
-            className="text-[11px] font-mono font-bold bg-emerald-800/80 hover:bg-emerald-700 px-2.5 py-1 rounded-lg text-emerald-100 flex items-center gap-1.5 transition active:scale-95 border border-emerald-600/50"
+            className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition active:scale-95 border ${
+              success
+                ? 'bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 border-emerald-600/50'
+                : 'bg-rose-800/80 hover:bg-rose-700 text-rose-100 border-rose-600/50'
+            }`}
             title="Copiar JSON enviado al portapapeles"
           >
             {copied ? <Check className="w-3 h-3 text-white" /> : <Copy className="w-3 h-3" />}
@@ -134,8 +189,16 @@ export const PinetySyncToast: React.FC = () => {
         </div>
 
         {showJson && (
-          <div className="mt-2 p-2.5 bg-black/80 border border-emerald-900 rounded-xl overflow-hidden animate-in fade-in">
-            <pre className="text-[10px] font-mono text-emerald-300 max-h-48 overflow-y-auto overflow-x-auto whitespace-pre p-1 scrollbar-thin">
+          <div
+            className={`mt-2 p-2.5 bg-black/90 border rounded-xl overflow-hidden animate-in fade-in ${
+              success ? 'border-emerald-800/70' : 'border-rose-800/70'
+            }`}
+          >
+            <pre
+              className={`text-[10px] font-mono max-h-48 overflow-y-auto overflow-x-auto whitespace-pre p-1 scrollbar-thin ${
+                success ? 'text-emerald-300' : 'text-rose-300'
+              }`}
+            >
               {JSON.stringify(payload, null, 2)}
             </pre>
           </div>

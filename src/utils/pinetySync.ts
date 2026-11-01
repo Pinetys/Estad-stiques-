@@ -163,7 +163,33 @@ export async function sendMatchToCoachPinety(
   let message = '';
   let errorDetail = '';
 
-  // 1. Intentar a través del proxy del servidor local
+  // 0. Difundir inmediatamente vía BroadcastChannel y localStorage para sincronización entre pestañas en tiempo real
+  try {
+    localStorage.setItem('coach_pinety_last_sync', JSON.stringify({
+      matchId: game.id,
+      rival: payload.match.rival,
+      scoreUs: payload.match.scoreUs,
+      scoreThem: payload.match.scoreThem,
+      payload,
+      timestamp: Date.now(),
+    }));
+
+    if (typeof window !== 'undefined') {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('PINETY-JUNIOR-STATS');
+        bc.postMessage({ type: 'COACH_PINETY_MATCH_SYNC', payload });
+        bc.close();
+      }
+      window.dispatchEvent(new CustomEvent('coach-pinety-sync', { detail: payload }));
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'COACH_PINETY_SYNC', payload }, '*');
+      }
+    }
+  } catch (e) {
+    console.warn('[PinetySync] Error guardando estado local:', e);
+  }
+
+  // 1. Intentar a través del proxy del servidor local (sin problemas de CORS)
   try {
     const localRes = await fetch('/api/coach-pinety/sync', {
       method: 'POST',
@@ -178,14 +204,14 @@ export async function sendMatchToCoachPinety(
       success = true;
       message = data.message || 'Sincronizado correctamente con Coach Pinety';
     } else {
-      errorDetail = `Servidor respondió con código ${localRes.status}`;
+      errorDetail = `Servidor local respondió con código ${localRes.status}`;
     }
   } catch (err: any) {
-    console.warn('[PinetySync] Fallo ruta proxy, probando directo:', err);
+    console.warn('[PinetySync] Fallo ruta proxy backend:', err);
     errorDetail = err?.message || 'Error de red en proxy';
   }
 
-  // 2. Fallback: llamada directa fetch al endpoint externo
+  // 2. Fallback: llamada directa fetch al endpoint externo con redirect manual para evitar error 405
   if (!success) {
     try {
       const directRes = await fetch(COACH_PINETY_ENDPOINT, {
@@ -194,16 +220,25 @@ export async function sendMatchToCoachPinety(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        redirect: 'manual',
       });
 
-      if (directRes.ok || directRes.type === 'opaque' || directRes.status === 302) {
+      // Status 200, 201, 204, 302 o type opaqueredirect indican que el endpoint recibió la petición
+      if (
+        directRes.ok ||
+        directRes.type === 'opaque' ||
+        directRes.type === 'opaqueredirect' ||
+        directRes.status === 302 ||
+        directRes.status === 200 ||
+        directRes.status === 204
+      ) {
         success = true;
         message = 'Sincronizado correctamente con Coach Pinety (conexión directa)';
+      } else {
+        errorDetail = `Endpoint externo respondió con código ${directRes.status}`;
       }
     } catch (directErr: any) {
       console.warn('[PinetySync] Fallo conexión directa:', directErr);
-      // If server sent proxy or direct fails only because of CORS in browser preview,
-      // but payload is valid, we notify user and store for transmission
       if (!errorDetail) {
         errorDetail = directErr?.message || 'Error de conexión externa';
       }
@@ -213,15 +248,6 @@ export async function sendMatchToCoachPinety(
   // Si cualquiera de las dos vías funcionó o el proxy local completó la petición
   if (success) {
     lastSentPayloadHash[hashKey] = Date.now();
-    try {
-      localStorage.setItem('coach_pinety_last_sync', JSON.stringify({
-        matchId: game.id,
-        rival: payload.match.rival,
-        scoreUs: payload.match.scoreUs,
-        scoreThem: payload.match.scoreThem,
-        timestamp: Date.now(),
-      }));
-    } catch {}
   } else {
     // Si ambas rutas devolvieron error estricto de red
     message = `No se pudo conectar con Coach Pinety: ${errorDetail}`;
