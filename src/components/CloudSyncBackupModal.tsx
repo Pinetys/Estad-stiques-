@@ -60,6 +60,31 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
   const [inputCode, setInputCode] = useState('');
   const [isFetchingCode, setIsFetchingCode] = useState(false);
 
+  // Auto-sync on match finish toggle state
+  const [autoSyncOnFinish, setAutoSyncOnFinish] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('basketstats_auto_sync_on_finish') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleAutoSync = () => {
+    const nextVal = !autoSyncOnFinish;
+    setAutoSyncOnFinish(nextVal);
+    try {
+      localStorage.setItem('basketstats_auto_sync_on_finish', nextVal ? 'true' : 'false');
+    } catch {}
+    playSound('click', true);
+    triggerHaptic('light', true);
+    setStatusMessage({
+      text: nextVal
+        ? 'Auto-sincronización activada: Al cerrar el partido se guardará automáticamente en Firestore y en la nube.'
+        : 'Auto-sincronización desactivada: Deberás guardar o subir los partidos manualmente.',
+      type: 'success',
+    });
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allTeams = getRegisteredTeams();
@@ -525,6 +550,59 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
                   <span>
                     <strong>Tus partidos grabados están protegidos:</strong> La sincronización fusiona todos los partidos sin borrar nunca datos existentes.
                   </span>
+                </div>
+
+                {/* Auto-Sync on Match Finish Toggle */}
+                <div className="bg-[#101218] p-3.5 rounded-xl border border-cyan-500/50 flex items-center justify-between gap-3 shadow-inner">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div
+                      className={`p-2 rounded-lg shrink-0 transition-colors ${
+                        autoSyncOnFinish
+                          ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-500/40'
+                          : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                      }`}
+                    >
+                      <Cloud className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-xs sm:text-sm text-white uppercase tracking-tight">
+                          Auto-Sincronización al Finalizar
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
+                            autoSyncOnFinish
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                          }`}
+                        >
+                          {autoSyncOnFinish ? 'Activado' : 'Desactivado'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-400 leading-snug">
+                        Guarda y sube automáticamente a Firestore y a la nube en segundo plano al cerrar el partido (de directo a finalizado).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Accessible switch button */}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={autoSyncOnFinish}
+                    onClick={handleToggleAutoSync}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      autoSyncOnFinish ? 'bg-cyan-500' : 'bg-neutral-700'
+                    }`}
+                    title={autoSyncOnFinish ? 'Desactivar auto-sincronización' : 'Activar auto-sincronización'}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        autoSyncOnFinish ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 {/* Main Action 1: Upload and save everything to Cloud Firestore and Server */}

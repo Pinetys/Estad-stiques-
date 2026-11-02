@@ -48,19 +48,41 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
   const runDiagnosticScan = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch all Firestore documents
-      const remote = await fetchAllMatchesFromCloud();
-      const sortedRemote = [...remote].sort((a, b) => {
-        const isArgA = a.id === 'game-1792942892818' || (a.awayTeamName || '').toLowerCase().includes('argentona') ? 1 : 0;
-        const isArgB = b.id === 'game-1792942892818' || (b.awayTeamName || '').toLowerCase().includes('argentona') ? 1 : 0;
-        if (isArgA !== isArgB) return isArgB - isArgA;
+      // 1. Fetch from server endpoint first (autonomous server sync)
+      let serverList: Game[] = [];
+      try {
+        const sRes = await fetch('/api/sync/all');
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          serverList = Array.isArray(sData.matches) ? sData.matches : [];
+        }
+      } catch {}
+
+      // 2. Fetch all Firestore documents
+      let remote: Game[] = [];
+      try {
+        remote = await fetchAllMatchesFromCloud();
+      } catch {}
+
+      // Combine and deduplicate
+      const matchMap = new Map<string, Game>();
+      [...serverList, ...remote].forEach(m => {
+        if (!m || !m.id) return;
+        const ex = matchMap.get(m.id);
+        if (!ex || (m.events?.length || 0) >= (ex.events?.length || 0)) {
+          matchMap.set(m.id, m);
+        }
+      });
+
+      const combined = Array.from(matchMap.values());
+      const sortedRemote = combined.sort((a, b) => {
         const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
         const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
         return timeB - timeA;
       });
       setCloudMatches(sortedRemote);
 
-      // 2. Scan device storage for anything containing Argentona or other matches
+      // 3. Scan device storage and snapshot vault
       const local = scanDeviceForMatches();
       setLocalScannedMatches(local);
     } catch (e) {

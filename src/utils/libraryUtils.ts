@@ -3,6 +3,7 @@ import { calculatePlayerStats, calculateTeamStats, formatMinutesPlayed, ensureFi
 import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from '../lib/firebase';
 import { isMasterAdmin } from './accessControl';
 import { getDeviceRole } from './deviceRole';
+import { saveSnapshotToVault } from './vaultBackups';
 
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
 export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
@@ -1049,7 +1050,25 @@ export function saveOrUpdateGameInLibrary(game: Game): Game[] {
     updated = [game, ...library];
   }
   saveGamesToStorage(updated);
+  saveSnapshotToVault(game);
   syncMatchToCloud(game);
+
+  // Dual redundancy: also broadcast to Autonomous Server Sync engine so match is stored permanently
+  try {
+    fetch('/api/sync/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ match: game }),
+    }).catch(() => {});
+  } catch {}
+
+  if (typeof window !== 'undefined') {
+    import('../lib/syncEngine')
+      .then(({ syncEngine }) => {
+        syncEngine.saveAndSyncMatch(game, { immediate: true });
+      })
+      .catch(() => {});
+  }
 
   // Automatically sync match & stats with Coach Pinety when match is finished
   if (game.status === 'finished') {
@@ -1238,26 +1257,33 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
       const localUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
 
       // On spectator / monitor devices, always accept the cloud/server state as authoritative
-      if (isSpectatorDevice) {
+      if (isSpectatorDevice && cloudEvents > 0) {
         mergedMap.set(m.id, m);
-      } else if (localEvents > cloudEvents && cloudUpdated <= localUpdated) {
-        // Keep local version with richer events only if cloud is not strictly newer
+      } else if (localEvents > cloudEvents) {
+        // ABSOLUTE ANTI-REGRESSION: Never discard a local match with more recorded plays/quarters!
         mergedMap.set(m.id, existing);
       } else if (cloudEvents > localEvents) {
         mergedMap.set(m.id, m);
       } else {
-        // Equal event count: pick one with higher score or later timestamp
-        const localScore = (existing.homeScore || 0) + (existing.awayScore || 0);
-        const cloudScore = (m.homeScore || 0) + (m.awayScore || 0);
-        if (cloudScore > localScore) {
-          mergedMap.set(m.id, m);
-        } else if (localScore > cloudScore) {
+        // Equal event count: finished status takes precedence over live
+        if (existing.status === 'finished' && m.status !== 'finished') {
           mergedMap.set(m.id, existing);
+        } else if (m.status === 'finished' && existing.status !== 'finished') {
+          mergedMap.set(m.id, m);
         } else {
-          if (cloudUpdated >= localUpdated) {
+          // Equal status: pick one with higher score or later timestamp
+          const localScore = (existing.homeScore || 0) + (existing.awayScore || 0);
+          const cloudScore = (m.homeScore || 0) + (m.awayScore || 0);
+          if (cloudScore > localScore) {
             mergedMap.set(m.id, m);
-          } else {
+          } else if (localScore > cloudScore) {
             mergedMap.set(m.id, existing);
+          } else {
+            if (cloudUpdated >= localUpdated) {
+              mergedMap.set(m.id, m);
+            } else {
+              mergedMap.set(m.id, existing);
+            }
           }
         }
       }

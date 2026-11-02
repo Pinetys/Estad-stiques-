@@ -2272,6 +2272,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   playSound('buzzer', game.settings.soundEnabled);
                   triggerHaptic('heavy', game.settings.vibrationEnabled);
 
+                  const nowIso = new Date().toISOString();
                   // Update game state to finished with clock at zero
                   const finishedGame: Game = {
                     ...game,
@@ -2280,13 +2281,34 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                     isShotClockRunning: false,
                     currentSecondsRemaining: 0,
                     shotClockSeconds: 0,
+                    updatedAt: nowIso,
                   };
 
                   onUpdateGame(() => finishedGame);
-                  // Save directly to library
+                  // Save directly to library and cloud
                   saveGameToLibrary(finishedGame);
-                  // Automatically synchronize with Coach Pinety
-                  sendMatchToCoachPinety(finishedGame, { force: true }).catch(() => {});
+
+                  // Guarantee cloud and autonomous server sync immediately
+                  try {
+                    fetch('/api/sync/match', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ match: finishedGame }),
+                    }).catch(() => {});
+                  } catch {}
+
+                  if (typeof window !== 'undefined') {
+                    import('../lib/syncEngine').then(({ syncEngine }) => {
+                      syncEngine.saveAndSyncMatch(finishedGame, { immediate: true });
+                    }).catch(() => {});
+
+                    import('../lib/firebase').then(({ syncMatchToCloud }) => {
+                      syncMatchToCloud(finishedGame).catch(() => {});
+                    }).catch(() => {});
+                  }
+
+                  // Automatically synchronize with Coach Pinety in background without intrusive popups
+                  sendMatchToCoachPinety(finishedGame, { isAutomatic: true, force: true }).catch(() => {});
 
                   setShowCloseConfirmModal(false);
                   setIsEditingFinishedGame(false);

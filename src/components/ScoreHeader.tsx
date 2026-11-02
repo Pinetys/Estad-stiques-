@@ -29,6 +29,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { sendMatchToCoachPinety } from '../utils/pinetySync';
+import { saveGameToLibrary } from '../utils/libraryUtils';
 import { DeviceRole } from '../utils/deviceRole';
 import { SyncStatusBar } from './SyncStatusBar';
 import {
@@ -139,7 +140,27 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
       updatedAt: new Date().toISOString(),
     };
     onUpdateGame(() => finishedGame);
-    sendMatchToCoachPinety(finishedGame, { force: true }).catch(() => {});
+    saveGameToLibrary(finishedGame);
+
+    try {
+      fetch('/api/sync/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ match: finishedGame }),
+      }).catch(() => {});
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      import('../lib/syncEngine').then(({ syncEngine }) => {
+        syncEngine.saveAndSyncMatch(finishedGame, { immediate: true });
+      }).catch(() => {});
+
+      import('../lib/firebase').then(({ syncMatchToCloud }) => {
+        syncMatchToCloud(finishedGame).catch(() => {});
+      }).catch(() => {});
+    }
+
+    sendMatchToCoachPinety(finishedGame, { isAutomatic: true, force: true }).catch(() => {});
     setShowCloseMatchModal(false);
   };
 

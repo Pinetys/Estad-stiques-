@@ -715,7 +715,6 @@ export default function App() {
           if (isUntouchedLocal) {
             const candidate =
               (res.activeMatch && (res.activeMatch.events?.length > 0 || res.activeMatch.homeScore > 0 || res.activeMatch.awayScore > 0) ? res.activeMatch : null) ||
-              res.matches.find(m => m.id === 'game-1792942892818') ||
               res.matches.find(m => m.status === 'live' && (m.events?.length > 0 || m.homeScore > 0)) ||
               res.matches.find(m => m.events && m.events.length > 0);
             if (candidate) {
@@ -951,6 +950,59 @@ export default function App() {
       // Storage quota or private mode
     }
   }, [game]);
+
+  // Auto-Sync on Match Finish:
+  // Every time match status changes from 'live' to 'finished', if auto-sync is enabled,
+  // trigger an immediate background push of the match state to Firestore and autonomous Server.
+  const prevGameStatusRef = useRef<string>(game.status);
+  const lastAutoSyncedFinishedGameIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const prevStatus = prevGameStatusRef.current;
+    prevGameStatusRef.current = game.status;
+
+    if (prevStatus === 'live' && game.status === 'finished') {
+      const isAutoSyncEnabled = localStorage.getItem('basketstats_auto_sync_on_finish') !== 'false';
+      if (isAutoSyncEnabled) {
+        if (lastAutoSyncedFinishedGameIdRef.current === game.id) {
+          return;
+        }
+        lastAutoSyncedFinishedGameIdRef.current = game.id;
+
+        const finalizedMatch: Game = {
+          ...game,
+          status: 'finished',
+          updatedAt: game.updatedAt || new Date().toISOString(),
+        };
+
+        console.log('[AutoSync] Partido finalizado detectado ("live" -> "finished"). Sincronizando con Firestore y la nube...', finalizedMatch.id);
+
+        // 1. Guardar de forma permanente en la biblioteca local
+        saveOrUpdateGameInLibrary(finalizedMatch);
+        setLibraryGames(getSavedGamesFromStorage());
+
+        // 2. Subir directamente a Cloud Firestore
+        syncMatchToCloud(finalizedMatch).catch(err => {
+          console.warn('[AutoSync] Fallback de subida directa a Firestore:', err);
+        });
+
+        // 3. Sincronizar con el Servidor Autónomo BasketStats y emitir a todos los clientes conectados
+        syncEngine.saveAndSyncMatch(finalizedMatch, { immediate: true });
+
+        // 4. Petición POST directa redundante al backend
+        try {
+          fetch('/api/sync/match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ match: finalizedMatch }),
+          }).catch(() => {});
+        } catch {}
+      }
+    } else if (game.status === 'live') {
+      // Si se reanuda el partido, permitir que el siguiente cierre vuelva a auto-sincronizar
+      lastAutoSyncedFinishedGameIdRef.current = null;
+    }
+  }, [game.status, game]);
 
   // Auto-enforce exactly 5 players on court for match integrity
   useEffect(() => {

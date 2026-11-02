@@ -66,18 +66,57 @@ export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestore
   : getFirestore(app);
 
 export const isFirebaseConfigured = Boolean(firebaseConfig.projectId && firebaseConfig.apiKey);
-export let isFirestoreQuotaExceeded = false;
+const QUOTA_STORAGE_KEY = 'basketstats_firestore_quota_exceeded_timestamp';
+
+function checkStoredQuotaExceeded(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    const stored = localStorage.getItem(QUOTA_STORAGE_KEY);
+    if (!stored) return false;
+    const ts = Number(stored);
+    // Quota resets daily (~12 hours fallback)
+    if (Date.now() - ts < 12 * 3600 * 1000) {
+      return true;
+    }
+    localStorage.removeItem(QUOTA_STORAGE_KEY);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export let isFirestoreQuotaExceeded = checkStoredQuotaExceeded();
+
+export function markFirestoreQuotaExceeded(): void {
+  isFirestoreQuotaExceeded = true;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(QUOTA_STORAGE_KEY, String(Date.now()));
+    }
+  } catch {}
+}
 
 export function resetFirestoreQuotaExceeded(): void {
   isFirestoreQuotaExceeded = false;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(QUOTA_STORAGE_KEY);
+    }
+  } catch {}
 }
 
 /**
- * Test connectivity with Cloud Firestore (with 4s timeout)
+ * Test connectivity with Cloud Firestore (with 3s timeout)
  */
 export async function testFirebaseConnection(): Promise<{ connected: boolean; error?: string }> {
   if (!isFirebaseConfigured) {
     return { connected: false, error: 'Firebase no configurado en firebase-applet-config.json' };
+  }
+  if (isFirestoreQuotaExceeded) {
+    return {
+      connected: false,
+      error: 'Cuota diaria de Firestore alcanzada. Sincronización continua activa vía Servidor BasketStats.',
+    };
   }
   try {
     const testDoc = doc(db, 'metadata', 'connection_test');
@@ -87,13 +126,14 @@ export async function testFirebaseConnection(): Promise<{ connected: boolean; er
         platform: 'web',
         status: 'active',
       }, { merge: true }),
-      4000,
+      3000,
       'testFirebaseConnection'
     );
     return { connected: true };
   } catch (err: any) {
-    const isQuota = err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded');
+    const isQuota = err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded') || err?.code === 'resource-exhausted';
     if (isQuota) {
+      markFirestoreQuotaExceeded();
       console.warn('Firestore write quota reached. App is operating seamlessly on autonomous Server Sync engine.');
       return {
         connected: false,
@@ -209,15 +249,15 @@ export async function syncMatchToCloud(game: Game, skipActivePointer: boolean = 
     const docRef = doc(db, 'matches', game.id);
     const sanitized = cleanForFirestore({
       ...game,
-      updatedAt: new Date().toISOString(),
+      updatedAt: game.updatedAt || new Date().toISOString(),
     });
-    await withTimeout(setDoc(docRef, sanitized, { merge: true }), 5000, `syncMatchToCloud-${game.id}`);
+    await withTimeout(setDoc(docRef, sanitized, { merge: true }), 3500, `syncMatchToCloud-${game.id}`);
 
     // Update active match pointer asynchronously in background so it never blocks or fails match save
     if (
       !skipActivePointer &&
-      (game.status === 'live' ||
-       (game.events && game.events.length > 0) ||
+      game.status === 'live' &&
+      ((game.events && game.events.length > 0) ||
        (game.homeScore || 0) > 0 ||
        (game.awayScore || 0) > 0)
     ) {
@@ -226,8 +266,12 @@ export async function syncMatchToCloud(game: Game, skipActivePointer: boolean = 
 
     return true;
   } catch (err: any) {
-    if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
-      isFirestoreQuotaExceeded = true;
+    if (
+      err?.message?.includes('RESOURCE_EXHAUSTED') ||
+      err?.message?.includes('Quota exceeded') ||
+      err?.code === 'resource-exhausted'
+    ) {
+      markFirestoreQuotaExceeded();
     }
     handleFirestoreError(err, OperationType.WRITE, `matches/${game.id}`);
     return false;

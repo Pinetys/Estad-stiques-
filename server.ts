@@ -115,9 +115,17 @@ async function syncServerWithFirestore() {
         const existing = serverDb.matches[m.id];
         const clEvents = m.events?.length || 0;
         const exEvents = existing?.events?.length || 0;
-        if (!existing || clEvents >= exEvents) {
+        if (!existing || clEvents > exEvents) {
           serverDb.matches[m.id] = m;
           changed = true;
+        } else if (clEvents === exEvents) {
+          // If existing is finished, never downgrade to live
+          if (existing.status === 'finished' && m.status !== 'finished') {
+            // Keep finished
+          } else if (m.status === 'finished' && existing.status !== 'finished') {
+            serverDb.matches[m.id] = m;
+            changed = true;
+          }
         }
       }
 
@@ -690,6 +698,13 @@ async function startServer() {
   });
 
   // 8.5. Synchronize match with external Coach Pinety app (URL & JSON schema requested)
+  app.options('/api/coach-pinety/sync', (_req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(204);
+  });
+
   app.post('/api/coach-pinety/sync', async (req, res) => {
     try {
       const payload = req.body;
