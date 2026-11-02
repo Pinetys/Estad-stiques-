@@ -278,6 +278,30 @@ export async function syncMatchToCloud(game: Game, skipActivePointer: boolean = 
   }
 }
 
+/**
+ * Direct Cloud Firestore synchronization for Coach Pinety.
+ * Transmits the match to the cloud 'coach_pinety_sync' collection with zero 405 errors and full cross-device accessibility.
+ */
+export async function syncMatchToCoachPinetyCloud(payload: any, matchId: string): Promise<boolean> {
+  if (!isFirebaseConfigured || isFirestoreQuotaExceeded) return false;
+  try {
+    const docRef = doc(db, 'coach_pinety_sync', matchId);
+    await withTimeout(
+      setDoc(docRef, {
+        ...payload,
+        syncedAt: new Date().toISOString(),
+        timestamp: Date.now(),
+      }, { merge: true }),
+      4000,
+      `syncToCoachPinetyCloud-${matchId}`
+    );
+    return true;
+  } catch (err: any) {
+    console.warn('[CoachPinetyCloud] Error guardando en colección cloud Firestore:', err?.message);
+    return false;
+  }
+}
+
 export async function deleteMatchFromCloud(matchId: string): Promise<boolean> {
   if (!isFirebaseConfigured || !matchId) return false;
   try {

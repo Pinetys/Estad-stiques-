@@ -1286,10 +1286,11 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   setIsSyncingPinety(true);
                   await sendMatchToCoachPinety(game, { force: true });
                   setIsSyncingPinety(false);
+                  window.dispatchEvent(new CustomEvent('open-coach-pinety-modal'));
                 }}
                 disabled={isSyncingPinety}
                 className="p-1 px-2 bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-                title="Enviar partido y estadísticas a Coach Pinety (POST HTTP)"
+                title="Sincronizar partido y estadísticas con Coach Pinety (Nube, QR o JSON)"
               >
                 {isSyncingPinety ? (
                   <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />

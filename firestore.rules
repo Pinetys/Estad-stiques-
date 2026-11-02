@@ -25,5 +25,10 @@ service cloud.firestore {
     match /tactical_plays/{playId} {
       allow read, write: if true;
     }
+
+    // Coach Pinety Sync collection (Direct Cloud Sync without 405 error)
+    match /coach_pinety_sync/{matchId} {
+      allow read, write: if true;
+    }
   }
 }

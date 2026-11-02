@@ -414,10 +414,11 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                     setIsSyncingPinety(true);
                     await sendMatchToCoachPinety(game, { force: true });
                     setIsSyncingPinety(false);
+                    window.dispatchEvent(new CustomEvent('open-coach-pinety-modal'));
                   }}
                   disabled={isSyncingPinety}
                   className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
-                  title="Enviar partido y estadísticas a Coach Pinety (POST HTTP)"
+                  title="Sincronizar partido y estadísticas con Coach Pinety (Nube, QR o JSON)"
                 >
                   {isSyncingPinety ? (
                     <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
@@ -459,10 +460,11 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                     setIsSyncingPinety(true);
                     await sendMatchToCoachPinety(game, { force: true });
                     setIsSyncingPinety(false);
+                    window.dispatchEvent(new CustomEvent('open-coach-pinety-modal'));
                   }}
                   disabled={isSyncingPinety}
                   className="px-2 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
-                  title="Enviar partido y estadísticas a Coach Pinety (POST HTTP)"
+                  title="Sincronizar partido y estadísticas con Coach Pinety (Nube, QR o JSON)"
                 >
                   {isSyncingPinety ? (
                     <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />

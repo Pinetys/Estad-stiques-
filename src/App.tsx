@@ -120,6 +120,7 @@ import { NotificationBellButton } from './components/NotificationBellButton';
 import { checkAndNotifyMatchAlerts } from './utils/notificationService';
 import { PinetySyncToast } from './components/PinetySyncToast';
 import { sendMatchToCoachPinety } from './utils/pinetySync';
+import { CoachPinetyModal } from './components/CoachPinetyModal';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
 
@@ -250,6 +251,8 @@ export default function App() {
   const [activeTeamId, setActiveTeamIdState] = useState<string>(() => getActiveTeamId());
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showCloudBackupModal, setShowCloudBackupModal] = useState(false);
+  const [showCoachPinetyModal, setShowCoachPinetyModal] = useState(false);
+  const [pinetyModalGame, setPinetyModalGame] = useState<Game>(game);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [showTutorialModal, setShowTutorialModal] = useState<boolean>(() => {
@@ -274,6 +277,16 @@ export default function App() {
     deviceRoleRef.current = deviceRole;
   }, [deviceRole]);
   const [showSyncPairingModal, setShowSyncPairingModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleOpenPinetyModal = (e: any) => {
+      const customGame = e?.detail?.game || game;
+      setPinetyModalGame(customGame);
+      setShowCoachPinetyModal(true);
+    };
+    window.addEventListener('open-coach-pinety-modal', handleOpenPinetyModal);
+    return () => window.removeEventListener('open-coach-pinety-modal', handleOpenPinetyModal);
+  }, [game]);
 
   // Central High-Precision Monotonic Game Clock Engine
   // Locks to Date.now() real atomic time: never drifts, never freezes, and never slows down
@@ -2347,10 +2360,12 @@ export default function App() {
                   setIsSyncingWithPinety(true);
                   await sendMatchToCoachPinety(game, { force: true });
                   setIsSyncingWithPinety(false);
+                  setPinetyModalGame(game);
+                  setShowCoachPinetyModal(true);
                 }}
                 disabled={isSyncingWithPinety}
                 className="hidden sm:flex px-2 sm:px-2.5 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/60 text-emerald-300 hover:text-white text-xs font-mono font-bold items-center gap-1.5 transition active:scale-95 shadow-sm shrink-0"
-                title="Enviar datos y estadísticas de este partido a Coach Pinety (POST HTTP)"
+                title="Sincronizar y transferir este partido a Coach Pinety (Nube, QR o JSON)"
               >
                 {isSyncingWithPinety ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-300" />
@@ -2444,6 +2459,8 @@ export default function App() {
                               setIsSyncingWithPinety(true);
                               await sendMatchToCoachPinety(game, { force: true });
                               setIsSyncingWithPinety(false);
+                              setPinetyModalGame(game);
+                              setShowCoachPinetyModal(true);
                             }}
                             disabled={isSyncingWithPinety}
                             className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 text-xs font-bold text-left transition"
@@ -3242,6 +3259,15 @@ export default function App() {
             setLibraryGames(getSavedGamesFromStorage());
             setActiveTab('live');
           }}
+        />
+      )}
+
+      {/* Coach Pinety Sync Modal (Multi-system: Cloud Firestore, QR Code, JSON, Webhook) */}
+      {showCoachPinetyModal && (
+        <CoachPinetyModal
+          game={pinetyModalGame || game}
+          isOpen={showCoachPinetyModal}
+          onClose={() => setShowCoachPinetyModal(false)}
         />
       )}
 

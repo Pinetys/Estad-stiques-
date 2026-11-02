@@ -122659,6 +122659,440 @@
       "homeTimeouts": 3,
       "isClockRunning": false,
       "date": "10/10/2026"
+    },
+    "game-1793647120400": {
+      "awayTeamColor": "#3b82f6",
+      "title": "Partido en Directo",
+      "players": [
+        {
+          "foulsCount": 0,
+          "id": "p-1788451912717-1",
+          "starter": true,
+          "position": "B",
+          "isFouledOut": false,
+          "name": "Biel",
+          "number": 7,
+          "minutesPlayedSeconds": 0,
+          "quarterSeconds": {},
+          "onCourt": true
+        },
+        {
+          "isFouledOut": false,
+          "minutesPlayedSeconds": 0,
+          "foulsCount": 0,
+          "onCourt": true,
+          "name": "Didac",
+          "id": "p-1788451912717-2",
+          "starter": true,
+          "number": 91,
+          "position": "E",
+          "quarterSeconds": {}
+        },
+        {
+          "isFouledOut": false,
+          "id": "p-1788451912717-3",
+          "position": "A",
+          "name": "Joel",
+          "onCourt": true,
+          "number": 6,
+          "starter": true,
+          "minutesPlayedSeconds": 0,
+          "foulsCount": 0,
+          "quarterSeconds": {}
+        },
+        {
+          "id": "p-1788451912717-4",
+          "isFouledOut": false,
+          "onCourt": true,
+          "name": "Alex",
+          "foulsCount": 0,
+          "quarterSeconds": {},
+          "starter": true,
+          "minutesPlayedSeconds": 0,
+          "number": 17,
+          "position": "AP"
+        },
+        {
+          "position": "P",
+          "number": 32,
+          "name": "Caleb",
+          "starter": true,
+          "foulsCount": 0,
+          "minutesPlayedSeconds": 0,
+          "onCourt": true,
+          "quarterSeconds": {},
+          "isFouledOut": false,
+          "id": "p-1788451912717-5"
+        },
+        {
+          "onCourt": false,
+          "position": "E",
+          "number": 22,
+          "isFouledOut": false,
+          "name": "Jacob",
+          "minutesPlayedSeconds": 0,
+          "foulsCount": 0,
+          "quarterSeconds": {},
+          "id": "p-1788451912717-6",
+          "starter": false
+        },
+        {
+          "position": "P",
+          "starter": false,
+          "name": "Jose",
+          "quarterSeconds": {},
+          "isFouledOut": false,
+          "foulsCount": 0,
+          "number": 33,
+          "minutesPlayedSeconds": 0,
+          "id": "p-1788451912717-7",
+          "onCourt": false
+        },
+        {
+          "number": 41,
+          "foulsCount": 0,
+          "starter": false,
+          "isFouledOut": false,
+          "minutesPlayedSeconds": 0,
+          "position": "AP",
+          "name": "Sergi",
+          "quarterSeconds": {},
+          "id": "p-1788451967521-ij7",
+          "onCourt": false
+        },
+        {
+          "id": "p-1788451969281-l23",
+          "number": 33,
+          "starter": false,
+          "quarterSeconds": {},
+          "minutesPlayedSeconds": 0,
+          "position": "AP",
+          "onCourt": false,
+          "isFouledOut": false,
+          "name": "Victor",
+          "foulsCount": 0
+        },
+        {
+          "quarterSeconds": {},
+          "id": "p-1788451981419-04e",
+          "onCourt": false,
+          "minutesPlayedSeconds": 0,
+          "starter": false,
+          "isFouledOut": false,
+          "number": 30,
+          "foulsCount": 0,
+          "position": "A",
+          "name": "David"
+        },
+        {
+          "starter": false,
+          "id": "p-1788451981896-9w2",
+          "isFouledOut": false,
+          "quarterSeconds": {},
+          "foulsCount": 0,
+          "name": "Pau",
+          "number": 11,
+          "minutesPlayedSeconds": 0,
+          "position": "B",
+          "onCourt": false
+        },
+        {
+          "id": "p-1789669845495",
+          "onCourt": false,
+          "minutesPlayedSeconds": 0,
+          "position": "B",
+          "number": 66,
+          "isFouledOut": false,
+          "quarterSeconds": {},
+          "name": "Aleix",
+          "foulsCount": 0,
+          "starter": false
+        },
+        {
+          "quarterSeconds": {},
+          "onCourt": false,
+          "name": "Edison",
+          "minutesPlayedSeconds": 0,
+          "number": 2,
+          "position": "B",
+          "isFouledOut": false,
+          "id": "p-1789669888825",
+          "foulsCount": 0,
+          "starter": false
+        }
+      ],
+      "quarterScores": [
+        {
+          "home": 0,
+          "quarter": 1,
+          "away": 0,
+          "quarterLabel": "Q1"
+        },
+        {
+          "quarterLabel": "Q2",
+          "quarter": 2,
+          "home": 0,
+          "away": 0
+        },
+        {
+          "quarter": 3,
+          "quarterLabel": "Q3",
+          "home": 0,
+          "away": 0
+        },
+        {
+          "quarter": 4,
+          "quarterLabel": "Q4",
+          "away": 0,
+          "home": 0
+        }
+      ],
+      "awayQuarterFouls": 0,
+      "awayScore": 0,
+      "teamId": "team-1788452142621",
+      "updatedAt": "2026-11-02T19:18:41.085Z",
+      "awayTimeouts": 3,
+      "settings": {
+        "timingMode": "fiba_stop",
+        "keepScreenAwake": true,
+        "courtMode": false,
+        "shotChartAutoOpen": "all",
+        "quarterDurationMinutes": 10,
+        "totalQuarters": 4,
+        "vibrationEnabled": true,
+        "bonusFoulsLimit": 5,
+        "foulOutLimit": 5,
+        "autoResetShotClockOnOreb": true,
+        "autoPauseOnFouls": true,
+        "soundEnabled": true,
+        "assistPromptEnabled": true
+      },
+      "homeTeamLogo": "🏀",
+      "awayTeamName": "Equipo Rival",
+      "homeTeamColor": "#f97316",
+      "status": "live",
+      "currentSecondsRemaining": 600,
+      "currentQuarter": 1,
+      "events": [],
+      "date": "02/11/2026",
+      "homeQuarterFouls": 0,
+      "id": "game-1793647120400",
+      "homeScore": 0,
+      "category": "Junior A",
+      "isClockRunning": false,
+      "homeTimeouts": 3,
+      "homeTeamName": "Brafa"
+    },
+    "game-1793647029028": {
+      "category": "Infantil A",
+      "awayQuarterFouls": 0,
+      "teamId": "team-1788509552436",
+      "players": [
+        {
+          "id": "p-1788509491333-1",
+          "isFouledOut": false,
+          "minutesPlayedSeconds": 0,
+          "name": "Oriol",
+          "onCourt": true,
+          "number": 6,
+          "starter": true,
+          "quarterSeconds": {},
+          "position": "B",
+          "foulsCount": 0
+        },
+        {
+          "foulsCount": 0,
+          "quarterSeconds": {},
+          "name": "Jan",
+          "onCourt": true,
+          "id": "p-1788509491333-2",
+          "minutesPlayedSeconds": 0,
+          "starter": true,
+          "number": 33,
+          "isFouledOut": false,
+          "position": "E"
+        },
+        {
+          "name": "Aler",
+          "quarterSeconds": {},
+          "position": "A",
+          "onCourt": true,
+          "number": 15,
+          "id": "p-1788509491333-3",
+          "minutesPlayedSeconds": 0,
+          "isFouledOut": false,
+          "foulsCount": 0,
+          "starter": true
+        },
+        {
+          "starter": true,
+          "number": 2,
+          "onCourt": true,
+          "quarterSeconds": {},
+          "position": "AP",
+          "foulsCount": 0,
+          "isFouledOut": false,
+          "name": "Victor",
+          "minutesPlayedSeconds": 0,
+          "id": "p-1788509491333-4"
+        },
+        {
+          "isFouledOut": false,
+          "starter": true,
+          "name": "Mariano",
+          "quarterSeconds": {},
+          "position": "P",
+          "minutesPlayedSeconds": 0,
+          "number": 29,
+          "onCourt": true,
+          "id": "p-1788509491333-5",
+          "foulsCount": 0
+        },
+        {
+          "quarterSeconds": {},
+          "foulsCount": 0,
+          "onCourt": false,
+          "starter": false,
+          "position": "E",
+          "id": "p-1788509491333-6",
+          "minutesPlayedSeconds": 0,
+          "number": 3,
+          "name": "Lluc",
+          "isFouledOut": false
+        },
+        {
+          "name": "Ion",
+          "minutesPlayedSeconds": 0,
+          "isFouledOut": false,
+          "number": 30,
+          "starter": false,
+          "id": "p-1788509491333-7",
+          "onCourt": false,
+          "foulsCount": 0,
+          "position": "P",
+          "quarterSeconds": {}
+        },
+        {
+          "foulsCount": 0,
+          "onCourt": false,
+          "quarterSeconds": {},
+          "name": "Aidan",
+          "position": "E",
+          "number": 27,
+          "isFouledOut": false,
+          "minutesPlayedSeconds": 0,
+          "id": "p-1788509630644-dlp",
+          "starter": false
+        },
+        {
+          "onCourt": false,
+          "foulsCount": 0,
+          "position": "E",
+          "minutesPlayedSeconds": 0,
+          "quarterSeconds": {},
+          "number": 91,
+          "id": "p-1788509637159-4m6",
+          "name": "Cesc",
+          "isFouledOut": false,
+          "starter": false
+        },
+        {
+          "position": "E",
+          "starter": false,
+          "minutesPlayedSeconds": 0,
+          "isFouledOut": false,
+          "id": "p-1788509637820-jb2",
+          "number": 5,
+          "name": "Alejandro",
+          "foulsCount": 0,
+          "onCourt": false,
+          "quarterSeconds": {}
+        },
+        {
+          "onCourt": false,
+          "id": "p-1788509638315-vy4",
+          "isFouledOut": false,
+          "name": "Aleix",
+          "minutesPlayedSeconds": 0,
+          "starter": false,
+          "position": "E",
+          "quarterSeconds": {},
+          "foulsCount": 0,
+          "number": 37
+        },
+        {
+          "position": "E",
+          "onCourt": false,
+          "isFouledOut": false,
+          "quarterSeconds": {},
+          "number": 38,
+          "id": "p-1788509638806-yo4",
+          "name": "Liam",
+          "foulsCount": 0,
+          "minutesPlayedSeconds": 0,
+          "starter": false
+        }
+      ],
+      "homeTeamLogo": "🏀",
+      "homeTeamColor": "#f97316",
+      "date": "02/11/2026",
+      "currentQuarter": 1,
+      "awayTeamName": "Equipo Rival",
+      "updatedAt": "2026-11-02T19:18:38.330Z",
+      "homeTimeouts": 3,
+      "homeTeamName": "Brafa",
+      "awayScore": 0,
+      "isClockRunning": false,
+      "homeScore": 0,
+      "settings": {
+        "vibrationEnabled": true,
+        "bonusFoulsLimit": 5,
+        "totalQuarters": 4,
+        "quarterDurationMinutes": 10,
+        "soundEnabled": true,
+        "courtMode": false,
+        "timingMode": "fiba_stop",
+        "autoPauseOnFouls": true,
+        "shotChartAutoOpen": "all",
+        "keepScreenAwake": true,
+        "autoResetShotClockOnOreb": true,
+        "foulOutLimit": 5,
+        "assistPromptEnabled": true
+      },
+      "title": "Partido en Directo",
+      "id": "game-1793647029028",
+      "quarterScores": [
+        {
+          "quarterLabel": "Q1",
+          "away": 0,
+          "quarter": 1,
+          "home": 0
+        },
+        {
+          "quarterLabel": "Q2",
+          "away": 0,
+          "quarter": 2,
+          "home": 0
+        },
+        {
+          "away": 0,
+          "home": 0,
+          "quarterLabel": "Q3",
+          "quarter": 3
+        },
+        {
+          "quarter": 4,
+          "home": 0,
+          "quarterLabel": "Q4",
+          "away": 0
+        }
+      ],
+      "status": "live",
+      "awayTeamColor": "#3b82f6",
+      "currentSecondsRemaining": 600,
+      "homeQuarterFouls": 0,
+      "events": [],
+      "awayTimeouts": 3
     }
   },
   "teams": {
@@ -129222,5 +129656,31 @@
     "test-dummy"
   ],
   "deletedTeamIds": [],
-  "lastUpdate": 1793570127712
+  "lastUpdate": 1793647442883,
+  "pinetyMatches": [
+    {
+      "channelCode": "TEST",
+      "match": {
+        "rival": "Rival",
+        "date": "2026-11-01",
+        "scoreUs": 0,
+        "scoreThem": 0,
+        "category": "Junior",
+        "players": []
+      },
+      "syncedAt": 1793647442883
+    }
+  ],
+  "lastPinetySync": {
+    "channelCode": "TEST",
+    "match": {
+      "rival": "Rival",
+      "date": "2026-11-01",
+      "scoreUs": 0,
+      "scoreThem": 0,
+      "category": "Junior",
+      "players": []
+    },
+    "syncedAt": 1793647442883
+  }
 }
