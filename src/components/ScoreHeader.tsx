@@ -28,11 +28,14 @@ import {
   Send,
   RefreshCw,
   Download,
+  Battery,
+  Settings,
 } from 'lucide-react';
 import { sendMatchToCoachPinety } from '../utils/pinetySync';
 import { saveGameToLibrary } from '../utils/libraryUtils';
 import { DeviceRole } from '../utils/deviceRole';
 import { SyncStatusBar } from './SyncStatusBar';
+import { useBatteryStatus } from '../hooks/useBatteryStatus';
 import {
   MasterClockNumber,
   ShotClockNumber,
@@ -57,6 +60,8 @@ interface ScoreHeaderProps {
   onOpenSyncModal?: () => void;
   onOpenNewGameModal?: () => void;
   onOpenPWAInstall?: () => void;
+  onOpenSettings?: () => void;
+  onToggleBatterySaver?: () => void;
 }
 
 export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
@@ -77,6 +82,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onOpenSyncModal,
   onOpenNewGameModal,
   onOpenPWAInstall,
+  onOpenSettings,
+  onToggleBatterySaver,
 }) => {
   const [showClockAdjust, setShowClockAdjust] = useState(false);
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
@@ -509,6 +516,34 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
           {/* Quick Tools & Bonus Alert Badges */}
           <div className="flex items-center gap-1 shrink-0">
+            {/* Battery Refresh Rate Badge / Toggle (100ms vs 1s) */}
+            {(() => {
+              const batteryInfo = useBatteryStatus();
+              const isBatterySaving = Boolean(
+                game.settings.batterySaverRefreshRate ||
+                (batteryInfo.isLowBattery && game.settings.lowBatteryAutoSaver !== false)
+              );
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onToggleBatterySaver) onToggleBatterySaver();
+                    else if (onOpenSettings) onOpenSettings();
+                  }}
+                  className={`px-1.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 border ${
+                    isBatterySaving
+                      ? 'bg-amber-950/90 border-amber-500/80 text-amber-300 shadow-sm animate-pulse'
+                      : 'bg-slate-900 border-blue-900/60 text-slate-300 hover:text-white'
+                  }`}
+                  title={isBatterySaving ? 'Ahorro de batería activo (1s). Toca para cambiar a 100ms o abrir ajustes.' : 'Refresco visual a 100ms. Toca para activar ahorro a 1s.'}
+                >
+                  <Battery className={`w-3 h-3 ${isBatterySaving ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <span className="hidden sm:inline">{isBatterySaving ? '1s Ahorro' : '100ms'}</span>
+                  <span className="sm:hidden">{isBatterySaving ? '1s' : '100ms'}</span>
+                </button>
+              );
+            })()}
+
             {onOpenPWAInstall && (
               <button
                 type="button"

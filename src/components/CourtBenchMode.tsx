@@ -56,11 +56,17 @@ import {
   Wifi,
   WifiOff,
   Download,
+  MoreHorizontal,
+  ChevronDown,
+  Battery,
+  Settings,
+  Radio,
 } from 'lucide-react';
 import { toggleFullscreen, isFullscreenActive } from '../utils/fullscreen';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
 import { StartingFiveModal } from './StartingFiveModal';
 import { useIsLandscapeTablet } from '../hooks/useIsLandscapeTablet';
+import { useBatteryStatus } from '../hooks/useBatteryStatus';
 import { CourtScoreboard } from './CourtScoreboard';
 import { CourtActionConsole } from './CourtActionConsole';
 import { CourtPlayersBar } from './CourtPlayersBar';
@@ -109,6 +115,8 @@ interface CourtBenchModeProps {
   onOpenSpectatorQR?: () => void;
   onOpenNewGameModal?: () => void;
   onOpenPWAInstall?: () => void;
+  onOpenSettings?: () => void;
+  onToggleBatterySaver?: () => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -138,6 +146,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onOpenSpectatorQR,
   onOpenNewGameModal,
   onOpenPWAInstall,
+  onOpenSettings,
+  onToggleBatterySaver,
 }) => {
   // Direct In-Game Substitution handler
   const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
@@ -217,6 +227,12 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [opponentNumberInput, setOpponentNumberInput] = useState<string>('');
 
   const [isFullscreen, setIsFullscreen] = useState(isFullscreenActive());
+  const [showPortraitToolsDropdown, setShowPortraitToolsDropdown] = useState(false);
+  const batteryInfo = useBatteryStatus();
+  const isBatterySaving = Boolean(
+    game.settings.batterySaverRefreshRate ||
+    (batteryInfo.isLowBattery && game.settings.lowBatteryAutoSaver !== false)
+  );
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
@@ -1092,307 +1108,441 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onOpenHistoryModal={() => setShowHistoryDrawer(true)}
           onOpenNewGameModal={onOpenNewGameModal}
           onOpenPWAInstall={onOpenPWAInstall}
+          onOpenSettings={onOpenSettings}
+          onToggleBatterySaver={onToggleBatterySaver}
+          isOnline={isOnline}
         />
       ) : (
-        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none text-xs z-30 shrink-0">
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Exit Court Mode button */}
-          <button
-            onClick={onToggleCourtMode}
-            className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px]"
-            title="Salir de Modo Pista y volver a la vista completa"
-          >
-            <ZapOff className="w-3 h-3 text-[#F5C542]" />
-            <span>SALIR</span>
-          </button>
+        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0 gap-1.5 relative select-none">
+          {/* Left: Salir, Pantalla Completa, Anti-bloqueo y Ahorro Batería */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Exit Court Mode button */}
+            <button
+              onClick={onToggleCourtMode}
+              className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px]"
+              title="Salir de Modo Pista y volver a la vista completa"
+            >
+              <ZapOff className="w-3 h-3 text-[#F5C542]" />
+              <span>SALIR</span>
+            </button>
 
-          {/* Fullscreen Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              toggleFullscreen();
-              triggerHaptic('light', game.settings.vibrationEnabled);
-            }}
-            className={`p-1 px-1.5 rounded font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px] border ${
-              isFullscreen
-                ? 'bg-[#D4AF37] text-[#0B1C3D] border-[#F5C542]'
-                : 'bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border-[#D4AF37]/50'
-            }`}
-            title={isFullscreen ? 'Salir de pantalla completa' : 'Ver a pantalla completa'}
-          >
-            {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
-            <span className="hidden xs:inline">{isFullscreen ? 'Normal' : 'Complet'}</span>
-          </button>
+            {/* Fullscreen Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                toggleFullscreen();
+                triggerHaptic('light', game.settings.vibrationEnabled);
+              }}
+              className={`p-1 px-1.5 rounded-lg font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px] border ${
+                isFullscreen
+                  ? 'bg-[#D4AF37] text-[#0B1C3D] border-[#F5C542]'
+                  : 'bg-[#0E224A] hover:bg-[#16356E] text-slate-300 border-[#203a70]'
+              }`}
+              title={isFullscreen ? 'Salir de pantalla completa' : 'Ver a pantalla completa'}
+            >
+              {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
+            </button>
 
-          {/* QR SEGUIDORES: Inmediatamente visible al inicio sin necesidad de scroll horizontal */}
-          <button
-            type="button"
-            id="portrait-spectator-qr-btn"
-            onClick={handleOpenSpectatorQR}
-            className="p-1 px-2.5 bg-gradient-to-r from-cyan-950 via-[#0b284e] to-blue-950 hover:bg-[#16356E] text-cyan-200 border-2 border-cyan-400 rounded-lg text-[10px] sm:text-[11px] font-black font-mono flex items-center gap-1.5 transition active:scale-95 shadow-md shadow-cyan-950 shrink-0 ring-1 ring-cyan-400/60 cursor-pointer"
-            title="Ver código QR para que los seguidores y aficionados sigan el partido en directo desde el móvil"
-          >
-            <QrCode className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
-            <span className="font-extrabold uppercase">QR Seguidores</span>
-          </button>
+            {/* Anti-Bloqueo Móvil (Keep Screen Awake) */}
+            <button
+              type="button"
+              onClick={handleToggleWakeLock}
+              className={`p-1 px-1.5 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95 border ${
+                isWakeLockActive
+                  ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
+                  : 'bg-[#0E224A] border-[#203a70] text-slate-400 hover:text-white'
+              }`}
+              title={isWakeLockActive ? 'Anti-bloqueo activo (pantalla no se apaga)' : 'Activar anti-bloqueo'}
+            >
+              {isWakeLockActive ? <Sun className="w-3 h-3 text-emerald-400" /> : <Moon className="w-3 h-3 text-slate-400" />}
+            </button>
 
-          {/* Quarter Navigator */}
-          {(() => {
-            const benchTotalQuarters = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
-              ? 6
-              : (game.settings?.totalQuarters || 4);
-            return (
-              <div className="flex items-center bg-[#071328] rounded-lg border border-[#D4AF37]/50 p-0.5 font-mono text-[11px] font-bold">
-                <button
-                  onClick={() => handleChangeQuarter(-1)}
-                  disabled={isActionsLocked || game.currentQuarter <= 1}
-                  className="px-1.5 py-0.5 text-slate-400 hover:text-white disabled:opacity-20"
-                  title="Cuarto anterior"
-                >
-                  ‹
-                </button>
-                <span className="px-1.5 text-[#F5C542] font-black">
-                  {formatQuarterShort(game.currentQuarter, benchTotalQuarters)}
-                </span>
-                <button
-                  onClick={() => handleChangeQuarter(1)}
-                  disabled={isActionsLocked || game.currentQuarter >= (benchTotalQuarters + 3)}
-                  className="px-1.5 py-0.5 text-slate-400 hover:text-white disabled:opacity-20"
-                  title="Siguiente cuarto"
-                >
-                  ›
-                </button>
+            {/* Battery Refresh Rate Badge / Toggle (100ms vs 1s) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onToggleBatterySaver) onToggleBatterySaver();
+                else if (onOpenSettings) onOpenSettings();
+              }}
+              className={`px-1.5 py-0.5 rounded-lg border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
+                isBatterySaving
+                  ? 'bg-amber-950/90 border-amber-500/80 text-amber-300 shadow-sm animate-pulse'
+                  : 'bg-[#0E224A] border-[#203a70] text-slate-300 hover:text-white'
+              }`}
+              title={isBatterySaving ? 'Ahorro de batería activo: visualización a 1s (pulsa para cambiar a 100ms)' : 'Visualización a 100ms (pulsa para activar ahorro 1s)'}
+            >
+              <Battery className={`w-3 h-3 ${isBatterySaving ? 'text-amber-400' : 'text-slate-400'}`} />
+              <span>{isBatterySaving ? '1s Ahorro' : '100ms'}</span>
+            </button>
+          </div>
+
+          {/* Center: Offline or Status */}
+          <div className="flex items-center gap-1 shrink-0">
+            {!isOnline && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-600/70 text-amber-300 text-[10px] font-mono font-bold animate-pulse" title="Sin conexión: guardado local en la memoria de la tablet">
+                <WifiOff className="w-3 h-3 text-amber-400 shrink-0" />
+                <span>Local OK</span>
               </div>
-            );
-          })()}
-
-          {/* Anti-Bloqueo Móvil (Keep Screen Awake) */}
-          <button
-            type="button"
-            onClick={handleToggleWakeLock}
-            className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95 border ${
-              isWakeLockActive
-                ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-950'
-                : 'bg-[#0E224A] border-[#203a70] text-slate-300 hover:text-white'
-            }`}
-            title={
-              isWakeLockActive
-                ? 'Pantalla activa (Anti-bloqueo): el móvil no se apagará ni bloqueará mientras anotas en pista'
-                : 'Tocar para activar anti-bloqueo y evitar que se apague la pantalla'
-            }
-          >
-            {isWakeLockActive ? (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <Sun className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="hidden xs:inline">PANTALLA ACTIVA</span>
-                <span className="xs:hidden">ACTIVA</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-3 h-3 text-slate-400 shrink-0" />
-                <span className="hidden xs:inline">BLOQUEO AUTO</span>
-                <span className="xs:hidden">AUTO</span>
-              </>
             )}
-          </button>
-        </div>
+          </div>
 
-        {/* Quick Tools: Carta de Tiro, Acta PDF, Notificaciones & Cerrar Partido / Editar */}
-        <div className="flex items-center gap-1">
-          {onOpenShotChart && (
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                id="bottom-open-shot-chart-btn"
-                onClick={onOpenShotChart}
-                className="p-1 px-2 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/60 rounded text-[10px] sm:text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-                title="Abrir Mapa de Tiro y análisis de zonas en directo"
-              >
-                <Crosshair className="w-3.5 h-3.5 text-[#F5C542]" />
-                <span>Mapa de Tiro</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCycleShotMode}
-                className={`p-1 px-1.5 rounded text-[9px] sm:text-[10px] font-bold font-mono border transition active:scale-95 ${
-                  currentShotMode === 'off'
-                    ? 'bg-[#0E224A] border-[#203a70] text-slate-400'
-                    : currentShotMode === 'all'
-                    ? 'bg-amber-950/80 border-amber-500/70 text-amber-300'
-                    : 'bg-[#16356E] border-[#D4AF37]/70 text-[#F5C542]'
-                }`}
-                title="Modo automático de Carta de Tiro al anotar: Toca para cambiar (Canastas / Todos / Off para máxima rapidez)"
-              >
-                {currentShotMode === 'baskets' ? 'AUTO' : currentShotMode === 'all' ? 'TODOS' : 'OFF'}
-              </button>
-            </div>
-          )}
-
-          {/* Botón de avisos / Notificaciones Push del partido */}
-          <NotificationBellButton
-            isCompact={true}
-            className="p-1 px-1.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[11px] shadow-sm shrink-0"
-          />
-
-          {onOpenOfficialSheet && (
-            <button
-              type="button"
-              onClick={onOpenOfficialSheet}
-              className="p-1 px-2 bg-[#0E224A] hover:bg-[#16356E] text-sky-300 border border-sky-600/40 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-              title="Abrir Acta Oficial FIBA"
-            >
-              <FileText className="w-3 h-3 text-sky-400" />
-              <span>Acta</span>
-            </button>
-          )}
-
-          {onOpenTacticalBoard && (
-            <button
-              type="button"
-              id="bench-portrait-tactical-board-btn"
-              onClick={onOpenTacticalBoard}
-              className="p-1 px-1.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-              title="Abrir Pizarra Táctica de Entrenador (HTML5 Canvas)"
-            >
-              <span className="text-xs">📋</span>
-              <span>Pizarra</span>
-            </button>
-          )}
-
-          {onOpenTutorial && (
-            <button
-              type="button"
-              onClick={onOpenTutorial}
-              className="p-1 px-1.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-              title="Ver Tutorial y Guía de Uso de la Aplicación"
-            >
-              <HelpCircle className="w-3 h-3 text-[#F5C542]" />
-              <span className="hidden xs:inline">Ayuda</span>
-            </button>
-          )}
-
-          {onOpenPWAInstall && (
-            <button
-              type="button"
-              onClick={onOpenPWAInstall}
-              className="p-1 px-2 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-slate-950 border border-amber-300/80 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-md shadow-orange-950/40 shrink-0"
-              title="Descargar e instalar en la tablet (icono en pantalla de inicio)"
-            >
-              <Download className="w-3 h-3 text-slate-950 stroke-[2.5]" />
-              <span>Instalar</span>
-            </button>
-          )}
-
-          {/* Offline indicator */}
-          {!isOnline && (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-950/90 border border-amber-600/70 text-amber-300 text-[10px] font-mono font-bold shrink-0 animate-pulse" title="Sin conexión a internet. Los datos se registran y guardan 100% de forma local en la memoria de la tablet.">
-              <WifiOff className="w-3 h-3 text-amber-400 shrink-0" />
-              <span className="hidden sm:inline">Sin Cobertura (Memoria Local OK)</span>
-              <span className="sm:hidden">Local OK</span>
-            </div>
-          )}
-
-          {/* Close Match / New Game / Edit button in portrait */}
-          {game.status === 'finished' ? (
-            <div className="flex items-center gap-1.5 shrink-0">
-              {onOpenNewGameModal && (
+          {/* Right: Match Actions & Consolidated Tools Dropdown */}
+          <div className="flex items-center gap-1 shrink-0 relative">
+            {game.status === 'finished' ? (
+              <div className="flex items-center gap-1 shrink-0">
+                {onOpenNewGameModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playSound('click', game.settings.soundEnabled);
+                      triggerHaptic('medium', game.settings.vibrationEnabled);
+                      onOpenNewGameModal();
+                    }}
+                    className="p-1 px-2 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 border border-emerald-300 animate-pulse"
+                    title="Empezar un nuevo partido desde cero"
+                  >
+                    <PlusCircle className="w-3 h-3 text-slate-950" />
+                    <span>NUEVO</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     playSound('click', game.settings.soundEnabled);
                     triggerHaptic('medium', game.settings.vibrationEnabled);
-                    onOpenNewGameModal();
+                    setIsEditingFinishedGame(prev => !prev);
                   }}
-                  className="p-1 px-2.5 rounded text-[11px] font-black font-mono flex items-center gap-1.5 transition active:scale-95 shadow-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 border border-emerald-300 animate-pulse"
-                  title="Empezar un nuevo partido desde cero"
+                  className={`p-1 px-2 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm ${
+                    isEditingFinishedGame
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400'
+                      : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
+                  }`}
+                  title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
                 >
-                  <PlusCircle className="w-3.5 h-3.5 text-slate-950" />
-                  <span className="uppercase">Nuevo Partido</span>
+                  {isEditingFinishedGame ? (
+                    <>
+                      <Lock className="w-3 h-3" />
+                      <span>BLOQUEAR</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="w-3 h-3" />
+                      <span>EDITAR</span>
+                    </>
+                  )}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  triggerHaptic('medium', game.settings.vibrationEnabled);
-                  setIsEditingFinishedGame(prev => !prev);
-                }}
-                className={`p-1 px-2.5 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm ${
-                  isEditingFinishedGame
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
-                    : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
-                }`}
-                title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
-              >
-                {isEditingFinishedGame ? (
-                  <>
-                    <Lock className="w-3 h-3 text-white" />
-                    <span className="uppercase">Finalizar Edición</span>
-                  </>
-                ) : (
-                  <>
-                    <Edit className="w-3 h-3 text-black" />
-                    <span className="uppercase">Editar</span>
-                  </>
-                )}
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 shrink-0">
-              {onOpenNewGameModal && (
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('medium', game.settings.vibrationEnabled);
+                    window.dispatchEvent(new CustomEvent('open-coach-pinety-modal'));
+                  }}
+                  className="p-1 px-2 bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/70 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-xs"
+                  title="Sincronizar con Coach Pinety"
+                >
+                  <Send className="w-3 h-3 text-emerald-400" />
+                  <span className="hidden xs:inline">Pinety</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
                     playSound('click', game.settings.soundEnabled);
-                    triggerHaptic('light', game.settings.vibrationEnabled);
-                    onOpenNewGameModal();
+                    triggerHaptic('medium', game.settings.vibrationEnabled);
+                    setShowCloseConfirmModal(true);
                   }}
-                  className="p-1 px-2 bg-[#0E224A] hover:bg-[#16356E] text-emerald-300 border border-emerald-500/50 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
-                  title="Empezar un nuevo partido"
+                  className="p-1 px-2 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-xs"
+                  title="Finalizar y cerrar el partido"
                 >
-                  <PlusCircle className="w-3 h-3 text-emerald-400" />
-                  <span className="hidden xs:inline">Nuevo</span>
+                  <Flag className="w-3 h-3 text-red-400" />
+                  <span>Cerrar</span>
                 </button>
+              </div>
+            )}
+
+            {/* Consolidated Tools Menu Dropdown (Replaces clutter of 12+ separate buttons!) */}
+            <div className="relative">
+              <button
+                type="button"
+                id="portrait-bench-more-tools-btn"
+                onClick={() => setShowPortraitToolsDropdown(prev => !prev)}
+                className={`p-1 px-2 rounded-lg border font-mono font-bold text-[10px] flex items-center gap-1 transition active:scale-95 shadow-sm ${
+                  showPortraitToolsDropdown
+                    ? 'bg-amber-500 text-slate-950 border-amber-300'
+                    : 'bg-[#132a58] hover:bg-[#1a3875] text-amber-300 border-amber-500/60'
+                }`}
+                title="Más herramientas y opciones de partido"
+              >
+                <MoreHorizontal className="w-3 h-3" />
+                <span>Más</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${showPortraitToolsDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Popover */}
+              {showPortraitToolsDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
+                    onClick={() => setShowPortraitToolsDropdown(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 bg-[#0d1633]/98 backdrop-blur-md border border-blue-500/60 rounded-2xl p-2.5 z-50 flex flex-col gap-2 shadow-2xl animate-in fade-in zoom-in-95 max-h-[80vh] overflow-y-auto">
+                    {/* Title */}
+                    <div className="flex items-center justify-between border-b border-blue-900/60 pb-1 px-1">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 font-mono">
+                        Herramientas y Opciones
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPortraitToolsDropdown(false)}
+                        className="p-1 rounded text-slate-400 hover:text-white"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* 1. SELECCIÓN DE TASA DE REFRESCO / BATERÍA */}
+                    <div className="bg-[#071126] border border-blue-900/60 rounded-xl p-2 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-300">
+                        <span className="font-bold flex items-center gap-1">
+                          <Battery className={`w-3 h-3 ${isBatterySaving ? 'text-amber-400' : 'text-emerald-400'}`} />
+                          Refresco del Marcador:
+                        </span>
+                        {batteryInfo.supported && batteryInfo.level !== null && (
+                          <span className="text-amber-400 font-bold">{batteryInfo.level}% {batteryInfo.isCharging ? '⚡' : ''}</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onToggleBatterySaver) onToggleBatterySaver();
+                            else if (onOpenSettings) onOpenSettings();
+                          }}
+                          className={`p-1.5 rounded-lg border text-center transition font-bold ${
+                            !isBatterySaving
+                              ? 'bg-blue-600 border-blue-400 text-white font-black'
+                              : 'bg-[#0f1d3b] border-blue-900/60 text-slate-300 hover:bg-[#15274e]'
+                          }`}
+                        >
+                          <div>100 ms</div>
+                          <div className="text-[8px] opacity-75">Alta Precisión</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onToggleBatterySaver) onToggleBatterySaver();
+                            else if (onOpenSettings) onOpenSettings();
+                          }}
+                          className={`p-1.5 rounded-lg border text-center transition font-bold ${
+                            isBatterySaving
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-300 text-slate-950 font-black'
+                              : 'bg-[#0f1d3b] border-blue-900/60 text-slate-300 hover:bg-[#15274e]'
+                          }`}
+                        >
+                          <div>1 segundo</div>
+                          <div className="text-[8px] opacity-75">Ahorro Batería</div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 2. ANOTACIÓN Y TÁCTICA */}
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">
+                        Anotación y Táctica
+                      </span>
+
+                      {onOpenTacticalBoard && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPortraitToolsDropdown(false);
+                            onOpenTacticalBoard();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                        >
+                          <span className="text-xs">📋</span>
+                          <div className="flex-1">
+                            <p className="font-bold text-[11px] leading-tight">Pizarra Táctica (Canvas)</p>
+                            <p className="text-[9px] text-slate-400">Dibujar sistemas, saques y jugadas</p>
+                          </div>
+                        </button>
+                      )}
+
+                      {handleCycleShotMode && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCycleShotMode();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                        >
+                          <span className="text-xs">🎯</span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-bold text-[11px] leading-tight">Modo Carta de Tiro</p>
+                              <span className="text-[9px] font-mono text-amber-300 uppercase font-bold">
+                                {currentShotMode === 'off' ? 'Rápido' : currentShotMode === 'all' ? 'Todos' : 'Canastas'}
+                              </span>
+                            </div>
+                            <p className="text-[9px] text-slate-400">Alternar tiro rápido o posición exacta</p>
+                          </div>
+                        </button>
+                      )}
+
+                      {onOpenShotChart && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPortraitToolsDropdown(false);
+                            onOpenShotChart();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                        >
+                          <Crosshair className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-bold text-[11px] leading-tight">Ver Mapa de Tiro</p>
+                            <p className="text-[9px] text-slate-400">Zonas de tiro y porcentajes de acierto</p>
+                          </div>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPortraitToolsDropdown(false);
+                          setShowHistoryDrawer(true);
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <History className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-[11px] leading-tight">Historial de Jugadas</p>
+                            <span className="text-[9px] font-mono text-slate-400">({game.events.length})</span>
+                          </div>
+                          <p className="text-[9px] text-slate-400">Revisar o corregir acciones anteriores</p>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* 3. CONEXIONES Y ACTAS */}
+                    <div className="space-y-0.5 pt-1 border-t border-blue-900/60">
+                      <span className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">
+                        Conexiones y Actas
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPortraitToolsDropdown(false);
+                          handleOpenSpectatorQR();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-cyan-200 transition"
+                      >
+                        <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">QR Seguidores en Directo</p>
+                          <p className="text-[9px] text-slate-400">Para que la afición siga el partido</p>
+                        </div>
+                      </button>
+
+                      {onOpenCloudSync && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPortraitToolsDropdown(false);
+                            onOpenCloudSync();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                        >
+                          <Radio className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-bold text-[11px] leading-tight">Vincular Tablet ↔ Mesa / PC</p>
+                            <p className="text-[9px] text-slate-400">Sincronización por PIN o red local</p>
+                          </div>
+                        </button>
+                      )}
+
+                      {onOpenOfficialSheet && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPortraitToolsDropdown(false);
+                            onOpenOfficialSheet();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-bold text-[11px] leading-tight">Acta Oficial FIBA (PDF)</p>
+                            <p className="text-[9px] text-slate-400">Generar o imprimir hoja de partido</p>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 4. CONFIGURACIÓN Y TUTORIAL */}
+                    <div className="space-y-0.5 pt-1 border-t border-blue-900/60">
+                      {onOpenSettings && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPortraitToolsDropdown(false);
+                            onOpenSettings();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                        >
+                          <Settings className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-bold text-[11px] leading-tight">Ajustes y Batería</p>
+                            <p className="text-[9px] text-slate-400">Configurar tasa de refresco y reglas</p>
+                          </div>
+                        </button>
+                      )}
+
+                      {onOpenPWAInstall && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPortraitToolsDropdown(false);
+                            onOpenPWAInstall();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-orange-200 transition"
+                        >
+                          <Download className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-bold text-[11px] leading-tight">Instalar App en la Tablet</p>
+                            <p className="text-[9px] text-slate-400">Icono propio en pantalla de inicio</p>
+                          </div>
+                        </button>
+                      )}
+
+                      {onOpenTutorial && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPortraitToolsDropdown(false);
+                            onOpenTutorial();
+                          }}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                        >
+                          <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-bold text-[11px] leading-tight">Ayuda y Tutorial</p>
+                            <p className="text-[9px] text-slate-400">Guía de uso para anotadores</p>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
-              <button
-                type="button"
-                onClick={async () => {
-                  playSound('click', game.settings.soundEnabled);
-                  triggerHaptic('medium', game.settings.vibrationEnabled);
-                  setIsSyncingPinety(true);
-                  await sendMatchToCoachPinety(game, { force: true });
-                  setIsSyncingPinety(false);
-                  window.dispatchEvent(new CustomEvent('open-coach-pinety-modal'));
-                }}
-                disabled={isSyncingPinety}
-                className="p-1 px-2 bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-                title="Sincronizar partido y estadísticas con Coach Pinety (Nube, QR o JSON)"
-              >
-                {isSyncingPinety ? (
-                  <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
-                ) : (
-                  <Send className="w-3 h-3 text-emerald-400" />
-                )}
-                <span className="uppercase hidden xs:inline">Coach Pinety</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  playSound('click', game.settings.soundEnabled);
-                  triggerHaptic('medium', game.settings.vibrationEnabled);
-                  setShowCloseConfirmModal(true);
-                }}
-                className="p-1 px-2 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm"
-                title="Finalizar y cerrar el partido ahora (guardar en biblioteca)"
-              >
-                <Flag className="w-3 h-3 text-red-400" />
-                <span className="uppercase">Cerrar Partido</span>
-              </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
       )}
 
       {/* 2. MAIN DIGITAL SCOREBOARD (PORTRAIT ONLY - LANDSCAPE HAS IT IN LEFT COLUMN) */}

@@ -40,6 +40,8 @@ import { TacticalBoardModal } from './components/TacticalBoardModal';
 import { LiveSpectatorQRModal } from './components/LiveSpectatorQRModal';
 import { EditPlayEventModal } from './components/EditPlayEventModal';
 import { PWAInstallModal } from './components/PWAInstallModal';
+import { GameSettingsModal } from './components/GameSettingsModal';
+import { useBatteryStatus } from './hooks/useBatteryStatus';
 import { detectAndInitUserRole, isMasterAdmin, UserRole } from './utils/accessControl';
 import {
   saveGameToLibrary,
@@ -113,6 +115,8 @@ import {
   Send,
   RefreshCw,
   Download,
+  Battery,
+  Settings,
 } from 'lucide-react';
 import { DeviceRole, getDeviceRole, setDeviceRole as persistDeviceRole } from './utils/deviceRole';
 import { SyncStatusBar } from './components/SyncStatusBar';
@@ -290,6 +294,26 @@ export default function App() {
     return () => window.removeEventListener('open-coach-pinety-modal', handleOpenPinetyModal);
   }, [game]);
 
+  // Battery & Visual Refresh Rate Controller (100ms vs 1s)
+  const batteryInfo = useBatteryStatus();
+  const isBatterySaverActive = Boolean(
+    game.settings.batterySaverRefreshRate ||
+    (batteryInfo.isLowBattery && game.settings.lowBatteryAutoSaver !== false)
+  );
+  const clockRefreshIntervalMs = isBatterySaverActive ? 1000 : 100;
+
+  const handleToggleBatterySaver = () => {
+    playSound('click', game.settings.soundEnabled);
+    triggerHaptic('light', game.settings.vibrationEnabled);
+    handleUpdateGame(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        batterySaverRefreshRate: !prev.settings.batterySaverRefreshRate,
+      },
+    }));
+  };
+
   // Central High-Precision Monotonic Game Clock Engine
   // Locks to Date.now() real atomic time: never drifts, never freezes, and never slows down
   const clockSessionRef = useRef<{
@@ -404,12 +428,12 @@ export default function App() {
           };
         });
       }
-    }, 100);
+    }, clockRefreshIntervalMs);
 
     return () => {
       clearInterval(intervalId);
     };
-  }, [game.isClockRunning, game.status]);
+  }, [game.isClockRunning, game.status, clockRefreshIntervalMs]);
 
   // Check and dispatch Service Worker push notifications for crucial live match events (clutch final 2 mins, overtime, etc.)
   useEffect(() => {
@@ -860,6 +884,7 @@ export default function App() {
   const [showSpectatorQRModal, setShowSpectatorQRModal] = useState(false);
   const [editingPlayEvent, setEditingPlayEvent] = useState<PlayEvent | null>(null);
   const [showPWAInstallModal, setShowPWAInstallModal] = useState(false);
+  const [showGameSettingsModal, setShowGameSettingsModal] = useState(false);
 
   const handleRecordFreeThrowFromFoul = ({
     isOpponent,
@@ -2183,6 +2208,8 @@ export default function App() {
           onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
           onOpenNewGameModal={() => setShowNewGameModal(true)}
           onOpenPWAInstall={() => setShowPWAInstallModal(true)}
+          onOpenSettings={() => setShowGameSettingsModal(true)}
+          onToggleBatterySaver={handleToggleBatterySaver}
         />
       ) : (
         <>
@@ -2703,6 +2730,27 @@ export default function App() {
                           <button
                             onClick={() => {
                               setShowMobileHeaderMenu(false);
+                              setShowGameSettingsModal(true);
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-amber-300 text-xs font-bold text-left transition"
+                          >
+                            <Settings className="w-4 h-4 text-amber-400 shrink-0" />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <span>Ajustes y Ahorro Batería</span>
+                                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                                  isBatterySaverActive ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'
+                                }`}>
+                                  {isBatterySaverActive ? '1s' : '100ms'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-normal">Tasa de refresco y energía</div>
+                            </div>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
                               setShowTutorialModal(true);
                             }}
                             className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-gray-200 text-xs font-semibold text-left transition"
@@ -2800,6 +2848,8 @@ export default function App() {
               onOpenSyncModal={() => setShowSyncPairingModal(true)}
               onOpenNewGameModal={() => setShowNewGameModal(true)}
               onOpenPWAInstall={() => setShowPWAInstallModal(true)}
+              onOpenSettings={() => setShowGameSettingsModal(true)}
+              onToggleBatterySaver={handleToggleBatterySaver}
             />
           )}
 
@@ -3242,6 +3292,19 @@ export default function App() {
           onClose={() => setShowPWAInstallModal(false)}
           soundEnabled={game.settings.soundEnabled}
           vibrationEnabled={game.settings.vibrationEnabled}
+        />
+      )}
+
+      {showGameSettingsModal && (
+        <GameSettingsModal
+          settings={game.settings}
+          onUpdateSettings={updater => {
+            handleUpdateGame(prev => ({
+              ...prev,
+              settings: updater(prev.settings),
+            }));
+          }}
+          onClose={() => setShowGameSettingsModal(false)}
         />
       )}
 

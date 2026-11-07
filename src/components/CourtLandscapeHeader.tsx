@@ -31,9 +31,18 @@ import {
   Wifi,
   WifiOff,
   Download,
+  MoreHorizontal,
+  Settings,
+  Battery,
+  BatteryCharging,
+  BatteryWarning,
+  Zap,
+  ChevronDown,
+  X,
+  Send,
 } from 'lucide-react';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
-import { NotificationBellButton } from './NotificationBellButton';
+import { useBatteryStatus } from '../hooks/useBatteryStatus';
 import {
   MasterClockNumber,
   ShotClockNumber,
@@ -79,6 +88,9 @@ interface CourtLandscapeHeaderProps {
   onOpenHistoryModal?: () => void;
   onOpenNewGameModal?: () => void;
   onOpenPWAInstall?: () => void;
+  onOpenSettings?: () => void;
+  onToggleBatterySaver?: () => void;
+  isOnline?: boolean;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -118,6 +130,9 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenHistoryModal,
   onOpenNewGameModal,
   onOpenPWAInstall,
+  onOpenSettings,
+  onToggleBatterySaver,
+  isOnline = true,
 }) => {
   const totalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
     ? 6
@@ -168,6 +183,13 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
     setIsFullscreen(active);
   };
 
+  const [showToolsDropdown, setShowToolsDropdown] = useState(false);
+  const batteryInfo = useBatteryStatus();
+  const isBatterySaving = Boolean(
+    game.settings.batterySaverRefreshRate ||
+    (batteryInfo.isLowBattery && game.settings.lowBatteryAutoSaver !== false)
+  );
+
   const handlePrevQuarter = () => {
     if (game.currentQuarter > 1 && onSelectQuarter) {
       playSound('click', game.settings.soundEnabled);
@@ -186,323 +208,116 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
 
   return (
     <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
-      {/* 1. TOP UTILITY STRIP: Fixed responsive layout preventing lateral shifts on tablets */}
-      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-1.5 overflow-x-auto scrollbar-none">
-        {/* Left: Exit button, Mode title, Fullscreen button & Prominent Spectators QR Button */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      {/* 1. TOP UTILITY STRIP: Clean, responsive single-row layout without lateral scroll */}
+      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-2 relative z-30">
+        {/* Left: Exit button, Fullscreen, WakeLock & Battery saver toggle */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={onToggleCourtMode}
-            className="px-2.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#FFFDF7] border border-[#D4AF37]/50 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0"
+            className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#FFFDF7] border border-[#D4AF37]/50 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0"
             title="Volver a la vista completa estándar de mesa"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-[#F5C542] shrink-0" />
-            <span className="hidden sm:inline">SALIR PISTA</span>
-            <span className="sm:hidden">SALIR</span>
+            <span className="hidden sm:inline">SALIR</span>
           </button>
 
-          {/* Fullscreen Tablet Mode Button */}
+          {/* Fullscreen Button */}
           <button
             type="button"
             onClick={handleToggleFullscreen}
-            className={`px-2.5 py-0.5 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0 ${
+            className={`p-1 px-1.5 rounded-lg font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm text-[10px] sm:text-[11px] shrink-0 ${
               isFullscreen
                 ? 'bg-amber-500/20 text-[#F5C542] border border-[#D4AF37]'
-                : 'bg-[#0E224A] hover:bg-[#16356E] text-[#FFFDF7] border border-[#D4AF37]/50'
+                : 'bg-[#0E224A] hover:bg-[#16356E] text-slate-300 border border-blue-900/60'
             }`}
-            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa: Oculta la barra del navegador de la tablet'}
+            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
           >
-            {isFullscreen ? (
-              <>
-                <Minimize className="w-3.5 h-3.5 text-[#F5C542] shrink-0" />
-                <span className="hidden sm:inline">VENTANA</span>
-              </>
-            ) : (
-              <>
-                <Maximize className="w-3.5 h-3.5 text-[#F5C542] shrink-0" />
-                <span className="hidden sm:inline">PANTALLA COMPLETA</span>
-                <span className="sm:hidden">EXPANDIR</span>
-              </>
-            )}
+            {isFullscreen ? <Minimize className="w-3.5 h-3.5 text-[#F5C542]" /> : <Maximize className="w-3.5 h-3.5 text-slate-300" />}
           </button>
 
-          {/* QR SEGUIDORES EN DIRECTO: Siempre visible en la parte frontal izquierda de la cabecera */}
-          {onOpenSpectatorQR && (
-            <button
-              type="button"
-              id="landscape-spectator-qr-btn"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                onOpenSpectatorQR();
-              }}
-              className="px-2.5 py-1 rounded-lg border-2 border-cyan-400 bg-gradient-to-r from-cyan-950 via-[#0b284e] to-blue-950 hover:from-cyan-900 hover:to-blue-900 text-cyan-200 text-[10px] sm:text-[11px] font-mono font-black flex items-center gap-1.5 transition active:scale-95 shadow-md shadow-cyan-950/90 shrink-0 ring-1 ring-cyan-400/60 cursor-pointer"
-              title="Mostrar Código QR para que el público y seguidores sigan el partido en directo desde sus móviles"
-            >
-              <QrCode className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
-              <span>QR SEGUIDORES</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping hidden xs:inline" />
-            </button>
-          )}
-
-          <div className="hidden lg:flex items-center gap-1.5 text-slate-300 font-mono text-[10px] shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-bold text-[#FFFDF7]">TABLET PISTA</span>
-            {game.status === 'finished' ? (
-              <span className="text-red-400 font-black ml-1 bg-red-950/80 px-1.5 py-0.2 rounded border border-red-800">
-                FINALIZADO (00:00)
-              </span>
-            ) : game.isClockRunning ? (
-              <span className="text-emerald-400 font-black ml-1 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-800">
-                EN JUEGO
-              </span>
-            ) : (
-              <span className="text-[#F5C542] font-black ml-1 bg-[#0E224A] px-1.5 py-0.2 rounded border border-[#D4AF37]/40">
-                PAUSA
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Screen wake, shot chart, match sheet, tutorial, pro and finish match buttons */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Screen Wake Lock */}
           <button
             type="button"
             onClick={onToggleWakeLock}
-            className={`px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
+            className={`p-1 px-1.5 rounded-lg border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
               isWakeLockActive
                 ? 'bg-emerald-950/90 border-emerald-500/70 text-emerald-300'
+                : 'bg-[#0E224A] border-blue-900/60 text-slate-400 hover:text-white'
+            }`}
+            title={isWakeLockActive ? 'Anti-bloqueo activo (pantalla no se apaga)' : 'Activar anti-bloqueo'}
+          >
+            {isWakeLockActive ? <Sun className="w-3.5 h-3.5 text-emerald-400" /> : <Moon className="w-3.5 h-3.5 text-slate-400" />}
+          </button>
+
+          {/* Battery Refresh Rate Badge / Toggle (100ms vs 1s) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onToggleBatterySaver) onToggleBatterySaver();
+              else if (onOpenSettings) onOpenSettings();
+            }}
+            className={`px-1.5 py-0.5 rounded-lg border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
+              isBatterySaving
+                ? 'bg-amber-950/90 border-amber-500/80 text-amber-300 shadow-sm animate-pulse'
                 : 'bg-[#0E224A] border-blue-900/60 text-slate-300 hover:text-white'
             }`}
-            title={isWakeLockActive ? 'Anti-bloqueo activo (la pantalla no se apagará)' : 'Activar anti-bloqueo'}
+            title={isBatterySaving ? 'Ahorro de batería activo: visualización a 1s (pulsa para cambiar a 100ms)' : 'Visualización a 100ms (pulsa para activar ahorro 1s)'}
           >
-            {isWakeLockActive ? <Sun className="w-3 h-3 text-emerald-400" /> : <Moon className="w-3 h-3 text-slate-400" />}
-            <span className="hidden xl:inline">{isWakeLockActive ? 'Pantalla Activa' : 'Auto Bloqueo'}</span>
+            <Battery className={`w-3.5 h-3.5 ${isBatterySaving ? 'text-amber-400' : 'text-slate-400'}`} />
+            <span>{isBatterySaving ? '1s Ahorro' : '100ms'}</span>
           </button>
+        </div>
 
-          {/* Botón Asistente IA Rotaciones por Minutos y Fatiga */}
-          {onOpenAISubHelper && (
+        {/* Center: Offline or Cloud status */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!isOnline ? (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-950/90 border border-amber-600/70 text-amber-300 text-[10px] font-mono font-bold animate-pulse" title="Sin internet: Todo se guarda 100% en la memoria interna de la tablet">
+              <WifiOff className="w-3 h-3 text-amber-400 shrink-0" />
+              <span>Memoria Local OK</span>
+            </div>
+          ) : (
             <button
               type="button"
-              id="header-ai-sub-helper-btn"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                onOpenAISubHelper();
-              }}
-              className="px-2 py-0.5 rounded border border-purple-500/60 bg-gradient-to-r from-purple-950/90 via-indigo-950/80 to-[#0E224A] hover:from-purple-900 hover:to-indigo-900 text-amber-300 font-mono font-black text-[10px] sm:text-[11px] flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
-              title="Asistente IA de Rotaciones: sugiere automáticamente cambios según minutos jugados y fatiga"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span>IA Rotar</span>
-            </button>
-          )}
-
-          {/* Botón Vincular con Mesa / Ordenador por PIN y Red (Sin QR) */}
-          <button
-            type="button"
-            id="header-mesa-sync-btn"
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('light', game.settings.vibrationEnabled);
-              if (onOpenCloudSync) {
-                onOpenCloudSync();
-              } else if (onOpenSpectatorQR) {
-                onOpenSpectatorQR();
-              }
-            }}
-            className="px-2 py-0.5 rounded border border-cyan-500/60 bg-gradient-to-r from-cyan-950/80 to-[#0E224A] hover:bg-[#16356E] text-cyan-300 font-mono font-bold text-[10px] sm:text-[11px] flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
-            title="Sincronización en Directo con el Ordenador / Mesa de Control (por PIN o Red Local, sin QR)"
-          >
-            <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span className="font-bold">Mesa / PC</span>
-          </button>
-
-          {/* Push Notifications Toggle for Match Alerts */}
-          <NotificationBellButton
-            isCompact={true}
-            className="px-1.5 py-0.5 rounded border border-sky-500/50 bg-[#0E224A] hover:bg-[#16356E] shadow-sm shrink-0"
-          />
-
-          {/* Cloud Sync Status & Action Button (Tablet to PC) */}
-          <button
-            type="button"
-            onClick={handleQuickCloudSync}
-            className={`px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0 ${
-              justSyncedToast
-                ? 'bg-emerald-900 border-emerald-400 text-emerald-200'
-                : syncStatus.status === 'syncing'
-                ? 'bg-amber-950/80 border-amber-500/70 text-amber-300'
-                : syncStatus.status === 'error'
-                ? 'bg-rose-950/80 border-rose-500/70 text-rose-300'
-                : 'bg-[#0E224A] hover:bg-[#16356E] border-sky-600/50 text-sky-300'
-            }`}
-            title="Sincronización en la nube con ordenador. Toca para sincronizar ahora."
-          >
-            {justSyncedToast ? (
-              <Check className="w-3 h-3 text-emerald-300" />
-            ) : (
-              <Cloud className={`w-3 h-3 ${syncStatus.status === 'syncing' ? 'animate-spin text-amber-400' : 'text-sky-400'}`} />
-            )}
-            <span className="hidden md:inline">
-              {justSyncedToast ? 'SINCRONIZADO' : syncStatus.status === 'syncing' ? 'SYNC...' : 'NUBE OK'}
-            </span>
-          </button>
-
-          {/* Shot Chart Modal */}
-          {onOpenShotChart && (
-            <button
-              type="button"
-              onClick={onOpenShotChart}
-              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
-              title="Abrir mapa de tiro interactivo"
-            >
-              <Crosshair className="w-3 h-3 text-[#F5C542]" />
-              <span className="hidden xl:inline">Mapa Tiro</span>
-            </button>
-          )}
-
-          {/* Shot Chart Auto Mode Toggle */}
-          {onCycleShotMode && (
-            <button
-              type="button"
-              onClick={onCycleShotMode}
-              className={`px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-mono font-bold border transition active:scale-95 inline-flex items-center gap-1 shrink-0 ${
-                currentShotMode === 'off'
-                  ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-300'
-                  : currentShotMode === 'all'
+              onClick={handleQuickCloudSync}
+              className={`px-2 py-0.5 rounded-lg border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 ${
+                justSyncedToast
+                  ? 'bg-emerald-900 border-emerald-400 text-emerald-200'
+                  : syncStatus.status === 'syncing'
                   ? 'bg-amber-950/80 border-amber-500/70 text-amber-300'
-                  : 'bg-orange-950/80 border-orange-500/70 text-orange-300'
+                  : 'bg-[#0E224A] hover:bg-[#16356E] border-blue-900/60 text-slate-300'
               }`}
-              title="Alternar entre modo ultra-rápido (tiro directo) o registrar posición en carta de tiro"
+              title="Sincronización en la nube con ordenador"
             >
-              {currentShotMode === 'off' ? (
-                <>
-                  <span className="text-emerald-400">⚡</span>
-                  <span>TIRO RÁPIDO</span>
-                </>
-              ) : currentShotMode === 'all' ? (
-                <>
-                  <span>🎯</span>
-                  <span>TIRO: TODOS</span>
-                </>
-              ) : (
-                <>
-                  <span>🎯</span>
-                  <span>TIRO: CANASTAS</span>
-                </>
-              )}
+              <Cloud className={`w-3 h-3 ${syncStatus.status === 'syncing' ? 'animate-spin text-amber-400' : 'text-sky-400'}`} />
+              <span className="hidden md:inline">{justSyncedToast ? 'SINCRONIZADO' : syncStatus.status === 'syncing' ? 'SYNC...' : 'NUBE OK'}</span>
             </button>
           )}
+        </div>
 
-          {/* Official Sheet */}
-          {onOpenOfficialSheet && (
-            <button
-              type="button"
-              onClick={onOpenOfficialSheet}
-              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-sky-300 border border-sky-600/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
-              title="Abrir acta oficial de partido FIBA"
-            >
-              <FileText className="w-3 h-3 text-sky-400" />
-              <span className="hidden xl:inline">Acta PDF</span>
-            </button>
-          )}
-
-          {/* Tactical Board */}
-          {onOpenTacticalBoard && (
-            <button
-              type="button"
-              id="header-tactical-board-btn"
-              onClick={onOpenTacticalBoard}
-              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
-              title="Abrir Pizarra Táctica de Entrenador (HTML5 Canvas)"
-            >
-              <span className="text-[11px]">📋</span>
-              <span className="hidden xl:inline">Pizarra</span>
-            </button>
-          )}
-
-          {/* Historial de Jugadas con Desplegable y Borrado */}
-          {onOpenHistoryModal && (
-            <button
-              type="button"
-              id="header-play-history-btn"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('light', game.settings.vibrationEnabled);
-                onOpenHistoryModal();
-              }}
-              className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
-              title="Desplegar historial de jugadas y eliminar jugadas erróneas"
-            >
-              <History className="w-3 h-3 text-amber-400" />
-              <span>Historial ({game.events.length})</span>
-            </button>
-          )}
-
-          {/* Tutorial */}
-          {onOpenTutorial && (
-            <button
-              type="button"
-              onClick={onOpenTutorial}
-              className="px-1.5 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/30 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shrink-0"
-              title="Ver tutorial de uso"
-            >
-              <HelpCircle className="w-3 h-3 text-[#F5C542]" />
-              <span className="hidden 2xl:inline">Ayuda</span>
-            </button>
-          )}
-
-          {/* Pro Benefits */}
-          {onOpenProBenefits && (
-            <button
-              type="button"
-              onClick={onOpenProBenefits}
-              className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shrink-0"
-              title="Funciones PRO Club"
-            >
-              <Crown className="w-3 h-3 text-amber-400" />
-              <span className="hidden 2xl:inline">PRO CLUB</span>
-            </button>
-          )}
-
-          {/* Install App on Tablet Button */}
-          {onOpenPWAInstall && (
-            <button
-              type="button"
-              onClick={onOpenPWAInstall}
-              className="px-2 py-0.5 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-slate-950 font-black border border-amber-300/80 rounded text-[10px] font-mono flex items-center gap-1 transition active:scale-95 shadow-md shadow-orange-950/40 shrink-0"
-              title="Descargar e instalar aplicación en la tablet (icono en pantalla de inicio)"
-            >
-              <Download className="w-3 h-3 text-slate-950 stroke-[2.5]" />
-              <span className="hidden sm:inline">INSTALAR APP</span>
-              <span className="sm:hidden">APP</span>
-            </button>
-          )}
-
-          {/* Edit / Lock Match button when finished */}
-          {game.status === 'finished' && (
-            <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right: Match Actions & Consolidated Tools Dropdown */}
+        <div className="flex items-center gap-1.5 shrink-0 relative">
+          {/* Finished Match State */}
+          {game.status === 'finished' ? (
+            <div className="flex items-center gap-1 shrink-0">
               {onOpenNewGameModal && (
                 <button
                   type="button"
                   onClick={onOpenNewGameModal}
-                  className="px-2.5 py-1 bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 hover:from-amber-300 hover:to-emerald-400 text-black font-black rounded text-[10px] font-mono flex items-center gap-1 transition active:scale-95 shadow-md shadow-amber-950/40"
-                  title="Empezar un nuevo partido ahora (el partido anterior ya está grabado)"
+                  className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black rounded-lg text-[10px] font-mono flex items-center gap-1 transition active:scale-95 shadow-md animate-pulse"
+                  title="Empezar un nuevo partido"
                 >
-                  <PlusCircle className="w-3.5 h-3.5 text-black" />
+                  <PlusCircle className="w-3.5 h-3.5 text-slate-950" />
                   <span>NUEVO PARTIDO</span>
                 </button>
               )}
-
               {onToggleEditFinishedGame && (
                 <button
                   type="button"
                   onClick={onToggleEditFinishedGame}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 ${
+                  className={`px-2 py-1 rounded-lg text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 ${
                     isEditingFinishedGame
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
+                      ? 'bg-emerald-600 text-white border border-emerald-400'
                       : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
                   }`}
                   title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
@@ -521,36 +336,320 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 </button>
               )}
             </div>
-          )}
-
-          {/* Close Match when not finished + quick new match */}
-          {game.status !== 'finished' && (
+          ) : (
             <div className="flex items-center gap-1 shrink-0">
-              {onOpenNewGameModal && (
-                <button
-                  type="button"
-                  onClick={onOpenNewGameModal}
-                  className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
-                  title="Empezar un nuevo partido"
-                >
-                  <PlusCircle className="w-3 h-3 text-amber-400" />
-                  <span className="hidden sm:inline">Nuevo</span>
-                </button>
-              )}
+              {/* Quick Pinety Action */}
+              <button
+                type="button"
+                onClick={async () => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('medium', game.settings.vibrationEnabled);
+                  window.dispatchEvent(new CustomEvent('open-coach-pinety-modal'));
+                }}
+                className="px-2 py-1 bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/70 rounded-lg text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-xs"
+                title="Sincronizar con Coach Pinety"
+              >
+                <Send className="w-3 h-3 text-emerald-400" />
+                <span className="hidden xs:inline">Pinety</span>
+              </button>
+
+              {/* Close Match */}
               {onCloseMatch && (
                 <button
                   type="button"
                   onClick={onCloseMatch}
-                  className="px-2 py-0.5 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
-                  title="Cerrar partido y guardar en biblioteca"
+                  className="px-2 py-1 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded-lg text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-xs"
+                  title="Cerrar y finalizar partido"
                 >
                   <Flag className="w-3 h-3 text-red-400" />
-                  <span className="hidden sm:inline">Cerrar Partido</span>
-                  <span className="sm:hidden">Cerrar</span>
+                  <span>Cerrar</span>
                 </button>
               )}
             </div>
           )}
+
+          {/* Consolidated Tools Menu Dropdown (Replaces clutter of 12+ separate buttons!) */}
+          <div className="relative">
+            <button
+              type="button"
+              id="bench-more-tools-btn"
+              onClick={() => setShowToolsDropdown(prev => !prev)}
+              className={`px-2 py-1 rounded-lg border font-mono font-bold text-[10px] sm:text-[11px] flex items-center gap-1 transition active:scale-95 shadow-sm ${
+                showToolsDropdown
+                  ? 'bg-amber-500 text-slate-950 border-amber-300'
+                  : 'bg-[#132a58] hover:bg-[#1a3875] text-amber-300 border-amber-500/60'
+              }`}
+              title="Más herramientas y opciones de partido"
+            >
+              <MoreHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Más</span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${showToolsDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu Popover */}
+            {showToolsDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+                  onClick={() => setShowToolsDropdown(false)}
+                />
+                <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 bg-[#0d1633]/98 backdrop-blur-md border border-blue-500/60 rounded-2xl p-2.5 z-50 flex flex-col gap-2 shadow-2xl animate-in fade-in zoom-in-95 max-h-[85vh] overflow-y-auto">
+                  {/* Title & Close */}
+                  <div className="flex items-center justify-between border-b border-blue-900/60 pb-1.5 px-1">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 font-mono">
+                      Herramientas y Opciones
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowToolsDropdown(false)}
+                      className="p-1 rounded text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* 1. SELECCIÓN DE TASA DE REFRESCO / BATERÍA */}
+                  <div className="bg-[#071126] border border-blue-900/60 rounded-xl p-2 space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-300">
+                      <span className="font-bold flex items-center gap-1">
+                        <Battery className={`w-3 h-3 ${isBatterySaving ? 'text-amber-400' : 'text-emerald-400'}`} />
+                        Refresco del Marcador:
+                      </span>
+                      {batteryInfo.supported && batteryInfo.level !== null && (
+                        <span className="text-amber-400 font-bold">{batteryInfo.level}% {batteryInfo.isCharging ? '⚡' : ''}</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onToggleBatterySaver) onToggleBatterySaver();
+                          else if (onOpenSettings) onOpenSettings();
+                        }}
+                        className={`p-1.5 rounded-lg border text-center transition font-bold ${
+                          !isBatterySaving
+                            ? 'bg-blue-600 border-blue-400 text-white font-black'
+                            : 'bg-[#0f1d3b] border-blue-900/60 text-slate-300 hover:bg-[#15274e]'
+                        }`}
+                      >
+                        <div>100 ms</div>
+                        <div className="text-[8px] opacity-75">Alta Precisión</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onToggleBatterySaver) onToggleBatterySaver();
+                          else if (onOpenSettings) onOpenSettings();
+                        }}
+                        className={`p-1.5 rounded-lg border text-center transition font-bold ${
+                          isBatterySaving
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-300 text-slate-950 font-black'
+                            : 'bg-[#0f1d3b] border-blue-900/60 text-slate-300 hover:bg-[#15274e]'
+                        }`}
+                      >
+                        <div>1 segundo</div>
+                        <div className="text-[8px] opacity-75">Ahorro Batería</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. ANOTACIÓN Y TÁCTICA */}
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">
+                      Anotación y Táctica
+                    </span>
+
+                    {onOpenTacticalBoard && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenTacticalBoard();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <span className="text-xs">📋</span>
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">Pizarra Táctica (Canvas)</p>
+                          <p className="text-[9px] text-slate-400">Dibujar sistemas, saques y jugadas</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {onCycleShotMode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onCycleShotMode();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <span className="text-xs">🎯</span>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-[11px] leading-tight">Modo Carta de Tiro</p>
+                            <span className="text-[9px] font-mono text-amber-300 uppercase font-bold">
+                              {currentShotMode === 'off' ? 'Rápido' : currentShotMode === 'all' ? 'Todos' : 'Canastas'}
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-slate-400">Alternar tiro rápido o posición exacta</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenShotChart && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenShotChart();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <Crosshair className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">Ver Mapa de Tiro</p>
+                          <p className="text-[9px] text-slate-400">Zonas de tiro y porcentajes de acierto</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenHistoryModal && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenHistoryModal();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <History className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-[11px] leading-tight">Historial de Jugadas</p>
+                            <span className="text-[9px] font-mono text-slate-400">({game.events.length})</span>
+                          </div>
+                          <p className="text-[9px] text-slate-400">Revisar o corregir acciones anteriores</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 3. CONEXIONES Y AFICIÓN */}
+                  <div className="space-y-0.5 pt-1 border-t border-blue-900/60">
+                    <span className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">
+                      Conexiones y Actas
+                    </span>
+
+                    {onOpenSpectatorQR && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenSpectatorQR();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-cyan-200 transition"
+                      >
+                        <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">QR Seguidores en Directo</p>
+                          <p className="text-[9px] text-slate-400">Para que la afición siga el partido</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenCloudSync && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenCloudSync();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <Radio className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">Vincular Tablet ↔ Mesa / PC</p>
+                          <p className="text-[9px] text-slate-400">Sincronización por PIN o red local</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenOfficialSheet && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenOfficialSheet();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">Acta Oficial FIBA (PDF)</p>
+                          <p className="text-[9px] text-slate-400">Generar o imprimir hoja de partido</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 4. CONFIGURACIÓN Y TUTORIAL */}
+                  <div className="space-y-0.5 pt-1 border-t border-blue-900/60">
+                    {onOpenSettings && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenSettings();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">Ajustes y Batería</p>
+                          <p className="text-[9px] text-slate-400">Configurar tasa de refresco y reglas</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenPWAInstall && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenPWAInstall();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-orange-200 transition"
+                      >
+                        <Download className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">Instalar App en la Tablet</p>
+                          <p className="text-[9px] text-slate-400">Icono propio en pantalla de inicio</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenTutorial && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowToolsDropdown(false);
+                          onOpenTutorial();
+                        }}
+                        className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#132a58] text-left text-slate-200 transition"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-[11px] leading-tight">Ayuda y Tutorial</p>
+                          <p className="text-[9px] text-slate-400">Guía de uso para anotadores</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

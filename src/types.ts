@@ -177,6 +177,8 @@ export interface GameSettings {
   timingMode?: 'fiba_stop' | 'running_clock'; // 'fiba_stop' = Tiempo Parado (FIBA), 'running_clock' = Tiempo Corrido
   autoPauseOnFouls?: boolean; // Pausar reloj automáticamente en faltas (Regla FIBA)
   autoResetShotClockOnOreb?: boolean; // Reiniciar posesión a 14s automáticamente en rebote ofensivo
+  batterySaverRefreshRate?: boolean; // Reducir tasa de actualización visual del marcador de 100ms a 1s para preservar energía
+  lowBatteryAutoSaver?: boolean; // Activar automáticamente el refresco a 1s cuando la batería del dispositivo esté baja (<=20%)
 }
 
 export interface PendingShot {

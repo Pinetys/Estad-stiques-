@@ -274,6 +274,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   timingMode: 'fiba_stop',
   autoPauseOnFouls: true,
   autoResetShotClockOnOreb: true,
+  batterySaverRefreshRate: false,
+  lowBatteryAutoSaver: true,
 };
 
 export const DEFAULT_ROSTER: Player[] = [

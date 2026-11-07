@@ -34,6 +34,8 @@ import {
   RotateCcw,
   X,
   UserCheck,
+  Battery,
+  Timer,
 } from 'lucide-react';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 
@@ -157,6 +159,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   );
   const [courtMode, setCourtMode] = useState(currentGame.settings.courtMode || false);
   const [keepScreenAwake, setKeepScreenAwake] = useState(currentGame.settings.keepScreenAwake ?? true);
+  const [batterySaverRefreshRate, setBatterySaverRefreshRate] = useState(
+    currentGame.settings.batterySaverRefreshRate || false
+  );
+  const [lowBatteryAutoSaver, setLowBatteryAutoSaver] = useState(
+    currentGame.settings.lowBatteryAutoSaver !== false
+  );
 
   // Squad / Roster of the chosen home team with customized starters
   const [currentRoster, setCurrentRoster] = useState<Player[]>(() => {
@@ -439,6 +447,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         shotChartAutoOpen,
         courtMode,
         keepScreenAwake,
+        batterySaverRefreshRate,
+        lowBatteryAutoSaver,
       },
     });
     onClose();
@@ -1257,6 +1267,54 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                   className="rounded bg-[#0a1835] border-emerald-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4 ml-2"
                 />
               </label>
+
+              {/* Tasa de Refresco Visual del Marcador (100ms vs 1s Ahorro Batería) */}
+              <div className="bg-[#132a58] p-2.5 rounded-xl border border-blue-500/40 space-y-2 shadow-sm">
+                <div className="flex items-center justify-between text-xs text-white">
+                  <span className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <Battery className="w-3.5 h-3.5 text-amber-400" />
+                    Refresco del Marcador (Ahorro Batería)
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-300 font-bold">
+                    {batterySaverRefreshRate ? '1s Ahorro' : '100ms Alta Precisión'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
+                  <button
+                    type="button"
+                    onClick={() => setBatterySaverRefreshRate(false)}
+                    className={`py-1.5 px-2 rounded-lg text-center transition font-bold ${
+                      !batterySaverRefreshRate
+                        ? 'bg-blue-600 border border-blue-400 text-white font-black shadow'
+                        : 'bg-[#0a1835] border border-blue-900/60 text-slate-300 hover:text-white hover:bg-[#16356e]'
+                    }`}
+                  >
+                    <div>100 ms</div>
+                    <div className="text-[8px] opacity-75 font-normal">Alta Precisión</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBatterySaverRefreshRate(true)}
+                    className={`py-1.5 px-2 rounded-lg text-center transition font-bold ${
+                      batterySaverRefreshRate
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 border border-amber-300 text-slate-950 font-black shadow'
+                        : 'bg-[#0a1835] border border-blue-900/60 text-slate-300 hover:text-white hover:bg-[#16356e]'
+                    }`}
+                  >
+                    <div>1 segundo</div>
+                    <div className="text-[8px] opacity-75 font-normal">Ahorro Energía</div>
+                  </button>
+                </div>
+                <label className="flex items-center justify-between text-[11px] text-slate-300 cursor-pointer pt-1 border-t border-blue-900/50">
+                  <span>Auto-activar 1s si batería &le; 20%</span>
+                  <input
+                    type="checkbox"
+                    checked={lowBatteryAutoSaver}
+                    onChange={e => setLowBatteryAutoSaver(e.target.checked)}
+                    className="rounded bg-[#0a1835] border-[#203a70] text-amber-500 focus:ring-amber-500 w-3.5 h-3.5"
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
