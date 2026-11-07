@@ -52,6 +52,10 @@ import {
   Scale,
   QrCode,
   Sparkles,
+  PlusCircle,
+  Wifi,
+  WifiOff,
+  Download,
 } from 'lucide-react';
 import { toggleFullscreen, isFullscreenActive } from '../utils/fullscreen';
 import { useScreenWakeLock } from '../utils/screenWakeLock';
@@ -103,6 +107,8 @@ interface CourtBenchModeProps {
   onOpenCloudSync?: () => void;
   onOpenTacticalBoard?: () => void;
   onOpenSpectatorQR?: () => void;
+  onOpenNewGameModal?: () => void;
+  onOpenPWAInstall?: () => void;
 }
 
 export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
@@ -130,6 +136,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   onOpenCloudSync,
   onOpenTacticalBoard,
   onOpenSpectatorQR,
+  onOpenNewGameModal,
+  onOpenPWAInstall,
 }) => {
   // Direct In-Game Substitution handler
   const handlePerformDirectSub = (playerOutId: string, playerInId: string) => {
@@ -209,6 +217,20 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [opponentNumberInput, setOpponentNumberInput] = useState<string>('');
 
   const [isFullscreen, setIsFullscreen] = useState(isFullscreenActive());
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -1068,6 +1090,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onOpenAISubHelper={() => setShowAISubHelperModal(true)}
           onOpenTacticalBoard={onOpenTacticalBoard}
           onOpenHistoryModal={() => setShowHistoryDrawer(true)}
+          onOpenNewGameModal={onOpenNewGameModal}
+          onOpenPWAInstall={onOpenPWAInstall}
         />
       ) : (
         <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none text-xs z-30 shrink-0">
@@ -1248,36 +1272,89 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             </button>
           )}
 
-          {/* Close Match / Edit button in portrait */}
-          {game.status === 'finished' ? (
+          {onOpenPWAInstall && (
             <button
               type="button"
-              onClick={() => {
-                playSound('click', game.settings.soundEnabled);
-                triggerHaptic('medium', game.settings.vibrationEnabled);
-                setIsEditingFinishedGame(prev => !prev);
-              }}
-              className={`p-1 px-2.5 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm ${
-                isEditingFinishedGame
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
-                  : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
-              }`}
-              title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
+              onClick={onOpenPWAInstall}
+              className="p-1 px-2 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-slate-950 border border-amber-300/80 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-md shadow-orange-950/40 shrink-0"
+              title="Descargar e instalar en la tablet (icono en pantalla de inicio)"
             >
-              {isEditingFinishedGame ? (
-                <>
-                  <Lock className="w-3 h-3 text-white" />
-                  <span className="uppercase">Finalizar Edición</span>
-                </>
-              ) : (
-                <>
-                  <Edit className="w-3 h-3 text-black" />
-                  <span className="uppercase">Editar</span>
-                </>
-              )}
+              <Download className="w-3 h-3 text-slate-950 stroke-[2.5]" />
+              <span>Instalar</span>
             </button>
+          )}
+
+          {/* Offline indicator */}
+          {!isOnline && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-950/90 border border-amber-600/70 text-amber-300 text-[10px] font-mono font-bold shrink-0 animate-pulse" title="Sin conexión a internet. Los datos se registran y guardan 100% de forma local en la memoria de la tablet.">
+              <WifiOff className="w-3 h-3 text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">Sin Cobertura (Memoria Local OK)</span>
+              <span className="sm:hidden">Local OK</span>
+            </div>
+          )}
+
+          {/* Close Match / New Game / Edit button in portrait */}
+          {game.status === 'finished' ? (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onOpenNewGameModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('medium', game.settings.vibrationEnabled);
+                    onOpenNewGameModal();
+                  }}
+                  className="p-1 px-2.5 rounded text-[11px] font-black font-mono flex items-center gap-1.5 transition active:scale-95 shadow-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 border border-emerald-300 animate-pulse"
+                  title="Empezar un nuevo partido desde cero"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 text-slate-950" />
+                  <span className="uppercase">Nuevo Partido</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('medium', game.settings.vibrationEnabled);
+                  setIsEditingFinishedGame(prev => !prev);
+                }}
+                className={`p-1 px-2.5 rounded text-[11px] font-black font-mono flex items-center gap-1 transition active:scale-95 shadow-sm ${
+                  isEditingFinishedGame
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
+                    : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
+                }`}
+                title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
+              >
+                {isEditingFinishedGame ? (
+                  <>
+                    <Lock className="w-3 h-3 text-white" />
+                    <span className="uppercase">Finalizar Edición</span>
+                  </>
+                ) : (
+                  <>
+                    <Edit className="w-3 h-3 text-black" />
+                    <span className="uppercase">Editar</span>
+                  </>
+                )}
+              </button>
+            </div>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onOpenNewGameModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click', game.settings.soundEnabled);
+                    triggerHaptic('light', game.settings.vibrationEnabled);
+                    onOpenNewGameModal();
+                  }}
+                  className="p-1 px-2 bg-[#0E224A] hover:bg-[#16356E] text-emerald-300 border border-emerald-500/50 rounded text-[11px] font-bold font-mono flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
+                  title="Empezar un nuevo partido"
+                >
+                  <PlusCircle className="w-3 h-3 text-emerald-400" />
+                  <span className="hidden xs:inline">Nuevo</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={async () => {
@@ -1367,18 +1444,34 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <span className="text-[10px] text-amber-200/80 font-sans">Registro de datos bloqueado</span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              triggerHaptic('medium', game.settings.vibrationEnabled);
-              setIsEditingFinishedGame(true);
-            }}
-            className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-black font-black rounded-lg text-xs flex items-center gap-1.5 shadow active:scale-95 transition"
-          >
-            <Edit className="w-3.5 h-3.5" />
-            <span>EDITAR</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onOpenNewGameModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('medium', game.settings.vibrationEnabled);
+                  onOpenNewGameModal();
+                }}
+                className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1.5 shadow active:scale-95 transition"
+              >
+                <PlusCircle className="w-3.5 h-3.5 text-slate-950" />
+                <span>NUEVO PARTIDO</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('medium', game.settings.vibrationEnabled);
+                setIsEditingFinishedGame(true);
+              }}
+              className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-black font-black rounded-lg text-xs flex items-center gap-1.5 shadow active:scale-95 transition"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              <span>EDITAR</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -2330,12 +2423,27 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* MATCH CLOSED SUCCESS TOAST */}
       {matchClosedSuccess && (
-        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-emerald-700 text-white font-mono font-bold text-xs sm:text-sm px-5 py-3 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-center gap-2.5 animate-in fade-in max-w-[90vw]">
-          <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
-          <div className="flex flex-col text-left">
-            <span className="font-black text-white">¡Partido cerrado con éxito! Marcador a 00:00 y datos bloqueados.</span>
-            <span className="text-[11px] text-emerald-100 font-sans">Pulsa el botón "EDITAR" en cualquier momento para retocar las estadísticas.</span>
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-emerald-800 text-white font-mono font-bold text-xs sm:text-sm px-4 sm:px-6 py-3 rounded-2xl shadow-2xl border-2 border-emerald-400 flex flex-wrap items-center justify-between gap-3 animate-in fade-in max-w-[95vw]">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
+            <div className="flex flex-col text-left">
+              <span className="font-black text-white">¡Partido cerrado y guardado en almacenamiento local!</span>
+              <span className="text-[11px] text-emerald-100 font-sans">Datos a salvo. Pulsa "EDITAR" para retocar o empieza un nuevo partido.</span>
+            </div>
           </div>
+          {onOpenNewGameModal && (
+            <button
+              type="button"
+              onClick={() => {
+                setMatchClosedSuccess(false);
+                onOpenNewGameModal();
+              }}
+              className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow active:scale-95 transition"
+            >
+              <PlusCircle className="w-4 h-4 text-emerald-700" />
+              <span>EMPEZAR NUEVO PARTIDO</span>
+            </button>
+          )}
         </div>
       )}
 

@@ -1,10 +1,32 @@
 {
-  "name": "BasketStats Live - Anotador Baloncesto",
+  "id": "/",
+  "name": "BasketStats PRO - Anotador Baloncesto",
   "short_name": "BasketStats",
+  "description": "Anotador y estadísticas de baloncesto para tablet y móvil con estilo profesional",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0B1C3D",
   "theme_color": "#0B1C3D",
-  "orientation": "landscape-primary",
-  "description": "Anotador y estadísticas de baloncesto para tablet y móvil con estilo Euroliga"
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }

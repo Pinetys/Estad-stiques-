@@ -27,6 +27,7 @@ import {
   Save,
   Send,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import { sendMatchToCoachPinety } from '../utils/pinetySync';
 import { saveGameToLibrary } from '../utils/libraryUtils';
@@ -54,6 +55,8 @@ interface ScoreHeaderProps {
   onToggleEditFinishedGame?: () => void;
   deviceRole?: DeviceRole;
   onOpenSyncModal?: () => void;
+  onOpenNewGameModal?: () => void;
+  onOpenPWAInstall?: () => void;
 }
 
 export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
@@ -72,6 +75,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   onToggleEditFinishedGame,
   deviceRole = 'recorder',
   onOpenSyncModal,
+  onOpenNewGameModal,
+  onOpenPWAInstall,
 }) => {
   const [showClockAdjust, setShowClockAdjust] = useState(false);
   const [showQuarterPicker, setShowQuarterPicker] = useState(false);
@@ -427,6 +432,21 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
                   )}
                   <span className="hidden xs:inline">Coach Pinety</span>
                 </button>
+                {onOpenNewGameModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playSound('click', game.settings.soundEnabled);
+                      triggerHaptic('medium', game.settings.vibrationEnabled);
+                      onOpenNewGameModal();
+                    }}
+                    className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-xs font-mono flex items-center gap-1.5 shadow-md active:scale-95 transition animate-pulse"
+                    title="Empezar un nuevo partido"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Nuevo Partido</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onToggleEditFinishedGame}
@@ -489,6 +509,18 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
           {/* Quick Tools & Bonus Alert Badges */}
           <div className="flex items-center gap-1 shrink-0">
+            {onOpenPWAInstall && (
+              <button
+                type="button"
+                onClick={onOpenPWAInstall}
+                className="px-2 py-1 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-slate-950 font-black rounded text-[10px] font-mono flex items-center gap-1 transition shadow-sm border border-amber-300/80 shrink-0"
+                title="Descargar e instalar en la tablet (icono en pantalla de inicio)"
+              >
+                <Download className="w-3 h-3 text-slate-950 stroke-[2.5]" />
+                <span className="hidden sm:inline">Instalar App</span>
+              </button>
+            )}
+
             {onOpenShotChart && (
               <button
                 type="button"

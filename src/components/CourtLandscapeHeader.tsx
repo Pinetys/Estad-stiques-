@@ -27,6 +27,10 @@ import {
   Sparkles,
   Radio,
   History,
+  PlusCircle,
+  Wifi,
+  WifiOff,
+  Download,
 } from 'lucide-react';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import { NotificationBellButton } from './NotificationBellButton';
@@ -73,6 +77,8 @@ interface CourtLandscapeHeaderProps {
   onOpenAISubHelper?: () => void;
   onOpenTacticalBoard?: () => void;
   onOpenHistoryModal?: () => void;
+  onOpenNewGameModal?: () => void;
+  onOpenPWAInstall?: () => void;
 }
 
 export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
@@ -110,6 +116,8 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   onOpenAISubHelper,
   onOpenTacticalBoard,
   onOpenHistoryModal,
+  onOpenNewGameModal,
+  onOpenPWAInstall,
 }) => {
   const totalQ = (game.category?.toLowerCase().includes('escola') || game.settings?.quarterDurationMinutes === 8)
     ? 6
@@ -459,44 +467,89 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             </button>
           )}
 
-          {/* Edit / Lock Match button when finished */}
-          {game.status === 'finished' && onToggleEditFinishedGame && (
+          {/* Install App on Tablet Button */}
+          {onOpenPWAInstall && (
             <button
               type="button"
-              onClick={onToggleEditFinishedGame}
-              className={`px-2 py-0.5 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 ${
-                isEditingFinishedGame
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
-                  : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
-              }`}
-              title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
+              onClick={onOpenPWAInstall}
+              className="px-2 py-0.5 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-slate-950 font-black border border-amber-300/80 rounded text-[10px] font-mono flex items-center gap-1 transition active:scale-95 shadow-md shadow-orange-950/40 shrink-0"
+              title="Descargar e instalar aplicación en la tablet (icono en pantalla de inicio)"
             >
-              {isEditingFinishedGame ? (
-                <>
-                  <Lock className="w-3 h-3" />
-                  <span>BLOQUEAR</span>
-                </>
-              ) : (
-                <>
-                  <Edit className="w-3 h-3" />
-                  <span>EDITAR</span>
-                </>
-              )}
+              <Download className="w-3 h-3 text-slate-950 stroke-[2.5]" />
+              <span className="hidden sm:inline">INSTALAR APP</span>
+              <span className="sm:hidden">APP</span>
             </button>
           )}
 
-          {/* Close Match when not finished */}
-          {game.status !== 'finished' && onCloseMatch && (
-            <button
-              type="button"
-              onClick={onCloseMatch}
-              className="px-2 py-0.5 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
-              title="Cerrar partido y guardar en biblioteca"
-            >
-              <Flag className="w-3 h-3 text-red-400" />
-              <span className="hidden sm:inline">Cerrar Partido</span>
-              <span className="sm:hidden">Cerrar</span>
-            </button>
+          {/* Edit / Lock Match button when finished */}
+          {game.status === 'finished' && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onOpenNewGameModal && (
+                <button
+                  type="button"
+                  onClick={onOpenNewGameModal}
+                  className="px-2.5 py-1 bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 hover:from-amber-300 hover:to-emerald-400 text-black font-black rounded text-[10px] font-mono flex items-center gap-1 transition active:scale-95 shadow-md shadow-amber-950/40"
+                  title="Empezar un nuevo partido ahora (el partido anterior ya está grabado)"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 text-black" />
+                  <span>NUEVO PARTIDO</span>
+                </button>
+              )}
+
+              {onToggleEditFinishedGame && (
+                <button
+                  type="button"
+                  onClick={onToggleEditFinishedGame}
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-black flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0 ${
+                    isEditingFinishedGame
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 animate-pulse'
+                      : 'bg-amber-500 hover:bg-amber-400 text-black border border-amber-300'
+                  }`}
+                  title={isEditingFinishedGame ? 'Finalizar retoques y volver a bloquear' : 'Editar datos del partido'}
+                >
+                  {isEditingFinishedGame ? (
+                    <>
+                      <Lock className="w-3 h-3" />
+                      <span>BLOQUEAR</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="w-3 h-3" />
+                      <span>EDITAR</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Close Match when not finished + quick new match */}
+          {game.status !== 'finished' && (
+            <div className="flex items-center gap-1 shrink-0">
+              {onOpenNewGameModal && (
+                <button
+                  type="button"
+                  onClick={onOpenNewGameModal}
+                  className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-amber-300 border border-amber-500/50 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
+                  title="Empezar un nuevo partido"
+                >
+                  <PlusCircle className="w-3 h-3 text-amber-400" />
+                  <span className="hidden sm:inline">Nuevo</span>
+                </button>
+              )}
+              {onCloseMatch && (
+                <button
+                  type="button"
+                  onClick={onCloseMatch}
+                  className="px-2 py-0.5 bg-red-950/90 hover:bg-red-900 text-red-200 border border-red-600/70 rounded text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm shrink-0"
+                  title="Cerrar partido y guardar en biblioteca"
+                >
+                  <Flag className="w-3 h-3 text-red-400" />
+                  <span className="hidden sm:inline">Cerrar Partido</span>
+                  <span className="sm:hidden">Cerrar</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

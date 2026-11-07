@@ -1,12 +1,89 @@
-// BasketStats Live - Service Worker for PWA & Match Push Notifications
-const CACHE_NAME = 'basketstats-v1';
+// BasketStats Live - Service Worker for PWA Offline Caching & Match Push Notifications
+const CACHE_NAME = 'basketstats-offline-v3';
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('[SW] Error pre-caching static assets:', err);
+      });
+    })
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Fetch event: Serve cached assets when offline (Zero-coverage support on court)
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Skip non-GET requests and external APIs (like Firebase or analytics)
+  if (request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
+
+  // Navigation requests (HTML SPA loading)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          // OFFLINE: Return cached index.html so the app opens smoothly without internet
+          const cachedResponse = await caches.match(request);
+          if (cachedResponse) return cachedResponse;
+          const fallback = await caches.match('/index.html');
+          if (fallback) return fallback;
+          return caches.match('/');
+        })
+    );
+    return;
+  }
+
+  // Static assets (JS, CSS, images, icons, fonts)
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const fetchPromise = fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => cached);
+
+      // Return cached immediately if found, otherwise wait for network
+      return cached || fetchPromise;
+    })
+  );
 });
 
 // Push notification event (from Push API / Web Push server)
@@ -60,14 +137,12 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If a tab is already open, focus it
       for (const client of clientList) {
         if ('focus' in client) {
           client.navigate?.(targetUrl);
           return client.focus();
         }
       }
-      // Otherwise open a new window
       if (self.clients.openWindow) {
         return self.clients.openWindow(targetUrl);
       }
@@ -75,7 +150,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Listen for messages from frontend to show rich notifications via ServiceWorkerRegistration
+// Listen for messages from frontend
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     const { title, options } = event.data;
