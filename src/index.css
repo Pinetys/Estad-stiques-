@@ -24,6 +24,17 @@
     padding: 0;
     overscroll-behavior: none;
   }
+
+  /* Ensure all inputs, textareas, and editable fields allow touch focus, keyboard typing, and text selection on tablets */
+  input,
+  textarea,
+  select,
+  [contenteditable="true"],
+  .select-text {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    touch-action: manipulation !important;
+  }
 }
 
 .font-scoreboard {
@@ -40,6 +51,16 @@
 }
 .pt-safe {
   padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+.px-safe {
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+.pl-safe {
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+}
+.pr-safe {
+  padding-right: max(0.5rem, env(safe-area-inset-right));
 }
 
 /* Custom scrollbar for vibrant athletic theme */

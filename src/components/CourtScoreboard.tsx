@@ -64,7 +64,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
       } shrink-0 shadow-2xl select-none`}
     >
       {/* Top micro-bar: Timing Mode & Spectators QR / PRO Club Badge */}
-      <div className="max-w-xl mx-auto flex items-center justify-between pb-1 mb-0.5 border-b border-[#D4AF37]/25 text-[9px] font-mono">
+      <div className="max-w-3xl lg:max-w-4xl mx-auto w-full flex items-center justify-between pb-1 mb-0.5 border-b border-[#D4AF37]/25 text-[9px] font-mono">
         <button
           type="button"
           onClick={onOpenQuickTimeAdjust}
@@ -93,7 +93,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
         </div>
       </div>
 
-      <div className="max-w-xl mx-auto grid grid-cols-12 items-center gap-1 sm:gap-2">
+      <div className="max-w-3xl lg:max-w-4xl mx-auto w-full grid grid-cols-12 items-center gap-1 sm:gap-2">
         {/* LOCAL (HOME) */}
         <div className="col-span-3 flex flex-col items-center justify-center text-center">
           <div className="text-xs sm:text-sm font-black text-[#F5C542] uppercase tracking-wider truncate w-full px-1">

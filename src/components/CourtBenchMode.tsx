@@ -1035,7 +1035,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   };
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col overflow-hidden select-none">
+    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col overflow-hidden select-none px-safe">
       {/* 1. TOP BAR: LANDSCAPE (CENTERED QUARTER CLOCK & ALL CONTROLS) VS PORTRAIT */}
       {isLandscapeTablet ? (
         <CourtLandscapeHeader
@@ -1113,9 +1113,10 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           isOnline={isOnline}
         />
       ) : (
-        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 py-1 flex items-center justify-between text-xs z-30 shrink-0 gap-1.5 relative select-none">
-          {/* Left: Salir, Pantalla Completa, Anti-bloqueo y Ahorro Batería */}
-          <div className="flex items-center gap-1 shrink-0">
+        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 sm:px-3 py-1 z-30 shrink-0 relative select-none">
+          <div className="max-w-3xl lg:max-w-4xl mx-auto w-full flex items-center justify-between text-xs gap-1.5">
+            {/* Left: Salir, Pantalla Completa, Anti-bloqueo y Ahorro Batería */}
+            <div className="flex items-center gap-1 shrink-0">
             {/* Exit Court Mode button */}
             <button
               onClick={onToggleCourtMode}
@@ -1542,12 +1543,14 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               )}
             </div>
           </div>
+          </div>
         </div>
       )}
 
       {/* 2. MAIN DIGITAL SCOREBOARD (PORTRAIT ONLY - LANDSCAPE HAS IT IN LEFT COLUMN) */}
       {!isLandscapeTablet && (
-        <CourtScoreboard
+        <div className="w-full max-w-3xl lg:max-w-4xl mx-auto px-2 pt-0.5 sm:pt-1 shrink-0">
+          <CourtScoreboard
           game={game}
           homeIsBonus={homeIsBonus}
           awayIsBonus={awayIsBonus}
@@ -1582,6 +1585,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           onOpenProBenefits={() => setShowProBenefitsModal(true)}
           onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
         />
+      </div>
       )}
 
       {/* LOCKED OR EDITING BANNER NOTIFICATION (PORTRAIT) */}

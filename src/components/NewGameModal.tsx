@@ -374,13 +374,17 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     e.preventDefault();
     if (!homeTeam.trim() || !awayTeam.trim()) return;
 
-    if (startersCount !== 5) {
-      setStarterWarning(`Debes seleccionar exactamente 5 jugadores titulares (actualmente: ${startersCount}/5).`);
-      triggerHaptic('warning', vibrationEnabled);
-      return;
+    let rosterToUse = currentRoster;
+    const effectiveStarters = rosterToUse.filter(
+      p => attendingPlayerIds.includes(p.id) && (p.starter || p.onCourt)
+    ).length;
+
+    if (effectiveStarters !== 5) {
+      rosterToUse = applySuggestedStarters(rosterToUse);
+      setCurrentRoster(rosterToUse);
     }
 
-    const finalRoster: Player[] = currentRoster
+    const finalRoster: Player[] = rosterToUse
       .filter(p => attendingPlayerIds.includes(p.id))
       .map(p => {
         const isStarter = Boolean(p.starter || p.onCourt);
@@ -455,10 +459,10 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#060f22]/85 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
-      <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-lg w-full p-4 shadow-2xl space-y-3.5 max-h-[92vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 border-b border-[#203a70]">
+    <div className="fixed inset-0 z-50 bg-[#060f22]/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in select-text">
+      <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-xl w-full shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden">
+        {/* Header - Fixed top */}
+        <div className="p-3 sm:p-4 flex items-center justify-between border-b border-[#203a70] bg-[#0c1c3d] shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400">
               <PlusCircle className="w-5 h-5" />
@@ -480,7 +484,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form id="new-game-modal-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 overscroll-contain">
           {/* ===================== HOME TEAM (LOCAL) ===================== */}
           <div className="bg-[#132a58] p-3 rounded-xl border border-[#203a70] space-y-2.5 shadow">
             <div className="flex items-center justify-between flex-wrap gap-1.5">
@@ -700,36 +704,66 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               </div>
             </div>
 
-            {/* Selected Away Banner */}
-            <div className="flex items-center gap-2 bg-[#0a1835] p-2 rounded-lg border border-[#203a70]">
-              <div
-                onClick={() => setEditingLogoTeam('away')}
-                className="cursor-pointer hover:opacity-80 transition shrink-0"
-                title="Cambiar logo del rival"
-              >
-                <TeamLogoDisplay logo={awayLogo} teamName={awayTeam} size="sm" />
-              </div>
-              <div className="grow">
-                <span className="text-[9px] uppercase font-mono text-slate-400 block">
-                  Rival Seleccionado:
+            {/* Prominent Rival Team Input Box (Easy touch & typing on tablets) */}
+            <div className="bg-[#0a1835] p-2.5 rounded-xl border border-sky-500/50 space-y-1.5 shadow-inner">
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="uppercase text-sky-300 font-bold flex items-center gap-1">
+                  <span>Escribe o Selecciona el Rival:</span>
                 </span>
-                <input
-                  type="text"
-                  value={awayTeam}
-                  onChange={e => setAwayTeam(e.target.value)}
-                  className="w-full bg-transparent text-xs font-bold text-white focus:outline-none"
-                  placeholder="Nombre del rival"
-                  required
-                />
+                {awayTeam && awayTeam !== 'Equipo Rival' && (
+                  <button
+                    type="button"
+                    onClick={() => setAwayTeam('')}
+                    className="text-[10px] text-sky-400 hover:text-white underline font-mono"
+                  >
+                    Borrar texto
+                  </button>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setEditingLogoTeam('away')}
-                className="text-[10px] text-sky-400 hover:underline flex items-center gap-1 font-mono"
-              >
-                <Camera className="w-3 h-3" />
-                <span>Logo</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <div
+                  onClick={() => setEditingLogoTeam('away')}
+                  className="cursor-pointer hover:opacity-80 transition shrink-0"
+                  title="Cambiar logo del rival"
+                >
+                  <TeamLogoDisplay logo={awayLogo} teamName={awayTeam} size="md" />
+                </div>
+                <div className="relative grow">
+                  <input
+                    id="newgame-away-team-input"
+                    type="text"
+                    value={awayTeam}
+                    onChange={e => setAwayTeam(e.target.value)}
+                    onFocus={e => {
+                      if (e.target.value === 'Equipo Rival') {
+                        e.target.select();
+                      }
+                    }}
+                    className="w-full bg-[#132a58] border-2 border-sky-500/80 focus:border-sky-300 rounded-xl px-3 py-2 text-sm text-white font-bold focus:outline-none transition shadow-sm select-text"
+                    placeholder="Escribe el nombre del rival..."
+                    autoComplete="off"
+                    required
+                  />
+                  {awayTeam && (
+                    <button
+                      type="button"
+                      onClick={() => setAwayTeam('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-sky-900/90 hover:bg-sky-800 text-sky-200 flex items-center justify-center text-xs font-bold transition"
+                      title="Limpiar nombre del rival"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingLogoTeam('away')}
+                  className="p-2.5 bg-[#132a58] hover:bg-[#1e458e] text-slate-200 rounded-xl border border-sky-500/40 text-xs shrink-0 flex items-center gap-1 shadow-xs"
+                  title="Foto o Icono del Rival"
+                >
+                  <Camera className="w-4 h-4 text-sky-400" />
+                </button>
+              </div>
             </div>
 
             {/* RECORDED OPPONENTS LIST / SELECTOR */}
@@ -805,8 +839,11 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               </div>
             ) : (
               /* MANUAL RIVAL OPTION */
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
+              <div className="bg-[#0a1835] p-2.5 rounded-xl border border-sky-500/30 space-y-2">
+                <p className="text-[11px] text-sky-200 font-sans leading-relaxed">
+                  ✍️ Escribe el nombre del equipo rival en la casilla azul superior. Si deseas conservarlo para futuros partidos, márcalo a continuación:
+                </p>
+                <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer pt-1 border-t border-[#203a70]">
                   <input
                     type="checkbox"
                     checked={saveAwayAsRecorded}
@@ -1318,31 +1355,28 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="pt-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-1/3 py-2.5 bg-[#16356e] hover:bg-[#1e458e] text-slate-200 font-bold rounded-xl text-xs border border-[#203a70] transition shadow"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={startersCount !== 5}
-              className={`w-2/3 py-2.5 rounded-xl text-xs font-black shadow-xl flex items-center justify-center gap-1.5 transition ${
-                startersCount === 5
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 cursor-pointer'
-                  : 'bg-[#16336e] text-slate-400 border border-[#203a70] cursor-not-allowed opacity-60'
-              }`}
-            >
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>
-                {startersCount === 5 ? 'Comenzar Partido' : `Selecciona 5 Titulares (${startersCount}/5)`}
-              </span>
-            </button>
-          </div>
         </form>
+
+        {/* Footer Actions - Fixed Bottom (Always visible, never cut off!) */}
+        <div className="p-3 bg-[#0a1835] border-t border-[#203a70] flex items-center justify-between gap-2 shrink-0 z-20">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-1/3 py-2.5 bg-[#16356e] hover:bg-[#1e458e] text-slate-200 font-bold rounded-xl text-xs border border-[#203a70] transition shadow active:scale-95"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            form="new-game-modal-form"
+            className="w-2/3 py-2.5 rounded-xl text-xs sm:text-sm font-black shadow-xl flex items-center justify-center gap-1.5 transition bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-95 text-slate-950 cursor-pointer"
+          >
+            <Check className="w-4 h-4 stroke-[3]" />
+            <span>
+              {startersCount === 5 ? 'Comenzar Partido' : `Comenzar (${startersCount}/5 Titulares)`}
+            </span>
+          </button>
+        </div>
 
         {/* Modal ampliado de selección de Quinteto Inicial */}
         {showStartingFiveFullModal && (

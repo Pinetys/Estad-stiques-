@@ -209,9 +209,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   return (
     <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
       {/* 1. TOP UTILITY STRIP: Clean, responsive single-row layout without lateral scroll */}
-      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-3 py-1 flex items-center justify-between text-[11px] bg-[#071328]/95 gap-2 relative z-30">
-        {/* Left: Exit button, Fullscreen, WakeLock & Battery saver toggle */}
-        <div className="flex items-center gap-1.5 shrink-0">
+      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-4 py-1 bg-[#071328]/95 relative z-30">
+        <div className="max-w-[1500px] mx-auto w-full grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center text-[11px] gap-2">
+          {/* Left: Exit button, Fullscreen, WakeLock & Battery saver toggle */}
+          <div className="flex items-center justify-start gap-1.5 shrink-0">
           <button
             type="button"
             onClick={onToggleCourtMode}
@@ -296,7 +297,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
 
         {/* Right: Match Actions & Consolidated Tools Dropdown */}
-        <div className="flex items-center gap-1.5 shrink-0 relative">
+        <div className="flex items-center justify-end gap-1.5 shrink-0 relative">
           {/* Finished Match State */}
           {game.status === 'finished' ? (
             <div className="flex items-center gap-1 shrink-0">
@@ -651,12 +652,14 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             )}
           </div>
         </div>
+        </div>
       </div>
 
-      {/* 2. MAIN MATCH & TIME CONSOLE: Responsive 3-column layout (Optimized for tablets) */}
-      <div className="px-1.5 sm:px-2.5 lg:px-3 py-1 sm:py-1.5 flex items-center justify-between gap-1 sm:gap-2 w-full max-w-full">
-        {/* LEFT SECTION: LOCAL TEAM SCORECARD */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+      {/* 2. MAIN MATCH & TIME CONSOLE: Centered 3-column grid mathematically anchored to screen center for tablets */}
+      <div className="w-full px-2 sm:px-4 py-1 sm:py-1.5">
+        <div className="max-w-[1500px] mx-auto w-full grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-2">
+          {/* LEFT SECTION: LOCAL TEAM SCORECARD */}
+          <div className="flex items-center justify-start gap-1 sm:gap-1.5 min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[105px] sm:min-w-[130px] lg:min-w-[155px] shadow-md">
             <div className="flex flex-col text-left min-w-0">
               <span className="text-xs sm:text-sm font-black text-[#F5C542] uppercase tracking-wider truncate max-w-[85px] sm:max-w-[110px] leading-tight">
@@ -841,7 +844,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
 
         {/* RIGHT SECTION: AWAY TEAM & OPPONENT LIVE ACTIONS */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div className="flex items-center justify-end gap-1 sm:gap-1.5 min-w-0">
           {/* RIVAL TEAM CARD */}
           <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[105px] sm:min-w-[130px] lg:min-w-[155px] shadow-md">
             <ScoreNumber
@@ -895,26 +898,28 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           </div>
 
           {/* Opponent Live Action: Scoring buttons (+1 TL, +2 Pts, +3 Tri) & Proportioned +FALTA */}
-          <div className={`flex items-center gap-1 sm:gap-1.5 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+          <div className={`flex items-center gap-1 sm:gap-1.5 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <button
               type="button"
               id="header-away-score-1p-btn"
               onClick={() => onLogOpponentAction('OPP_1P')}
               disabled={isActionsLocked}
-              className="px-2 py-1 sm:py-1.5 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40"
+              className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 shrink-0"
               title="+1 Tiro Libre Rival"
             >
-              +1 TL
+              <span className="sm:hidden">+1</span>
+              <span className="hidden sm:inline">+1 TL</span>
             </button>
             <button
               type="button"
               id="header-away-score-2p-btn"
               onClick={() => onLogOpponentAction('OPP_2P')}
               disabled={isActionsLocked}
-              className="px-2 py-1 sm:py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-1"
+              className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-0.5 sm:gap-1 shrink-0"
               title="+2 Canasta Rival (Poner sitio de tiro en pista)"
             >
-              <span>+2 Pts</span>
+              <span>+2</span>
+              <span className="hidden sm:inline text-[10px]">Pts</span>
               <span className="text-[10px]">🎯</span>
             </button>
             <button
@@ -922,10 +927,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               id="header-away-score-3p-btn"
               onClick={() => onLogOpponentAction('OPP_3P')}
               disabled={isActionsLocked}
-              className="px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-1"
+              className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-0.5 sm:gap-1 shrink-0"
               title="+3 Triple Rival (Poner sitio de tiro en pista)"
             >
-              <span>+3 Tri</span>
+              <span>+3</span>
+              <span className="hidden sm:inline text-[10px]">Tri</span>
               <span className="text-[10px]">🎯</span>
             </button>
             <button
@@ -939,7 +945,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                 }
               }}
               disabled={isActionsLocked}
-              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg font-mono font-black text-[10px] sm:text-xs transition active:scale-95 border-2 shadow-md disabled:opacity-40 shrink-0 flex items-center gap-1 ${
+              className={`px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg font-mono font-black text-[10px] sm:text-xs transition active:scale-95 border-2 shadow-md disabled:opacity-40 shrink-0 flex items-center gap-0.5 sm:gap-1 ${
                 awayIsBonus
                   ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
                   : 'bg-red-950/90 hover:bg-red-900 text-rose-200 border-red-600/70'
@@ -947,7 +953,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               title="Sumar falta al equipo contrario (Rival)"
             >
               <span className="uppercase tracking-tight">+F</span>
-              <span className="bg-black/50 text-white px-1.5 py-0.2 rounded font-scoreboard font-black text-[10px] sm:text-xs border border-red-400">
+              <span className="bg-black/50 text-white px-1 sm:px-1.5 py-0.2 rounded font-scoreboard font-black text-[10px] sm:text-xs border border-red-400">
                 {game.awayQuarterFouls || 0}
               </span>
               {awayIsBonus && (
@@ -957,6 +963,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               )}
             </button>
           </div>
+        </div>
         </div>
       </div>
     </header>

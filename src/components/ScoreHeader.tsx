@@ -239,7 +239,7 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
   return (
     <div className={`${isCourtMode ? 'bg-[#090f23] border-blue-900/60' : 'bg-gradient-to-b from-[#101c40] via-[#0d1736] to-[#091026] border-blue-900/60'} border-b shadow-xl relative z-30 w-full max-w-full overflow-hidden`}>
       {/* Top Bar: Quarter Selector, Clock, Status */}
-      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-2 w-full max-w-full">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-2 w-full">
         <div className="flex items-center justify-between gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
           {/* Quarter Controls (Prev, Selector Dropdown, Next) */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
