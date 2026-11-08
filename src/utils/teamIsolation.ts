@@ -80,10 +80,8 @@ export function isGameForTeam(
   const tName = (team.name || '').toLowerCase().trim();
   const teamFamily = classifyAgeCategory(`${team.category || ''} ${team.name || ''}`);
   
-  // Extract game family from game fields + look up owning team if teamId exists
-  let gameFamily = classifyAgeCategory(
-    `${game.category || ''} ${game.title || ''} ${game.homeTeamName || ''} ${game.awayTeamName || ''}`
-  );
+  // Extract game family from game fields (category and title only, NEVER awayTeamName / rival)
+  let gameFamily = classifyAgeCategory(`${game.category || ''} ${game.title || ''}`);
   if (gameFamily === 'unknown' && game.teamId && allRegisteredTeams.length > 0) {
     const owningTeam = allRegisteredTeams.find(t => t.id === game.teamId);
     if (owningTeam) {
@@ -91,14 +89,54 @@ export function isGameForTeam(
     }
   }
 
-  // 1. HARD CATEGORY BARRIER:
+  // 1. Explicit teamId assignment is AUTHORITATIVE:
+  // If the game is assigned to this team's ID, it belongs to this team.
+  if (game.teamId && game.teamId === tId) {
+    return true;
+  }
+
+  // If the game has a DIFFERENT registered teamId, it belongs to that other team
+  if (game.teamId && game.teamId !== tId) {
+    // Only exception: if it has no players for tagged team and >= 2 for this team
+    if (
+      (teamFamily === 'unknown' || gameFamily === 'unknown' || teamFamily === gameFamily) &&
+      team.roster &&
+      team.roster.length >= 2
+    ) {
+      const teamRosterIds = new Set((team.roster || []).map(p => p.id));
+      const teamRosterKeys = new Set(
+        (team.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
+      );
+      const matchesCount = (game.players || []).filter(
+        p => (p.id && teamRosterIds.has(p.id)) || teamRosterKeys.has(`${p.number}_${(p.name || '').toLowerCase().trim()}`)
+      ).length;
+      if (matchesCount >= 2) {
+        const taggedTeam = allRegisteredTeams.find(ot => ot.id === game.teamId);
+        if (taggedTeam) {
+          const taggedKeys = new Set(
+            (taggedTeam.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
+          );
+          const taggedIds = new Set((taggedTeam.roster || []).map(p => p.id));
+          const matchesTagged = (game.players || []).filter(
+            p => (p.id && taggedIds.has(p.id)) || taggedKeys.has(`${p.number}_${(p.name || '').toLowerCase().trim()}`)
+          ).length;
+          if (matchesTagged === 0) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // 2. HARD CATEGORY BARRIER for unassigned/legacy games:
   // If the game is clearly Infantil and the team is Junior (or vice-versa),
-  // they CANNOT be the same team under any circumstance.
+  // they cannot be the same team unless explicitly assigned by teamId.
   if (teamFamily !== 'unknown' && gameFamily !== 'unknown' && teamFamily !== gameFamily) {
     return false;
   }
 
-  // 2. Roster matching helper
+  // 3. Roster matching helper
   const teamRosterIds = new Set((team.roster || []).map(p => p.id));
   const teamRosterKeys = new Set(
     (team.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
@@ -113,73 +151,6 @@ export function isGameForTeam(
       matchingPlayersCount++;
     }
   });
-
-  // 3. Check if game explicitly has this team's ID
-  if (game.teamId === tId) {
-    // If another registered team matches the game's category family AND this team doesn't,
-    // this game was erroneously tagged during an active team switch.
-    if (allRegisteredTeams.length > 1 && gameFamily !== 'unknown') {
-      const otherTeamWithMatchingFamily = allRegisteredTeams.find(
-        other => other.id !== tId && classifyAgeCategory(`${other.category || ''} ${other.name || ''}`) === gameFamily
-      );
-      if (otherTeamWithMatchingFamily && teamFamily !== 'unknown' && teamFamily !== gameFamily) {
-        return false;
-      }
-    }
-
-    // If this team has a defined roster (>= 2 players), make sure the match wasn't
-    // a corrupted clone where players actually belong to a DIFFERENT registered team
-    if (team.roster && team.roster.length >= 2 && gamePlayers.length >= 2) {
-      if (matchingPlayersCount === 0 && allRegisteredTeams.length > 1) {
-        // Check if another team has a high match for these players
-        const otherMatchingTeam = allRegisteredTeams.find(other => {
-          if (other.id === tId) return false;
-          const otherKeys = new Set(
-            (other.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
-          );
-          const otherIds = new Set((other.roster || []).map(p => p.id));
-          const matches = gamePlayers.filter(
-            p => (p.id && otherIds.has(p.id)) || otherKeys.has(`${p.number}_${(p.name || '').toLowerCase().trim()}`)
-          ).length;
-          return matches >= 2;
-        });
-
-        if (otherMatchingTeam) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  // 4. If game has a DIFFERENT teamId:
-  if (game.teamId && game.teamId !== tId) {
-    // Check if it was falsely tagged with the other team's id during an active team switch.
-    // It ONLY belongs to this team if:
-    // a) Categories are strictly compatible
-    // b) This team has >= 2 matching players, AND the tagged team has 0
-    if (
-      (teamFamily === 'unknown' || gameFamily === 'unknown' || teamFamily === gameFamily) &&
-      team.roster &&
-      team.roster.length >= 2 &&
-      matchingPlayersCount >= 2
-    ) {
-      const taggedTeam = allRegisteredTeams.find(ot => ot.id === game.teamId);
-      if (taggedTeam) {
-        const taggedKeys = new Set(
-          (taggedTeam.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
-        );
-        const taggedIds = new Set((taggedTeam.roster || []).map(p => p.id));
-        const matchesTagged = gamePlayers.filter(
-          p => (p.id && taggedIds.has(p.id)) || taggedKeys.has(`${p.number}_${(p.name || '').toLowerCase().trim()}`)
-        ).length;
-        if (matchesTagged === 0) {
-          return true; // Corrupted tag: actually belongs to this team!
-        }
-      }
-    }
-    return false;
-  }
 
   // 5. Legacy game without teamId
   const gameHome = (game.homeTeamName || '').toLowerCase().trim();
@@ -269,84 +240,89 @@ export function sanitizeAndIsolateLibraryGames(
     const current = { ...game };
     const gameFamily = classifyAgeCategory(`${current.category || ''} ${current.title || ''}`);
 
-    // Find the true owning team
-    let bestTeam: TeamProfile | null = null;
-    let bestMatchScore = 0;
-
-    teams.forEach(team => {
-      const teamFamily = classifyAgeCategory(`${team.category || ''} ${team.name || ''}`);
-
-      // HARD BARRIER: An Infantil game can NEVER be assigned to a Junior team!
-      if (gameFamily !== 'unknown' && teamFamily !== 'unknown' && gameFamily !== teamFamily) {
-        return;
+    // If the game already has a valid registered teamId, respect it directly!
+    const existingRegisteredTeam = teams.find(t => t.id === current.teamId);
+    if (existingRegisteredTeam) {
+      if (!current.category && existingRegisteredTeam.category) {
+        current.category = existingRegisteredTeam.category;
+        changed = true;
       }
+      if (!current.homeTeamName && existingRegisteredTeam.name) {
+        current.homeTeamName = existingRegisteredTeam.name;
+        changed = true;
+      }
+    } else {
+      // Find the true owning team
+      let bestTeam: TeamProfile | null = null;
+      let bestMatchScore = 0;
 
-      const rosterIds = new Set((team.roster || []).map(p => p.id));
-      const rosterKeys = new Set(
-        (team.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
-      );
-      let matchCount = 0;
-      (current.players || []).forEach(p => {
-        const key = `${p.number}_${(p.name || '').toLowerCase().trim()}`;
-        if ((p.id && rosterIds.has(p.id)) || rosterKeys.has(key)) {
-          matchCount++;
+      teams.forEach(team => {
+        const teamFamily = classifyAgeCategory(`${team.category || ''} ${team.name || ''}`);
+
+        // HARD BARRIER: An Infantil game can NEVER be assigned to a Junior team if unassigned
+        if (gameFamily !== 'unknown' && teamFamily !== 'unknown' && gameFamily !== teamFamily) {
+          return;
+        }
+
+        const rosterIds = new Set((team.roster || []).map(p => p.id));
+        const rosterKeys = new Set(
+          (team.roster || []).map(p => `${p.number}_${(p.name || '').toLowerCase().trim()}`)
+        );
+        let matchCount = 0;
+        (current.players || []).forEach(p => {
+          const key = `${p.number}_${(p.name || '').toLowerCase().trim()}`;
+          if ((p.id && rosterIds.has(p.id)) || rosterKeys.has(key)) {
+            matchCount++;
+          }
+        });
+
+        // Bonus if team name matches
+        if (
+          current.homeTeamName &&
+          current.homeTeamName.toLowerCase().trim() === team.name.toLowerCase().trim()
+        ) {
+          matchCount += 2;
+        }
+
+        // Bonus if category family matches
+        if (gameFamily !== 'unknown' && teamFamily === gameFamily) {
+          matchCount += 3;
+        }
+
+        if (matchCount > bestMatchScore) {
+          bestMatchScore = matchCount;
+          bestTeam = team;
         }
       });
 
-      // Bonus if exact teamId matches
-      if (current.teamId === team.id) {
-        matchCount += 3;
-      }
-
-      // Bonus if team name matches
-      if (
-        current.homeTeamName &&
-        current.homeTeamName.toLowerCase().trim() === team.name.toLowerCase().trim()
-      ) {
-        matchCount += 1;
-      }
-
-      // Bonus if category family matches
-      if (gameFamily !== 'unknown' && teamFamily === gameFamily) {
-        matchCount += 3;
-      }
-
-      if (matchCount > bestMatchScore) {
-        bestMatchScore = matchCount;
-        bestTeam = team;
-      }
-    });
-
-    if (bestTeam && bestMatchScore >= 2) {
-      const targetTeam: TeamProfile = bestTeam;
-      if (current.teamId !== targetTeam.id) {
-        current.teamId = targetTeam.id;
-        changed = true;
-      }
-      if (current.homeTeamName !== targetTeam.name) {
-        current.homeTeamName = targetTeam.name;
-        changed = true;
-      }
-      // Only align category if target team has a category and it's compatible
-      if (targetTeam.category && areCategoriesCompatible(current.category, targetTeam.category)) {
-        if (current.category !== targetTeam.category) {
+      if (bestTeam && bestMatchScore >= 2) {
+        const targetTeam: TeamProfile = bestTeam;
+        if (current.teamId !== targetTeam.id) {
+          current.teamId = targetTeam.id;
+          changed = true;
+        }
+        if (current.homeTeamName !== targetTeam.name) {
+          current.homeTeamName = targetTeam.name;
+          changed = true;
+        }
+        if (targetTeam.category && !current.category) {
           current.category = targetTeam.category;
           changed = true;
         }
-      }
-    } else if (!current.teamId && teams.length > 0) {
-      // Fallback by name & category compatibility
-      const matchByName = teams.find(
-        t =>
-          t.name.toLowerCase().trim() === (current.homeTeamName || '').toLowerCase().trim() &&
-          areCategoriesCompatible(t.category, current.category)
-      );
-      if (matchByName) {
-        current.teamId = matchByName.id;
-        if (!current.category) {
-          current.category = matchByName.category;
+      } else if (!current.teamId && teams.length > 0) {
+        // Fallback by name & category compatibility
+        const matchByName = teams.find(
+          t =>
+            t.name.toLowerCase().trim() === (current.homeTeamName || '').toLowerCase().trim() &&
+            areCategoriesCompatible(t.category, current.category)
+        );
+        if (matchByName) {
+          current.teamId = matchByName.id;
+          if (!current.category) {
+            current.category = matchByName.category;
+          }
+          changed = true;
         }
-        changed = true;
       }
     }
 

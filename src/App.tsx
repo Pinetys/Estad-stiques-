@@ -3436,6 +3436,7 @@ export default function App() {
       {showRecoveryModal && (
         <EmergencyRecoveryModal
           currentGame={game}
+          recordedTeams={teams}
           onClose={() => setShowRecoveryModal(false)}
           onRestoreGame={restoredGame => {
             setGame(restoredGame);
@@ -3443,6 +3444,10 @@ export default function App() {
             setLibraryGames(getSavedGamesFromStorage());
             setActiveTab('live');
             setShowRecoveryModal(false);
+          }}
+          onMatchesUpdated={updatedMatches => {
+            setLibraryGames(updatedMatches);
+            setTeams(getRegisteredTeams());
           }}
         />
       )}

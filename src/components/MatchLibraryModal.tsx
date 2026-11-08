@@ -21,6 +21,7 @@ import {
 } from '../utils/libraryUtils';
 import { ensureTeamsForMatches, saveRegisteredTeams, getRegisteredTeams } from '../utils/teamStorage';
 import { syncEngine } from '../lib/syncEngine';
+import { syncMatchToCloud } from '../lib/firebase';
 import { sanitizeAndIsolateLibraryGames, isGameForTeam } from '../utils/teamIsolation';
 import { TeamLogoDisplay } from './TeamLogoPicker';
 import { calculatePlayerStats, calculateTeamStats } from '../utils/statsCalculator';
@@ -58,6 +59,7 @@ import {
   Archive,
   RotateCcw,
   Send,
+  FolderInput,
 } from 'lucide-react';
 import { sendMatchToCoachPinety } from '../utils/pinetySync';
 
@@ -91,16 +93,52 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const [seasonStats, setSeasonStats] = useState<SeasonAggregatedStats | null>(null);
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('ALL');
   const [syncingPinetyMatchId, setSyncingPinetyMatchId] = useState<string | null>(null);
+  const [gameToReassign, setGameToReassign] = useState<Game | null>(null);
+  const [reassignCategory, setReassignCategory] = useState<string>('');
+
+  // Unassigned games that don't belong to any registered team
+  const unassignedGames = React.useMemo(() => {
+    if (!recordedTeams || recordedTeams.length === 0) return [];
+    const teamIds = new Set(recordedTeams.map(t => t.id));
+    return library.filter(g => !g.teamId || !teamIds.has(g.teamId));
+  }, [library, recordedTeams]);
 
   // Filter library matches so only the selected team's matches appear, or ALL if selected
   const filteredLibrary = React.useMemo(() => {
     if (selectedTeamFilter === 'ALL' || !recordedTeams || recordedTeams.length === 0) {
       return library;
     }
+    if (selectedTeamFilter === 'UNASSIGNED') {
+      const allTeamIds = new Set(recordedTeams.map(t => t.id));
+      return library.filter(g => !g.teamId || !allTeamIds.has(g.teamId));
+    }
     const targetTeam = recordedTeams.find(t => t.id === selectedTeamFilter);
     if (!targetTeam) return library;
     return library.filter(g => isGameForTeam(g, targetTeam, recordedTeams));
   }, [library, selectedTeamFilter, recordedTeams]);
+
+  const handleReassignGame = (targetGame: Game, targetTeam: TeamProfile, customCat?: string) => {
+    const finalCat = customCat?.trim() || targetTeam.category?.trim() || targetGame.category || 'Senior';
+    const updatedGame: Game = {
+      ...targetGame,
+      teamId: targetTeam.id,
+      homeTeamName: targetTeam.name,
+      homeTeamLogo: targetTeam.logo,
+      homeTeamColor: targetTeam.primaryColor || '#ea580c',
+      category: finalCat,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedLib = saveOrUpdateGameInLibrary(updatedGame);
+    refreshLibrary(updatedLib);
+    syncMatchToCloud(updatedGame).catch(() => {});
+    onMatchesUpdated?.(updatedLib);
+    setGameToReassign(null);
+    setTrashToast(`¡Partido reasignado con éxito a "${targetTeam.name}" (${finalCat})!`);
+    setTimeout(() => setTrashToast(null), 4000);
+    playSound('score', currentGame.settings.soundEnabled);
+    triggerHaptic('heavy', currentGame.settings.vibrationEnabled);
+  };
 
   // Detected Argentona match for quick recovery and guaranteed visibility
   const argentonaMatch = React.useMemo(() => {
@@ -820,7 +858,48 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                         </button>
                       );
                     })}
+
+                    {unassignedGames.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTeamFilter('UNASSIGNED');
+                          playSound('click', currentGame.settings.soundEnabled);
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 border ${
+                          selectedTeamFilter === 'UNASSIGNED'
+                            ? 'bg-amber-500 text-black border-amber-400 font-black shadow-md'
+                            : 'bg-amber-950/40 text-amber-300 border-amber-700/60 hover:bg-amber-900/60'
+                        }`}
+                        title="Ver partidos que no tienen equipo registrado asignado"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Sin equipo ({unassignedGames.length})</span>
+                      </button>
+                    )}
                   </div>
+                </div>
+              )}
+
+              {/* Unassigned Warning Banner */}
+              {unassignedGames.length > 0 && selectedTeamFilter !== 'UNASSIGNED' && (
+                <div className="bg-amber-950/40 border border-amber-600/70 rounded-xl p-3 flex items-center justify-between gap-3 text-xs font-mono">
+                  <div className="flex items-center gap-2 text-amber-300">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>
+                      Hay <strong>{unassignedGames.length}</strong> partido(s) sin equipo asignado en la biblioteca.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTeamFilter('UNASSIGNED');
+                      playSound('click', currentGame.settings.soundEnabled);
+                    }}
+                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs transition active:scale-95 shadow"
+                  >
+                    Ver y Poner en Equipo
+                  </button>
                 </div>
               )}
 
@@ -907,7 +986,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                       }`}
                     >
                       {/* Top Match Info */}
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-mono text-slate-300 bg-[#071328] px-1.5 py-0.5 rounded border border-[#203a70]">
                             {game.date}
@@ -917,6 +996,18 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                               Activo en Pista
                             </span>
                           )}
+                          {(() => {
+                            const assignedTeam = recordedTeams.find(t => t.id === game.teamId);
+                            return assignedTeam ? (
+                              <span className="text-[9px] font-mono font-bold text-sky-300 bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-800">
+                                {assignedTeam.name} ({game.category || assignedTeam.category || 'Senior'})
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-mono font-bold text-amber-300 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-700">
+                                {game.category || 'Sin equipo'}
+                              </span>
+                            );
+                          })()}
                           {(game.id === 'game-1792942892818' || (game.awayTeamName || '').toLowerCase().includes('argentona')) && (
                             <span className="text-[9px] font-mono font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded uppercase shadow-sm">
                               Argentona
@@ -924,7 +1015,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                           <span
                             className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full ${
                               isWin
@@ -934,6 +1025,23 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                           >
                             {isWin ? 'VICTORIA' : 'DERROTA'}
                           </span>
+
+                          {/* Reassign Team button */}
+                          {recordedTeams && recordedTeams.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setGameToReassign(game);
+                                setReassignCategory(game.category || '');
+                              }}
+                              className="p-1 px-2 rounded-md text-sky-300 hover:text-white bg-sky-950/60 hover:bg-sky-900/80 border border-sky-700/70 transition flex items-center gap-1 text-[11px] font-mono font-bold shrink-0"
+                              title="Poner este partido en su equipo y categoría"
+                            >
+                              <FolderInput className="w-3 h-3 text-sky-400" />
+                              <span>Equipo</span>
+                            </button>
+                          )}
 
                           {/* Delete button: ALWAYS VISIBLE and touch-friendly */}
                           <button
@@ -1395,6 +1503,108 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Sí, Vaciar Todo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign Game to Team Dialog */}
+      {gameToReassign && (
+        <div
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setGameToReassign(null)}
+        >
+          <div
+            className="bg-[#0B1C3D] border-2 border-sky-500 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7] max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#203a70] pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-sky-950/80 border border-sky-500/60 text-sky-400 rounded-xl shrink-0">
+                  <FolderInput className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                    Poner Partido en su Equipo y Categoría
+                  </h3>
+                  <p className="text-[11px] text-slate-300 font-mono">
+                    {gameToReassign.homeTeamName} vs {gameToReassign.awayTeamName} ({gameToReassign.date})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGameToReassign(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Custom Category Input */}
+            <div className="space-y-1">
+              <label className="text-xs font-mono text-slate-300 font-bold block">
+                Categoría (ej: Junior A, Cadete, Infantil...):
+              </label>
+              <input
+                type="text"
+                value={reassignCategory}
+                onChange={e => setReassignCategory(e.target.value)}
+                placeholder="Junior A, Senior, etc."
+                className="w-full bg-[#071328] border border-[#203a70] rounded-xl px-3 py-2 text-xs font-mono text-white outline-none focus:border-sky-400"
+              />
+            </div>
+
+            {/* Team selection list */}
+            <div className="space-y-2">
+              <span className="text-xs font-mono text-[#F5C542] font-bold block">
+                Selecciona el equipo al que asignar este partido:
+              </span>
+
+              <div className="space-y-2 max-h-[42vh] overflow-y-auto pr-1">
+                {recordedTeams.map(t => {
+                  const isCurrentTeam = gameToReassign.teamId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleReassignGame(gameToReassign, t, reassignCategory || t.category)}
+                      className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition group ${
+                        isCurrentTeam
+                          ? 'bg-[#16356E] border-sky-400'
+                          : 'bg-[#071328] hover:bg-[#122852] border-[#203a70]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl p-1 bg-black rounded-lg border border-gray-800">{t.logo || '🏀'}</span>
+                        <div>
+                          <span className="text-sm font-bold text-white block group-hover:text-sky-300">
+                            {t.name}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            Categoría: <strong className="text-[#F5C542]">{t.category || 'Sin categoría'}</strong> • {t.roster?.length || 0} jugadores
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-mono font-bold rounded-lg shadow transition shrink-0 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{isCurrentTeam ? 'Reasignar' : 'Asignar aquí'}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-2 border-t border-[#203a70]">
+              <button
+                type="button"
+                onClick={() => setGameToReassign(null)}
+                className="px-4 py-2 bg-[#0E224A] hover:bg-[#16356E] text-slate-200 rounded-lg text-xs font-bold font-mono border border-[#203a70]"
+              >
+                Cancelar
               </button>
             </div>
           </div>

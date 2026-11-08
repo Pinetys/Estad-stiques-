@@ -1040,6 +1040,24 @@ export function saveOrUpdateGameInLibrary(game: Game): Game[] {
   if (!game.category || !game.category.trim()) {
     game.category = getGameCategory(game);
   }
+  // Ensure teamId is attached if missing and matching registered team exists
+  if (!game.teamId && game.homeTeamName) {
+    try {
+      const raw = localStorage.getItem('basketstats_registered_teams_v2') || localStorage.getItem('basketstats_teams_v1');
+      if (raw) {
+        const teams = JSON.parse(raw);
+        if (Array.isArray(teams)) {
+          const matching = teams.find(t => t.name?.toLowerCase().trim() === game.homeTeamName?.toLowerCase().trim());
+          if (matching) {
+            game.teamId = matching.id;
+            if (!game.category && matching.category) {
+              game.category = matching.category;
+            }
+          }
+        }
+      }
+    } catch {}
+  }
   const library = getSavedGamesFromStorage();
   const index = library.findIndex(g => g.id === game.id);
   let updated: Game[];
