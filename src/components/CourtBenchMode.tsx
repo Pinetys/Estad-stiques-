@@ -1035,7 +1035,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   };
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col overflow-hidden select-none px-safe">
+    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col overflow-hidden select-none px-safe pb-[env(safe-area-inset-bottom,0px)]">
       {/* 1. TOP BAR: LANDSCAPE (CENTERED QUARTER CLOCK & ALL CONTROLS) VS PORTRAIT */}
       {isLandscapeTablet ? (
         <CourtLandscapeHeader
@@ -1981,8 +1981,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               </div>
             </div>
 
-            {/* Centered Large Tactile Action Console (FIXED: ZERO SCROLLING) */}
-            <div className={`flex-1 min-h-0 flex flex-col justify-center my-auto overflow-hidden py-1 transition-opacity duration-200 ${
+            {/* Centered Tactile Action Console with safe scroll for tight tablet screens */}
+            <div className={`flex-1 min-h-0 flex flex-col justify-center my-auto overflow-y-auto overscroll-contain pr-0.5 scrollbar-thin scrollbar-thumb-sky-700/50 py-1 transition-opacity duration-200 ${
               isActionsLocked ? 'opacity-35 pointer-events-none' : ''
             }`}>
               <CourtActionConsole

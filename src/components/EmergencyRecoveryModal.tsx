@@ -23,6 +23,7 @@ import { fetchAllMatchesFromCloud, syncMatchToCloud } from '../lib/firebase';
 import { scanDeviceForMatches, getVaultSnapshots } from '../utils/vaultBackups';
 import { saveGameToLibrary, getSavedGamesFromStorage, saveGamesToStorage } from '../utils/libraryUtils';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
+import { MatchStatsCompletionModal } from './MatchStatsCompletionModal';
 
 interface EmergencyRecoveryModalProps {
   currentGame: Game;
@@ -45,6 +46,7 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
   const [localScannedMatches, setLocalScannedMatches] = useState<Array<{ source: string; game: Partial<Game> }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGameToEdit, setSelectedGameToEdit] = useState<Game | null>(null);
+  const [gameToCompleteStats, setGameToCompleteStats] = useState<Game | null>(null);
   const [selectedGameToReassign, setSelectedGameToReassign] = useState<Partial<Game> | null>(null);
   const [customReassignCategory, setCustomReassignCategory] = useState<string>('');
   const [restoredSuccessId, setRestoredSuccessId] = useState<string | null>(null);
@@ -255,7 +257,81 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
 
         {/* Body */}
         <div className="p-5 overflow-y-auto space-y-6 grow">
-          {/* Explanation Box */}
+          {/* Highlight Infantil Match (Brafa vs Barna, 07/11/2026) */}
+          {(() => {
+            const barnaMatch = cloudMatches.find(m =>
+              m.id === 'game-1794050855256' ||
+              ((m.awayTeamName || '').toLowerCase().includes('barna') && ((m.category || '').toLowerCase().includes('infantil') || m.teamId === 'team-1788509552436'))
+            );
+            if (!barnaMatch) return null;
+            const infantilTeam = recordedTeams.find(t => t.id === 'team-1788509552436' || (t.category && t.category.toLowerCase().includes('infantil')));
+
+            return (
+              <div className="bg-gradient-to-r from-amber-950/90 via-[#0B2545] to-emerald-950/90 border-2 border-amber-400 rounded-2xl p-4 space-y-3 shadow-2xl animate-in fade-in">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-amber-500/30 text-amber-300 border border-amber-400 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                      <span>🏀</span>
+                      <span>PARTIDO INFANTIL RECUPERADO</span>
+                    </span>
+                    <span className="text-[10px] font-mono bg-emerald-900 text-emerald-200 border border-emerald-500 px-2.5 py-0.5 rounded-full font-bold">
+                      07/11/2026 · Infantil A
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-amber-300 font-bold">
+                    ID: <code className="text-white font-mono">{barnaMatch.id}</code>
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-base font-black text-white font-mono flex items-center gap-2">
+                      <span>{barnaMatch.homeTeamName || 'Brafa'} vs {barnaMatch.awayTeamName || 'Barna'}</span>
+                      <span className="text-xs font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-500/40">
+                        Marcador inicial: {barnaMatch.homeScore || 0} - {barnaMatch.awayScore || 2}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+                      Partido anotado ayer en la tablet con la plantilla de <strong>12 jugadores de Infantil A</strong> (Oriol, Jan, Aler, Victor, Mariano, Lluc, Ion, Aidan, Cesc, Alejandro, Aleix, Liam). Como se congeló la pantalla al inicio, pulsa <strong>"Completar Estadísticas y Acta"</strong> para rellenar el resultado final y los puntos de cada jugador, o <strong>"Cargar a la Pista"</strong> para reanudarlo en vivo.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap pt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreToActive(barnaMatch)}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold font-mono flex items-center gap-1.5 shadow-md active:scale-95 transition"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Cargar a la Pista</span>
+                  </button>
+
+                  {infantilTeam && (
+                    <button
+                      type="button"
+                      onClick={() => handleAssignGameToTeam(barnaMatch, infantilTeam, 'Infantil A')}
+                      className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold font-mono flex items-center gap-1.5 shadow-md active:scale-95 transition"
+                    >
+                      <FolderInput className="w-3.5 h-3.5" />
+                      <span>Confirmar en Infantil A</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setGameToCompleteStats(barnaMatch)}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 rounded-xl text-xs font-black font-mono flex items-center gap-1.5 shadow-lg active:scale-95 transition"
+                  >
+                    <Edit3 className="w-4 h-4 text-slate-950" />
+                    <span>✏️ Completar Estadísticas y Acta Final</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Explanation Box Argentona */}
           <div className="bg-emerald-950/30 border border-emerald-600/50 rounded-xl p-4 space-y-2">
             <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase font-mono">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -385,6 +461,16 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
                     >
                       <Play className="w-3.5 h-3.5 fill-white" />
                       <span>Cargar a la Pista</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGameToCompleteStats(m)}
+                      className="px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/60 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                      title="Completar o editar estadísticas finales y tanteo de este partido"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Estadísticas</span>
                     </button>
 
                     <button
@@ -743,6 +829,21 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Match Stats Completion / Box Score Modal */}
+      {gameToCompleteStats && (
+        <MatchStatsCompletionModal
+          game={gameToCompleteStats}
+          soundEnabled={soundEnabled}
+          onSave={updated => {
+            onRestoreGame(updated);
+            setGameToCompleteStats(null);
+            runDiagnosticScan();
+            onMatchesUpdated?.(getSavedGamesFromStorage());
+          }}
+          onClose={() => setGameToCompleteStats(null)}
+        />
+      )}
     </div>
   );
 };

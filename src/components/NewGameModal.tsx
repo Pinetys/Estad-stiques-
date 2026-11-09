@@ -459,8 +459,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#060f22]/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in select-text">
-      <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-xl w-full shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#060f22]/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in select-text overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-xl w-full shadow-2xl flex flex-col max-h-[94dvh] sm:max-h-[90vh] my-auto overflow-hidden">
         {/* Header - Fixed top */}
         <div className="p-3 sm:p-4 flex items-center justify-between border-b border-[#203a70] bg-[#0c1c3d] shrink-0">
           <div className="flex items-center gap-2">
@@ -739,9 +739,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                         e.target.select();
                       }
                     }}
-                    className="w-full bg-[#132a58] border-2 border-sky-500/80 focus:border-sky-300 rounded-xl px-3 py-2 text-sm text-white font-bold focus:outline-none transition shadow-sm select-text"
+                    className="w-full bg-[#132a58] border-2 border-sky-500/80 focus:border-sky-300 rounded-xl px-3 py-2 text-base sm:text-sm text-white font-bold focus:outline-none transition shadow-sm select-text touch-manipulation"
                     placeholder="Escribe el nombre del rival..."
                     autoComplete="off"
+                    autoCapitalize="words"
+                    autoCorrect="off"
+                    spellCheck="false"
                     required
                   />
                   {awayTeam && (

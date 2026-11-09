@@ -740,9 +740,15 @@ export default function App() {
 
     // Initial sync fetch
     syncEngine.syncAll({ force: true }).then(res => {
+      const currentTeams = res.teams.length > 0 ? res.teams : getRegisteredTeams();
       if (res.teams.length > 0) setTeams(res.teams);
+
       if (res.matches.length > 0) {
-        setLibraryGames(res.matches);
+        // Merge cloud/server matches into local storage so they are persisted on tablet
+        const merged = mergeCloudMatches(res.matches);
+        const { sanitized } = sanitizeAndIsolateLibraryGames(merged, currentTeams);
+        saveGamesToStorage(sanitized);
+        setLibraryGames(sanitized);
 
         setGame(currentGame => {
           const isUntouchedLocal =
@@ -754,8 +760,8 @@ export default function App() {
           if (isUntouchedLocal) {
             const candidate =
               (res.activeMatch && (res.activeMatch.events?.length > 0 || res.activeMatch.homeScore > 0 || res.activeMatch.awayScore > 0) ? res.activeMatch : null) ||
-              res.matches.find(m => m.status === 'live' && (m.events?.length > 0 || m.homeScore > 0)) ||
-              res.matches.find(m => m.events && m.events.length > 0);
+              sanitized.find(m => m.status === 'live' && (m.events?.length > 0 || m.homeScore > 0)) ||
+              sanitized.find(m => m.events && m.events.length > 0);
             if (candidate) {
               isRemoteSyncInProgressRef.current = true;
               if (candidate.teamId) {
@@ -767,15 +773,14 @@ export default function App() {
           }
           return currentGame;
         });
-      }
-
-      // Sanitize any previously contaminated matches in storage
-      const currentMatches = getSavedGamesFromStorage();
-      const currentTeams = getRegisteredTeams();
-      if (currentMatches.length > 0 && currentTeams.length > 0) {
-        const { sanitized, changed } = sanitizeAndIsolateLibraryGames(currentMatches, currentTeams);
-        if (changed) {
-          saveGamesToStorage(sanitized);
+      } else {
+        // Sanitize any previously contaminated matches in storage
+        const currentMatches = getSavedGamesFromStorage();
+        if (currentMatches.length > 0 && currentTeams.length > 0) {
+          const { sanitized, changed } = sanitizeAndIsolateLibraryGames(currentMatches, currentTeams);
+          if (changed) {
+            saveGamesToStorage(sanitized);
+          }
           setLibraryGames(sanitized);
         }
       }

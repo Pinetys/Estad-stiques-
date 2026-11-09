@@ -60,8 +60,10 @@ import {
   RotateCcw,
   Send,
   FolderInput,
+  Edit3,
 } from 'lucide-react';
 import { sendMatchToCoachPinety } from '../utils/pinetySync';
+import { MatchStatsCompletionModal } from './MatchStatsCompletionModal';
 
 interface MatchLibraryModalProps {
   currentGame: Game;
@@ -95,6 +97,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const [syncingPinetyMatchId, setSyncingPinetyMatchId] = useState<string | null>(null);
   const [gameToReassign, setGameToReassign] = useState<Game | null>(null);
   const [reassignCategory, setReassignCategory] = useState<string>('');
+  const [gameToCompleteStats, setGameToCompleteStats] = useState<Game | null>(null);
 
   // Unassigned games that don't belong to any registered team
   const unassignedGames = React.useMemo(() => {
@@ -146,6 +149,14 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       g.id === 'game-1792942892818' ||
       (g.awayTeamName || '').toLowerCase().includes('argentona') ||
       (g.homeTeamName || '').toLowerCase().includes('argentona')
+    );
+  }, [library]);
+
+  // Detected Barna Infantil match for quick recovery, statistics completion and guaranteed visibility
+  const barnaInfantilMatch = React.useMemo(() => {
+    return library.find(g =>
+      g.id === 'game-1794050855256' ||
+      ((g.awayTeamName || '').toLowerCase().includes('barna') && ((g.category || '').toLowerCase().includes('infantil') || g.teamId === 'team-1788509552436'))
     );
   }, [library]);
 
@@ -742,6 +753,55 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                 </div>
               </div>
 
+              {/* Infantil Barna Quick Recovery / Highlight Banner */}
+              {barnaInfantilMatch && (
+                <div className="bg-gradient-to-r from-amber-950/90 via-[#0B2545] to-emerald-950/90 border-2 border-amber-400 rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-xl flex-wrap animate-in fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/30 text-amber-300 border border-amber-400">
+                      <Trophy className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black uppercase text-amber-300 font-mono tracking-wide">
+                          PARTIDO INFANTIL RECUPERADO
+                        </span>
+                        <span className="text-[10px] font-mono bg-emerald-900/80 text-emerald-200 px-2 py-0.5 rounded border border-emerald-700 font-bold">
+                          {barnaInfantilMatch.date || '07/11/2026'}
+                        </span>
+                        <span className="text-[10px] font-mono bg-blue-900/60 text-blue-200 px-2 py-0.5 rounded border border-blue-700 font-bold">
+                          {barnaInfantilMatch.category || 'Infantil A'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white font-semibold mt-0.5">
+                        {barnaInfantilMatch.homeTeamName || 'Brafa'} {barnaInfantilMatch.homeScore} - {barnaInfantilMatch.awayScore} {barnaInfantilMatch.awayTeamName || 'Barna'} (12 jugadores registrados)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => setGameToCompleteStats(barnaInfantilMatch)}
+                      className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-black font-mono rounded-lg flex items-center gap-1.5 shadow transition active:scale-95 shrink-0"
+                      title="Completar el tanteo y las estadísticas de los 12 jugadores"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-slate-950" />
+                      <span>Completar Estadísticas</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLoadGame(barnaInfantilMatch);
+                        onClose();
+                      }}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono rounded-lg flex items-center gap-1.5 shadow transition active:scale-95 shrink-0"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>Cargar a la Pista</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Argentona Quick Recovery / Highlight Banner */}
               {argentonaMatch && (
                 <div className="bg-gradient-to-r from-emerald-950/90 via-[#0B2545] to-[#0E224A] border-2 border-emerald-500/80 rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-xl flex-wrap">
@@ -1116,7 +1176,20 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                         <span className="text-slate-300 truncate max-w-[55%]">
                           ⭐ #{topScorer.number} {topScorer.name}: <strong className="text-[#F5C542]">{topScorer.points} pts</strong>
                         </span>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playSound('click', currentGame.settings.soundEnabled);
+                              setGameToCompleteStats(game);
+                            }}
+                            className="py-1 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-white border border-amber-500/60 text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-xs"
+                            title="Completar o editar estadísticas finales y tanteo de este partido"
+                          >
+                            <Edit3 className="w-3 h-3 text-amber-400" />
+                            <span>Estadísticas</span>
+                          </button>
                           <button
                             type="button"
                             onClick={async (e) => {
@@ -1609,6 +1682,23 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Match Stats Completion / Box Score Modal */}
+      {gameToCompleteStats && (
+        <MatchStatsCompletionModal
+          game={gameToCompleteStats}
+          soundEnabled={currentGame.settings.soundEnabled}
+          vibrationEnabled={currentGame.settings.vibrationEnabled}
+          onSave={updated => {
+            const nextLib = library.map(g => (g.id === updated.id ? updated : g));
+            if (!nextLib.some(g => g.id === updated.id)) nextLib.push(updated);
+            refreshLibrary(nextLib);
+            onMatchesUpdated?.(nextLib);
+            setGameToCompleteStats(null);
+          }}
+          onClose={() => setGameToCompleteStats(null)}
+        />
       )}
     </div>
   );
