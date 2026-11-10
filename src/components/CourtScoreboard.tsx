@@ -299,38 +299,38 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
           />
 
           {/* Rival Quick Action Row: Points (+1, +2, +3) & Proportioned Foul (+FALTA) */}
-          <div className="grid grid-cols-4 gap-1 w-full max-w-[210px] mt-1">
+          <div className="grid grid-cols-4 gap-0.5 sm:gap-1 w-full max-w-[210px] mt-1">
             <button
               type="button"
               id="away-score-1p-btn"
               onClick={() => onLogOpponentAction('OPP_1P')}
               disabled={isActionsLocked}
-              className="py-1 px-1 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[10px] sm:text-[11px] active:scale-95 transition shadow-xs disabled:opacity-40"
+              className="py-0.5 sm:py-1 px-0.5 sm:px-1 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[9px] sm:text-[10px] active:scale-95 transition shadow-xs disabled:opacity-40"
               title="+1 Tiro Libre Rival"
             >
-              +1 TL
+              +1
             </button>
             <button
               type="button"
               id="away-score-2p-btn"
               onClick={() => onLogOpponentAction('OPP_2P')}
               disabled={isActionsLocked}
-              className="py-1 px-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-[11px] active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center justify-center gap-0.5"
+              className="py-0.5 sm:py-1 px-0.5 sm:px-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[9px] sm:text-[10px] active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center justify-center gap-0.5"
               title="+2 Canasta Rival (Poner sitio de tiro en pista)"
             >
               <span>+2</span>
-              <span className="text-[8px] opacity-80">🎯</span>
+              <span className="text-[7.5px] opacity-80">🎯</span>
             </button>
             <button
               type="button"
               id="away-score-3p-btn"
               onClick={() => onLogOpponentAction('OPP_3P')}
               disabled={isActionsLocked}
-              className="py-1 px-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-[11px] active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center justify-center gap-0.5"
+              className="py-0.5 sm:py-1 px-0.5 sm:px-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[9px] sm:text-[10px] active:scale-95 transition shadow-xs disabled:opacity-40 flex items-center justify-center gap-0.5"
               title="+3 Triple Rival (Poner sitio de tiro en pista)"
             >
               <span>+3</span>
-              <span className="text-[8px] opacity-80">🎯</span>
+              <span className="text-[7.5px] opacity-80">🎯</span>
             </button>
             {/* Away Team Interactive Foul Button - Proportioned and balanced */}
             <button
@@ -344,7 +344,7 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
                 }
               }}
               disabled={isActionsLocked}
-              className={`py-1 px-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-black flex items-center justify-center gap-1 transition active:scale-95 border shadow-xs disabled:opacity-40 ${
+              className={`py-0.5 sm:py-1 px-0.5 sm:px-1 rounded-lg text-[9px] sm:text-[10px] font-mono font-black flex items-center justify-center gap-0.5 transition active:scale-95 border shadow-xs disabled:opacity-40 ${
                 awayIsBonus
                   ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
                   : 'bg-red-950/90 hover:bg-red-900 text-rose-200 border-red-600/70'
@@ -352,11 +352,11 @@ export const CourtScoreboard: React.FC<CourtScoreboardProps> = ({
               title="Sumar falta al equipo rival"
             >
               <span className="font-bold">+F</span>
-              <span className="bg-black/50 text-white px-1 py-0.2 rounded font-black text-[9px]">
+              <span className="bg-black/50 text-white px-1 py-0.2 rounded font-black text-[8.5px]">
                 {game.awayQuarterFouls || 0}
               </span>
               {awayIsBonus && (
-                <span className="text-[7.5px] bg-white text-red-600 px-0.5 rounded font-black">
+                <span className="text-[7px] bg-white text-red-600 px-0.5 rounded font-black">
                   B
                 </span>
               )}

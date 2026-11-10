@@ -1113,18 +1113,18 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           isOnline={isOnline}
         />
       ) : (
-        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-2 sm:px-3 py-1 z-30 shrink-0 relative select-none">
-          <div className="max-w-3xl lg:max-w-4xl mx-auto w-full flex items-center justify-between text-xs gap-1.5">
+        <div className="bg-[#0B1C3D] border-b border-[#203a70] px-1.5 sm:px-3 py-1 z-30 shrink-0 relative select-none overflow-x-auto scrollbar-none">
+          <div className="max-w-3xl lg:max-w-4xl mx-auto w-full flex items-center justify-between text-xs gap-1 sm:gap-1.5">
             {/* Left: Salir, Pantalla Completa, Anti-bloqueo y Ahorro Batería */}
             <div className="flex items-center gap-1 shrink-0">
             {/* Exit Court Mode button */}
             <button
               onClick={onToggleCourtMode}
-              className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px]"
+              className="px-2 py-0.5 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[10px] sm:text-[11px]"
               title="Salir de Modo Pista y volver a la vista completa"
             >
               <ZapOff className="w-3 h-3 text-[#F5C542]" />
-              <span>SALIR</span>
+              <span className="hidden xs:inline">SALIR</span>
             </button>
 
             {/* Fullscreen Toggle */}
@@ -1134,7 +1134,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 toggleFullscreen();
                 triggerHaptic('light', game.settings.vibrationEnabled);
               }}
-              className={`p-1 px-1.5 rounded-lg font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[11px] border ${
+              className={`p-1 px-1.5 rounded-lg font-mono font-bold flex items-center gap-1 active:scale-95 transition text-[10px] sm:text-[11px] border ${
                 isFullscreen
                   ? 'bg-[#D4AF37] text-[#0B1C3D] border-[#F5C542]'
                   : 'bg-[#0E224A] hover:bg-[#16356E] text-slate-300 border-[#203a70]'
@@ -1148,7 +1148,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             <button
               type="button"
               onClick={handleToggleWakeLock}
-              className={`p-1 px-1.5 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95 border ${
+              className={`p-1 px-1.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95 border ${
                 isWakeLockActive
                   ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
                   : 'bg-[#0E224A] border-[#203a70] text-slate-400 hover:text-white'
@@ -1173,7 +1173,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               title={isBatterySaving ? 'Ahorro de batería activo: visualización a 1s (pulsa para cambiar a 100ms)' : 'Visualización a 100ms (pulsa para activar ahorro 1s)'}
             >
               <Battery className={`w-3 h-3 ${isBatterySaving ? 'text-amber-400' : 'text-slate-400'}`} />
-              <span>{isBatterySaving ? '1s Ahorro' : '100ms'}</span>
+              <span className="hidden sm:inline">{isBatterySaving ? '1s Ahorro' : '100ms'}</span>
+              <span className="sm:hidden font-mono text-[9px]">{isBatterySaving ? '1s' : '100ms'}</span>
             </button>
           </div>
 
@@ -1259,7 +1260,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   title="Finalizar y cerrar el partido"
                 >
                   <Flag className="w-3 h-3 text-red-400" />
-                  <span>Cerrar</span>
+                  <span className="hidden xs:inline">Cerrar</span>
                 </button>
               </div>
             )}

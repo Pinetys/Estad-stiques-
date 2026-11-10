@@ -209,10 +209,10 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   return (
     <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
       {/* 1. TOP UTILITY STRIP: Clean, responsive single-row layout without lateral scroll */}
-      <div className="border-b border-[#D4AF37]/20 px-2 sm:px-4 py-1 bg-[#071328]/95 relative z-30">
-        <div className="max-w-[1500px] mx-auto w-full grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center text-[11px] gap-2">
+      <div className="border-b border-[#D4AF37]/20 px-1.5 sm:px-3 py-1 bg-[#071328]/95 relative z-30 overflow-x-auto scrollbar-none">
+        <div className="max-w-[1500px] mx-auto w-full flex items-center justify-between text-[11px] gap-1 sm:gap-2">
           {/* Left: Exit button, Fullscreen, WakeLock & Battery saver toggle */}
-          <div className="flex items-center justify-start gap-1.5 shrink-0">
+          <div className="flex items-center justify-start gap-1 sm:gap-1.5 shrink-0">
           <button
             type="button"
             onClick={onToggleCourtMode}
@@ -266,22 +266,24 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             title={isBatterySaving ? 'Ahorro de batería activo: visualización a 1s (pulsa para cambiar a 100ms)' : 'Visualización a 100ms (pulsa para activar ahorro 1s)'}
           >
             <Battery className={`w-3.5 h-3.5 ${isBatterySaving ? 'text-amber-400' : 'text-slate-400'}`} />
-            <span>{isBatterySaving ? '1s Ahorro' : '100ms'}</span>
+            <span className="hidden md:inline">{isBatterySaving ? '1s Ahorro' : '100ms'}</span>
+            <span className="md:hidden font-mono text-[9px]">{isBatterySaving ? '1s' : '100ms'}</span>
           </button>
         </div>
 
         {/* Center: Offline or Cloud status */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {!isOnline ? (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-950/90 border border-amber-600/70 text-amber-300 text-[10px] font-mono font-bold animate-pulse" title="Sin internet: Todo se guarda 100% en la memoria interna de la tablet">
+            <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg bg-amber-950/90 border border-amber-600/70 text-amber-300 text-[9px] sm:text-[10px] font-mono font-bold animate-pulse" title="Sin internet: Todo se guarda 100% en la memoria interna de la tablet">
               <WifiOff className="w-3 h-3 text-amber-400 shrink-0" />
-              <span>Memoria Local OK</span>
+              <span className="hidden sm:inline">Memoria Local OK</span>
+              <span className="sm:hidden">Local OK</span>
             </div>
           ) : (
             <button
               type="button"
               onClick={handleQuickCloudSync}
-              className={`px-2 py-0.5 rounded-lg border text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 ${
+              className={`px-1.5 sm:px-2 py-0.5 rounded-lg border text-[9px] sm:text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 ${
                 justSyncedToast
                   ? 'bg-emerald-900 border-emerald-400 text-emerald-200'
                   : syncStatus.status === 'syncing'
@@ -292,12 +294,13 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             >
               <Cloud className={`w-3 h-3 ${syncStatus.status === 'syncing' ? 'animate-spin text-amber-400' : 'text-sky-400'}`} />
               <span className="hidden md:inline">{justSyncedToast ? 'SINCRONIZADO' : syncStatus.status === 'syncing' ? 'SYNC...' : 'NUBE OK'}</span>
+              <span className="md:hidden">{justSyncedToast ? 'OK' : syncStatus.status === 'syncing' ? 'SYNC' : 'NUBE'}</span>
             </button>
           )}
         </div>
 
         {/* Right: Match Actions & Consolidated Tools Dropdown */}
-        <div className="flex items-center justify-end gap-1.5 shrink-0 relative">
+        <div className="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0 relative">
           {/* Finished Match State */}
           {game.status === 'finished' ? (
             <div className="flex items-center gap-1 shrink-0">
@@ -655,315 +658,317 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
         </div>
       </div>
 
-      {/* 2. MAIN MATCH & TIME CONSOLE: Centered 3-column grid mathematically anchored to screen center for tablets */}
-      <div className="w-full px-2 sm:px-4 py-1 sm:py-1.5">
-        <div className="max-w-[1500px] mx-auto w-full grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-2">
+      {/* 2. MAIN MATCH & TIME CONSOLE: Responsive flex layout mathematically balanced for tablets without overlapping */}
+      <div className="w-full px-1.5 sm:px-3 py-1 overflow-x-auto scrollbar-none">
+        <div className="max-w-[1500px] mx-auto w-full flex items-center justify-between gap-1 sm:gap-2">
           {/* LEFT SECTION: LOCAL TEAM SCORECARD */}
-          <div className="flex items-center justify-start gap-1 sm:gap-1.5 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[105px] sm:min-w-[130px] lg:min-w-[155px] shadow-md">
-            <div className="flex flex-col text-left min-w-0">
-              <span className="text-xs sm:text-sm font-black text-[#F5C542] uppercase tracking-wider truncate max-w-[85px] sm:max-w-[110px] leading-tight">
-                {game.homeTeamName || 'LOCAL'}
-              </span>
-              <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5">
-                <span className="text-slate-400 font-bold">Faltas:</span>
-                <FoulsBadgeNumber
-                  fouls={game.homeQuarterFouls || 0}
-                  bonus={homeIsBonus}
-                  className={`font-black px-1.5 py-0.2 rounded text-[10px] ${
-                    homeIsBonus
-                      ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
-                      : 'text-[#FFFDF7] bg-[#071328] border border-[#D4AF37]/40'
-                  }`}
-                />
+          <div className="flex items-center justify-start gap-1 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2 sm:px-2.5 py-1 shadow-md">
+              <div className="flex flex-col text-left min-w-0">
+                <span className="text-xs sm:text-sm font-black text-[#F5C542] uppercase tracking-wider truncate max-w-[70px] sm:max-w-[95px] md:max-w-[120px] leading-tight">
+                  {game.homeTeamName || 'LOCAL'}
+                </span>
+                <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono mt-0.5">
+                  <span className="text-slate-400 font-bold hidden xs:inline">Faltas:</span>
+                  <span className="text-slate-400 font-bold xs:hidden">F:</span>
+                  <FoulsBadgeNumber
+                    fouls={game.homeQuarterFouls || 0}
+                    bonus={homeIsBonus}
+                    className={`font-black px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] ${
+                      homeIsBonus
+                        ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
+                        : 'text-[#FFFDF7] bg-[#071328] border border-[#D4AF37]/40'
+                    }`}
+                  />
+                </div>
               </div>
+
+              <ScoreNumber
+                score={game.homeScore}
+                className="font-scoreboard font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1"
+              />
+
+              {/* Home Timeouts */}
+              {onTriggerTimeout && (
+                <button
+                  type="button"
+                  onClick={() => onTriggerTimeout('home')}
+                  disabled={isActionsLocked || (game.homeTimeouts !== undefined && game.homeTimeouts <= 0)}
+                  className="px-1.5 py-0.5 sm:py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-[#D4AF37]/60 text-[9px] sm:text-[11px] font-mono font-bold text-[#F5C542] flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm ml-0.5 shrink-0"
+                  title="Pedir Tiempo Muerto Local (60 segundos)"
+                >
+                  <Timer className="w-3 h-3 text-[#F5C542]" />
+                  <TimeoutNumber timeouts={game.homeTimeouts ?? 3} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* CENTER SECTION: QUARTER NAVIGATOR, MASTER CLOCK, AND SHOT CLOCK */}
+          <div className="flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0">
+            {/* Quarter Selector */}
+            <div className="flex items-center bg-[#071328] border border-[#D4AF37]/50 rounded-xl px-1 sm:px-1.5 py-0.5 sm:py-1 text-xs font-mono shrink-0 shadow-sm">
+              <button
+                onClick={handlePrevQuarter}
+                disabled={isActionsLocked || game.currentQuarter <= 1}
+                className="px-1 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-black transition text-xs sm:text-sm"
+                title="Cuarto anterior"
+              >
+                ‹
+              </button>
+              <span className="px-1 font-black text-[#F5C542] text-xs sm:text-sm md:text-base tracking-wider">
+                {currentQuarterLabel}
+              </span>
+              <button
+                onClick={handleNextQuarter}
+                disabled={isActionsLocked || game.currentQuarter >= (totalQ + 3)}
+                className="px-1 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-black transition text-xs sm:text-sm"
+                title="Siguiente cuarto"
+              >
+                ›
+              </button>
             </div>
 
-            <ScoreNumber
-              score={game.homeScore}
-              className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1"
-            />
-
-            {/* Home Timeouts */}
-            {onTriggerTimeout && (
+            {/* Big Master Clock + Play/Pause */}
+            <div className="flex items-center gap-1 shrink-0">
               <button
-                type="button"
-                onClick={() => onTriggerTimeout('home')}
-                disabled={isActionsLocked || (game.homeTimeouts !== undefined && game.homeTimeouts <= 0)}
-                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-[#D4AF37]/60 text-[10px] sm:text-xs font-mono font-bold text-[#F5C542] flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm ml-0.5 shrink-0"
-                title="Pedir Tiempo Muerto Local (60 segundos)"
+                onClick={toggleClock}
+                disabled={isActionsLocked}
+                className={`px-2 sm:px-3 py-1 rounded-xl border-2 flex items-center gap-1.5 sm:gap-2 transition active:scale-95 shadow-xl shrink-0 ${
+                  isActionsLocked
+                    ? 'bg-[#071328] border-[#D4AF37]/30 text-slate-500 cursor-not-allowed opacity-90'
+                    : game.isClockRunning
+                    ? 'bg-emerald-950/95 border-emerald-400 text-[#FFFDF7] shadow-[0_0_20px_rgba(16,185,129,0.4)] ring-2 ring-emerald-500/40'
+                    : 'bg-[#071328] border-[#D4AF37]/80 text-[#FFFDF7] shadow-[0_0_20px_rgba(212,175,55,0.25)]'
+                }`}
+                title={game.status === 'finished' ? 'Partido finalizado (00:00)' : 'Iniciar / Pausar tiempo de partido'}
               >
-                <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#F5C542]" />
-                <TimeoutNumber timeouts={game.homeTimeouts ?? 3} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* CENTER SECTION: QUARTER NAVIGATOR, MASTER CLOCK, AND SHOT CLOCK */}
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 shrink-0">
-          {/* Quarter Selector */}
-          <div className="flex items-center bg-[#071328] border border-[#D4AF37]/50 rounded-xl px-1.5 py-1 text-sm font-mono shrink-0 shadow-sm">
-            <button
-              onClick={handlePrevQuarter}
-              disabled={isActionsLocked || game.currentQuarter <= 1}
-              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-black transition text-sm sm:text-base"
-              title="Cuarto anterior"
-            >
-              ‹
-            </button>
-            <span className="px-1.5 font-black text-[#F5C542] text-sm sm:text-base md:text-lg tracking-wider">
-              {currentQuarterLabel}
-            </span>
-            <button
-              onClick={handleNextQuarter}
-              disabled={isActionsLocked || game.currentQuarter >= (totalQ + 3)}
-              className="px-1.5 py-0.5 text-neutral-400 hover:text-white disabled:opacity-20 font-black transition text-sm sm:text-base"
-              title="Siguiente cuarto"
-            >
-              ›
-            </button>
-          </div>
-
-          {/* Big Master Clock + Play/Pause */}
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={toggleClock}
-              disabled={isActionsLocked}
-              className={`px-3 sm:px-4 py-1.5 rounded-xl border-2 flex items-center gap-2 sm:gap-2.5 transition active:scale-95 shadow-xl shrink-0 ${
-                isActionsLocked
-                  ? 'bg-[#071328] border-[#D4AF37]/30 text-slate-500 cursor-not-allowed opacity-90'
-                  : game.isClockRunning
-                  ? 'bg-emerald-950/95 border-emerald-400 text-[#FFFDF7] shadow-[0_0_20px_rgba(16,185,129,0.4)] ring-2 ring-emerald-500/40'
-                  : 'bg-[#071328] border-[#D4AF37]/80 text-[#FFFDF7] shadow-[0_0_20px_rgba(212,175,55,0.25)]'
-              }`}
-              title={game.status === 'finished' ? 'Partido finalizado (00:00)' : 'Iniciar / Pausar tiempo de partido'}
-            >
-              {game.status === 'finished' ? (
-                <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-[#F5C542] shrink-0" />
-              ) : game.isClockRunning ? (
-                <Pause className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
-              ) : (
-                <Play className="w-4 h-4 sm:w-5 sm:h-5 text-[#F5C542] fill-[#F5C542] shrink-0" />
-              )}
-              <div className="flex flex-col items-center">
-                <MasterClockNumber
-                  secondsRemaining={game.currentSecondsRemaining}
-                  isFinished={game.status === 'finished'}
-                  className="font-scoreboard font-black text-2xl sm:text-3xl lg:text-4xl tracking-wider leading-none drop-shadow-md text-[#FFFDF7]"
-                />
-                <span className="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
-                  {game.status === 'finished' ? (
-                    isEditingFinishedGame ? (
-                      <span className="text-[#F5C542] font-black">MODO EDICIÓN</span>
-                    ) : (
-                      <span className="text-red-400 font-black">FINALIZADO</span>
-                    )
-                  ) : game.isClockRunning ? (
-                    <span className="text-emerald-400">EN JUEGO</span>
-                  ) : (
-                    <span className="text-[#F5C542]/90">PAUSA</span>
-                  )}
-                </span>
-              </div>
-            </button>
-
-            {/* Quick Time Adjust (FIBA/Corrido) */}
-            {onOpenQuickTimeAdjust && (
-              <button
-                type="button"
-                onClick={onOpenQuickTimeAdjust}
-                className="p-1.5 sm:p-2 bg-[#071328] hover:bg-[#122B5C] text-[#F5C542] hover:text-[#FFFDF7] border border-[#D4AF37]/60 rounded-xl transition active:scale-95 shadow-md flex flex-col items-center justify-center gap-0.5 shrink-0"
-                title="Ajuste rápido de minutos, segundos y régimen del reloj"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span className="text-[7px] font-mono font-bold uppercase leading-none">
-                  {isFibaTiming ? 'FIBA' : 'CORR.'}
-                </span>
-              </button>
-            )}
-          </div>
-
-          {/* Shot Clock Controls (24s / 14s & display) */}
-          <div className={`flex items-center gap-1 bg-[#071328] border border-[#D4AF37]/45 rounded-xl p-1 shrink-0 shadow-sm ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
-            <button
-              type="button"
-              onClick={() => handleResetShotClock(24)}
-              disabled={isActionsLocked}
-              className="px-2.5 py-1 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-xs disabled:opacity-40"
-              title="Reiniciar posesión a 24s"
-            >
-              24s
-            </button>
-            <button
-              type="button"
-              onClick={() => handleResetShotClock(14)}
-              disabled={isActionsLocked}
-              className="px-2.5 py-1 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg text-xs font-black font-mono transition active:scale-95 shadow-xs disabled:opacity-40"
-              title="Reiniciar posesión a 14s (Rebote ofensivo / Falta pista delantera)"
-            >
-              14s
-            </button>
-            <button
-              type="button"
-              onClick={handleToggleShotClock}
-              disabled={isActionsLocked}
-              className={`px-2.5 sm:px-3 py-1 rounded-lg font-scoreboard font-black text-sm sm:text-lg lg:text-xl border transition active:scale-95 shadow-sm flex items-center gap-1 disabled:opacity-40 ${
-                shotClockSecs <= 5
-                  ? 'bg-rose-950 text-rose-200 border-rose-500 animate-pulse ring-1 ring-rose-500'
-                  : (game.isShotClockRunning ?? true)
-                  ? 'bg-[#071328] text-[#F5C542] border-2 border-[#D4AF37]/80 shadow-[0_0_10px_rgba(212,175,55,0.35)]'
-                  : 'bg-[#0E224A] text-slate-400 border-[#D4AF37]/30'
-              }`}
-              title="Pausar o Reanudar posesión"
-            >
-              <span className="text-[8px] font-mono text-slate-400 font-bold">POS</span>
-              <ShotClockNumber seconds={shotClockSecs} isFinished={game.status === 'finished'} />
-            </button>
-          </div>
-
-          {/* Quick Micro-Adjust (+10s / -10s) */}
-          <div className={`hidden 2xl:flex items-center gap-0.5 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
-            <button
-              onClick={() => adjustSeconds(10)}
-              disabled={isActionsLocked}
-              className="px-2 py-1 bg-[#071328] text-[#FFFDF7] hover:text-[#F5C542] border border-[#D4AF37]/40 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
-              title="+10 segundos"
-            >
-              +10s
-            </button>
-            <button
-              onClick={() => adjustSeconds(-10)}
-              disabled={isActionsLocked}
-              className="px-2 py-1 bg-[#071328] text-[#FFFDF7] hover:text-[#F5C542] border border-[#D4AF37]/40 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
-              title="-10 segundos"
-            >
-              -10s
-            </button>
-          </div>
-        </div>
-
-        {/* RIGHT SECTION: AWAY TEAM & OPPONENT LIVE ACTIONS */}
-        <div className="flex items-center justify-end gap-1 sm:gap-1.5 min-w-0">
-          {/* RIVAL TEAM CARD */}
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[105px] sm:min-w-[130px] lg:min-w-[155px] shadow-md">
-            <ScoreNumber
-              score={game.awayScore}
-              className="font-scoreboard font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1"
-            />
-
-            {/* Away Timeouts */}
-            {onTriggerTimeout && (
-              <button
-                type="button"
-                onClick={() => onTriggerTimeout('away')}
-                disabled={isActionsLocked || (game.awayTimeouts !== undefined && game.awayTimeouts <= 0)}
-                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-sky-500/60 text-[10px] sm:text-xs font-mono font-bold text-sky-300 flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm mr-0.5 shrink-0"
-                title="Tiempo Muerto Rival (60 segundos)"
-              >
-                <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sky-400" />
-                <TimeoutNumber timeouts={game.awayTimeouts ?? 3} />
-              </button>
-            )}
-
-            <div className="flex flex-col text-right ml-auto min-w-0">
-              <div className="flex items-center justify-end gap-1">
-                <span className="text-xs sm:text-sm font-black text-sky-400 uppercase tracking-wider truncate max-w-[85px] sm:max-w-[110px] leading-tight">
-                  {game.awayTeamName || 'RIVAL'}
-                </span>
-                {onOpenRivalRoster && (
-                  <button
-                    type="button"
-                    onClick={onOpenRivalRoster}
-                    className="p-1 rounded text-slate-400 hover:text-sky-300 hover:bg-sky-950/60 transition active:scale-90 shrink-0"
-                    title="Editar jugadores del rival"
-                  >
-                    <Edit2 className="w-3 h-3 text-sky-400/80 hover:text-sky-300" />
-                  </button>
+                {game.status === 'finished' ? (
+                  <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F5C542] shrink-0" />
+                ) : game.isClockRunning ? (
+                  <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 fill-emerald-400 animate-pulse shrink-0" />
+                ) : (
+                  <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F5C542] fill-[#F5C542] shrink-0" />
                 )}
-              </div>
-              <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono mt-0.5 justify-end">
-                <span className="text-slate-400 font-bold">Faltas:</span>
-                <FoulsBadgeNumber
-                  fouls={game.awayQuarterFouls || 0}
-                  bonus={awayIsBonus}
-                  className={`font-black px-1.5 py-0.2 rounded text-[10px] ${
-                    awayIsBonus
-                      ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
-                      : 'text-[#FFFDF7] bg-[#071328] border border-sky-500/40'
-                  }`}
-                />
-              </div>
+                <div className="flex flex-col items-center">
+                  <MasterClockNumber
+                    secondsRemaining={game.currentSecondsRemaining}
+                    isFinished={game.status === 'finished'}
+                    className="font-scoreboard font-black text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-wider leading-none drop-shadow-md text-[#FFFDF7]"
+                  />
+                  <span className="text-[7.5px] sm:text-[8.5px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
+                    {game.status === 'finished' ? (
+                      isEditingFinishedGame ? (
+                        <span className="text-[#F5C542] font-black">MODO EDICIÓN</span>
+                      ) : (
+                        <span className="text-red-400 font-black">FINALIZADO</span>
+                      )
+                    ) : game.isClockRunning ? (
+                      <span className="text-emerald-400">EN JUEGO</span>
+                    ) : (
+                      <span className="text-[#F5C542]/90">PAUSA</span>
+                    )}
+                  </span>
+                </div>
+              </button>
+
+              {/* Quick Time Adjust (FIBA/Corrido) */}
+              {onOpenQuickTimeAdjust && (
+                <button
+                  type="button"
+                  onClick={onOpenQuickTimeAdjust}
+                  className="p-1 sm:p-1.5 bg-[#071328] hover:bg-[#122B5C] text-[#F5C542] hover:text-[#FFFDF7] border border-[#D4AF37]/60 rounded-xl transition active:scale-95 shadow-md flex flex-col items-center justify-center gap-0.5 shrink-0"
+                  title="Ajuste rápido de minutos, segundos y régimen del reloj"
+                >
+                  <SlidersHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span className="text-[6.5px] sm:text-[7px] font-mono font-bold uppercase leading-none">
+                    {isFibaTiming ? 'FIBA' : 'CORR.'}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Shot Clock Controls (24s / 14s & display) */}
+            <div className={`flex items-center gap-1 bg-[#071328] border border-[#D4AF37]/45 rounded-xl p-0.5 sm:p-1 shrink-0 shadow-sm ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+              <button
+                type="button"
+                onClick={() => handleResetShotClock(24)}
+                disabled={isActionsLocked}
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg text-[10px] sm:text-xs font-black font-mono transition active:scale-95 shadow-xs disabled:opacity-40"
+                title="Reiniciar posesión a 24s"
+              >
+                24s
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResetShotClock(14)}
+                disabled={isActionsLocked}
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-[#0E224A] hover:bg-[#16356E] text-[#F5C542] border border-[#D4AF37]/50 rounded-lg text-[10px] sm:text-xs font-black font-mono transition active:scale-95 shadow-xs disabled:opacity-40"
+                title="Reiniciar posesión a 14s (Rebote ofensivo / Falta pista delantera)"
+              >
+                14s
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleShotClock}
+                disabled={isActionsLocked}
+                className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-scoreboard font-black text-xs sm:text-base lg:text-lg border transition active:scale-95 shadow-sm flex items-center gap-0.5 sm:gap-1 disabled:opacity-40 ${
+                  shotClockSecs <= 5
+                    ? 'bg-rose-950 text-rose-200 border-rose-500 animate-pulse ring-1 ring-rose-500'
+                    : (game.isShotClockRunning ?? true)
+                    ? 'bg-[#071328] text-[#F5C542] border-2 border-[#D4AF37]/80 shadow-[0_0_10px_rgba(212,175,55,0.35)]'
+                    : 'bg-[#0E224A] text-slate-400 border-[#D4AF37]/30'
+                }`}
+                title="Pausar o Reanudar posesión"
+              >
+                <span className="text-[7.5px] font-mono text-slate-400 font-bold hidden xs:inline">POS</span>
+                <ShotClockNumber seconds={shotClockSecs} isFinished={game.status === 'finished'} />
+              </button>
+            </div>
+
+            {/* Quick Micro-Adjust (+10s / -10s) */}
+            <div className={`hidden 2xl:flex items-center gap-0.5 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+              <button
+                onClick={() => adjustSeconds(10)}
+                disabled={isActionsLocked}
+                className="px-1.5 py-1 bg-[#071328] text-[#FFFDF7] hover:text-[#F5C542] border border-[#D4AF37]/40 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
+                title="+10 segundos"
+              >
+                +10s
+              </button>
+              <button
+                onClick={() => adjustSeconds(-10)}
+                disabled={isActionsLocked}
+                className="px-1.5 py-1 bg-[#071328] text-[#FFFDF7] hover:text-[#F5C542] border border-[#D4AF37]/40 rounded-lg text-[10px] font-mono font-bold active:scale-95 transition disabled:opacity-40"
+                title="-10 segundos"
+              >
+                -10s
+              </button>
             </div>
           </div>
 
-          {/* Opponent Live Action: Scoring buttons (+1 TL, +2 Pts, +3 Tri) & Proportioned +FALTA */}
-          <div className={`flex items-center gap-1 sm:gap-1.5 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
-            <button
-              type="button"
-              id="header-away-score-1p-btn"
-              onClick={() => onLogOpponentAction('OPP_1P')}
-              disabled={isActionsLocked}
-              className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 shrink-0"
-              title="+1 Tiro Libre Rival"
-            >
-              <span className="sm:hidden">+1</span>
-              <span className="hidden sm:inline">+1 TL</span>
-            </button>
-            <button
-              type="button"
-              id="header-away-score-2p-btn"
-              onClick={() => onLogOpponentAction('OPP_2P')}
-              disabled={isActionsLocked}
-              className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-0.5 sm:gap-1 shrink-0"
-              title="+2 Canasta Rival (Poner sitio de tiro en pista)"
-            >
-              <span>+2</span>
-              <span className="hidden sm:inline text-[10px]">Pts</span>
-              <span className="text-[10px]">🎯</span>
-            </button>
-            <button
-              type="button"
-              id="header-away-score-3p-btn"
-              onClick={() => onLogOpponentAction('OPP_3P')}
-              disabled={isActionsLocked}
-              className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[10px] sm:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-0.5 sm:gap-1 shrink-0"
-              title="+3 Triple Rival (Poner sitio de tiro en pista)"
-            >
-              <span>+3</span>
-              <span className="hidden sm:inline text-[10px]">Tri</span>
-              <span className="text-[10px]">🎯</span>
-            </button>
-            <button
-              type="button"
-              id="header-away-foul-action-btn"
-              onClick={() => {
-                onLogOpponentAction('OPP_FOUL');
-                const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
-                if (nextAwayFouls >= bonusLimit) {
-                  onTriggerOpponentFoulBonus(nextAwayFouls);
-                }
-              }}
-              disabled={isActionsLocked}
-              className={`px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg font-mono font-black text-[10px] sm:text-xs transition active:scale-95 border-2 shadow-md disabled:opacity-40 shrink-0 flex items-center gap-0.5 sm:gap-1 ${
-                awayIsBonus
-                  ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
-                  : 'bg-red-950/90 hover:bg-red-900 text-rose-200 border-red-600/70'
-              }`}
-              title="Sumar falta al equipo contrario (Rival)"
-            >
-              <span className="uppercase tracking-tight">+F</span>
-              <span className="bg-black/50 text-white px-1 sm:px-1.5 py-0.2 rounded font-scoreboard font-black text-[10px] sm:text-xs border border-red-400">
-                {game.awayQuarterFouls || 0}
-              </span>
-              {awayIsBonus && (
-                <span className="text-[7.5px] sm:text-[8px] bg-white text-red-600 px-1 py-0.2 rounded font-black animate-pulse">
-                  BONUS
-                </span>
+          {/* RIGHT SECTION: AWAY TEAM & OPPONENT LIVE ACTIONS */}
+          <div className="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0">
+            {/* RIVAL TEAM CARD */}
+            <div className="flex items-center gap-1 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-2.5 py-1 shadow-md">
+              <ScoreNumber
+                score={game.awayScore}
+                className="font-scoreboard font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1"
+              />
+
+              {/* Away Timeouts */}
+              {onTriggerTimeout && (
+                <button
+                  type="button"
+                  onClick={() => onTriggerTimeout('away')}
+                  disabled={isActionsLocked || (game.awayTimeouts !== undefined && game.awayTimeouts <= 0)}
+                  className="px-1.5 py-0.5 sm:py-1 rounded bg-[#071328] hover:bg-[#122B5C] active:bg-[#071328] border border-sky-500/60 text-[9px] sm:text-[11px] font-mono font-bold text-sky-300 flex items-center gap-1 transition active:scale-95 disabled:opacity-30 shadow-sm mr-0.5 shrink-0"
+                  title="Tiempo Muerto Rival (60 segundos)"
+                >
+                  <Timer className="w-3 h-3 text-sky-400" />
+                  <TimeoutNumber timeouts={game.awayTimeouts ?? 3} />
+                </button>
               )}
-            </button>
+
+              <div className="flex flex-col text-right ml-auto min-w-0">
+                <div className="flex items-center justify-end gap-1">
+                  <span className="text-xs sm:text-sm font-black text-sky-400 uppercase tracking-wider truncate max-w-[70px] sm:max-w-[95px] md:max-w-[120px] leading-tight">
+                    {game.awayTeamName || 'RIVAL'}
+                  </span>
+                  {onOpenRivalRoster && (
+                    <button
+                      type="button"
+                      onClick={onOpenRivalRoster}
+                      className="p-0.5 rounded text-slate-400 hover:text-sky-300 hover:bg-sky-950/60 transition active:scale-90 shrink-0"
+                      title="Editar jugadores del rival"
+                    >
+                      <Edit2 className="w-3 h-3 text-sky-400/80 hover:text-sky-300" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono mt-0.5 justify-end">
+                  <span className="text-slate-400 font-bold hidden xs:inline">Faltas:</span>
+                  <span className="text-slate-400 font-bold xs:hidden">F:</span>
+                  <FoulsBadgeNumber
+                    fouls={game.awayQuarterFouls || 0}
+                    bonus={awayIsBonus}
+                    className={`font-black px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] ${
+                      awayIsBonus
+                        ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
+                        : 'text-[#FFFDF7] bg-[#071328] border border-sky-500/40'
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Opponent Live Action: Scoring buttons (+1 TL, +2 Pts, +3 Tri) & Proportioned +FALTA */}
+            <div className={`flex items-center gap-0.5 sm:gap-1 shrink-0 ${isActionsLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+              <button
+                type="button"
+                id="header-away-score-1p-btn"
+                onClick={() => onLogOpponentAction('OPP_1P')}
+                disabled={isActionsLocked}
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-[#0E2045] hover:bg-[#16356E] border border-cyan-500/50 text-cyan-300 font-mono font-black text-[9px] sm:text-[10px] md:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 shrink-0"
+                title="+1 Tiro Libre Rival"
+              >
+                <span className="lg:hidden">+1</span>
+                <span className="hidden lg:inline">+1 TL</span>
+              </button>
+              <button
+                type="button"
+                id="header-away-score-2p-btn"
+                onClick={() => onLogOpponentAction('OPP_2P')}
+                disabled={isActionsLocked}
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono font-black text-[9px] sm:text-[10px] md:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-0.5 shrink-0"
+                title="+2 Canasta Rival (Poner sitio de tiro en pista)"
+              >
+                <span>+2</span>
+                <span className="hidden xl:inline text-[9px]">Pts</span>
+                <span className="text-[9px]">🎯</span>
+              </button>
+              <button
+                type="button"
+                id="header-away-score-3p-btn"
+                onClick={() => onLogOpponentAction('OPP_3P')}
+                disabled={isActionsLocked}
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-300 font-mono font-black text-[9px] sm:text-[10px] md:text-xs transition active:scale-95 shadow-sm disabled:opacity-40 flex items-center gap-0.5 shrink-0"
+                title="+3 Triple Rival (Poner sitio de tiro en pista)"
+              >
+                <span>+3</span>
+                <span className="hidden xl:inline text-[9px]">Tri</span>
+                <span className="text-[9px]">🎯</span>
+              </button>
+              <button
+                type="button"
+                id="header-away-foul-action-btn"
+                onClick={() => {
+                  onLogOpponentAction('OPP_FOUL');
+                  const nextAwayFouls = (game.awayQuarterFouls || 0) + 1;
+                  if (nextAwayFouls >= bonusLimit) {
+                    onTriggerOpponentFoulBonus(nextAwayFouls);
+                  }
+                }}
+                disabled={isActionsLocked}
+                className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg font-mono font-black text-[9px] sm:text-[10px] md:text-xs transition active:scale-95 border-2 shadow-md disabled:opacity-40 shrink-0 flex items-center gap-0.5 ${
+                  awayIsBonus
+                    ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 animate-pulse'
+                    : 'bg-red-950/90 hover:bg-red-900 text-rose-200 border-red-600/70'
+                }`}
+                title="Sumar falta al equipo contrario (Rival)"
+              >
+                <span className="uppercase tracking-tight">+F</span>
+                <span className="bg-black/50 text-white px-1 py-0.2 rounded font-scoreboard font-black text-[9px] sm:text-[10px] border border-red-400">
+                  {game.awayQuarterFouls || 0}
+                </span>
+                {awayIsBonus && (
+                  <span className="text-[7px] bg-white text-red-600 px-0.5 py-0.2 rounded font-black animate-pulse">
+                    B
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
         </div>
       </div>
     </header>
