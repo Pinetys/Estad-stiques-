@@ -685,7 +685,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
 
               <ScoreNumber
                 score={game.homeScore}
-                className="font-scoreboard font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1"
+                className="font-scoreboard font-extrabold text-lg sm:text-xl md:text-2xl lg:text-3xl text-[#F5C542] tracking-normal leading-none ml-auto drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] pl-1"
               />
 
               {/* Home Timeouts */}
@@ -734,7 +734,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
               <button
                 onClick={toggleClock}
                 disabled={isActionsLocked}
-                className={`px-2 sm:px-3 py-1 rounded-xl border-2 flex items-center gap-1.5 sm:gap-2 transition active:scale-95 shadow-xl shrink-0 ${
+                className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border-2 flex items-center gap-1.5 sm:gap-2 transition active:scale-95 shadow-xl shrink-0 ${
                   isActionsLocked
                     ? 'bg-[#071328] border-[#D4AF37]/30 text-slate-500 cursor-not-allowed opacity-90'
                     : game.isClockRunning
@@ -754,7 +754,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
                   <MasterClockNumber
                     secondsRemaining={game.currentSecondsRemaining}
                     isFinished={game.status === 'finished'}
-                    className="font-scoreboard font-black text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-wider leading-none drop-shadow-md text-[#FFFDF7]"
+                    className="font-scoreboard font-black text-lg sm:text-xl md:text-2xl lg:text-3xl tracking-wider leading-none drop-shadow-md text-[#FFFDF7]"
                   />
                   <span className="text-[7.5px] sm:text-[8.5px] font-mono font-bold uppercase tracking-wider leading-none mt-0.5">
                     {game.status === 'finished' ? (
@@ -853,7 +853,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             <div className="flex items-center gap-1 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-2.5 py-0.5 shadow-md">
               <ScoreNumber
                 score={game.awayScore}
-                className="font-scoreboard font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1"
+                className="font-scoreboard font-extrabold text-lg sm:text-xl md:text-2xl lg:text-3xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1"
               />
 
               {/* Away Timeouts */}

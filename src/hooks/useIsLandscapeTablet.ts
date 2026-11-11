@@ -7,14 +7,14 @@ import { useState, useEffect } from 'react';
 export function useIsLandscapeTablet(): boolean {
   const [isLandscape, setIsLandscape] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return window.innerWidth >= 768 && window.innerWidth > window.innerHeight;
+    return window.innerWidth > window.innerHeight && window.innerWidth >= 480;
   });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const checkOrientation = () => {
-      const isLand = window.innerWidth >= 768 && window.innerWidth > window.innerHeight;
+      const isLand = window.innerWidth > window.innerHeight && window.innerWidth >= 480;
       setIsLandscape(isLand);
     };
 
@@ -26,9 +26,9 @@ export function useIsLandscapeTablet(): boolean {
     window.addEventListener('orientationchange', checkOrientation);
 
     // Media query listener
-    const mql = window.matchMedia('(orientation: landscape) and (min-width: 768px)');
+    const mql = window.matchMedia('(orientation: landscape) and (min-width: 480px)');
     const handleMql = (e: MediaQueryListEvent) => {
-      setIsLandscape(e.matches && window.innerWidth >= 768);
+      setIsLandscape(e.matches && window.innerWidth >= 480);
     };
 
     try {

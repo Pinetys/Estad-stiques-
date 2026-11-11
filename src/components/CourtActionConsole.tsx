@@ -19,79 +19,79 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <button
             id="action-3pm-btn"
             onClick={() => onInitiateAction('3PM')}
-            className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-black rounded-lg sm:rounded-xl py-1 sm:py-1.5 px-2.5 sm:px-3 flex items-center justify-between border-2 border-amber-300 shadow-md active:scale-95 transition h-[40px] xs:h-[44px] sm:h-[48px] lg:h-[50px] min-h-[38px]"
+            className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 active:from-amber-600 active:to-orange-600 text-slate-950 font-black rounded-lg py-1 px-2.5 sm:px-3 flex items-center justify-between border-2 border-amber-300 shadow-md active:scale-95 transition h-[34px] xs:h-[36px] sm:h-[38px] lg:h-[40px] min-h-[32px]"
             title="Atajo teclado: Tecla 3"
           >
             <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none tracking-tight flex items-center gap-1">
+              <span className="text-xs sm:text-sm lg:text-[15px] font-black font-mono leading-none tracking-tight flex items-center gap-1">
                 <span>+3 TRIPLE</span>
-                <kbd className="text-[8px] bg-slate-950/40 text-amber-200 px-1 py-0.2 rounded font-mono font-bold" title="Atajo teclado: 3">3</kbd>
+                <kbd className="text-[7.5px] bg-slate-950/40 text-amber-200 px-1 py-0.2 rounded font-mono font-bold" title="Atajo teclado: 3">3</kbd>
               </span>
-              <span className="text-[8px] sm:text-[9px] uppercase font-extrabold text-slate-900 mt-0.5 leading-none">Triple Metido</span>
+              <span className="text-[7.5px] sm:text-[8.5px] uppercase font-extrabold text-slate-900 leading-none">Triple Metido</span>
             </div>
-            <span className="text-lg sm:text-xl lg:text-2xl font-mono font-black leading-none bg-slate-950/20 px-1.5 py-0.5 rounded">+3</span>
+            <span className="text-base sm:text-lg lg:text-xl font-mono font-black leading-none bg-slate-950/20 px-1.5 py-0.5 rounded">+3</span>
           </button>
 
           <button
             id="action-3pa-btn"
             onClick={() => onInitiateAction('3PA')}
-            className="bg-[#1c3a72] hover:bg-[#254d96] active:bg-[#152e5d] text-white font-bold rounded-lg sm:rounded-xl py-1 sm:py-1.5 px-2.5 sm:px-3 flex items-center justify-between border-2 border-amber-400/50 shadow-md active:scale-95 transition h-[40px] xs:h-[44px] sm:h-[48px] lg:h-[50px] min-h-[38px]"
+            className="bg-[#1c3a72] hover:bg-[#254d96] active:bg-[#152e5d] text-white font-bold rounded-lg py-1 px-2.5 sm:px-3 flex items-center justify-between border-2 border-amber-400/50 shadow-md active:scale-95 transition h-[34px] xs:h-[36px] sm:h-[38px] lg:h-[40px] min-h-[32px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none text-amber-300">FALLO 3P</span>
-              <span className="text-[8px] sm:text-[9px] uppercase text-slate-200 mt-0.5 leading-none">Triple Errado</span>
+              <span className="text-xs sm:text-sm lg:text-[15px] font-black font-mono leading-none text-amber-300">FALLO 3P</span>
+              <span className="text-[7.5px] sm:text-[8.5px] uppercase text-slate-200 leading-none">Triple Errado</span>
             </div>
-            <span className="text-[9px] sm:text-[10px] font-mono text-amber-300 font-bold bg-[#132852] border border-amber-400/40 px-1.5 py-0.5 rounded">3PA</span>
+            <span className="text-[8.5px] sm:text-[9.5px] font-mono text-amber-300 font-bold bg-[#132852] border border-amber-400/40 px-1.5 py-0.5 rounded">3PA</span>
           </button>
 
           {/* FILA 2: +2 CANASTA METIDA & FALLO 2P */}
           <button
             id="action-2pm-btn"
             onClick={() => onInitiateAction('2PM')}
-            className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 active:from-emerald-600 active:to-teal-600 text-white font-black rounded-lg sm:rounded-xl py-1 sm:py-1.5 px-2.5 sm:px-3 flex items-center justify-between border-2 border-emerald-300 shadow-md active:scale-95 transition h-[40px] xs:h-[44px] sm:h-[48px] lg:h-[50px] min-h-[38px]"
+            className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 active:from-emerald-600 active:to-teal-600 text-white font-black rounded-lg py-1 px-2.5 sm:px-3 flex items-center justify-between border-2 border-emerald-300 shadow-md active:scale-95 transition h-[34px] xs:h-[36px] sm:h-[38px] lg:h-[40px] min-h-[32px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none tracking-tight">+2 CANASTA</span>
-              <span className="text-[8px] sm:text-[9px] uppercase font-extrabold text-emerald-100 mt-0.5 leading-none">Tiro 2 Metido</span>
+              <span className="text-xs sm:text-sm lg:text-[15px] font-black font-mono leading-none tracking-tight">+2 CANASTA</span>
+              <span className="text-[7.5px] sm:text-[8.5px] uppercase font-extrabold text-emerald-100 leading-none">Tiro 2 Metido</span>
             </div>
-            <span className="text-lg sm:text-xl lg:text-2xl font-mono font-black leading-none bg-emerald-950/40 px-1.5 py-0.5 rounded">+2</span>
+            <span className="text-base sm:text-lg lg:text-xl font-mono font-black leading-none bg-emerald-950/40 px-1.5 py-0.5 rounded">+2</span>
           </button>
 
           <button
             id="action-2pa-btn"
             onClick={() => onInitiateAction('2PA')}
-            className="bg-[#1c3a72] hover:bg-[#254d96] active:bg-[#152e5d] text-white font-bold rounded-lg sm:rounded-xl py-1 sm:py-1.5 px-2.5 sm:px-3 flex items-center justify-between border-2 border-emerald-400/50 shadow-md active:scale-95 transition h-[40px] xs:h-[44px] sm:h-[48px] lg:h-[50px] min-h-[38px]"
+            className="bg-[#1c3a72] hover:bg-[#254d96] active:bg-[#152e5d] text-white font-bold rounded-lg py-1 px-2.5 sm:px-3 flex items-center justify-between border-2 border-emerald-400/50 shadow-md active:scale-95 transition h-[34px] xs:h-[36px] sm:h-[38px] lg:h-[40px] min-h-[32px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none text-emerald-300">FALLO 2P</span>
-              <span className="text-[8px] sm:text-[9px] uppercase text-slate-200 mt-0.5 leading-none">Tiro 2 Errado</span>
+              <span className="text-xs sm:text-sm lg:text-[15px] font-black font-mono leading-none text-emerald-300">FALLO 2P</span>
+              <span className="text-[7.5px] sm:text-[8.5px] uppercase text-slate-200 leading-none">Tiro 2 Errado</span>
             </div>
-            <span className="text-[9px] sm:text-[10px] font-mono text-emerald-300 font-bold bg-[#132852] border border-emerald-400/40 px-1.5 py-0.5 rounded">2PA</span>
+            <span className="text-[8.5px] sm:text-[9.5px] font-mono text-emerald-300 font-bold bg-[#132852] border border-emerald-400/40 px-1.5 py-0.5 rounded">2PA</span>
           </button>
 
           {/* FILA 3: +1 TIRO LIBRE METIDO & FALLO TL */}
           <button
             id="action-ftm-btn"
             onClick={() => onInitiateAction('FTM')}
-            className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-sky-400 active:from-cyan-600 active:to-sky-600 text-white font-black rounded-lg sm:rounded-xl py-1 sm:py-1.5 px-2.5 sm:px-3 flex items-center justify-between border-2 border-cyan-300 shadow-md active:scale-95 transition h-[40px] xs:h-[44px] sm:h-[48px] lg:h-[50px] min-h-[38px]"
+            className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-sky-400 active:from-cyan-600 active:to-sky-600 text-white font-black rounded-lg py-1 px-2.5 sm:px-3 flex items-center justify-between border-2 border-cyan-300 shadow-md active:scale-95 transition h-[34px] xs:h-[36px] sm:h-[38px] lg:h-[40px] min-h-[32px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none tracking-tight">+1 T. LIBRE</span>
-              <span className="text-[8px] sm:text-[9px] uppercase font-extrabold text-cyan-100 mt-0.5 leading-none">TL Anotado</span>
+              <span className="text-xs sm:text-sm lg:text-[15px] font-black font-mono leading-none tracking-tight">+1 T. LIBRE</span>
+              <span className="text-[7.5px] sm:text-[8.5px] uppercase font-extrabold text-cyan-100 leading-none">TL Anotado</span>
             </div>
-            <span className="text-lg sm:text-xl lg:text-2xl font-mono font-black leading-none bg-sky-950/40 px-1.5 py-0.5 rounded">+1</span>
+            <span className="text-base sm:text-lg lg:text-xl font-mono font-black leading-none bg-sky-950/40 px-1.5 py-0.5 rounded">+1</span>
           </button>
 
           <button
             id="action-fta-btn"
             onClick={() => onInitiateAction('FTA')}
-            className="bg-[#1c3a72] hover:bg-[#254d96] active:bg-[#152e5d] text-white font-bold rounded-lg sm:rounded-xl py-1 sm:py-1.5 px-2.5 sm:px-3 flex items-center justify-between border-2 border-cyan-400/50 shadow-md active:scale-95 transition h-[40px] xs:h-[44px] sm:h-[48px] lg:h-[50px] min-h-[38px]"
+            className="bg-[#1c3a72] hover:bg-[#254d96] active:bg-[#152e5d] text-white font-bold rounded-lg py-1 px-2.5 sm:px-3 flex items-center justify-between border-2 border-cyan-400/50 shadow-md active:scale-95 transition h-[34px] xs:h-[36px] sm:h-[38px] lg:h-[40px] min-h-[32px]"
           >
             <div className="flex flex-col text-left">
-              <span className="text-xs sm:text-sm lg:text-base font-black font-mono leading-none text-cyan-300">FALLO TL</span>
-              <span className="text-[8px] sm:text-[9px] uppercase text-slate-200 mt-0.5 leading-none">TL Errado</span>
+              <span className="text-xs sm:text-sm lg:text-[15px] font-black font-mono leading-none text-cyan-300">FALLO TL</span>
+              <span className="text-[7.5px] sm:text-[8.5px] uppercase text-slate-200 leading-none">TL Errado</span>
             </div>
-            <span className="text-[9px] sm:text-[10px] font-mono text-cyan-300 font-bold bg-[#132852] border border-cyan-400/40 px-1.5 py-0.5 rounded">1PA</span>
+            <span className="text-[8.5px] sm:text-[9.5px] font-mono text-cyan-300 font-bold bg-[#132852] border border-cyan-400/40 px-1.5 py-0.5 rounded">1PA</span>
           </button>
         </div>
 
@@ -101,55 +101,55 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <button
             id="action-dreb-btn"
             onClick={() => onInitiateAction('DREB')}
-            className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white border-2 border-blue-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white border-2 border-blue-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Rebote Defensivo"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase">REB DEF</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-blue-100 font-bold mt-0.5 leading-none">Defensivo</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase">REB DEF</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-blue-100 font-bold leading-none">Defensivo</span>
           </button>
 
           {/* REBOTE OFENSIVO */}
           <button
             id="action-oreb-btn"
             onClick={() => onInitiateAction('OREB')}
-            className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white border-2 border-indigo-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white border-2 border-indigo-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Rebote Ofensivo"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase">REB OF</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-indigo-100 font-bold mt-0.5 leading-none">Ofensivo</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase">REB OF</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-indigo-100 font-bold leading-none">Ofensivo</span>
           </button>
 
           {/* ROBO */}
           <button
             id="action-stl-btn"
             onClick={() => onInitiateAction('STL')}
-            className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white border-2 border-teal-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white border-2 border-teal-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Robo de balón"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase">ROBO</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-teal-100 font-bold mt-0.5 leading-none">Recupera</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase">ROBO</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-teal-100 font-bold leading-none">Recupera</span>
           </button>
 
           {/* PÉRDIDA */}
           <button
             id="action-to-btn"
             onClick={() => onInitiateAction('TO')}
-            className="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-slate-950 border-2 border-amber-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-slate-950 border-2 border-amber-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Pérdida de balón"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight uppercase">PÉRDIDA</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-slate-900 font-bold mt-0.5 leading-none">Pérdida</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight uppercase">PÉRDIDA</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-slate-900 font-bold leading-none">Pérdida</span>
           </button>
 
           {/* TAPÓN */}
           <button
             id="action-blk-btn"
             onClick={() => onInitiateAction('BLK')}
-            className="bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white border-2 border-purple-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white border-2 border-purple-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Tapón"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase">TAPÓN</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-purple-100 font-bold mt-0.5 leading-none">Gorro</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase">TAPÓN</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-purple-100 font-bold leading-none">Gorro</span>
           </button>
         </div>
 
@@ -159,58 +159,58 @@ export const CourtActionConsole: React.FC<CourtActionConsoleProps> = ({
           <button
             id="action-pf-btn"
             onClick={() => onInitiateAction('PF')}
-            className="bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white border-2 border-rose-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white border-2 border-rose-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Falta Personal simple (P) - Atajo teclado: Tecla 4"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase flex items-center gap-0.5">
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase flex items-center gap-0.5">
               <span>FALTA (P)</span>
-              <kbd className="text-[7px] bg-slate-950/50 text-rose-200 px-0.5 py-0.2 rounded font-mono font-bold">4</kbd>
+              <kbd className="text-[6.5px] bg-slate-950/50 text-rose-200 px-0.5 py-0.2 rounded font-mono font-bold">4</kbd>
             </span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-rose-100 font-bold mt-0.5 leading-none">Personal</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-rose-100 font-bold leading-none">Personal</span>
           </button>
 
           {/* FALTA TIRO (PFT) */}
           <button
             id="action-pft-btn"
             onClick={() => onInitiateAction('PFT')}
-            className="bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-2 border-red-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-2 border-red-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Falta con tiros concedidos (P1/2/3)"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase">TIRO (PFT)</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-red-100 font-bold mt-0.5 leading-none">Con Tiros</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase">TIRO (PFT)</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-red-100 font-bold leading-none">Con Tiros</span>
           </button>
 
           {/* FALTA EN ATAQUE (OF) */}
           <button
             id="action-of-btn"
             onClick={() => onInitiateAction('OF')}
-            className="bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white border-2 border-orange-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white border-2 border-orange-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Falta en Ataque sin tiros (O)"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase">ATAQUE (O)</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-orange-100 font-bold mt-0.5 leading-none">En Ataque</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase">ATAQUE (O)</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-orange-100 font-bold leading-none">En Ataque</span>
           </button>
 
           {/* FALTA TÉCNICA / ANTIDEP */}
           <button
             id="action-tf-btn"
             onClick={() => onInitiateAction('TF')}
-            className="bg-fuchsia-600 hover:bg-fuchsia-500 active:bg-fuchsia-700 text-white border-2 border-fuchsia-300 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-fuchsia-600 hover:bg-fuchsia-500 active:bg-fuchsia-700 text-white border-2 border-fuchsia-300 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Falta Técnica o Antideportiva"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight text-white uppercase">TÉC / ANT</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-fuchsia-100 font-bold mt-0.5 leading-none">Especial</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight text-white uppercase">TÉC / ANT</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-fuchsia-100 font-bold leading-none">Especial</span>
           </button>
 
           {/* FALTA RECIBIDA (FD) */}
           <button
             id="action-fd-btn"
             onClick={() => onInitiateAction('FD')}
-            className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 border-2 border-emerald-200 font-black rounded-lg py-1 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[36px] xs:h-[38px] sm:h-[42px] lg:h-[44px] min-h-[34px]"
+            className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 border-2 border-emerald-200 font-black rounded-lg py-0.5 px-0.5 flex flex-col items-center justify-center shadow-md active:scale-95 transition h-[28px] xs:h-[30px] sm:h-[32px] lg:h-[34px] min-h-[26px]"
             title="Falta Personal Recibida o Provocada (+1 Valoración)"
           >
-            <span className="text-[9px] sm:text-[10.5px] lg:text-[11px] font-black font-mono leading-tight uppercase">RECIB (FD)</span>
-            <span className="text-[7px] sm:text-[8px] uppercase text-slate-900 font-bold mt-0.5 leading-none">Provocada</span>
+            <span className="text-[8.5px] sm:text-[9.5px] lg:text-[10.5px] font-black font-mono leading-tight uppercase">RECIB (FD)</span>
+            <span className="text-[6.5px] sm:text-[7.5px] uppercase text-slate-900 font-bold leading-none">Provocada</span>
           </button>
         </div>
       </div>

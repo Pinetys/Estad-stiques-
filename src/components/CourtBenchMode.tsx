@@ -999,43 +999,62 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
   const renderBottomBar = (compact = false) => {
     return (
-      <div className={`bg-[#0e224a]/95 ${compact ? 'p-1' : 'border-t border-[#203a70] px-2 sm:px-4 py-0.5 sm:py-1 pb-[max(0.3rem,env(safe-area-inset-bottom))]'} z-40 shrink-0 select-none`}>
-        <div className="max-w-3xl md:max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
+      <div className={`bg-[#0e224a]/95 ${compact ? 'p-0.5 sm:p-1' : 'border-t border-[#203a70] px-2 sm:px-4 py-0.5 sm:py-1 pb-[max(0.3rem,env(safe-area-inset-bottom))]'} z-40 shrink-0 select-none`}>
+        <div className="max-w-3xl md:max-w-4xl mx-auto flex items-center justify-between gap-1 sm:gap-2">
           {/* Recent Action Tag & Drawer Toggle */}
-          <div className="flex items-center gap-2 grow overflow-hidden">
+          <div className="flex items-center gap-1.5 grow overflow-hidden min-w-0">
             <button
               onClick={() => {
                 playSound('click', game.settings.soundEnabled);
                 triggerHaptic('light', game.settings.vibrationEnabled);
                 setShowHistoryDrawer(true);
               }}
-              className="p-1 px-2.5 text-slate-200 border rounded-lg text-xs font-mono flex items-center gap-1.5 shrink-0 active:scale-95 transition bg-[#132a58] hover:bg-[#1c3f84] border-[#28498f] shadow-sm hover:border-amber-400/70"
+              className="p-0.5 px-2 text-slate-200 border rounded-lg text-[10px] sm:text-xs font-mono flex items-center gap-1 shrink-0 active:scale-95 transition bg-[#132a58] hover:bg-[#1c3f84] border-[#28498f] shadow-sm hover:border-amber-400/70"
               title="Desplegar historial de jugadas y eliminar jugadas erróneas"
             >
               <History className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[11px] font-bold">Historial ({game.events.length})</span>
+              <span className="font-bold">Historial ({game.events.length})</span>
             </button>
 
             {recentEvent ? (
-              <div className="truncate text-[11px] sm:text-xs font-mono text-slate-200">
-                <span className="text-slate-400 text-[9px] sm:text-[10px]">Última jugada:</span>{' '}
-                <strong className="text-amber-300 font-bold">
+              <div className="truncate text-[10px] sm:text-xs font-mono text-slate-200 min-w-0">
+                <span className="text-slate-400 text-[9px] hidden xs:inline">Última:</span>{' '}
+                <strong className="text-amber-300 font-bold truncate">
                   {recentEvent.isOpponentAction
                     ? recentEvent.actionLabel
                     : `#${recentEvent.playerNumber} ${recentEvent.playerName?.split(' ')[0]} - ${recentEvent.actionLabel}`}
                 </strong>
               </div>
             ) : (
-              <div className="text-[11px] sm:text-xs text-slate-400 italic font-mono">Esperando jugada...</div>
+              <div className="text-[10px] sm:text-xs text-slate-400 italic font-mono truncate">Esperando jugada...</div>
             )}
           </div>
+
+          {/* Quick Undo Action Button */}
+          {onUndoLastAction && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isActionsLocked) return;
+                playSound('click', game.settings.soundEnabled);
+                triggerHaptic('undo', game.settings.vibrationEnabled);
+                onUndoLastAction();
+              }}
+              disabled={isActionsLocked || !recentEvent}
+              className="p-1 px-2.5 bg-rose-900/80 hover:bg-rose-800 text-rose-200 rounded-lg text-[10px] font-mono font-bold border border-rose-600/60 flex items-center gap-1 disabled:opacity-30 disabled:pointer-events-none transition active:scale-95 shrink-0 shadow-sm"
+              title="Deshacer última acción"
+            >
+              <Undo2 className="w-3.5 h-3.5 text-rose-300" />
+              <span>Deshacer</span>
+            </button>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col overflow-hidden select-none px-safe pb-[env(safe-area-inset-bottom,0px)]">
+    <div className="h-full max-h-full w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col overflow-hidden select-none px-safe">
       {/* 1. TOP BAR: LANDSCAPE (CENTERED QUARTER CLOCK & ALL CONTROLS) VS PORTRAIT */}
       {isLandscapeTablet ? (
         <CourtLandscapeHeader
@@ -1955,7 +1974,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               {bonusFreeThrowPrompt && renderBonusAssistant()}
               {assistPromptForEvent && renderAssistPrompt()}
 
-              <div className="flex items-center justify-between px-2.5 py-1 bg-[#0E224A] border border-[#203a70] rounded-xl text-xs font-mono">
+              <div className="flex items-center justify-between px-2 py-0.5 bg-[#0E224A] border border-[#203a70] rounded-lg text-[10px] font-mono">
                 <div className="flex items-center gap-1.5 truncate">
                   <span className="text-[10px] uppercase font-bold text-[#F5C542]">Flujo de registro:</span>
                   {pendingAction ? (

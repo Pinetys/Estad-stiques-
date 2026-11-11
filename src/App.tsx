@@ -2181,7 +2181,7 @@ export default function App() {
   }
 
   return (
-    <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#070c1e] text-slate-100' : 'min-h-screen bg-[#090f23] text-slate-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
+    <div className={`${isCourtMode ? 'h-full max-h-full overflow-hidden bg-[#070c1e] text-slate-100' : 'h-full min-h-0 overflow-y-auto bg-[#090f23] text-slate-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
       {/* 1. If Court Mode is Active: Show Ultra-Clean Bench Tactile Console */}
       {isCourtMode ? (
         <CourtBenchMode

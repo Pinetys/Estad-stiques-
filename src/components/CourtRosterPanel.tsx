@@ -543,7 +543,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                 <div
                   key={player.id}
                   onClick={() => handleCourtPlayerClick(player)}
-                  className={`w-full p-1 sm:p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer min-h-[38px] sm:min-h-[42px] ${
+                  className={`w-full p-1 sm:p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer min-h-[34px] sm:min-h-[38px] ${
                     isPendingOut
                       ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/60 text-white shadow-lg'
                       : pendingInId
