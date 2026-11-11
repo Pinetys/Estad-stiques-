@@ -74,6 +74,7 @@ import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 import { CourtLandscapeHeader } from './CourtLandscapeHeader';
 import { CourtRosterPanel } from './CourtRosterPanel';
 import { CourtLiveMatchHUD } from './CourtLiveMatchHUD';
+import { CourtTacticalParquetView } from './CourtTacticalParquetView';
 import { CourtPlayHistoryModal } from './CourtPlayHistoryModal';
 import { QuickTimeAdjustModal } from './QuickTimeAdjustModal';
 import { TimeoutCountdownModal } from './TimeoutCountdownModal';
@@ -183,6 +184,9 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   const [showStartingFiveModal, setShowStartingFiveModal] = useState(false);
   const [isEditingFinishedGame, setIsEditingFinishedGame] = useState(false);
   const isLandscapeTablet = useIsLandscapeTablet();
+  // Upper view modes: 'parquet' (Basketball court with parquet wood floor and Fundacio Brafa logo) vs 'hud' / 'carousel'
+  const [courtUpperViewMode, setCourtUpperViewMode] = useState<'parquet' | 'hud'>('parquet');
+  const [portraitCourtViewMode, setPortraitCourtViewMode] = useState<'parquet' | 'carousel'>('parquet');
 
   // Pro Timing & Commercial Modals State
   const [showQuickTimeAdjustModal, setShowQuickTimeAdjustModal] = useState(false);
@@ -1878,31 +1882,96 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         </div>
       )}
 
-      {/* 4. JUGADORES EN PISTA (PORTRAIT ONLY) */}
+      {/* 4. JUGADORES EN PISTA / PISTA PARQUET CON LOGO BRAFA (PORTRAIT ONLY) */}
       {!isLandscapeTablet && (
-        <CourtPlayersBar
-          game={game}
-          playersOnCourt={playersOnCourt}
-          benchPlayers={benchPlayers}
-          selectedPlayerId={selectedPlayerId}
-          isPreGame={isPreGame}
-          isLandscape={false}
-          onSelectPlayer={(id) => {
-            if (isActionsLocked) return;
-            if (pendingAction) {
-              const p = game.players.find(player => player.id === id);
-              if (p) {
-                executeActionForPlayer(p, pendingAction);
-                return;
-              }
-            }
-            onSelectPlayer(id);
-          }}
-          onOpenSubstitutionModal={onOpenSubstitutionModal}
-          onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
-          onOpenMinutesBalanceModal={() => setShowMinutesBalanceModal(true)}
-          onPerformSubstitution={handlePerformDirectSub}
-        />
+        <div className="max-w-3xl md:max-w-4xl mx-auto w-full px-2 pt-0.5 sm:pt-1 shrink-0 select-none">
+          <div className="flex items-center justify-between pb-1 px-1">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPortraitCourtViewMode('parquet')}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 ${
+                  portraitCourtViewMode === 'parquet'
+                    ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                    : 'bg-[#0E224A] text-slate-300 hover:text-white border border-[#203a70]'
+                }`}
+              >
+                <span>🏀 Pista Parquet Brafa</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPortraitCourtViewMode('carousel')}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 ${
+                  portraitCourtViewMode === 'carousel'
+                    ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                    : 'bg-[#0E224A] text-slate-300 hover:text-white border border-[#203a70]'
+                }`}
+              >
+                <span>Fichas ({playersOnCourt.length})</span>
+              </button>
+            </div>
+            {pendingAction && (
+              <span className="text-[10px] font-mono text-emerald-300 font-bold animate-pulse">
+                Toca el jugador en la pista
+              </span>
+            )}
+          </div>
+
+          {portraitCourtViewMode === 'parquet' ? (
+            <CourtTacticalParquetView
+              game={game}
+              playersOnCourt={playersOnCourt}
+              benchPlayers={benchPlayers}
+              selectedPlayerId={selectedPlayerId}
+              pendingAction={pendingAction}
+              onSelectPlayer={(id) => {
+                if (isActionsLocked) return;
+                if (pendingAction) {
+                  const p = game.players.find(player => player.id === id);
+                  if (p) {
+                    executeActionForPlayer(p, pendingAction);
+                    return;
+                  }
+                }
+                onSelectPlayer(id);
+              }}
+              onPlayerAction={(p) => {
+                if (isActionsLocked) return;
+                if (pendingAction) {
+                  executeActionForPlayer(p, pendingAction);
+                }
+              }}
+              onOpenSubstitutionModal={onOpenSubstitutionModal}
+              onPerformSubstitution={handlePerformDirectSub}
+              isLandscape={false}
+              isActionsLocked={isActionsLocked}
+            />
+          ) : (
+            <CourtPlayersBar
+              game={game}
+              playersOnCourt={playersOnCourt}
+              benchPlayers={benchPlayers}
+              selectedPlayerId={selectedPlayerId}
+              isPreGame={isPreGame}
+              isLandscape={false}
+              onSelectPlayer={(id) => {
+                if (isActionsLocked) return;
+                if (pendingAction) {
+                  const p = game.players.find(player => player.id === id);
+                  if (p) {
+                    executeActionForPlayer(p, pendingAction);
+                    return;
+                  }
+                }
+                onSelectPlayer(id);
+              }}
+              onOpenSubstitutionModal={onOpenSubstitutionModal}
+              onOpenStartingFiveModal={() => setShowStartingFiveModal(true)}
+              onOpenMinutesBalanceModal={() => setShowMinutesBalanceModal(true)}
+              onPerformSubstitution={handlePerformDirectSub}
+            />
+          )}
+        </div>
       )}
 
       {/* 5. MAIN ACTION BUTTONS CONSOLE (PORTRAIT ONLY) */}
@@ -1968,41 +2037,98 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             />
           </div>
 
-          {/* RIGHT COLUMN: LIVE MATCH HUD (TOP) & ACTION CONSOLE AT BOTTOM */}
+          {/* RIGHT COLUMN: PARQUET COURT / LIVE MATCH HUD (TOP) & ACTION CONSOLE AT BOTTOM */}
           <div className="flex-1 min-w-0 flex flex-col justify-between h-full p-1 overflow-hidden gap-1">
-            {/* Top Prompt Area: Bonus / Assist + Live Match Intelligence HUD */}
+            {/* Top Prompt Area: Bonus / Assist + Parquet Court or Live Match Intelligence HUD */}
             <div className="shrink-0 space-y-1">
               {bonusFreeThrowPrompt && renderBonusAssistant()}
               {assistPromptForEvent && renderAssistPrompt()}
 
               <div className="flex items-center justify-between px-2 py-0.5 bg-[#0E224A] border border-[#203a70] rounded-lg text-[10px] font-mono">
                 <div className="flex items-center gap-1.5 truncate">
-                  <span className="text-[10px] uppercase font-bold text-[#F5C542]">Flujo de registro:</span>
+                  <span className="text-[10px] uppercase font-bold text-[#F5C542]">Flujo:</span>
                   {pendingAction ? (
                     <span className="text-white font-black truncate flex items-center gap-1">
-                      <span>Paso 2: Toca el jugador para</span>
+                      <span>Paso 2: Toca el jugador en pista para</span>
                       <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 font-black rounded text-[11px]">
                         {pendingActionDef?.shortLabel || pendingAction}
                       </span>
                     </span>
                   ) : (
                     <span className="text-slate-300 text-[11px]">
-                      1º Pulsa la <span className="text-emerald-400 font-bold">Acción</span> → 2º Selecciona el <span className="text-amber-400 font-bold">Jugador</span>
+                      1º Pulsa la <span className="text-emerald-400 font-bold">Acción</span> abajo → 2º Selecciona el <span className="text-amber-400 font-bold">Jugador</span> en pista
                     </span>
                   )}
                 </div>
-                {pendingAction && (
+                <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => setPendingAction(null)}
-                    className="text-[10px] text-rose-300 hover:text-white underline font-bold shrink-0 ml-1"
+                    type="button"
+                    onClick={() => setCourtUpperViewMode('parquet')}
+                    className={`px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold transition ${
+                      courtUpperViewMode === 'parquet'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                        : 'bg-[#071328] text-slate-400 hover:text-white border border-[#203a70]'
+                    }`}
+                    title="Ver pista de baloncesto suelo parquet con logo Fundació Brafa"
                   >
-                    Cancelar ✕
+                    🏀 Pista Brafa
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setCourtUpperViewMode('hud')}
+                    className={`px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold transition ${
+                      courtUpperViewMode === 'hud'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                        : 'bg-[#071328] text-slate-400 hover:text-white border border-[#203a70]'
+                    }`}
+                    title="Ver estadísticas del partido y racha"
+                  >
+                    📊 Stats HUD
+                  </button>
+                  {pendingAction && (
+                    <button
+                      onClick={() => setPendingAction(null)}
+                      className="text-[10px] text-rose-300 hover:text-white underline font-bold ml-1"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* LIVE MATCH INTELLIGENCE HUD (Tiros, Efectividad, Cuartos, Racha y Líderes) */}
-              <CourtLiveMatchHUD game={game} />
+              {/* UPPER SECTION: PARQUET COURT WITH BRAFA LOGO (DEFAULT) OR HUD */}
+              {courtUpperViewMode === 'parquet' ? (
+                <CourtTacticalParquetView
+                  game={game}
+                  playersOnCourt={playersOnCourt}
+                  benchPlayers={benchPlayers}
+                  selectedPlayerId={selectedPlayerId}
+                  pendingAction={pendingAction}
+                  onSelectPlayer={(id) => {
+                    if (isActionsLocked) return;
+                    if (pendingAction) {
+                      const p = game.players.find(player => player.id === id);
+                      if (p) {
+                        executeActionForPlayer(p, pendingAction);
+                        return;
+                      }
+                    }
+                    onSelectPlayer(id);
+                  }}
+                  onPlayerAction={(p) => {
+                    if (isActionsLocked) return;
+                    if (pendingAction) {
+                      executeActionForPlayer(p, pendingAction);
+                    }
+                  }}
+                  onOpenSubstitutionModal={onOpenSubstitutionModal}
+                  onPerformSubstitution={handlePerformDirectSub}
+                  isLandscape={true}
+                  isActionsLocked={isActionsLocked}
+                />
+              ) : (
+                <CourtLiveMatchHUD game={game} />
+              )}
             </div>
 
             {/* Tactile Action Console anchored at bottom for comfortable thumb reach */}
