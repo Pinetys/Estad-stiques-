@@ -209,7 +209,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   return (
     <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
       {/* 1. TOP UTILITY STRIP: Clean, responsive single-row layout without lateral scroll */}
-      <div className="border-b border-[#D4AF37]/20 px-1.5 sm:px-3 py-1 bg-[#071328]/95 relative z-30 overflow-x-auto scrollbar-none">
+      <div className="border-b border-[#D4AF37]/20 px-1.5 sm:px-3 py-0.5 bg-[#071328]/95 relative z-30 overflow-x-auto scrollbar-none">
         <div className="max-w-[1500px] mx-auto w-full flex items-center justify-between text-[11px] gap-1 sm:gap-2">
           {/* Left: Exit button, Fullscreen, WakeLock & Battery saver toggle */}
           <div className="flex items-center justify-start gap-1 sm:gap-1.5 shrink-0">
@@ -659,11 +659,11 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
       </div>
 
       {/* 2. MAIN MATCH & TIME CONSOLE: Responsive flex layout mathematically balanced for tablets without overlapping */}
-      <div className="w-full px-1.5 sm:px-3 py-1 overflow-x-auto scrollbar-none">
+      <div className="w-full px-1.5 sm:px-3 py-0.5 overflow-x-auto scrollbar-none">
         <div className="max-w-[1500px] mx-auto w-full flex items-center justify-between gap-1 sm:gap-2">
           {/* LEFT SECTION: LOCAL TEAM SCORECARD */}
           <div className="flex items-center justify-start gap-1 shrink-0">
-            <div className="flex items-center gap-1 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2 sm:px-2.5 py-1 shadow-md">
+            <div className="flex items-center gap-1 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-[#D4AF37]/60 rounded-xl px-2 sm:px-2.5 py-0.5 shadow-md">
               <div className="flex flex-col text-left min-w-0">
                 <span className="text-xs sm:text-sm font-black text-[#F5C542] uppercase tracking-wider truncate max-w-[70px] sm:max-w-[95px] md:max-w-[120px] leading-tight">
                   {game.homeTeamName || 'LOCAL'}
@@ -850,7 +850,7 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
           {/* RIGHT SECTION: AWAY TEAM & OPPONENT LIVE ACTIONS */}
           <div className="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0">
             {/* RIVAL TEAM CARD */}
-            <div className="flex items-center gap-1 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-2.5 py-1 shadow-md">
+            <div className="flex items-center gap-1 sm:gap-2 bg-gradient-to-br from-[#0E224A] to-[#071328] border-2 border-sky-500/50 rounded-xl px-2 sm:px-2.5 py-0.5 shadow-md">
               <ScoreNumber
                 score={game.awayScore}
                 className="font-scoreboard font-extrabold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#FFFDF7] tracking-normal leading-none drop-shadow-[0_2px_12px_rgba(255,253,247,0.35)] pr-1"

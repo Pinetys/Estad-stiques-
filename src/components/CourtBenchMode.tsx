@@ -1902,7 +1902,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 7. TABLET LANDSCAPE LAYOUT (FULL SQUAD ON LEFT + CENTERED ACTIONS ON RIGHT) */}
       {isLandscapeTablet && (
-        <div className="flex-1 min-h-0 w-full flex flex-row items-stretch px-2 sm:px-3 py-1 gap-2.5 max-w-[1500px] mx-auto overflow-hidden">
+        <div className="flex-1 min-h-0 w-full flex flex-row items-stretch px-2 sm:px-3 py-0.5 gap-2.5 max-w-[1500px] mx-auto overflow-hidden">
           {/* LEFT COLUMN: ENTIRE ROSTER & DIRECT FAST IN-GAME SUBSTITUTIONS */}
           <div className="w-[42%] lg:w-[38%] xl:w-[35%] h-full flex flex-col justify-between overflow-hidden">
             <CourtRosterPanel
@@ -2029,7 +2029,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
         return (
           <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in select-none">
-            <div className={`bg-[#0B1C3D] border-2 rounded-2xl p-3 sm:p-4 pb-safe max-w-lg sm:max-w-xl md:max-w-2xl w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
+            <div className={`bg-[#0B1C3D] border-2 rounded-2xl p-3 sm:p-4 pb-safe max-w-lg sm:max-w-xl md:max-w-2xl max-h-[94dvh] overflow-y-auto overscroll-contain w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
               isFoulDrawn
                 ? 'border-emerald-500 space-y-2.5'
                 : isFoulConfirmation

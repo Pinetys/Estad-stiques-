@@ -76,8 +76,8 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
   recentEvent,
   isActionsLocked = false,
 }) => {
-  // Collapsible history drawer state in roster panel
-  const [isHistoryExpanded, setIsHistoryExpanded] = useState<boolean>(true);
+  // Collapsible history drawer state in roster panel (collapsed by default to preserve tablet vertical space)
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState<boolean>(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   // Precalculated team minutes stats and player stats map to prevent repetitive calculations
   const teamStats = useMemo(() => {
@@ -402,7 +402,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
       {/* 3. ROSTER CONTAINER: PLAYERS ON COURT & BENCH WITH SWIPE (Deslizar el dedo encima) */}
       <div
-        className="shrink-0 space-y-1.5 py-1 select-none"
+        className="flex-1 min-h-0 flex flex-col overflow-hidden py-0.5 select-none"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -523,7 +523,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
         {/* VIEW 1 & ALL: Players List with Court Quinteto + Scrollable Bench Below */}
         {(viewTab === 'court' || viewTab === 'all') && (
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] sm:max-h-[340px] lg:max-h-[380px] xl:max-h-[415px] pr-1 select-none scrollbar-thin scrollbar-thumb-sky-700/60 scrollbar-track-transparent">
+          <div className="flex-1 min-h-0 space-y-1 overflow-y-auto overscroll-contain pr-1 select-none scrollbar-thin scrollbar-thumb-sky-700/60 scrollbar-track-transparent">
             {playersOnCourt.map(player => {
               const stats = playerStatsMap.get(player.id) || calculatePlayerStats(player, game.events);
               const isSelectedForAction = selectedPlayerId === player.id;
@@ -543,7 +543,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                 <div
                   key={player.id}
                   onClick={() => handleCourtPlayerClick(player)}
-                  className={`w-full p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer ${
+                  className={`w-full p-1 sm:p-1.5 rounded-xl border font-mono transition flex items-center justify-between cursor-pointer min-h-[38px] sm:min-h-[42px] ${
                     isPendingOut
                       ? 'bg-rose-950/90 border-rose-500 ring-2 ring-rose-500/60 text-white shadow-lg'
                       : pendingInId
@@ -561,11 +561,11 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                       : 'bg-[#0E224A] hover:bg-[#16356E] border-[#203a70] text-[#FFFDF7]'
                   }`}
                 >
-                  {/* Left: Dorsal + Name + Minutos Jugados Más Grandes */}
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* Left: Dorsal + Name + Minutos Jugados */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
                     <DorsalNumber
                       number={player.number}
-                      className="font-scoreboard font-black text-lg lg:text-xl text-amber-400 shrink-0 w-7 text-center leading-none"
+                      className="font-scoreboard font-black text-base sm:text-lg lg:text-xl text-amber-400 shrink-0 w-6 sm:w-7 text-center leading-none"
                     />
                     <div className="flex flex-col min-w-0 text-left">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -591,13 +591,13 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                           </span>
                         )}
                       </div>
-                      {/* Minutos jugados para titular más grandes y visibles */}
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-sm sm:text-[14.5px] font-black font-mono text-amber-300 flex items-center gap-1 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30">
-                          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      {/* Minutos jugados para titular */}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-xs sm:text-[13px] font-black font-mono text-amber-300 flex items-center gap-1 bg-amber-950/40 px-1.5 py-0.2 rounded border border-amber-500/30">
+                          <Clock className="w-3 h-3 text-amber-400 shrink-0" />
                           <PlayerStatNumber value={stats.minutesPlayedFormatted} />
                         </span>
-                        <span className="text-[11px] text-slate-300 font-mono font-semibold">
+                        <span className="text-[10px] text-slate-300 font-mono font-semibold">
                           • {player.position || 'JUG'}
                         </span>
                       </div>
@@ -606,10 +606,10 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
                   {/* CENTRO: BARRA VISUAL DE MINUTOS EN PISTA ENTRE JUGADOR Y FALTAS */}
                   <div
-                    className="flex flex-col items-center justify-center px-1.5 min-w-[70px] sm:min-w-[82px] max-w-[94px] shrink-0"
+                    className="flex flex-col items-center justify-center px-1 min-w-[65px] sm:min-w-[76px] max-w-[88px] shrink-0"
                     title={`Tiempo en pista: ${stats.minutesPlayedFormatted}${isFatigued ? ` (Lleva ${consecutiveMinsFormatted} seguidos)` : ''}`}
                   >
-                    <div className="w-full h-3 sm:h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-600/90 p-[1px] shadow-sm">
+                    <div className="w-full h-2.5 sm:h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-600/90 p-[0.5px] shadow-sm">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${
                           isFatigued
@@ -623,14 +623,14 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
                         style={{ width: `${Math.min(100, Math.max(8, fatiguePct))}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-center gap-0.5 leading-none mt-1">
+                    <div className="flex items-center justify-center gap-0.5 leading-none mt-0.5">
                       {isFatigued ? (
-                        <span className="flex items-center gap-0.5 text-[9px] sm:text-[10px] font-mono font-black text-amber-300 animate-pulse">
+                        <span className="flex items-center gap-0.5 text-[8.5px] sm:text-[9.5px] font-mono font-black text-amber-300 animate-pulse">
                           <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
                           <span>{consecutiveMinsFormatted} seg</span>
                         </span>
                       ) : (
-                        <span className="text-[9px] sm:text-[10px] font-mono text-slate-300 font-bold">
+                        <span className="text-[8.5px] sm:text-[9.5px] font-mono text-slate-300 font-bold">
                           {consecutiveSeconds > 0 ? `${consecutiveMinsFormatted} seg` : stats.minutesPlayedFormatted}
                         </span>
                       )}
@@ -843,7 +843,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
 
         {/* VIEW 2: Solo Banquillo */}
         {viewTab === 'bench' && (
-          <div className="space-y-1.5 animate-in fade-in slide-in-from-right-2 duration-150 max-h-[300px] sm:max-h-[340px] lg:max-h-[380px] xl:max-h-[415px] overflow-y-auto pr-1 select-none scrollbar-thin scrollbar-thumb-sky-700/60 scrollbar-track-transparent">
+          <div className="flex-1 min-h-0 space-y-1 animate-in fade-in slide-in-from-right-2 duration-150 overflow-y-auto overscroll-contain pr-1 select-none scrollbar-thin scrollbar-thumb-sky-700/60 scrollbar-track-transparent">
             {benchPlayers.length === 0 ? (
               <div className="text-center py-6 text-slate-400 text-xs font-mono">
                 No hay suplentes en el banquillo.
@@ -968,7 +968,7 @@ export const CourtRosterPanel: React.FC<CourtRosterPanelProps> = ({
             onOpenSubstitutionModal();
           }}
           disabled={isActionsLocked}
-          className="w-full py-2 px-3 bg-[#D4AF37] hover:bg-[#F5C542] text-[#0B1C3D] font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 shadow-md transition active:scale-[0.99] border border-[#F5C542] disabled:opacity-30 disabled:pointer-events-none mt-1"
+          className="w-full py-1.5 px-3 bg-[#D4AF37] hover:bg-[#F5C542] text-[#0B1C3D] font-black text-xs uppercase rounded-xl flex items-center justify-center gap-2 shadow-md transition active:scale-[0.99] border border-[#F5C542] disabled:opacity-30 disabled:pointer-events-none mt-1 shrink-0"
           title="Abrir ventana de cambios para sustituir jugadores de banquillo"
         >
           <ArrowRightLeft className="w-4 h-4 stroke-[2.5]" />
