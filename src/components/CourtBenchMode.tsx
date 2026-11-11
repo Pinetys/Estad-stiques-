@@ -73,6 +73,7 @@ import { CourtPlayersBar } from './CourtPlayersBar';
 import { PlayerFoulsIndicator } from './PlayerFoulsIndicator';
 import { CourtLandscapeHeader } from './CourtLandscapeHeader';
 import { CourtRosterPanel } from './CourtRosterPanel';
+import { CourtLiveMatchHUD } from './CourtLiveMatchHUD';
 import { CourtPlayHistoryModal } from './CourtPlayHistoryModal';
 import { QuickTimeAdjustModal } from './QuickTimeAdjustModal';
 import { TimeoutCountdownModal } from './TimeoutCountdownModal';
@@ -1967,9 +1968,9 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             />
           </div>
 
-          {/* RIGHT COLUMN: CENTERED ACTION CONSOLE & UNDO BAR */}
+          {/* RIGHT COLUMN: LIVE MATCH HUD (TOP) & ACTION CONSOLE AT BOTTOM */}
           <div className="flex-1 min-w-0 flex flex-col justify-between h-full p-1 overflow-hidden gap-1">
-            {/* Top Prompt Area: Bonus / Assist / Selected Player Header */}
+            {/* Top Prompt Area: Bonus / Assist + Live Match Intelligence HUD */}
             <div className="shrink-0 space-y-1">
               {bonusFreeThrowPrompt && renderBonusAssistant()}
               {assistPromptForEvent && renderAssistPrompt()}
@@ -1999,10 +2000,13 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* LIVE MATCH INTELLIGENCE HUD (Tiros, Efectividad, Cuartos, Racha y Líderes) */}
+              <CourtLiveMatchHUD game={game} />
             </div>
 
-            {/* Centered Tactile Action Console with safe scroll for tight tablet screens */}
-            <div className={`flex-1 min-h-0 flex flex-col justify-center my-auto overflow-y-auto overscroll-contain pr-0.5 scrollbar-thin scrollbar-thumb-sky-700/50 py-1 transition-opacity duration-200 ${
+            {/* Tactile Action Console anchored at bottom for comfortable thumb reach */}
+            <div className={`mt-auto shrink-0 flex flex-col justify-end pt-1 transition-opacity duration-200 ${
               isActionsLocked ? 'opacity-35 pointer-events-none' : ''
             }`}>
               <CourtActionConsole
