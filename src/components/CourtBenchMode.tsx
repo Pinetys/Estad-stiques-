@@ -1294,10 +1294,15 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               <button
                 type="button"
                 id="portrait-bench-more-tools-btn"
-                onClick={() => setShowPortraitToolsDropdown(prev => !prev)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playSound('click', game.settings.soundEnabled);
+                  triggerHaptic('light', game.settings.vibrationEnabled);
+                  setShowPortraitToolsDropdown(prev => !prev);
+                }}
                 className={`p-1 px-2 rounded-lg border font-mono font-bold text-[10px] flex items-center gap-1 transition active:scale-95 shadow-sm ${
                   showPortraitToolsDropdown
-                    ? 'bg-amber-500 text-slate-950 border-amber-300'
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 ring-2 ring-amber-400'
                     : 'bg-[#132a58] hover:bg-[#1a3875] text-amber-300 border-amber-500/60'
                 }`}
                 title="Más herramientas y opciones de partido"
@@ -1307,14 +1312,20 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 <ChevronDown className={`w-3 h-3 transition-transform ${showPortraitToolsDropdown ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Popover */}
+              {/* Popover - Fixed viewport overlay */}
               {showPortraitToolsDropdown && (
                 <>
                   <div
-                    className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
-                    onClick={() => setShowPortraitToolsDropdown(false)}
+                    className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPortraitToolsDropdown(false);
+                    }}
                   />
-                  <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 bg-[#0d1633]/98 backdrop-blur-md border border-blue-500/60 rounded-2xl p-2.5 z-50 flex flex-col gap-2 shadow-2xl animate-in fade-in zoom-in-95 max-h-[80vh] overflow-y-auto">
+                  <div
+                    className="fixed right-2 sm:right-4 top-11 sm:top-12 w-80 max-w-[94vw] bg-[#0d1633] border-2 border-amber-500/80 rounded-2xl p-3 z-[101] flex flex-col gap-2 shadow-2xl animate-in fade-in zoom-in-95 max-h-[85vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {/* Title */}
                     <div className="flex items-center justify-between border-b border-blue-900/60 pb-1 px-1">
                       <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 font-mono">
