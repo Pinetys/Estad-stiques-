@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+server_sync_db*.json
+*.backup.json
+.dev.pid
