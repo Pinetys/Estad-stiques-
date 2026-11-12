@@ -1290,7 +1290,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             )}
 
             {/* Consolidated Tools Menu Dropdown (Replaces clutter of 12+ separate buttons!) */}
-            <div className="relative">
+            <div className="relative z-50">
               <button
                 type="button"
                 id="portrait-bench-more-tools-btn"
@@ -1312,7 +1312,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                 <ChevronDown className={`w-3 h-3 transition-transform ${showPortraitToolsDropdown ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Popover - Fixed viewport overlay */}
+              {/* Popover - Fixed viewport overlay framed above fixed bottom bar */}
               {showPortraitToolsDropdown && (
                 <>
                   <div
@@ -1323,7 +1323,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                     }}
                   />
                   <div
-                    className="fixed right-2 sm:right-4 top-11 sm:top-13 w-84 max-w-[95vw] bg-[#071328] border-2 border-[#D4AF37] rounded-2xl p-3.5 z-[99999] flex flex-col gap-2.5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)] max-h-[85vh] overflow-y-auto ring-4 ring-black/70 opacity-100"
+                    className="fixed right-2 sm:right-4 top-11 sm:top-12 bottom-16 sm:bottom-14 w-84 max-w-[95vw] bg-[#071328] border-2 border-[#D4AF37] rounded-2xl p-3.5 z-[99999] flex flex-col gap-2.5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)] max-h-[calc(100dvh-5.5rem)] overflow-y-auto ring-4 ring-black/70 opacity-100 pb-8"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Title */}
@@ -1573,7 +1573,18 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
                           </div>
                         </button>
                       )}
+
+                      {/* Botón explícito para cerrar y margen inferior */}
+                      <button
+                        type="button"
+                        onClick={() => setShowPortraitToolsDropdown(false)}
+                        className="w-full mt-2 py-2 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-amber-500 hover:to-amber-600 hover:text-slate-950 text-slate-300 font-bold font-mono text-[11px] rounded-xl border border-amber-500/40 flex items-center justify-center gap-1.5 shadow-md transition active:scale-95"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Cerrar menú</span>
+                      </button>
                     </div>
+                    <div className="h-4 shrink-0" />
                   </div>
                 </>
               )}
