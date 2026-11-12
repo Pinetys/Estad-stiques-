@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Game } from '../types';
 import { formatGameTime } from '../utils/statsCalculator';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
-import { Timer, Play, X, AlertCircle, Volume2, Shield } from 'lucide-react';
+import { Timer, Play, X, AlertCircle, Volume2, Shield, Users } from 'lucide-react';
 
 interface TimeoutCountdownModalProps {
   game: Game;
   callingTeam: 'home' | 'away';
   onClose: (resumeClock?: boolean) => void;
   onUpdateGame: (updater: (prev: Game) => Game) => void;
+  onOpenSubstitutions?: () => void;
 }
 
 export const TimeoutCountdownModal: React.FC<TimeoutCountdownModalProps> = ({
@@ -16,6 +17,7 @@ export const TimeoutCountdownModal: React.FC<TimeoutCountdownModalProps> = ({
   callingTeam,
   onClose,
   onUpdateGame,
+  onOpenSubstitutions,
 }) => {
   const [secondsRemaining, setSecondsRemaining] = useState(60);
   const [isRunning, setIsRunning] = useState(true);
@@ -197,6 +199,23 @@ export const TimeoutCountdownModal: React.FC<TimeoutCountdownModalProps> = ({
             +15s
           </button>
         </div>
+
+        {/* Option to make substitutions during timeout */}
+        {onOpenSubstitutions && (
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click', game.settings.soundEnabled);
+              triggerHaptic('medium', game.settings.vibrationEnabled);
+              onOpenSubstitutions();
+            }}
+            className="w-full mb-3 py-2.5 px-3 bg-gradient-to-r from-amber-600/30 to-amber-700/20 hover:from-amber-600/40 hover:to-amber-700/30 active:from-amber-600/50 text-amber-300 hover:text-white border-2 border-amber-500/70 rounded-xl font-mono text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition active:scale-95 shadow-md"
+            title="Realizar cambios y rotaciones de quinteto durante el tiempo muerto"
+          >
+            <Users className="w-4 h-4 text-amber-400" />
+            <span>🔄 Realizar Cambios / Sustituciones</span>
+          </button>
+        )}
 
         {/* Action Buttons */}
         <div className="w-full grid grid-cols-2 gap-2.5">

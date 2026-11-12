@@ -916,12 +916,24 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               </button>
             </div>
 
-            <div className="flex justify-end pt-0.5">
+            <div className="flex items-center justify-between pt-1 border-t border-[#203a70]/50">
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  onOpenSubstitutionModal();
+                }}
+                className="px-2 py-0.5 bg-[#132a58] hover:bg-[#1c3f84] text-amber-300 hover:text-white border border-amber-500/60 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1 active:scale-95 transition"
+                title="Realizar cambios durante tiros libres de bonus"
+              >
+                <Users className="w-3 h-3 text-amber-400" />
+                <span>Realizar Cambios</span>
+              </button>
               <button
                 onClick={() => setBonusFreeThrowPrompt(null)}
                 className="text-[10px] text-slate-400 hover:text-slate-200 underline"
               >
-                Sin tiros libres (falta en ataque / saque de banda)
+                Sin tiros libres (saque/ataque)
               </button>
             </div>
           </div>
@@ -955,12 +967,24 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               </button>
             </div>
 
-            <div className="flex justify-end pt-0.5">
+            <div className="flex items-center justify-between pt-1 border-t border-[#203a70]/50">
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  onOpenSubstitutionModal();
+                }}
+                className="px-2 py-0.5 bg-[#132a58] hover:bg-[#1c3f84] text-amber-300 hover:text-white border border-amber-500/60 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1 active:scale-95 transition"
+                title="Realizar cambios durante tiros libres de bonus del rival"
+              >
+                <Users className="w-3 h-3 text-amber-400" />
+                <span>Realizar Cambios</span>
+              </button>
               <button
                 onClick={() => setBonusFreeThrowPrompt(null)}
                 className="text-[10px] text-slate-400 hover:text-slate-200 underline"
               >
-                Sin tiros libres (falta en ataque / saque de banda)
+                Sin tiros libres (saque/ataque)
               </button>
             </div>
           </div>
@@ -2545,7 +2569,19 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
               </button>
             </div>
 
-            <div className="pt-1 text-center">
+            <div className="pt-2 flex items-center justify-between border-t border-[#203a70]/60">
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  onOpenSubstitutionModal();
+                }}
+                className="px-2.5 py-1 bg-[#132a58] hover:bg-[#1c3f84] text-amber-300 hover:text-white border border-amber-500/60 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+              >
+                <Users className="w-3.5 h-3.5 text-amber-400" />
+                <span>Realizar Cambios</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setPendingFdPlayer(null)}
@@ -2819,6 +2855,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
             setTimeoutModalTeam(null);
           }}
           onUpdateGame={onUpdateGame}
+          onOpenSubstitutions={() => onOpenSubstitutionModal()}
         />
       )}
 

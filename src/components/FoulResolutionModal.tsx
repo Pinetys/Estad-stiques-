@@ -33,6 +33,7 @@ interface FoulResolutionModalProps {
     playerId?: string;
     made: boolean;
   }) => void;
+  onOpenSubstitutions?: () => void;
 }
 
 export const FoulResolutionModal: React.FC<FoulResolutionModalProps> = ({
@@ -41,6 +42,7 @@ export const FoulResolutionModal: React.FC<FoulResolutionModalProps> = ({
   onClose,
   onResumeClock,
   onRecordFreeThrow,
+  onOpenSubstitutions,
 }) => {
   const { isOpponentFoul, player } = foulData;
   const isBonusActive = isOpponentFoul
@@ -112,15 +114,33 @@ export const FoulResolutionModal: React.FC<FoulResolutionModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              playSound('click', game.settings.soundEnabled);
-              onClose();
-            }}
-            className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenSubstitutions && (
+              <button
+                type="button"
+                onClick={() => {
+                  playSound('click', game.settings.soundEnabled);
+                  onOpenSubstitutions();
+                }}
+                className="px-2.5 py-1.5 bg-[#122B5C] hover:bg-[#1C3F84] text-amber-300 hover:text-white border border-[#D4AF37]/60 rounded-xl font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                title="Realizar cambios de jugadores durante la falta o tiros libres"
+              >
+                <Users className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Realizar</span>
+                <span>Cambios</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                onClose();
+              }}
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Foul Details Card */}
@@ -326,12 +346,47 @@ export const FoulResolutionModal: React.FC<FoulResolutionModalProps> = ({
                   );
                 })}
               </div>
+
+              {/* Option to substitute players while shooting free throws */}
+              {onOpenSubstitutions && (
+                <div className="flex items-center justify-between pt-2 border-t border-neutral-800/80">
+                  <span className="text-[11px] text-neutral-400 font-mono">
+                    ¿Deseas realizar cambios en este tiro libre?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playSound('click', game.settings.soundEnabled);
+                      onOpenSubstitutions();
+                    }}
+                    className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                  >
+                    <Users className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Realizar Cambios</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Bottom Actions with prominent Resume Clock Button */}
         <div className="p-4 bg-neutral-950 border-t border-neutral-800 space-y-2">
+          {/* Option to make substitutions during free throw / dead ball */}
+          {onOpenSubstitutions && (
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click', game.settings.soundEnabled);
+                onOpenSubstitutions();
+              }}
+              className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-600/30 to-amber-700/20 hover:from-amber-600/40 hover:to-amber-700/30 text-amber-300 hover:text-white border-2 border-amber-500/70 rounded-xl font-mono text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition active:scale-95 shadow-md"
+              title="Realizar cambios y rotaciones en tiros libres"
+            >
+              <Users className="w-4 h-4 text-amber-400" />
+              <span>🔄 Realizar Cambios / Sustituciones</span>
+            </button>
+          )}
           <button
             onClick={() => {
               playSound('foul', game.settings.soundEnabled);

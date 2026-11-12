@@ -35,11 +35,11 @@ interface CourtTacticalParquetViewProps {
 }
 
 // Tactical coordinates on the half-court for 5 basketball positions (Base, Escolta, Alero, Ala-Pívot, Pívot)
-// Proportioned so tokens NEVER overlap the basket, paint, or center logo
+// Proportioned so tokens NEVER overlap the basket, paint, or center logo, and ALWAYS stay strictly within court lines
 const TACTICAL_POSITIONS = [
-  { id: 'pos-1', defaultRole: 'Base', code: '1 · B', x: 50, y: 72 }, // Point Guard: cabecera
-  { id: 'pos-2', defaultRole: 'Escolta', code: '2 · E', x: 18, y: 50 }, // Shooting Guard: ala izquierda
-  { id: 'pos-3', defaultRole: 'Alero', code: '3 · A', x: 82, y: 50 }, // Small Forward: ala derecha
+  { id: 'pos-1', defaultRole: 'Base', code: '1 · B', x: 50, y: 76 }, // Point Guard: cabecera
+  { id: 'pos-2', defaultRole: 'Escolta', code: '2 · E', x: 19, y: 52 }, // Shooting Guard: ala izquierda
+  { id: 'pos-3', defaultRole: 'Alero', code: '3 · A', x: 81, y: 52 }, // Small Forward: ala derecha
   { id: 'pos-4', defaultRole: 'Ala-Pívot', code: '4 · AP', x: 26, y: 22 }, // Power Forward: poste/esquina izq
   { id: 'pos-5', defaultRole: 'Pívot', code: '5 · P', x: 74, y: 22 }, // Center: poste/pintura der
 ];
@@ -107,16 +107,15 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
     <div className="w-full flex flex-col items-stretch select-none relative shrink-0">
       {/* 
         BASKETBALL COURT CONTAINER:
-        - Occupies 100% of the available width (w-full, no empty blank side margins)
-        - Height is controlled so it never crowds or overlaps the action console below
-        - Uses parquet pattern across 100% of the space
-        - FIBA court markings maintain real circular proportions (never squashed or deformed!)
+        - Occupies 100% of the available width with seamless hardwood parquet gym floor
+        - Height is framed dynamically to adapt in fullscreen and landscape mode
+        - Contains an inner tactical stage locking the SVG lines and player tokens in 100% unison
       */}
       <div
-        className={`w-full relative rounded-2xl overflow-hidden shadow-2xl border-2 border-[#D4AF37]/50 bg-[#b8864b] ${
+        className={`w-full relative rounded-2xl overflow-hidden shadow-2xl border-2 border-[#D4AF37]/50 bg-[#b8864b] flex items-center justify-center ${
           isLandscape
-            ? 'h-[175px] xs:h-[190px] sm:h-[205px] lg:h-[220px]'
-            : 'h-[185px] xs:h-[200px] sm:h-[220px]'
+            ? 'h-[210px] xs:h-[235px] sm:h-[260px] md:h-[285px] lg:h-[315px] xl:h-[340px] max-h-[46vh]'
+            : 'h-[200px] xs:h-[225px] sm:h-[250px]'
         }`}
       >
         {/* LAYER 1: 100% FULL-WIDTH SEAMLESS HARDWOOD PARQUET PATTERN */}
@@ -167,121 +166,128 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
           <rect width="100%" height="100%" fill="url(#arena-stadium-glow)" />
         </svg>
 
-        {/* LAYER 2: FIBA BASKETBALL COURT LINES (PRESERVES TRUE 1:1 CIRCULAR BASKETBALL PROPORTIONS) */}
-        <svg
-          viewBox="0 0 160 90"
-          preserveAspectRatio="xMidYMid meet"
-          className="absolute inset-0 w-full h-full pointer-events-none select-none"
-        >
-          <defs>
-            {/* Key / Paint Gradient (Brafa Navy Blue) */}
-            <linearGradient id="brafa-fiba-key-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#0B1C3D" stopOpacity="0.82" />
-              <stop offset="100%" stopColor="#122B5C" stopOpacity="0.75" />
-            </linearGradient>
-          </defs>
-
-          {/* Court Perimeter Boundary Line */}
-          <rect
-            x="4"
-            y="2"
-            width="152"
-            height="85"
-            rx="1"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="0.9"
-            strokeOpacity="0.75"
-          />
-
-          {/* FIBA Key / Paint Zone (Navy Blue Paint with Golden outline) */}
-          <rect
-            x="64"
-            y="2"
-            width="32"
-            height="38"
-            fill="url(#brafa-fiba-key-gradient)"
-            stroke="#D4AF37"
-            strokeWidth="0.85"
-            strokeOpacity="0.9"
-          />
-
-          {/* Free Throw Circle (Top half solid, bottom dashed) - TRUE CIRCLE */}
-          <path
-            d="M 64 40 A 16 16 0 0 0 96 40"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="0.85"
-            strokeOpacity="0.9"
-          />
-          <path
-            d="M 64 40 A 16 16 0 0 1 96 40"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="0.85"
-            strokeOpacity="0.65"
-            strokeDasharray="2.5 2"
-          />
-
-          {/* Restricted Area Arc under basket - TRUE CIRCLE */}
-          <path
-            d="M 73 13 A 7 7 0 0 0 87 13"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="0.8"
-            strokeOpacity="0.85"
-          />
-
-          {/* 3-Point Line (6.75m arc with straight corner sidelines) - TRUE CIRCLE ARC */}
-          <line x1="36" y1="2" x2="36" y2="24" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.9" />
-          <line x1="124" y1="2" x2="124" y2="24" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.9" />
-          <path
-            d="M 36 24 A 44 44 0 0 0 124 24"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="0.9"
-            strokeOpacity="0.9"
-          />
-
-          {/* Backboard & Basket Hoop - TRUE CIRCULAR RIM */}
-          <line x1="71" y1="8.5" x2="89" y2="8.5" stroke="#ffffff" strokeWidth="1.3" />
-          <line x1="80" y1="8.5" x2="80" y2="10" stroke="#ea580c" strokeWidth="1" />
-          <circle cx="80" cy="12.5" r="2.8" stroke="#ea580c" strokeWidth="1" fill="#ea580c" fillOpacity="0.25" />
-
-          {/* Center Jump Circle Arc at Half Court - TRUE CIRCLE */}
-          <path
-            d="M 66 87 A 14 14 0 0 1 94 87 Z"
-            fill="url(#brafa-fiba-key-gradient)"
-            stroke="#D4AF37"
-            strokeWidth="0.85"
-          />
-          <line x1="4" y1="87" x2="156" y2="87" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.85" />
-        </svg>
-
-        {/* 
-          FUNDACIÓ BRAFA OFFICIAL LOGO IN CENTER OF THE PARQUET COURT:
-          - Always keeps a perfect 1:1 circular ratio (aspect-square), never stretched or squashed
-          - Subtle golden glow and high contrast against the wood floor
+        {/* LAYER 2: INNER TACTICAL BASKETBALL COURT STAGE
+            Locked to a fixed FIBA half-court proportion (16:10) and centered within the parquet arena.
+            Both the SVG court lines AND the player tokens are rendered inside this EXACT same stage!
+            In fullscreen mode or ultra-wide landscape, the stage never stretches out of sync,
+            ensuring all 5 player tokens are 100% strictly inside the basketball court lines!
         */}
-        <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 select-none opacity-90 transition-opacity">
-          <div className="relative w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 aspect-square rounded-full bg-[#0B1C3D]/85 border-2 border-[#D4AF37]/80 p-1 shadow-2xl backdrop-blur-xs flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#D4AF37]/25 via-transparent to-sky-400/20" />
-            <img
-              src="/brafa-logo.png"
-              alt="Fundació Brafa"
-              className="w-full h-full object-contain filter drop-shadow-md"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (!target.src.includes('brafa.org')) {
-                  target.src = 'https://brafa.org/wp-content/uploads/2024/03/Escudo-Brafa-filete-letra-azul-fina.png';
-                }
-              }}
+        <div className="relative h-full w-full max-w-[850px] aspect-[16/10] max-h-full mx-auto select-none pointer-events-auto">
+          {/* FIBA BASKETBALL COURT LINES SVG - Exactly fills the tactical stage */}
+          <svg
+            viewBox="0 0 160 100"
+            preserveAspectRatio="none"
+            className="absolute inset-0 w-full h-full pointer-events-none select-none"
+          >
+            <defs>
+              {/* Key / Paint Gradient (Brafa Navy Blue) */}
+              <linearGradient id="brafa-fiba-key-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#0B1C3D" stopOpacity="0.85" />
+                <stop offset="100%" stopColor="#122B5C" stopOpacity="0.75" />
+              </linearGradient>
+            </defs>
+
+            {/* Court Perimeter Boundary Line */}
+            <rect
+              x="3"
+              y="3"
+              width="154"
+              height="94"
+              rx="2"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="1"
+              strokeOpacity="0.8"
             />
+
+            {/* FIBA Key / Paint Zone (Navy Blue Paint with Golden outline) */}
+            <rect
+              x="64"
+              y="3"
+              width="32"
+              height="42"
+              fill="url(#brafa-fiba-key-gradient)"
+              stroke="#D4AF37"
+              strokeWidth="0.9"
+              strokeOpacity="0.9"
+            />
+
+            {/* Free Throw Circle (Top half solid, bottom dashed) */}
+            <path
+              d="M 64 45 A 16 16 0 0 0 96 45"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="0.9"
+              strokeOpacity="0.9"
+            />
+            <path
+              d="M 64 45 A 16 16 0 0 1 96 45"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="0.9"
+              strokeOpacity="0.65"
+              strokeDasharray="2.5 2"
+            />
+
+            {/* Restricted Area Arc under basket */}
+            <path
+              d="M 73 14 A 7 7 0 0 0 87 14"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="0.8"
+              strokeOpacity="0.85"
+            />
+
+            {/* 3-Point Line (6.75m arc with straight corner sidelines) */}
+            <line x1="22" y1="3" x2="22" y2="28" stroke="#ffffff" strokeWidth="0.95" strokeOpacity="0.9" />
+            <line x1="138" y1="3" x2="138" y2="28" stroke="#ffffff" strokeWidth="0.95" strokeOpacity="0.9" />
+            <path
+              d="M 22 28 A 58 58 0 0 0 138 28"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="0.95"
+              strokeOpacity="0.9"
+            />
+
+            {/* Backboard & Basket Hoop */}
+            <line x1="71" y1="9" x2="89" y2="9" stroke="#ffffff" strokeWidth="1.4" />
+            <line x1="80" y1="9" x2="80" y2="10.5" stroke="#ea580c" strokeWidth="1.1" />
+            <circle cx="80" cy="13.5" r="3" stroke="#ea580c" strokeWidth="1.1" fill="#ea580c" fillOpacity="0.3" />
+
+            {/* Center Jump Circle Arc at Half Court */}
+            <path
+              d="M 64 97 A 16 16 0 0 1 96 97 Z"
+              fill="url(#brafa-fiba-key-gradient)"
+              stroke="#D4AF37"
+              strokeWidth="0.9"
+            />
+            <line x1="3" y1="97" x2="157" y2="97" stroke="#ffffff" strokeWidth="1" strokeOpacity="0.85" />
+          </svg>
+
+          {/* 
+            FUNDACIÓ BRAFA OFFICIAL LOGO IN CENTER OF THE PARQUET COURT:
+            - Always keeps a perfect 1:1 circular ratio (aspect-square), never stretched or squashed
+            - Subtle golden glow and high contrast against the wood floor
+          */}
+          <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 select-none opacity-90 transition-opacity">
+            <div className="relative w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 aspect-square rounded-full bg-[#0B1C3D]/85 border-2 border-[#D4AF37]/80 p-1 shadow-2xl backdrop-blur-xs flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#D4AF37]/25 via-transparent to-sky-400/20" />
+              <img
+                src="/brafa-logo.png"
+                alt="Fundació Brafa"
+                className="w-full h-full object-contain filter drop-shadow-md"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.includes('brafa.org')) {
+                    target.src = 'https://brafa.org/wp-content/uploads/2024/03/Escudo-Brafa-filete-letra-azul-fina.png';
+                  }
+                }}
+              />
+            </div>
+            <span className="mt-0.5 text-[7.5px] xs:text-[8.5px] sm:text-[9.5px] font-mono font-black tracking-widest text-[#FFFDF7] bg-[#0B1C3D]/95 px-2 py-0.5 rounded-full border border-[#D4AF37]/60 shadow-md">
+              FUNDACIÓ BRAFA
+            </span>
           </div>
-          <span className="mt-0.5 text-[7.5px] xs:text-[8.5px] sm:text-[9.5px] font-mono font-black tracking-widest text-[#FFFDF7] bg-[#0B1C3D]/95 px-2 py-0.5 rounded-full border border-[#D4AF37]/60 shadow-md">
-            FUNDACIÓ BRAFA
-          </span>
-        </div>
 
         {/* 5 PLAYERS ON COURT POSITIONED TACTICALLY (BASE, ESCOLTA, ALERO, ALA-PÍVOT, PÍVOT) */}
         {TACTICAL_POSITIONS.map((pos, index) => {
@@ -438,6 +444,7 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* QUICK BENCH SWAP OVERLAY (IF COACH PRESSED SUBSTITUTION ON A COURT PLAYER) */}

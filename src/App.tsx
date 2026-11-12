@@ -3472,6 +3472,7 @@ export default function App() {
           onClose={() => setFoulResolutionData(null)}
           onResumeClock={handleResumeClockFromFoul}
           onRecordFreeThrow={handleRecordFreeThrowFromFoul}
+          onOpenSubstitutions={() => setShowSubModal(true)}
         />
       )}
 
