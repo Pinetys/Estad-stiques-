@@ -207,9 +207,9 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
   };
 
   return (
-    <header className="bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full z-20">
+    <header className={`bg-gradient-to-b from-[#0E224A] via-[#0B1C3D] to-[#071328] border-b-2 border-[#D4AF37]/40 shrink-0 select-none shadow-2xl w-full ${showToolsDropdown ? 'z-[99999]' : 'z-20'}`}>
       {/* 1. TOP UTILITY STRIP: Clean, responsive single-row layout without lateral scroll */}
-      <div className="border-b border-[#D4AF37]/20 px-1.5 sm:px-3 py-0.5 bg-[#071328]/95 relative z-30 overflow-x-auto scrollbar-none">
+      <div className={`border-b border-[#D4AF37]/20 px-1.5 sm:px-3 py-0.5 bg-[#071328]/95 relative ${showToolsDropdown ? 'z-[99999]' : 'z-30'} overflow-x-auto scrollbar-none`}>
         <div className="max-w-[1500px] mx-auto w-full flex items-center justify-between text-[11px] gap-1 sm:gap-2">
           {/* Left: Exit button, Fullscreen, WakeLock & Battery saver toggle */}
           <div className="flex items-center justify-start gap-1 sm:gap-1.5 shrink-0">
@@ -399,14 +399,14 @@ export const CourtLandscapeHeader: React.FC<CourtLandscapeHeaderProps> = ({
             {showToolsDropdown && (
               <>
                 <div
-                  className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs"
+                  className="fixed inset-0 z-[99998] bg-black/85 backdrop-blur-md"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowToolsDropdown(false);
                   }}
                 />
                 <div
-                  className="fixed right-2 sm:right-4 top-11 sm:top-12 w-80 max-w-[94vw] bg-[#0d1633] border-2 border-amber-500/80 rounded-2xl p-3 z-[101] flex flex-col gap-2 shadow-2xl animate-in fade-in zoom-in-95 max-h-[85vh] overflow-y-auto"
+                  className="fixed right-2 sm:right-4 top-11 sm:top-13 w-84 max-w-[95vw] bg-[#071328] border-2 border-[#D4AF37] rounded-2xl p-3.5 z-[99999] flex flex-col gap-2.5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)] max-h-[85vh] overflow-y-auto ring-4 ring-black/70 opacity-100"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Title & Close */}

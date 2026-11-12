@@ -13,7 +13,6 @@ import {
   Star,
   Clock,
   Plus,
-  AlertTriangle,
   Users,
   ChevronDown,
   ChevronUp,
@@ -35,14 +34,14 @@ interface CourtTacticalParquetViewProps {
   isActionsLocked?: boolean;
 }
 
-// Tactical coordinates on the half-court for 5 basketball positions
-// Coordinates in % (x: 0-100, y: 0-100 where basket is near top at y ~14, perimeter is y ~65-75)
+// Tactical coordinates on the half-court for 5 basketball positions (Base, Escolta, Alero, Ala-Pívot, Pívot)
+// Proportioned so tokens NEVER overlap the basket, paint, or center logo
 const TACTICAL_POSITIONS = [
-  { id: 'pos-1', defaultRole: 'Base', code: 'B', x: 50, y: 72 }, // Point Guard: top of key
-  { id: 'pos-2', defaultRole: 'Escolta', code: 'E', x: 19, y: 50 }, // Shooting Guard: left wing
-  { id: 'pos-3', defaultRole: 'Alero', code: 'A', x: 81, y: 50 }, // Small Forward: right wing
-  { id: 'pos-4', defaultRole: 'Ala-Pívot', code: 'AP', x: 26, y: 22 }, // Power Forward: high/low post left
-  { id: 'pos-5', defaultRole: 'Pívot', code: 'P', x: 74, y: 22 }, // Center: post/paint right
+  { id: 'pos-1', defaultRole: 'Base', code: '1 · B', x: 50, y: 72 }, // Point Guard: cabecera
+  { id: 'pos-2', defaultRole: 'Escolta', code: '2 · E', x: 18, y: 50 }, // Shooting Guard: ala izquierda
+  { id: 'pos-3', defaultRole: 'Alero', code: '3 · A', x: 82, y: 50 }, // Small Forward: ala derecha
+  { id: 'pos-4', defaultRole: 'Ala-Pívot', code: '4 · AP', x: 26, y: 22 }, // Power Forward: poste/esquina izq
+  { id: 'pos-5', defaultRole: 'Pívot', code: '5 · P', x: 74, y: 22 }, // Center: poste/pintura der
 ];
 
 export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> = ({
@@ -61,7 +60,7 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
   const [substituteTargetPlayer, setSubstituteTargetPlayer] = useState<Player | null>(null);
   const [showBenchDrawer, setShowBenchDrawer] = useState(false);
 
-  // Memoize player stats for efficiency and performance
+  // Memoize player stats for efficiency
   const playerStatsMap = useMemo(() => {
     const map = new Map<string, ReturnType<typeof calculatePlayerStats>>();
     game.players.forEach(p => {
@@ -74,7 +73,6 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
   const handlePlayerTap = (player: Player) => {
     if (isActionsLocked) return;
 
-    // If coach was targeting this player for substitution
     if (substituteTargetPlayer) {
       setSubstituteTargetPlayer(null);
       return;
@@ -106,146 +104,173 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
   };
 
   return (
-    <div className="w-full flex flex-col items-center select-none relative shrink-0">
-      {/* BASKETBALL COURT CONTAINER - REAL PARQUET WOOD FLOOR WITH BRAFA CREST */}
+    <div className="w-full flex flex-col items-stretch select-none relative shrink-0">
+      {/* 
+        BASKETBALL COURT CONTAINER:
+        - Occupies 100% of the available width (w-full, no empty blank side margins)
+        - Height is controlled so it never crowds or overlaps the action console below
+        - Uses parquet pattern across 100% of the space
+        - FIBA court markings maintain real circular proportions (never squashed or deformed!)
+      */}
       <div
-        className={`w-full relative rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-900/60 bg-[#140f0a] ${
+        className={`w-full relative rounded-2xl overflow-hidden shadow-2xl border-2 border-[#D4AF37]/50 bg-[#b8864b] ${
           isLandscape
-            ? 'h-[175px] xs:h-[190px] sm:h-[210px] md:h-[225px] max-w-4xl'
-            : 'h-[190px] xs:h-[210px] sm:h-[235px] max-w-2xl'
+            ? 'h-[175px] xs:h-[190px] sm:h-[205px] lg:h-[220px]'
+            : 'h-[185px] xs:h-[200px] sm:h-[220px]'
         }`}
       >
-        {/* COURT SVG: PARQUET WOOD PATTERN & FIBA BASKETBALL COURT MARKINGS */}
+        {/* LAYER 1: 100% FULL-WIDTH SEAMLESS HARDWOOD PARQUET PATTERN */}
         <svg
-          viewBox="0 0 100 88"
-          preserveAspectRatio="none"
           className="absolute inset-0 w-full h-full pointer-events-none select-none"
+          xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            {/* Realistic Parquet Hardwood Floor Pattern */}
             <pattern
-              id="court-brafa-parquet-pattern"
-              width="24"
-              height="8"
+              id="seamless-brafa-parquet-pattern"
+              width="36"
+              height="12"
               patternUnits="userSpaceOnUse"
             >
-              <rect width="24" height="8" fill="#c49253" />
-              {/* Wood grain slats with varied tones */}
-              <rect x="0" y="0" width="10" height="2" fill="#d9a868" opacity="0.38" />
-              <rect x="10" y="0" width="14" height="2" fill="#b37f3f" opacity="0.25" />
-              <rect x="0" y="2" width="16" height="2" fill="#b07a38" opacity="0.28" />
-              <rect x="16" y="2" width="8" height="2" fill="#deb172" opacity="0.38" />
-              <rect x="0" y="4" width="7" height="2" fill="#d4a362" opacity="0.32" />
-              <rect x="7" y="4" width="17" height="2" fill="#b88344" opacity="0.22" />
-              <rect x="0" y="6" width="13" height="2" fill="#b57e3f" opacity="0.28" />
-              <rect x="13" y="6" width="11" height="2" fill="#dba967" opacity="0.36" />
+              <rect width="36" height="12" fill="#c49253" />
+              {/* Slats with subtle tone variation */}
+              <rect x="0" y="0" width="16" height="3" fill="#d9a868" opacity="0.35" />
+              <rect x="16" y="0" width="20" height="3" fill="#b37f3f" opacity="0.25" />
+              <rect x="0" y="3" width="24" height="3" fill="#b07a38" opacity="0.28" />
+              <rect x="24" y="3" width="12" height="3" fill="#deb172" opacity="0.38" />
+              <rect x="0" y="6" width="10" height="3" fill="#d4a362" opacity="0.3" />
+              <rect x="10" y="6" width="26" height="3" fill="#b88344" opacity="0.2" />
+              <rect x="0" y="9" width="20" height="3" fill="#b57e3f" opacity="0.28" />
+              <rect x="20" y="9" width="16" height="3" fill="#dba967" opacity="0.35" />
 
-              {/* Parquet plank joints */}
-              <line x1="0" y1="0" x2="24" y2="0" stroke="#6e4416" strokeWidth="0.18" opacity="0.8" />
-              <line x1="0" y1="2" x2="24" y2="2" stroke="#6e4416" strokeWidth="0.14" opacity="0.65" />
-              <line x1="0" y1="4" x2="24" y2="4" stroke="#6e4416" strokeWidth="0.14" opacity="0.65" />
-              <line x1="0" y1="6" x2="24" y2="6" stroke="#6e4416" strokeWidth="0.14" opacity="0.65" />
-              <line x1="0" y1="8" x2="24" y2="8" stroke="#6e4416" strokeWidth="0.18" opacity="0.8" />
-              <line x1="10" y1="0" x2="10" y2="2" stroke="#5a350e" strokeWidth="0.18" opacity="0.85" />
-              <line x1="16" y1="2" x2="16" y2="4" stroke="#5a350e" strokeWidth="0.18" opacity="0.85" />
-              <line x1="7" y1="4" x2="7" y2="6" stroke="#5a350e" strokeWidth="0.18" opacity="0.85" />
-              <line x1="13" y1="6" x2="13" y2="8" stroke="#5a350e" strokeWidth="0.18" opacity="0.85" />
+              {/* Plank joint lines */}
+              <line x1="0" y1="0" x2="36" y2="0" stroke="#684013" strokeWidth="0.2" opacity="0.8" />
+              <line x1="0" y1="3" x2="36" y2="3" stroke="#684013" strokeWidth="0.15" opacity="0.6" />
+              <line x1="0" y1="6" x2="36" y2="6" stroke="#684013" strokeWidth="0.15" opacity="0.6" />
+              <line x1="0" y1="9" x2="36" y2="9" stroke="#684013" strokeWidth="0.15" opacity="0.6" />
+              <line x1="0" y1="12" x2="36" y2="12" stroke="#684013" strokeWidth="0.2" opacity="0.8" />
+              <line x1="16" y1="0" x2="16" y2="3" stroke="#52310c" strokeWidth="0.2" opacity="0.8" />
+              <line x1="24" y1="3" x2="24" y2="6" stroke="#52310c" strokeWidth="0.2" opacity="0.8" />
+              <line x1="10" y1="6" x2="10" y2="9" stroke="#52310c" strokeWidth="0.2" opacity="0.8" />
+              <line x1="20" y1="9" x2="20" y2="12" stroke="#52310c" strokeWidth="0.2" opacity="0.8" />
             </pattern>
 
-            {/* Blue Tint for Key / Paint (Brafa Blue) */}
-            <linearGradient id="brafa-key-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#0B1C3D" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#122B5C" stopOpacity="0.75" />
-            </linearGradient>
-
-            {/* Arena Lighting Glow over Court */}
-            <radialGradient id="court-stadium-spotlight" cx="50%" cy="40%" r="70%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.16" />
-              <stop offset="60%" stopColor="#ffffff" stopOpacity="0" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0.35" />
+            {/* Arena lighting reflection overlay */}
+            <radialGradient id="arena-stadium-glow" cx="50%" cy="35%" r="65%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
+              <stop offset="55%" stopColor="#ffffff" stopOpacity="0.02" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.3" />
             </radialGradient>
           </defs>
 
-          {/* Court Hardwood Floor */}
-          <rect x="0" y="0" width="100" height="88" fill="url(#court-brafa-parquet-pattern)" />
-          {/* Spotlight overlay */}
-          <rect x="0" y="0" width="100" height="88" fill="url(#court-stadium-spotlight)" />
+          {/* Full-width parquet wood rectangle */}
+          <rect width="100%" height="100%" fill="url(#seamless-brafa-parquet-pattern)" />
+          <rect width="100%" height="100%" fill="url(#arena-stadium-glow)" />
+        </svg>
 
-          {/* FIBA Key / Paint Zone (Navy Blue Paint with Golden border) */}
+        {/* LAYER 2: FIBA BASKETBALL COURT LINES (PRESERVES TRUE 1:1 CIRCULAR BASKETBALL PROPORTIONS) */}
+        <svg
+          viewBox="0 0 160 90"
+          preserveAspectRatio="xMidYMid meet"
+          className="absolute inset-0 w-full h-full pointer-events-none select-none"
+        >
+          <defs>
+            {/* Key / Paint Gradient (Brafa Navy Blue) */}
+            <linearGradient id="brafa-fiba-key-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#0B1C3D" stopOpacity="0.82" />
+              <stop offset="100%" stopColor="#122B5C" stopOpacity="0.75" />
+            </linearGradient>
+          </defs>
+
+          {/* Court Perimeter Boundary Line */}
           <rect
-            x="34"
+            x="4"
+            y="2"
+            width="152"
+            height="85"
+            rx="1"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="0.9"
+            strokeOpacity="0.75"
+          />
+
+          {/* FIBA Key / Paint Zone (Navy Blue Paint with Golden outline) */}
+          <rect
+            x="64"
             y="2"
             width="32"
             height="38"
-            fill="url(#brafa-key-gradient)"
+            fill="url(#brafa-fiba-key-gradient)"
             stroke="#D4AF37"
-            strokeWidth="0.8"
+            strokeWidth="0.85"
             strokeOpacity="0.9"
           />
 
-          {/* Free Throw Circle (Top half solid, bottom dashed) */}
+          {/* Free Throw Circle (Top half solid, bottom dashed) - TRUE CIRCLE */}
           <path
-            d="M 34 40 A 16 16 0 0 0 66 40"
+            d="M 64 40 A 16 16 0 0 0 96 40"
             fill="none"
             stroke="#ffffff"
             strokeWidth="0.85"
             strokeOpacity="0.9"
           />
           <path
-            d="M 34 40 A 16 16 0 0 1 66 40"
+            d="M 64 40 A 16 16 0 0 1 96 40"
             fill="none"
             stroke="#ffffff"
             strokeWidth="0.85"
-            strokeOpacity="0.7"
+            strokeOpacity="0.65"
             strokeDasharray="2.5 2"
           />
 
-          {/* Restricted Area Arc */}
+          {/* Restricted Area Arc under basket - TRUE CIRCLE */}
           <path
-            d="M 43 13 A 7 7 0 0 0 57 13"
+            d="M 73 13 A 7 7 0 0 0 87 13"
             fill="none"
             stroke="#ffffff"
-            strokeWidth="0.75"
+            strokeWidth="0.8"
             strokeOpacity="0.85"
           />
 
-          {/* 3-Point Line (6.75m arc with straight corner baselines) */}
-          <line x1="8" y1="2" x2="8" y2="24" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.9" />
-          <line x1="92" y1="2" x2="92" y2="24" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.9" />
+          {/* 3-Point Line (6.75m arc with straight corner sidelines) - TRUE CIRCLE ARC */}
+          <line x1="36" y1="2" x2="36" y2="24" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.9" />
+          <line x1="124" y1="2" x2="124" y2="24" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.9" />
           <path
-            d="M 8 24 A 44.5 44.5 0 0 0 92 24"
+            d="M 36 24 A 44 44 0 0 0 124 24"
             fill="none"
             stroke="#ffffff"
             strokeWidth="0.9"
             strokeOpacity="0.9"
           />
 
-          {/* Backboard & Basket Rim */}
-          <line x1="41" y1="9" x2="59" y2="9" stroke="#ffffff" strokeWidth="1.2" />
-          <circle cx="50" cy="12.5" r="2.8" stroke="#ea580c" strokeWidth="1" fill="#ea580c" fillOpacity="0.2" />
-          <line x1="50" y1="9" x2="50" y2="10" stroke="#ea580c" strokeWidth="1" />
+          {/* Backboard & Basket Hoop - TRUE CIRCULAR RIM */}
+          <line x1="71" y1="8.5" x2="89" y2="8.5" stroke="#ffffff" strokeWidth="1.3" />
+          <line x1="80" y1="8.5" x2="80" y2="10" stroke="#ea580c" strokeWidth="1" />
+          <circle cx="80" cy="12.5" r="2.8" stroke="#ea580c" strokeWidth="1" fill="#ea580c" fillOpacity="0.25" />
 
-          {/* Center Jump Circle Arc at Half Court */}
+          {/* Center Jump Circle Arc at Half Court - TRUE CIRCLE */}
           <path
-            d="M 36 86 A 14 14 0 0 1 64 86 Z"
-            fill="url(#brafa-key-gradient)"
+            d="M 66 87 A 14 14 0 0 1 94 87 Z"
+            fill="url(#brafa-fiba-key-gradient)"
             stroke="#D4AF37"
             strokeWidth="0.85"
           />
-          <line x1="2" y1="86" x2="98" y2="86" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.8" />
+          <line x1="4" y1="87" x2="156" y2="87" stroke="#ffffff" strokeWidth="0.9" strokeOpacity="0.85" />
         </svg>
 
-        {/* FUNDACIÓ BRAFA OFFICIAL LOGO IN CENTER OF THE PARQUET COURT */}
-        <div className="absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 select-none opacity-90 transition-opacity">
-          <div className="relative w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 rounded-full bg-[#0B1C3D]/80 border border-[#D4AF37]/70 p-1.5 shadow-2xl backdrop-blur-[2px] flex items-center justify-center">
-            {/* Center court glow */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#D4AF37]/20 via-transparent to-sky-400/20" />
+        {/* 
+          FUNDACIÓ BRAFA OFFICIAL LOGO IN CENTER OF THE PARQUET COURT:
+          - Always keeps a perfect 1:1 circular ratio (aspect-square), never stretched or squashed
+          - Subtle golden glow and high contrast against the wood floor
+        */}
+        <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 select-none opacity-90 transition-opacity">
+          <div className="relative w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 aspect-square rounded-full bg-[#0B1C3D]/85 border-2 border-[#D4AF37]/80 p-1 shadow-2xl backdrop-blur-xs flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#D4AF37]/25 via-transparent to-sky-400/20" />
             <img
               src="/brafa-logo.png"
               alt="Fundació Brafa"
               className="w-full h-full object-contain filter drop-shadow-md"
               onError={(e) => {
-                // Fallback to web source if local file not found
                 const target = e.target as HTMLImageElement;
                 if (!target.src.includes('brafa.org')) {
                   target.src = 'https://brafa.org/wp-content/uploads/2024/03/Escudo-Brafa-filete-letra-azul-fina.png';
@@ -253,7 +278,7 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
               }}
             />
           </div>
-          <span className="mt-0.5 text-[8.5px] xs:text-[9.5px] sm:text-[10.5px] font-mono font-black tracking-widest text-[#FFFDF7] bg-[#0B1C3D]/90 px-2 py-0.5 rounded-full border border-[#D4AF37]/50 shadow-md">
+          <span className="mt-0.5 text-[7.5px] xs:text-[8.5px] sm:text-[9.5px] font-mono font-black tracking-widest text-[#FFFDF7] bg-[#0B1C3D]/95 px-2 py-0.5 rounded-full border border-[#D4AF37]/60 shadow-md">
             FUNDACIÓ BRAFA
           </span>
         </div>
@@ -281,13 +306,13 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
                   top: `${pos.y}%`,
                   transform: 'translate(-50%, -50%)',
                 }}
-                className="absolute z-20 flex flex-col items-center justify-center px-1.5 py-1 rounded-xl bg-[#0B1C3D]/85 hover:bg-[#122B5C] border-2 border-dashed border-amber-400/80 text-amber-300 font-mono shadow-lg transition active:scale-95 animate-pulse min-w-[70px] xs:min-w-[78px]"
+                className="absolute z-20 flex flex-col items-center justify-center px-1.5 py-1 rounded-xl bg-[#0B1C3D]/90 hover:bg-[#122B5C] border-2 border-dashed border-amber-400/80 text-amber-300 font-mono shadow-lg transition active:scale-95 animate-pulse min-w-[68px] xs:min-w-[76px]"
                 title={`Posición ${pos.defaultRole} vacía. Toca para incorporar jugador.`}
               >
-                <div className="w-5 h-5 rounded-full bg-amber-400/20 border border-amber-400/40 flex items-center justify-center mb-0.5">
-                  <Plus className="w-3 h-3 text-amber-300" />
+                <div className="w-4 h-4 rounded-full bg-amber-400/20 border border-amber-400/40 flex items-center justify-center mb-0.5">
+                  <Plus className="w-2.5 h-2.5 text-amber-300" />
                 </div>
-                <span className="text-[9px] font-black uppercase text-amber-300">
+                <span className="text-[8.5px] font-black uppercase text-amber-300">
                   +{pos.defaultRole}
                 </span>
               </button>
@@ -296,7 +321,6 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
 
           const stats = playerStatsMap.get(player.id) || calculatePlayerStats(player, game.events);
           const isSelected = selectedPlayerId === player.id;
-          const consecutiveSeconds = getPlayerConsecutiveCourtSeconds(player);
           const isFatigued = isPlayerFatigued(player);
           const minutesFormatted = formatMinutesPlayed(player.minutesPlayedSeconds || 0);
           const isFouledOut = stats.foulsPersonal >= (game.settings.foulOutLimit || 5);
@@ -314,13 +338,13 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
               <button
                 type="button"
                 onClick={() => handlePlayerTap(player)}
-                className={`relative flex flex-col items-center rounded-xl font-mono transition-all duration-150 active:scale-95 text-center px-1.5 py-0.5 xs:py-1 shadow-xl border-2 min-w-[74px] xs:min-w-[82px] sm:min-w-[90px] ${
+                className={`relative flex flex-col items-center rounded-xl font-mono transition-all duration-150 active:scale-95 text-center px-1.5 py-0.5 xs:py-1 shadow-xl border-2 min-w-[72px] xs:min-w-[80px] sm:min-w-[88px] ${
                   isSelected
                     ? 'bg-[#0B1C3D] border-[#F5C542] ring-2 ring-[#F5C542] shadow-amber-400/40 scale-105'
                     : pendingAction
                     ? 'bg-[#0B1C3D] border-emerald-400 ring-2 ring-emerald-400/80 animate-pulse'
                     : isFouledOut
-                    ? 'bg-rose-950/90 border-rose-600 text-rose-200'
+                    ? 'bg-rose-950/95 border-rose-600 text-rose-200'
                     : isFatigued
                     ? 'bg-[#0B1C3D]/95 border-amber-500 ring-1 ring-amber-500/60 shadow-amber-950/60'
                     : 'bg-[#0B1C3D]/95 hover:bg-[#122B5C] border-[#254685] hover:border-[#D4AF37]'
@@ -328,9 +352,9 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
                 title={`#${player.number} ${player.name} (${pos.defaultRole}) • Toca para registrar acción o seleccionar`}
               >
                 {/* Micro Header: Position Code + Quick Sub Swap Icon */}
-                <div className="w-full flex items-center justify-between text-[8px] xs:text-[8.5px] leading-tight text-slate-300 border-b border-[#203a70]/60 pb-0.5 mb-0.5">
+                <div className="w-full flex items-center justify-between text-[7.5px] xs:text-[8px] leading-tight text-slate-300 border-b border-[#203a70]/60 pb-0.5 mb-0.5">
                   <span className="font-extrabold text-[#D4AF37] uppercase truncate">
-                    {pos.code} · {pos.defaultRole}
+                    {pos.code}
                   </span>
                   <button
                     type="button"
@@ -353,13 +377,13 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
                     number={player.number}
                     className="font-scoreboard font-black text-sm xs:text-base sm:text-lg text-[#F5C542] leading-none drop-shadow"
                   />
-                  <span className="text-[10px] xs:text-[11px] font-black text-white uppercase truncate max-w-[50px] xs:max-w-[58px] leading-tight">
+                  <span className="text-[9.5px] xs:text-[10.5px] font-black text-white uppercase truncate max-w-[48px] xs:max-w-[56px] leading-tight">
                     {player.name.split(' ')[0]}
                   </span>
                 </div>
 
                 {/* RESUMEN DE MINUTOS Y VALORACIÓN (BIEN ENCUADRADO) */}
-                <div className="w-full flex items-center justify-between text-[8px] xs:text-[9px] font-bold font-mono px-0.5 pt-0.5 border-t border-[#203a70]/50 gap-1 leading-tight">
+                <div className="w-full flex items-center justify-between text-[7.5px] xs:text-[8.5px] font-bold font-mono px-0.5 pt-0.5 border-t border-[#203a70]/50 gap-1 leading-tight">
                   {/* Minutos jugados */}
                   <div
                     className={`flex items-center gap-0.5 ${
@@ -370,7 +394,7 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
                     }`}
                   >
                     {isFatigued ? (
-                      <Flame className="w-2.5 h-2.5 text-amber-400 animate-pulse shrink-0" />
+                      <Flame className="w-2 h-2 text-amber-400 animate-pulse shrink-0" />
                     ) : (
                       <Clock className="w-2 h-2 text-sky-400 shrink-0" />
                     )}
@@ -394,7 +418,7 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
                 </div>
 
                 {/* Micro Stats: Points and Fouls dots */}
-                <div className="w-full flex items-center justify-between text-[7.5px] xs:text-[8px] text-slate-400 px-0.5 pt-0.5">
+                <div className="w-full flex items-center justify-between text-[7px] xs:text-[7.5px] text-slate-400 px-0.5 pt-0.5">
                   <span className="font-extrabold text-amber-300">{stats.points}p</span>
                   <PlayerFoulsIndicator
                     fouls={stats.foulsPersonal}
@@ -418,7 +442,7 @@ export const CourtTacticalParquetView: React.FC<CourtTacticalParquetViewProps> =
 
       {/* QUICK BENCH SWAP OVERLAY (IF COACH PRESSED SUBSTITUTION ON A COURT PLAYER) */}
       {substituteTargetPlayer && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-xs z-30 rounded-2xl flex flex-col p-2 animate-in fade-in">
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-xs z-30 rounded-2xl flex flex-col p-2 animate-in fade-in">
           <div className="flex items-center justify-between pb-1.5 border-b border-[#203a70]">
             <div className="flex items-center gap-1.5">
               <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400" />
