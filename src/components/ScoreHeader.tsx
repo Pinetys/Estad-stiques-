@@ -132,11 +132,18 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
     if (isActionsLocked) return;
     triggerHaptic('light', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
-    onUpdateGame(prev => ({
-      ...prev,
-      isClockRunning: !prev.isClockRunning,
-      status: prev.status === 'setup' ? 'live' : prev.status,
-    }));
+    onUpdateGame(prev => {
+      const nextRunning = !prev.isClockRunning;
+      const currentShot = prev.shotClockSeconds;
+      return {
+        ...prev,
+        isClockRunning: nextRunning,
+        isShotClockRunning: nextRunning ? true : prev.isShotClockRunning,
+        shotClockSeconds:
+          nextRunning && (currentShot === undefined || currentShot <= 0) ? 24 : currentShot,
+        status: prev.status === 'setup' ? 'live' : prev.status,
+      };
+    });
   };
 
   const handleCloseMatch = () => {
@@ -193,6 +200,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
     onUpdateGame(prev => ({
       ...prev,
       currentSecondsRemaining: prev.settings.quarterDurationMinutes * 60,
+      shotClockSeconds: 24,
+      isShotClockRunning: false,
       isClockRunning: false,
     }));
     setShowClockAdjust(false);
@@ -207,10 +216,22 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
     onUpdateGame(prev => {
       if (team === 'home') {
         const next = prev.homeTimeouts > 0 ? prev.homeTimeouts - 1 : 3;
-        return { ...prev, homeTimeouts: next, isClockRunning: false };
+        return {
+          ...prev,
+          homeTimeouts: next,
+          isClockRunning: false,
+          shotClockSeconds: 24,
+          isShotClockRunning: false,
+        };
       } else {
         const next = prev.awayTimeouts > 0 ? prev.awayTimeouts - 1 : 3;
-        return { ...prev, awayTimeouts: next, isClockRunning: false };
+        return {
+          ...prev,
+          awayTimeouts: next,
+          isClockRunning: false,
+          shotClockSeconds: 24,
+          isShotClockRunning: false,
+        };
       }
     });
   };

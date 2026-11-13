@@ -376,14 +376,14 @@ export default function App() {
           const nextClockRunning = !isQuarterEnding;
           const currentQ = prev.currentQuarter;
 
-          // Shot clock countdown strictly synchronized with real time
+          // Shot clock countdown strictly synchronized with real elapsed deltaSeconds
           const currentShotSecs = prev.shotClockSeconds ?? 24;
           const isShotActive = (prev.isShotClockRunning ?? true) && nextClockRunning;
           let nextShotSecs = currentShotSecs;
           let nextShotRunning = prev.isShotClockRunning ?? true;
 
           if (isShotActive && currentShotSecs > 0) {
-            const rawShot = Math.max(0, (clockSessionRef.current?.startShotSeconds ?? 24) - elapsedTotalSeconds);
+            const rawShot = Math.max(0, currentShotSecs - deltaSeconds);
             if (rawShot <= 0 && currentShotSecs > 0) {
               nextShotSecs = 0;
               nextShotRunning = false;
@@ -913,6 +913,7 @@ export default function App() {
     setGame(prev => ({
       ...prev,
       isClockRunning: true,
+      shotClockSeconds: 24,
       isShotClockRunning: true,
       status: prev.status === 'setup' ? 'live' : prev.status,
     }));
@@ -1174,13 +1175,13 @@ export default function App() {
       let nextShotClockRunning = prev.isShotClockRunning;
 
       if (isFoul) {
-        // Reset to 24s and stop clock on foul
+        // Reset to 24s and pause until play resumes on foul
         nextShotClock = 24;
         nextShotClockRunning = false;
       } else if (pointsToAdd > 0) {
-        // Canasta convertida: reinicio automático a 24 segundos
+        // Canasta convertida: reinicio automático a 24 segundos y listo para contar
         nextShotClock = 24;
-        nextShotClockRunning = prev.isClockRunning;
+        nextShotClockRunning = true;
       } else if (isOreb && prev.settings.autoResetShotClockOnOreb !== false) {
         nextShotClock = 14;
         nextShotClockRunning = true;
@@ -1516,9 +1517,9 @@ export default function App() {
         nextShotClock = 24;
         nextShotClockRunning = false;
       } else if (pointsToAdd > 0) {
-        // Canasta rival: reinicio automático a 24 segundos
+        // Canasta rival: reinicio automático a 24 segundos y listo para contar
         nextShotClock = 24;
-        nextShotClockRunning = prev.isClockRunning;
+        nextShotClockRunning = true;
       }
 
       return {
@@ -1619,7 +1620,7 @@ export default function App() {
         return {
           ...prev,
           shotClockSeconds: isMadeBasket ? 24 : prev.shotClockSeconds,
-          isShotClockRunning: isMadeBasket ? prev.isClockRunning : prev.isShotClockRunning,
+          isShotClockRunning: isMadeBasket ? true : prev.isShotClockRunning,
           awayScore: newAwayScore,
           events: [newEvent, ...prev.events],
           quarterScores: updatedQuarterScores,
@@ -1674,7 +1675,7 @@ export default function App() {
       return {
         ...prev,
         shotClockSeconds: isHomeMadeBasket ? 24 : prev.shotClockSeconds,
-        isShotClockRunning: isHomeMadeBasket ? prev.isClockRunning : prev.isShotClockRunning,
+        isShotClockRunning: isHomeMadeBasket ? true : prev.isShotClockRunning,
         homeScore: newHomeScore,
         events: [newEvent, ...prev.events],
         quarterScores: updatedQuarterScores,
@@ -1975,6 +1976,8 @@ export default function App() {
         ...prev,
         currentQuarter: nextQ,
         currentSecondsRemaining: prev.settings.quarterDurationMinutes * 60,
+        shotClockSeconds: 24,
+        isShotClockRunning: false,
         isClockRunning: false,
         homeQuarterFouls: 0,
         awayQuarterFouls: 0,
@@ -2020,6 +2023,8 @@ export default function App() {
         ...prev,
         currentQuarter: targetQuarter,
         currentSecondsRemaining: prev.settings.quarterDurationMinutes * 60,
+        shotClockSeconds: 24,
+        isShotClockRunning: false,
         isClockRunning: false,
         homeQuarterFouls: homeFoulsInQ,
         awayQuarterFouls: awayFoulsInQ,

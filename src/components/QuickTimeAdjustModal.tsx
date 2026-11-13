@@ -49,6 +49,7 @@ export const QuickTimeAdjustModal: React.FC<QuickTimeAdjustModalProps> = ({
       ...prev,
       currentSecondsRemaining: seconds,
       shotClockSeconds: shotClock,
+      isShotClockRunning: shotClock > 0,
       settings: {
         ...prev.settings,
         timingMode,

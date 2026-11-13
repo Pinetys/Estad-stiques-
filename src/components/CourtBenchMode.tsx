@@ -416,11 +416,18 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
     if (isGameFinished) return;
     triggerHaptic('medium', game.settings.vibrationEnabled);
     playSound('click', game.settings.soundEnabled);
-    onUpdateGame(prev => ({
-      ...prev,
-      isClockRunning: !prev.isClockRunning,
-      status: prev.status === 'setup' ? 'live' : prev.status,
-    }));
+    onUpdateGame(prev => {
+      const nextRunning = !prev.isClockRunning;
+      const currentShot = prev.shotClockSeconds;
+      return {
+        ...prev,
+        isClockRunning: nextRunning,
+        isShotClockRunning: nextRunning ? true : prev.isShotClockRunning,
+        shotClockSeconds:
+          nextRunning && (currentShot === undefined || currentShot <= 0) ? 24 : currentShot,
+        status: prev.status === 'setup' ? 'live' : prev.status,
+      };
+    });
   };
 
   // Adjust game seconds
@@ -451,6 +458,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
         ...prev,
         currentQuarter: nextQ,
         currentSecondsRemaining: prev.settings.quarterDurationMinutes * 60,
+        shotClockSeconds: 24,
+        isShotClockRunning: false,
         isClockRunning: false,
         homeQuarterFouls: 0,
         awayQuarterFouls: 0,
@@ -2850,7 +2859,13 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           callingTeam={timeoutModalTeam}
           onClose={(resumeClock) => {
             if (resumeClock) {
-              onUpdateGame(prev => ({ ...prev, isClockRunning: true }));
+              onUpdateGame(prev => ({
+                ...prev,
+                isClockRunning: true,
+                shotClockSeconds: 24,
+                isShotClockRunning: true,
+                status: prev.status === 'setup' ? 'live' : prev.status,
+              }));
             }
             setTimeoutModalTeam(null);
           }}

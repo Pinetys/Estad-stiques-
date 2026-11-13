@@ -37,6 +37,8 @@ export const TimeoutCountdownModal: React.FC<TimeoutCountdownModalProps> = ({
         homeTimeouts: isHome ? Math.max(0, prev.homeTimeouts - 1) : prev.homeTimeouts,
         awayTimeouts: !isHome ? Math.max(0, prev.awayTimeouts - 1) : prev.awayTimeouts,
         isClockRunning: false, // Ensure game clock is stopped
+        shotClockSeconds: 24, // Reset shot clock to 24s after timeout
+        isShotClockRunning: false,
       }));
     }
   }, [isHome, onUpdateGame]);
