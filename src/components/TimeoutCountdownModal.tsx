@@ -83,8 +83,8 @@ export const TimeoutCountdownModal: React.FC<TimeoutCountdownModalProps> = ({
   const progressPercent = ((60 - secondsRemaining) / 60) * 100;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200">
-      <div className="bg-[#12141a] border-2 border-amber-500/60 w-full max-w-md max-h-[92dvh] overflow-y-auto overscroll-contain rounded-2xl p-5 shadow-[0_0_50px_rgba(245,158,11,0.25)] flex flex-col items-center text-center relative">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="bg-[#12141a] border-2 border-amber-500/60 w-full max-w-md max-h-[92dvh] overflow-y-auto overscroll-contain my-auto rounded-2xl p-5 shadow-[0_0_50px_rgba(245,158,11,0.25)] flex flex-col items-center text-center relative">
         {/* Glow Accent */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-32 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
 

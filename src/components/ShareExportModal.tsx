@@ -106,8 +106,8 @@ export const ShareExportModal: React.FC<ShareExportModalProps> = ({ game, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2.5 animate-in fade-in">
-      <div className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-lg w-full p-4 shadow-2xl space-y-3.5 max-h-[90vh] overflow-y-auto relative text-[#FFFDF7]">
+    <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2.5 overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-lg w-full p-4 shadow-2xl space-y-3.5 max-h-[92dvh] overflow-y-auto overscroll-contain my-auto relative text-[#FFFDF7]">
         {pdfToast && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-mono font-bold text-xs px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-emerald-400">
             <Check className="w-3.5 h-3.5" />

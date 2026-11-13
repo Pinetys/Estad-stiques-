@@ -308,8 +308,8 @@ export const TeamRosterModal: React.FC<TeamRosterModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 animate-in fade-in overflow-y-auto">
-      <div className="bg-[#12141a] border border-orange-500/50 rounded-2xl max-w-xl w-full p-4 sm:p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 animate-in fade-in overflow-y-auto overscroll-contain">
+      <div className="bg-[#12141a] border border-orange-500/50 rounded-2xl max-w-xl w-full p-4 sm:p-5 shadow-2xl space-y-4 max-h-[92dvh] my-auto overflow-y-auto flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-gray-800 shrink-0">
           <div className="flex items-center gap-2.5">

@@ -48,7 +48,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-3 md:p-5 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-3 md:p-5 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tactical-board-modal-title"
@@ -57,7 +57,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
         className={`bg-[#070c1e] border border-blue-800/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ${
           isFullscreen
             ? 'w-full h-full rounded-none border-none max-w-none max-h-none'
-            : 'w-full max-w-7xl h-[96vh] max-h-[920px]'
+            : 'w-full max-w-7xl h-[92dvh] max-h-[920px] my-auto'
         }`}
       >
         {/* Modal Top Bar */}

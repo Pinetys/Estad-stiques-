@@ -2186,7 +2186,7 @@ export default function App() {
   }
 
   return (
-    <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#070c1e] text-slate-100' : 'min-h-[100dvh] bg-[#090f23] text-slate-100 overflow-x-clip'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full relative`}>
+    <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#070c1e] text-slate-100' : 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#090f23] text-slate-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full relative`}>
       {/* 1. If Court Mode is Active: Show Ultra-Clean Bench Tactile Console */}
       {isCourtMode ? (
         <CourtBenchMode
@@ -2802,9 +2802,11 @@ export default function App() {
             </div>
           </header>
 
+          {/* Scrollable Main Content Container */}
+          <div className="flex-1 min-h-0 h-full overflow-y-auto overscroll-contain flex flex-col bg-[#090f23]">
           {/* Active Cloud Match Alert Banner (e.g. tablet is recording match) */}
           {activeCloudMatchNotice && activeCloudMatchNotice.activeGameId !== game.id && (
-            <div className="bg-gradient-to-r from-blue-950 via-[#131A29] to-blue-950 border-b border-blue-500/50 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs text-blue-200 sticky top-14 z-40 shadow-lg animate-in slide-in-from-top duration-300">
+            <div className="bg-gradient-to-r from-blue-950 via-[#131A29] to-blue-950 border-b border-blue-500/50 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs text-blue-200 sticky top-0 z-30 shadow-lg animate-in slide-in-from-top duration-300 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="flex h-2.5 w-2.5 relative shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
@@ -2865,7 +2867,7 @@ export default function App() {
 
           {/* Match In-Screen Sub-Navigation when inside a game */}
           {activeTab !== 'teams' && activeTab !== 'stats' && activeTab !== 'scout' && (
-            <div className="bg-gradient-to-r from-[#0c1633] via-[#0f1b3d] to-[#0c1633] border-b border-blue-900/60 px-3 sm:px-6 py-1.5 shrink-0 sticky top-14 z-30 shadow-sm">
+            <div className="bg-gradient-to-r from-[#0c1633] via-[#0f1b3d] to-[#0c1633] border-b border-blue-900/60 px-3 sm:px-6 py-1.5 shrink-0 sticky top-0 z-30 shadow-sm">
               <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
                 <div className="flex items-center gap-1 font-mono text-xs font-bold">
                   <button
@@ -2940,7 +2942,7 @@ export default function App() {
           )}
 
           {/* Active Tab View Content */}
-          <main className="grow bg-[#090f23] pb-6">
+          <main className="flex-1 bg-[#090f23] pb-10">
             {/* Teams Hub: Primary Entry Point of the App */}
             {activeTab === 'teams' && (
               <TeamsHubView
@@ -3140,9 +3142,10 @@ export default function App() {
               </div>
             )}
           </main>
+          </div>
 
           {/* High Density Mobile Bottom Navigation Bar (5 Primary Tabs) */}
-          <div className="sticky bottom-0 left-0 right-0 z-40 shrink-0 mt-auto bg-[#0e224a]/95 border-t-2 border-[#D4AF37] backdrop-blur-md pb-safe shadow-2xl">
+          <div className="shrink-0 z-40 bg-[#0e224a]/95 border-t-2 border-[#D4AF37] backdrop-blur-md pb-safe shadow-2xl w-full">
             <div className="max-w-xl mx-auto grid grid-cols-5 px-1 py-1 gap-1">
               {/* Teams Hub Tab (Primary Entry Point) */}
               <button

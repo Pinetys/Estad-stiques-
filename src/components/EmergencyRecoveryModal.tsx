@@ -224,8 +224,8 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-      <div className="bg-[#14161B] border border-orange-500/50 rounded-2xl max-w-3xl w-full shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-[#14161B] border border-orange-500/50 rounded-2xl max-w-3xl w-full shadow-2xl flex flex-col max-h-[92dvh] my-auto overflow-hidden">
         {/* Header */}
         <div className="px-5 py-4 bg-[#101217] border-b border-gray-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -690,8 +690,8 @@ export const EmergencyRecoveryModal: React.FC<EmergencyRecoveryModalProps> = ({
 
         {/* Reassignment to Team Modal Dialog */}
         {selectedGameToReassign && (
-          <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-            <div className="bg-[#10141E] border-2 border-sky-500 rounded-2xl max-w-lg w-full shadow-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+            <div className="bg-[#10141E] border-2 border-sky-500 rounded-2xl max-w-lg w-full shadow-2xl p-5 space-y-4 max-h-[92dvh] overflow-y-auto overscroll-contain my-auto">
               <div className="flex items-center justify-between border-b border-gray-800 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-sky-950 border border-sky-600 rounded-xl text-sky-400">

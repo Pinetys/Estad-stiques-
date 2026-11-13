@@ -615,11 +615,11 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
       {/* APARTADO / MODAL DE PARTIDOS DEL EQUIPO */}
       {selectedTeamForMatches && (
         <div
-          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in"
+          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setSelectedTeamForMatches(null)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-[#FFFDF7]"
+            className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-2xl w-full max-h-[90dvh] my-auto flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -815,11 +815,11 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
       {/* Confirmation Modal: Delete Team */}
       {teamToDelete && (
         <div
-          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setTeamToDelete(null)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 text-rose-400">
@@ -870,11 +870,11 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
       {/* Confirmation Modal: Delete Match */}
       {matchToDelete && (
         <div
-          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setMatchToDelete(null)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 text-rose-400">

@@ -175,8 +175,8 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-      <div className="bg-[#15171e] border border-neutral-700 rounded-2xl max-w-2xl lg:max-w-3xl w-full p-3.5 sm:p-4 shadow-2xl space-y-3 max-h-[95vh] flex flex-col my-auto overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-[#15171e] border border-neutral-700 rounded-2xl max-w-2xl lg:max-w-3xl w-full p-3.5 sm:p-4 shadow-2xl space-y-3 max-h-[94dvh] flex flex-col my-auto overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-neutral-800 shrink-0">
           <div className="flex items-center gap-2">

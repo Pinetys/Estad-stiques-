@@ -65,8 +65,8 @@ export const QuickTimeAdjustModal: React.FC<QuickTimeAdjustModalProps> = ({
   const currentRemainingSecs = seconds % 60;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200">
-      <div className="bg-[#12141a] border border-neutral-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl flex flex-col max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="bg-[#12141a] border border-neutral-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl flex flex-col max-h-[92dvh] overflow-y-auto overscroll-contain my-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
           <div className="flex items-center gap-2">

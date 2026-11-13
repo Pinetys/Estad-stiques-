@@ -718,8 +718,8 @@ export const InformativeMobileView: React.FC<InformativeMobileViewProps> = ({
 
       {/* 7. MODAL DETAIL POPUP FOR INDIVIDUAL PLAYER */}
       {selectedPlayerDetail && (
-        <div className="fixed inset-0 z-50 bg-[#060f22]/85 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl w-full max-w-sm p-4 space-y-3 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-[#060f22]/85 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in">
+          <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl w-full max-w-sm max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-4 space-y-3 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#203a70] pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-mono font-black flex items-center justify-center text-sm shadow">

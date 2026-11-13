@@ -145,12 +145,12 @@ export const TacticalPlayHistoryModal: React.FC<TacticalPlayHistoryModalProps> =
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tactical-history-title"
     >
-      <div className="bg-[#0b142e] border border-blue-800/80 rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl h-[92vh] max-h-[820px] overflow-hidden">
+      <div className="bg-[#0b142e] border border-blue-800/80 rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl h-[92dvh] max-h-[820px] my-auto overflow-hidden">
         {/* Header */}
         <div className="h-14 bg-gradient-to-r from-[#0d1b3e] via-[#122352] to-[#0d1b3e] border-b border-blue-900/80 px-4 flex items-center justify-between gap-3 shrink-0 select-none">
           <div className="flex items-center gap-2.5 min-w-0">

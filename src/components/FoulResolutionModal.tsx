@@ -90,8 +90,8 @@ export const FoulResolutionModal: React.FC<FoulResolutionModalProps> = ({
   const onCourtPlayers = game.players.filter(p => p.onCourt);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg max-h-[92dvh] overflow-y-auto overscroll-contain bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl text-neutral-100 flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg max-h-[92dvh] overflow-y-auto overscroll-contain my-auto bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl text-neutral-100 flex flex-col">
         
         {/* Top Header */}
         <div className="flex items-center justify-between px-5 py-3.5 bg-neutral-950/80 border-b border-neutral-800">

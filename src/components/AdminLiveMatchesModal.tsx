@@ -178,11 +178,11 @@ export const AdminLiveMatchesModal: React.FC<AdminLiveMatchesModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-[#12141A] border border-amber-500/40 rounded-2xl w-full max-w-6xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-neutral-100"
+        className="bg-[#12141A] border border-amber-500/40 rounded-2xl w-full max-w-6xl max-h-[94dvh] my-auto flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-neutral-100"
         onClick={e => e.stopPropagation()}
       >
         {/* Top Header */}
@@ -492,11 +492,11 @@ export const AdminLiveMatchesModal: React.FC<AdminLiveMatchesModalProps> = ({
         {/* DETAILED MATCH INSPECTOR MODAL */}
         {selectedMatch && (
           <div
-            className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in"
+            className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in"
             onClick={() => setSelectedMatch(null)}
           >
             <div
-              className="bg-[#14161F] border border-amber-500/50 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-neutral-100"
+              className="bg-[#14161F] border border-amber-500/50 rounded-2xl w-full max-w-4xl max-h-[92dvh] my-auto flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-neutral-100"
               onClick={e => e.stopPropagation()}
             >
               {/* Modal Header */}

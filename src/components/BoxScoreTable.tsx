@@ -456,8 +456,8 @@ export const BoxScoreTable: React.FC<BoxScoreTableProps> = ({ game }) => {
 
       {/* Individual Player Breakdown Modal when row clicked */}
       {selectedPlayerModal && (
-        <div className="fixed inset-0 z-50 bg-[#060f22]/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-md w-full p-4 shadow-2xl space-y-3">
+        <div className="fixed inset-0 z-50 bg-[#060f22]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain">
+          <div className="bg-[#0e224a] border-2 border-[#D4AF37] rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-4 shadow-2xl space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2">
                 <span className="font-scoreboard text-3xl font-black text-amber-300">

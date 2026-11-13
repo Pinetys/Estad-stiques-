@@ -37,8 +37,8 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-      <div className="bg-[#0b162f] border-2 border-blue-500/50 rounded-2xl p-5 max-w-md w-full shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-[#0b162f] border-2 border-blue-500/50 rounded-2xl p-5 max-w-md w-full shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[92dvh] overflow-y-auto overscroll-contain my-auto">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-blue-900/60 pb-3">
           <div className="flex items-center gap-2">

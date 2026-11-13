@@ -954,8 +954,8 @@ export const CourtFastTrack: React.FC<CourtFastTrackProps> = ({
 
       {/* MODAL / PROMPT: FALTA RECIBIDA CON CANASTA (2+1, 3+1 O SIN CANASTA) */}
       {pendingFdPlayer && (
-        <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in select-none">
-          <div className="bg-[#0B1C3D] border-2 border-emerald-500 rounded-2xl p-4 max-w-md w-full mx-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in select-none">
+          <div className="bg-[#0B1C3D] border-2 border-emerald-500 rounded-2xl p-4 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain mx-auto my-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
             <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2">
                 <div className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-mono font-black text-xs uppercase rounded shadow">

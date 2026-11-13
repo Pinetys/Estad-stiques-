@@ -88,8 +88,8 @@ export const TeamMinutesBalanceModal: React.FC<TeamMinutesBalanceModalProps> = (
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200">
-      <div className="bg-[#0B1C3D] border-2 border-[#203a70] w-full max-w-2xl rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden text-white font-mono select-none">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="bg-[#0B1C3D] border-2 border-[#203a70] w-full max-w-2xl rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col max-h-[92dvh] my-auto overflow-hidden text-white font-mono select-none">
         {/* HEADER */}
         <div className="flex items-center justify-between pb-3 border-b border-[#203a70] shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">

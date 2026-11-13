@@ -274,8 +274,8 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
   const StepIcon = step.icon;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in select-none">
-      <div className="bg-[#12141a] border border-neutral-700/80 rounded-2xl sm:rounded-3xl max-w-2xl w-full mx-auto shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] animate-in zoom-in-95">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto overscroll-contain animate-in fade-in select-none">
+      <div className="bg-[#12141a] border border-neutral-700/80 rounded-2xl sm:rounded-3xl max-w-2xl w-full mx-auto my-auto shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] animate-in zoom-in-95">
         {/* TOP BAR */}
         <div className="px-4 sm:px-6 py-3 border-b border-neutral-800 flex items-center justify-between bg-[#161822]">
           <div className="flex items-center gap-2.5">

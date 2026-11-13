@@ -195,11 +195,11 @@ export const EditPlayEventModal: React.FC<EditPlayEventModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 select-none animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain select-none animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="bg-[#0B1C3D] border-2 border-amber-500/70 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden text-slate-100 animate-in zoom-in-95 duration-150"
+        className="bg-[#0B1C3D] border-2 border-amber-500/70 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92dvh] my-auto flex flex-col overflow-hidden text-slate-100 animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}

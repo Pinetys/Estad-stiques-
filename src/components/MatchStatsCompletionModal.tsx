@@ -370,8 +370,8 @@ export const MatchStatsCompletionModal: React.FC<MatchStatsCompletionModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#060f22]/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in select-text">
-      <div className="bg-[#0e224a] border-2 border-emerald-500/80 rounded-2xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#060f22]/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in select-text">
+      <div className="bg-[#0e224a] border-2 border-emerald-500/80 rounded-2xl max-w-4xl w-full shadow-2xl flex flex-col max-h-[92dvh] my-auto overflow-hidden">
         {/* Header */}
         <div className="p-3 sm:p-4 flex items-center justify-between border-b border-[#203a70] bg-[#0c1c3d] shrink-0">
           <div className="flex items-center gap-2.5">

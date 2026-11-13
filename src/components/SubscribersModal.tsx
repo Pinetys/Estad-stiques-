@@ -146,8 +146,8 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-neutral-900 border border-neutral-700/80 rounded-2xl shadow-2xl overflow-hidden text-neutral-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="relative w-full max-w-4xl max-h-[92dvh] my-auto flex flex-col bg-neutral-900 border border-neutral-700/80 rounded-2xl shadow-2xl overflow-hidden text-neutral-100">
         
         {/* Top Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800 bg-neutral-950/70">
@@ -487,8 +487,8 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
 
           {/* Delete Single Subscriber Confirmation Modal */}
           {subToDelete && (
-            <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-              <div className="bg-neutral-900 border border-rose-700/70 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl text-white">
+            <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+              <div className="bg-neutral-900 border border-rose-700/70 rounded-2xl p-5 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto space-y-4 shadow-2xl text-white">
                 <div className="flex items-center gap-3 text-rose-400">
                   <AlertTriangle className="w-6 h-6 shrink-0" />
                   <h3 className="font-bold text-base">¿Eliminar suscriptor?</h3>
@@ -527,8 +527,8 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
 
           {/* Clear All Demo Subscribers Confirmation Modal */}
           {confirmClearDemo && (
-            <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-              <div className="bg-neutral-900 border border-amber-600/70 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl text-white">
+            <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+              <div className="bg-neutral-900 border border-amber-600/70 rounded-2xl p-5 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto space-y-4 shadow-2xl text-white">
                 <div className="flex items-center gap-3 text-amber-400">
                   <AlertTriangle className="w-6 h-6 shrink-0" />
                   <h3 className="font-bold text-base">¿Limpiar suscriptores de ejemplo?</h3>
@@ -598,11 +598,11 @@ export const SubscribersModal: React.FC<SubscribersModalProps> = ({ onClose, sou
       {/* MODAL DETALLADO DEL PERFIL DEL ENLACE DE SUSCRIPTOR (ACCESO ADMIN) */}
       {viewingSubscriberProfile && (
         <div
-          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setViewingSubscriberProfile(null)}
         >
           <div
-            className="bg-[#181B22] border border-amber-500/40 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-neutral-100"
+            className="bg-[#181B22] border border-amber-500/40 rounded-2xl max-w-xl w-full max-h-[92dvh] my-auto flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 text-neutral-100"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}

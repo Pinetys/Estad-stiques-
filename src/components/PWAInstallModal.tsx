@@ -65,8 +65,8 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in">
-      <div className="bg-gradient-to-b from-[#0e1f42] via-[#091530] to-[#060e22] border-2 border-orange-500/60 rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-gradient-to-b from-[#0e1f42] via-[#091530] to-[#060e22] border-2 border-orange-500/60 rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[92dvh] overflow-y-auto overscroll-contain my-auto">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-blue-900/60 pb-3">
           <div className="flex items-center gap-3">

@@ -2232,8 +2232,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           : pendingActionDef?.label || 'Selecciona el jugador que realiza la acción';
 
         return (
-          <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in select-none">
-            <div className={`bg-[#0B1C3D] border-2 rounded-2xl p-3 sm:p-4 pb-safe max-w-lg sm:max-w-xl md:max-w-2xl max-h-[94dvh] overflow-y-auto overscroll-contain w-full mx-auto shadow-2xl animate-in slide-in-from-bottom ${
+          <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in select-none">
+            <div className={`bg-[#0B1C3D] border-2 rounded-2xl p-3 sm:p-4 pb-safe max-w-lg sm:max-w-xl md:max-w-2xl max-h-[92dvh] overflow-y-auto overscroll-contain w-full mx-auto my-auto shadow-2xl animate-in slide-in-from-bottom ${
               isFoulDrawn
                 ? 'border-emerald-500 space-y-2.5'
                 : isFoulConfirmation
@@ -2461,8 +2461,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 8b. MODAL / PROMPT: FALTA RECIBIDA CON CANASTA (2+1, 3+1 O SIN CANASTA) */}
       {pendingFdPlayer && (
-        <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in select-none">
-          <div className="bg-[#0B1C3D] border-2 border-emerald-500 rounded-2xl p-4 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain mx-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in select-none">
+          <div className="bg-[#0B1C3D] border-2 border-emerald-500 rounded-2xl p-4 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain mx-auto my-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
             <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2">
                 <div className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-mono font-black text-xs uppercase rounded shadow">
@@ -2605,8 +2605,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 9. OPPONENT PLAYER SCOUTING MODAL */}
       {scoutingOppAction && (
-        <div className="fixed inset-0 z-50 bg-[#071228]/85 flex items-center justify-center p-3 backdrop-blur-sm animate-in fade-in select-none">
-          <div className="bg-[#0B1C3D] border-2 border-[#203a70] rounded-2xl p-4 max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain shadow-2xl space-y-3">
+        <div className="fixed inset-0 z-50 bg-[#071228]/85 flex items-center justify-center p-3 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in select-none">
+          <div className="bg-[#0B1C3D] border-2 border-[#203a70] rounded-2xl p-4 max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto shadow-2xl space-y-3">
             <div className="flex items-center justify-between border-b border-[#203a70] pb-2">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-[#0E224A] border border-[#D4AF37]/50 flex items-center justify-center text-[#F5C542] font-bold font-mono text-xs">
@@ -2692,8 +2692,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 9. MODAL CERRAR PARTIDO Y GUARDAR EN BIBLIOTECA */}
       {showCloseConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in select-none">
-          <div className="bg-[#0B1C3D] border-2 border-red-500/80 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in select-none">
+          <div className="bg-[#0B1C3D] border-2 border-red-500/80 rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-5 shadow-2xl space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-12 h-12 rounded-xl bg-red-950 border border-red-500/80 flex items-center justify-center shrink-0">
                 <Flag className="w-6 h-6 text-red-400" />
@@ -2886,8 +2886,8 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* MODAL ASISTENTE IA DE ROTACIONES POR FATIGA Y MINUTOS */}
       {showAISubHelperModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+          <div className="w-full max-w-xl max-h-[92dvh] overflow-y-auto overscroll-contain my-auto rounded-3xl shadow-2xl">
             <SubstitutionAIHelper
               game={game}
               onApplySuggestion={(playerOutId, playerInId) => {

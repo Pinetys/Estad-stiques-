@@ -207,8 +207,8 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-[#0f1422] border-2 border-cyan-500/40 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-[#0f1422] border-2 border-cyan-500/40 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] my-auto">
         {/* Header */}
         <div className="p-4 sm:p-5 bg-gradient-to-r from-[#141b2d] via-[#101726] to-[#0a0e17] border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">

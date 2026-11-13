@@ -551,8 +551,8 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-      <div className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-5xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden my-auto text-[#FFFDF7]">
+    <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-[#0B1C3D] border-2 border-[#D4AF37]/50 rounded-2xl max-w-5xl w-full max-h-[94dvh] flex flex-col shadow-2xl overflow-hidden my-auto text-[#FFFDF7]">
         {/* Header */}
         <div className="px-4 py-3 bg-gradient-to-r from-[#0E224A] to-[#0B1C3D] border-b border-[#203a70] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -1479,11 +1479,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       {/* Confirmation Dialog: Delete Single Match */}
       {gameToDelete && (
         <div
-          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setGameToDelete(null)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -1536,11 +1536,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       {/* Confirmation Dialog: Clear All Matches */}
       {showClearAllConfirm && (
         <div
-          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setShowClearAllConfirm(false)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -1585,11 +1585,11 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
       {/* Reassign Game to Team Dialog */}
       {gameToReassign && (
         <div
-          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setGameToReassign(null)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-sky-500 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7] max-h-[90vh] overflow-y-auto"
+            className="bg-[#0B1C3D] border-2 border-sky-500 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7] max-h-[92dvh] overflow-y-auto overscroll-contain my-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[#203a70] pb-3">

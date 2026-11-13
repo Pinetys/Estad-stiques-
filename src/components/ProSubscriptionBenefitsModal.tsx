@@ -54,8 +54,8 @@ export const ProSubscriptionBenefitsModal: React.FC<ProSubscriptionBenefitsModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200">
-      <div className="bg-[#12141a] border border-amber-500/50 w-full max-w-xl rounded-2xl p-5 sm:p-6 shadow-[0_0_50px_rgba(245,158,11,0.2)] flex flex-col max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="bg-[#12141a] border border-amber-500/50 w-full max-w-xl rounded-2xl p-5 sm:p-6 shadow-[0_0_50px_rgba(245,158,11,0.2)] flex flex-col max-h-[92dvh] overflow-y-auto overscroll-contain my-auto">
         {/* Header with Crown & Pro Badge */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
           <div className="flex items-center gap-3">

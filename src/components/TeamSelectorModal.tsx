@@ -236,8 +236,8 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
   const startersCount = formRoster.filter(p => p.starter || p.onCourt).length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in overflow-y-auto">
-      <div className="bg-[#12141a] border border-orange-500/50 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in overflow-y-auto overscroll-contain">
+      <div className="bg-[#12141a] border border-orange-500/50 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92dvh]">
         {/* Modal Top Header */}
         <div className="p-4 bg-gradient-to-r from-[#181b24] to-[#12141a] border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -796,8 +796,8 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
 
       {/* Selected Team Matches Sub-Modal */}
       {selectedTeamForMatches && (
-        <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in">
-          <div className="bg-[#0B1C3D] border border-cyan-500/50 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto overscroll-contain animate-in fade-in">
+          <div className="bg-[#0B1C3D] border border-cyan-500/50 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[90dvh]">
             <div className="p-4 bg-gradient-to-r from-[#102550] to-[#0B1C3D] border-b border-[#203a70] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <TeamLogoDisplay logo={selectedTeamForMatches.logo} teamName={selectedTeamForMatches.name} size="sm" />
@@ -936,11 +936,11 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
       {/* Confirmation Modal: Delete Team */}
       {teamToDelete && (
         <div
-          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setTeamToDelete(null)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 text-rose-400">
@@ -988,11 +988,11 @@ export const TeamSelectorModal: React.FC<TeamSelectorModalProps> = ({
       {/* Confirmation Modal: Delete Match */}
       {matchToDelete && (
         <div
-          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-60 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={() => setMatchToDelete(null)}
         >
           <div
-            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
+            className="bg-[#0B1C3D] border-2 border-rose-500/60 rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-[#FFFDF7]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 text-rose-400">

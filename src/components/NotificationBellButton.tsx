@@ -92,8 +92,8 @@ export const NotificationBellButton: React.FC<NotificationBellButtonProps> = ({
 
       {/* Info / Settings Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#0B1C3D] border border-sky-500/40 rounded-2xl w-full max-w-sm p-4 text-white font-mono shadow-2xl space-y-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in">
+          <div className="bg-[#0B1C3D] border border-sky-500/40 rounded-2xl w-full max-w-sm max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-4 text-white font-mono shadow-2xl space-y-3">
             <div className="flex items-center justify-between border-b border-[#203a70] pb-2">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">

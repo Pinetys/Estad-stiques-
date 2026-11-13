@@ -905,8 +905,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
         {/* Close Match Confirmation Modal */}
         {showCloseMatchModal && (
-          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-[#14161B] border border-red-500/60 rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
+          <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in">
+            <div className="bg-[#14161B] border border-red-500/60 rounded-2xl p-5 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto shadow-2xl space-y-4">
               <div className="flex items-center gap-3 border-b border-gray-800 pb-3">
                 <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-500/60 flex items-center justify-center text-red-400 font-bold shrink-0">
                   <CheckCircle2 className="w-5 h-5" />
@@ -973,8 +973,8 @@ export const ScoreHeader: React.FC<ScoreHeaderProps> = ({
 
         {/* Opponent Player Number Scouting Modal */}
         {scoutingOppAction && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-[#14161B] border border-blue-500/40 rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-4">
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in">
+            <div className="bg-[#14161B] border border-blue-500/40 rounded-2xl p-5 max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto shadow-2xl space-y-4">
               <div className="flex items-center justify-between border-b border-gray-800 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold">

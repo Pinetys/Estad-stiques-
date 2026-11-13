@@ -797,11 +797,11 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
     return (
       <div
         id="shot-chart-modal-pending"
-        className="fixed inset-0 z-50 bg-[#071228]/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-3 overflow-hidden select-none animate-in fade-in"
+        className="fixed inset-0 z-50 bg-[#071228]/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-3 overflow-y-auto overscroll-contain select-none animate-in fade-in"
         onClick={onClose}
       >
         <div
-          className="bg-[#0B1C3D] border-2 border-[#D4AF37] rounded-2xl w-full max-w-6xl h-[95vh] max-h-[95vh] shadow-2xl flex flex-col p-2 sm:p-3 overflow-hidden text-[#FFFDF7]"
+          className="bg-[#0B1C3D] border-2 border-[#D4AF37] rounded-2xl w-full max-w-6xl max-h-[95dvh] overflow-y-auto overscroll-contain my-auto shadow-2xl flex flex-col p-2 sm:p-3 text-[#FFFDF7]"
           onClick={e => e.stopPropagation()}
         >
           {/* HEADER STRIP */}
@@ -996,11 +996,11 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
   return (
     <div
       id="shot-chart-modal"
-      className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto select-none animate-in fade-in"
+      className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain select-none animate-in fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-[#0B1C3D] border-2 border-[#D4AF37]/60 rounded-2xl max-w-5xl w-full p-3 sm:p-5 shadow-2xl space-y-3 my-auto animate-in zoom-in-95 max-h-[96vh] flex flex-col text-[#FFFDF7] relative"
+        className="bg-[#0B1C3D] border-2 border-[#D4AF37]/60 rounded-2xl max-w-5xl w-full p-3 sm:p-5 shadow-2xl space-y-3 my-auto animate-in zoom-in-95 max-h-[92dvh] flex flex-col text-[#FFFDF7] relative"
         onClick={e => e.stopPropagation()}
       >
         {/* Toast Notification */}
@@ -1570,11 +1570,11 @@ export const ShotChartModal: React.FC<ShotChartModalProps> = ({
         {/* DEDICATED EXPORT & SHARING SUB-MODAL */}
         {showExportModal && (
           <div
-            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in"
+            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in"
             onClick={() => setShowExportModal(false)}
           >
             <div
-              className="bg-[#0B1C3D] border-2 border-[#D4AF37] rounded-2xl max-w-lg w-full p-4 sm:p-5 shadow-2xl space-y-4 text-[#FFFDF7] animate-in zoom-in-95 font-mono"
+              className="bg-[#0B1C3D] border-2 border-[#D4AF37] rounded-2xl max-w-lg w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto p-4 sm:p-5 shadow-2xl space-y-4 text-[#FFFDF7] animate-in zoom-in-95 font-mono"
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}

@@ -109,8 +109,8 @@ export const RivalRosterModal: React.FC<RivalRosterModalProps> = ({
   const commonNumbers = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 23, 30, 77];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 select-none animate-in fade-in duration-200">
-      <div className="bg-[#0A1633] border border-[#234380] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto overscroll-contain select-none animate-in fade-in duration-200">
+      <div className="bg-[#0A1633] border border-[#234380] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[92dvh] my-auto overflow-hidden">
         {/* Header */}
         <div className="px-5 py-4 bg-gradient-to-r from-[#0C1B3E] via-[#0F224C] to-[#0C1B3E] border-b border-[#234380] flex items-center justify-between">
           <div className="flex items-center gap-2.5">

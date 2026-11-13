@@ -1329,8 +1329,8 @@ export const GeneralAccumulatedStatsView: React.FC<GeneralAccumulatedStatsViewPr
 
       {/* Selected Match Player Detail Modal */}
       {selectedMatchPlayer && activeMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-[#060f22]/85 backdrop-blur-md animate-in fade-in">
-          <div className="bg-[#0e224a] border-2 border-amber-400 rounded-2xl p-4 max-w-md w-full shadow-2xl space-y-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-[#060f22]/85 backdrop-blur-md overflow-y-auto overscroll-contain animate-in fade-in">
+          <div className="bg-[#0e224a] border-2 border-amber-400 rounded-2xl p-4 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain my-auto shadow-2xl space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2.5">
                 <span className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-scoreboard text-base font-black flex items-center justify-center shadow">

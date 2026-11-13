@@ -132,8 +132,8 @@ export const LiveSpectatorQRModal: React.FC<LiveSpectatorQRModalProps> = ({
   const away = game.awayTeamName || 'Rival';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in select-none">
-      <div className="bg-[#0B1C3D] border border-cyan-500/50 rounded-2xl w-full max-w-lg max-h-[92dvh] flex flex-col text-[#FFFDF7] shadow-2xl overflow-hidden animate-in zoom-in-95">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in select-none">
+      <div className="bg-[#0B1C3D] border border-cyan-500/50 rounded-2xl w-full max-w-lg max-h-[92dvh] my-auto flex flex-col text-[#FFFDF7] shadow-2xl overflow-hidden animate-in zoom-in-95">
         
         {/* Header */}
         <div className="px-4 py-3 bg-gradient-to-r from-[#071328] via-[#0E224A] to-[#071328] border-b border-cyan-500/40 flex items-center justify-between shrink-0">

@@ -730,7 +730,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#060D1E] text-slate-100 flex flex-col font-sans select-none pb-12 antialiased">
+    <div className="h-[100dvh] overflow-y-auto overscroll-contain bg-[#060D1E] text-slate-100 flex flex-col font-sans select-none pb-16 antialiased">
       {/* 1. SPECTATOR TOP BAR - ZERO APP MENUS */}
       <header className="sticky top-0 z-40 bg-[#0A1630]/95 backdrop-blur-md border-b border-[#1E3461] px-3 sm:px-6 py-2.5 flex items-center justify-between shadow-xl">
         <div className="flex items-center gap-2.5">

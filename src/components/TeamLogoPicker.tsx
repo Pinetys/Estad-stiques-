@@ -247,8 +247,8 @@ export const TeamLogoPickerModal: React.FC<TeamLogoPickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in">
-      <div className="bg-[#1A1D23] border border-gray-700 rounded-lg max-w-md w-full p-4 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto overscroll-contain animate-in fade-in">
+      <div className="bg-[#1A1D23] border border-gray-700 rounded-lg max-w-md w-full p-4 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto overscroll-contain my-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-2.5 border-b border-gray-800">
           <div className="flex items-center gap-2">
