@@ -2186,7 +2186,7 @@ export default function App() {
   }
 
   return (
-    <div className={`${isCourtMode ? 'h-full max-h-full overflow-hidden bg-[#070c1e] text-slate-100' : 'h-full min-h-0 overflow-y-auto bg-[#090f23] text-slate-100'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full overflow-x-hidden relative`}>
+    <div className={`${isCourtMode ? 'h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#070c1e] text-slate-100' : 'min-h-[100dvh] bg-[#090f23] text-slate-100 overflow-x-clip'} flex flex-col selection:bg-orange-500 selection:text-white w-full max-w-full relative`}>
       {/* 1. If Court Mode is Active: Show Ultra-Clean Bench Tactile Console */}
       {isCourtMode ? (
         <CourtBenchMode
@@ -2459,7 +2459,7 @@ export default function App() {
                       className="fixed inset-0 z-40 bg-[#060f22]/70 backdrop-blur-xs transition-opacity"
                       onClick={() => setShowMobileHeaderMenu(false)}
                     />
-                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#0d1633]/98 backdrop-blur-md border border-blue-800/80 rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[85vh] overflow-y-auto">
+                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#0d1633]/98 backdrop-blur-md border border-blue-800/80 rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[calc(100dvh-7.5rem)] overflow-y-auto">
                       {/* Prominent Accessible Close Header */}
                       <div className="flex items-center justify-between px-2 py-1 pb-2 border-b border-blue-900/60">
                         <div className="flex items-center gap-2">
@@ -2940,7 +2940,7 @@ export default function App() {
           )}
 
           {/* Active Tab View Content */}
-          <main className="grow bg-[#090f23]">
+          <main className="grow bg-[#090f23] pb-6">
             {/* Teams Hub: Primary Entry Point of the App */}
             {activeTab === 'teams' && (
               <TeamsHubView
@@ -3142,7 +3142,7 @@ export default function App() {
           </main>
 
           {/* High Density Mobile Bottom Navigation Bar (5 Primary Tabs) */}
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0e224a]/95 border-t-2 border-[#D4AF37] backdrop-blur-md pb-safe shadow-2xl">
+          <div className="sticky bottom-0 left-0 right-0 z-40 shrink-0 mt-auto bg-[#0e224a]/95 border-t-2 border-[#D4AF37] backdrop-blur-md pb-safe shadow-2xl">
             <div className="max-w-xl mx-auto grid grid-cols-5 px-1 py-1 gap-1">
               {/* Teams Hub Tab (Primary Entry Point) */}
               <button

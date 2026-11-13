@@ -1092,7 +1092,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
   };
 
   return (
-    <div className="h-full max-h-full w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col overflow-hidden select-none px-safe">
+    <div className={`h-full max-h-full w-full bg-[#0B1C3D] text-[#FFFDF7] flex flex-col ${isLandscapeTablet ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'} select-none px-safe`}>
       {/* 1. TOP BAR: LANDSCAPE (CENTERED QUARTER CLOCK & ALL CONTROLS) VS PORTRAIT */}
       {isLandscapeTablet ? (
         <CourtLandscapeHeader
@@ -2031,7 +2031,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
 
       {/* 5. MAIN ACTION BUTTONS CONSOLE (PORTRAIT ONLY) */}
       {!isLandscapeTablet && (
-        <div className={`max-w-3xl md:max-w-4xl mx-auto w-full px-1.5 sm:px-3 flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col justify-evenly py-0.5 sm:py-1 transition-opacity duration-200 ${
+        <div className={`max-w-3xl md:max-w-4xl mx-auto w-full px-1.5 sm:px-3 flex-1 min-h-[190px] overflow-y-auto overscroll-contain flex flex-col justify-evenly py-0.5 sm:py-1 transition-opacity duration-200 ${
           isActionsLocked ? 'opacity-35 pointer-events-none' : ''
         }`}>
           <CourtActionConsole
@@ -2048,7 +2048,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       {isLandscapeTablet && (
         <div className="flex-1 min-h-0 w-full flex flex-row items-stretch px-2 sm:px-3 py-0.5 gap-2.5 max-w-[1500px] mx-auto overflow-hidden">
           {/* LEFT COLUMN: ENTIRE ROSTER & DIRECT FAST IN-GAME SUBSTITUTIONS */}
-          <div className="w-[42%] lg:w-[38%] xl:w-[35%] h-full flex flex-col justify-between overflow-hidden">
+          <div className="w-[42%] lg:w-[38%] xl:w-[35%] h-full min-h-0 flex flex-col justify-between overflow-y-auto overscroll-contain">
             <CourtRosterPanel
               game={game}
               playersOnCourt={playersOnCourt}
@@ -2093,7 +2093,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
           </div>
 
           {/* RIGHT COLUMN: PARQUET COURT / LIVE MATCH HUD (TOP) & ACTION CONSOLE AT BOTTOM */}
-          <div className="flex-1 min-w-0 flex flex-col justify-between h-full p-1 overflow-hidden gap-1">
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col justify-between h-full p-1 overflow-y-auto overscroll-contain gap-1">
             {/* Top Prompt Area: Bonus / Assist + Parquet Court or Live Match Intelligence HUD */}
             <div className="shrink-0 space-y-1">
               {bonusFreeThrowPrompt && renderBonusAssistant()}
@@ -2462,7 +2462,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       {/* 8b. MODAL / PROMPT: FALTA RECIBIDA CON CANASTA (2+1, 3+1 O SIN CANASTA) */}
       {pendingFdPlayer && (
         <div className="fixed inset-0 z-50 bg-[#071228]/85 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-2 sm:p-4 animate-in fade-in select-none">
-          <div className="bg-[#0B1C3D] border-2 border-emerald-500 rounded-2xl p-4 max-w-md w-full mx-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
+          <div className="bg-[#0B1C3D] border-2 border-emerald-500 rounded-2xl p-4 max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain mx-auto shadow-2xl space-y-3 animate-in slide-in-from-bottom">
             <div className="flex items-center justify-between pb-2 border-b border-[#203a70]">
               <div className="flex items-center gap-2">
                 <div className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-mono font-black text-xs uppercase rounded shadow">
@@ -2606,7 +2606,7 @@ export const CourtBenchMode: React.FC<CourtBenchModeProps> = ({
       {/* 9. OPPONENT PLAYER SCOUTING MODAL */}
       {scoutingOppAction && (
         <div className="fixed inset-0 z-50 bg-[#071228]/85 flex items-center justify-center p-3 backdrop-blur-sm animate-in fade-in select-none">
-          <div className="bg-[#0B1C3D] border-2 border-[#203a70] rounded-2xl p-4 max-w-sm w-full shadow-2xl space-y-3">
+          <div className="bg-[#0B1C3D] border-2 border-[#203a70] rounded-2xl p-4 max-w-sm w-full max-h-[92dvh] overflow-y-auto overscroll-contain shadow-2xl space-y-3">
             <div className="flex items-center justify-between border-b border-[#203a70] pb-2">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-[#0E224A] border border-[#D4AF37]/50 flex items-center justify-center text-[#F5C542] font-bold font-mono text-xs">
