@@ -1,7 +1,8 @@
 import { Player, TeamProfile, Game } from '../types';
 import { DEFAULT_ROSTER, OPPONENT_TEAMS } from '../data/defaultData';
 import { getSavedGamesFromStorage, saveGamesToStorage, isDemoGame } from './libraryUtils';
-import { getMatchesForTeam, isGameForTeam } from './teamIsolation';
+import { getMatchesForTeam, isGameForTeam, areCategoriesCompatible } from './teamIsolation';
+import { BRAFA_SENIOR_TEAM } from '../data/brafaTuroSeniorMatch';
 import {
   syncTeamToCloud,
   deleteTeamFromCloud,
@@ -11,6 +12,7 @@ import {
 const TEAMS_STORAGE_KEY = 'basketstats_registered_teams_v2';
 const ACTIVE_TEAM_ID_KEY = 'basketstats_active_team_id_v2';
 export const TEAM_TOMBSTONES_STORAGE_KEY = 'basketstats_deleted_team_tombstones_v1';
+const SENIOR_TEAM_SEEDED_KEY = 'basketstats_senior_brafa_team_seeded_v2';
 
 export function getDeletedTeamTombstones(): string[] {
   try {
@@ -83,8 +85,20 @@ export function ensureTeamsForMatches(matches: Game[]): {
     const homeName = (updated.homeTeamName || '').trim();
     if (!homeName) return updated;
 
+    const findMatchingTeamByNameAndCategory = (name: string, category?: string): TeamProfile | undefined => {
+      const nameLower = name.toLowerCase().trim();
+      const candidates = newTeams.filter(t => t.name?.toLowerCase().trim() === nameLower);
+      if (candidates.length === 0) return undefined;
+      const catLower = (category || '').toLowerCase().trim();
+      return (
+        candidates.find(t => catLower && (t.category || '').toLowerCase().trim() === catLower) ||
+        candidates.find(t => areCategoriesCompatible(t.category, category))
+      );
+    };
+
     let matchingTeam =
-      (updated.teamId && teamsMap.get(updated.teamId)) || teamsMap.get(homeName.toLowerCase());
+      (updated.teamId ? teamsMap.get(updated.teamId) : undefined) ||
+      findMatchingTeamByNameAndCategory(homeName, updated.category);
 
     if (!matchingTeam) {
       // Synthesize team profile from match data
@@ -157,10 +171,40 @@ export function getRegisteredTeams(): TeamProfile[] {
     }
   }
 
+  const ensureSeniorTeamPresent = (list: TeamProfile[]): TeamProfile[] => {
+    try {
+      const tombstones = new Set(getDeletedTeamTombstones());
+      const alreadySeeded = localStorage.getItem(SENIOR_TEAM_SEEDED_KEY) === 'true';
+      const hasCanonicalTeam = list.some(t => t.id === BRAFA_SENIOR_TEAM.id);
+      const cleaned = hasCanonicalTeam
+        ? list.filter(t => t.id !== 'team-brafa-senior-masc')
+        : list;
+      const hasAnyBrafaSenior = cleaned.some(
+        t => t.id === BRAFA_SENIOR_TEAM.id ||
+             (t.name?.toLowerCase().trim() === 'brafa' && (t.category || '').toLowerCase().includes('senior'))
+      );
+
+      if (!alreadySeeded && !hasAnyBrafaSenior && !tombstones.has(BRAFA_SENIOR_TEAM.id)) {
+        const updated = [BRAFA_SENIOR_TEAM, ...cleaned];
+        localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem(SENIOR_TEAM_SEEDED_KEY, 'true');
+        return updated;
+      }
+      if (cleaned.length !== list.length) {
+        localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(cleaned));
+      }
+      if (hasAnyBrafaSenior && !alreadySeeded) {
+        localStorage.setItem(SENIOR_TEAM_SEEDED_KEY, 'true');
+      }
+      return cleaned;
+    } catch {}
+    return list;
+  };
+
   try {
     const raw = localStorage.getItem(TEAMS_STORAGE_KEY);
     if (!raw) {
-      return [];
+      return ensureSeniorTeamPresent([]);
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -175,12 +219,12 @@ export function getRegisteredTeams(): TeamProfile[] {
           deleteTeamFromCloud(demoTeam.id);
         });
       }
-      return cleanUserTeams;
+      return ensureSeniorTeamPresent(cleanUserTeams);
     }
   } catch (err) {
     console.error('Error reading teams from storage:', err);
   }
-  return [];
+  return ensureSeniorTeamPresent([]);
 }
 
 /**

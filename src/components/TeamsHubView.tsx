@@ -27,6 +27,7 @@ interface TeamsHubViewProps {
   teams: TeamProfile[];
   activeTeamId: string;
   currentGame: Game;
+  libraryGames?: Game[];
   activeCloudMatch?: ActiveMatchMetadata | null;
   onSelectTeam: (teamId: string) => void;
   onSaveTeam: (team: TeamProfile) => void;
@@ -54,6 +55,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
   teams,
   activeTeamId,
   currentGame,
+  libraryGames,
   activeCloudMatch,
   onSelectTeam,
   onDeleteTeam,
@@ -113,17 +115,19 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
     });
   }, [teams, selectedCategoryFilter, searchQuery]);
 
-  // Check if current game is actively in session
-  const isMatchInProgress = useMemo(() => {
+  // Check if current game is actively in session or recently closed with recorded stats
+  const hasRecordedGameData = useMemo(() => {
     return (
-      currentGame.status === 'live' &&
-      (currentGame.events.length > 0 ||
-        currentGame.homeScore > 0 ||
-        currentGame.awayScore > 0 ||
-        currentGame.currentQuarter > 1 ||
-        currentGame.isClockRunning)
+      currentGame.events.length > 0 ||
+      currentGame.homeScore > 0 ||
+      currentGame.awayScore > 0 ||
+      currentGame.currentQuarter > 1 ||
+      currentGame.isClockRunning
     );
   }, [currentGame]);
+
+  const isMatchInProgress = currentGame.status === 'live' && hasRecordedGameData;
+  const isMatchRecentlyFinished = currentGame.status === 'finished' && hasRecordedGameData;
 
   // Delete team with confirmation modal
   const handleDelete = (team: TeamProfile, e: React.MouseEvent) => {
@@ -272,7 +276,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
         </div>
       )}
 
-      {/* 2. Compact Match In Progress Banner (if active) */}
+      {/* 2. Compact Match In Progress Banner (if active) or Recently Finished Banner */}
       {isMatchInProgress && (
         <div className="bg-gradient-to-r from-orange-950/50 via-[#1A1D23] to-[#14161B] border border-orange-500/50 rounded-xl px-4 py-3 shadow-md flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
@@ -306,6 +310,43 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
             className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95"
           >
             <span>Continuar Partido</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {isMatchRecentlyFinished && (
+        <div className="bg-gradient-to-r from-emerald-950/50 via-[#0E224A] to-[#0B1C3D] border border-emerald-500/50 rounded-xl px-4 py-3 shadow-md flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+              FINALIZADO
+            </span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-white">
+                  {currentGame.homeTeamName} {currentGame.homeScore} - {currentGame.awayScore} {currentGame.awayTeamName}
+                </span>
+                {currentGame.category && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono">
+                    {currentGame.category}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-mono text-slate-300">
+                Guardado en la biblioteca del equipo • {currentGame.date}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click', soundEnabled);
+              onResumeGame();
+            }}
+            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95"
+          >
+            <span>Ver Partido y Estadísticas</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -401,7 +442,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTeams.map(team => {
-            const teamMatches = getTeamMatches(team.id);
+            const teamMatches = getTeamMatches(team.id, libraryGames);
             const wins = teamMatches.filter(m => m.homeScore > m.awayScore).length;
             const losses = teamMatches.filter(m => m.homeScore < m.awayScore).length;
             const isActive = team.id === activeTeamId;
@@ -658,7 +699,7 @@ export const TeamsHubView: React.FC<TeamsHubViewProps> = ({
 
             {/* Sub-header with quick actions and stats */}
             {(() => {
-              const teamMatches = getTeamMatches(selectedTeamForMatches.id);
+              const teamMatches = getTeamMatches(selectedTeamForMatches.id, libraryGames);
               const wins = teamMatches.filter(m => m.homeScore > m.awayScore).length;
               const losses = teamMatches.filter(m => m.homeScore < m.awayScore).length;
 

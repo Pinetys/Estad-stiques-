@@ -91,13 +91,24 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
       seenEventIds.add(eventId);
 
       const actionType = typeof e.actionType === 'string' && e.actionType.trim() ? e.actionType.trim() : 'ACTION';
+      const resolvedGameSeconds =
+        typeof e.gameSeconds === 'number' && !isNaN(e.gameSeconds)
+          ? e.gameSeconds
+          : (typeof e.secondsRemaining === 'number' && !isNaN(e.secondsRemaining) ? e.secondsRemaining : 600);
+      const mins = Math.floor(resolvedGameSeconds / 60);
+      const secs = resolvedGameSeconds % 60;
+      const resolvedFormatted =
+        e.gameTimeFormatted ||
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
       return {
         ...e,
         id: eventId,
         actionType,
         quarter: typeof e.quarter === 'number' && !isNaN(e.quarter) ? e.quarter : 1,
-        secondsRemaining: typeof e.secondsRemaining === 'number' && !isNaN(e.secondsRemaining) ? e.secondsRemaining : 600,
+        gameSeconds: resolvedGameSeconds,
+        secondsRemaining: resolvedGameSeconds,
+        gameTimeFormatted: resolvedFormatted,
         timestamp: e.timestamp ? (Number(e.timestamp) || Date.now()) : Date.now(),
         pointsAdded: typeof e.pointsAdded === 'number' && !isNaN(e.pointsAdded) ? e.pointsAdded : 0,
         isOpponentAction: Boolean(e.isOpponentAction),
@@ -105,25 +116,46 @@ export function validateQRGameData(raw: any, context = 'QR / Remote Sync'): QRGa
     });
 
   // 5. Map & sanitize players
+  const VALID_POSITIONS = new Set(['B', 'E', 'A', 'AP', 'P']);
   const rawPlayersList = Array.isArray(raw.players) ? raw.players : [];
   const normalizedPlayers = rawPlayersList.map((p, idx) => ({
     ...p,
     id: String(p.id ?? `p-${idx}`),
     name: String(p.name || `Jugador #${p.number ?? idx + 1}`),
     number: typeof p.number === 'number' ? p.number : (Number(p.number) || (idx + 1)),
+    starter: typeof p.starter === 'boolean' ? p.starter : idx < 5,
     onCourt: Boolean(p.onCourt),
-    position: p.position || 'JUG',
-    points: typeof p.points === 'number' && !isNaN(p.points) ? p.points : 0,
-    fouls: typeof p.fouls === 'number' && !isNaN(p.fouls) ? p.fouls : 0,
+    position: VALID_POSITIONS.has(p.position) ? p.position : 'A',
+    foulsCount: typeof p.foulsCount === 'number' && !isNaN(p.foulsCount)
+      ? p.foulsCount
+      : (typeof p.fouls === 'number' && !isNaN(p.fouls) ? p.fouls : 0),
+    isFouledOut: Boolean(p.isFouledOut),
     minutesPlayedSeconds: typeof p.minutesPlayedSeconds === 'number' && !isNaN(p.minutesPlayedSeconds) ? p.minutesPlayedSeconds : 0,
+    quarterSeconds: p.quarterSeconds && typeof p.quarterSeconds === 'object' ? p.quarterSeconds : {},
   }));
 
-  const normalizedSettings = raw.settings && typeof raw.settings === 'object' ? raw.settings : {
-    quarterDurationMinutes: 10,
-    totalQuarters: 4,
-    foulOutLimit: 5,
-    teamBonusFouls: 4,
-  };
+  const normalizedSettings = raw.settings && typeof raw.settings === 'object'
+    ? {
+        quarterDurationMinutes: 10,
+        totalQuarters: 4,
+        foulOutLimit: 5,
+        bonusFoulsLimit: 5,
+        soundEnabled: true,
+        vibrationEnabled: true,
+        assistPromptEnabled: true,
+        courtMode: false,
+        ...raw.settings,
+      }
+    : {
+        quarterDurationMinutes: 10,
+        totalQuarters: 4,
+        foulOutLimit: 5,
+        bonusFoulsLimit: 5,
+        soundEnabled: true,
+        vibrationEnabled: true,
+        assistPromptEnabled: true,
+        courtMode: false,
+      };
 
   // 6. Build clean, type-safe Game object
   const normalizedGame: Game = {
@@ -517,14 +549,16 @@ class AutoSyncManager {
         localStorage.setItem('basketstats_matches_backup_safety', JSON.stringify(mergedMatches));
       } catch {}
 
-      // Push missing local matches to server ONLY if forced (e.g. manual sync) to prevent SSE loops
+      // Push missing local matches/teams to server ONLY if forced (e.g. manual sync) to prevent SSE loops
       if (options.force) {
         const currentLocalMatches = getSavedGamesFromStorage();
         const currentLocalTeams = getRegisteredTeams();
         const serverIds = new Set(serverMatches.map(s => s.id));
+        const serverTeamIds = new Set(serverTeams.map(t => t.id));
         const hasMissingOnServer = currentLocalMatches.some(lm => !serverIds.has(lm.id));
+        const hasMissingTeamsOnServer = currentLocalTeams.some(lt => !serverTeamIds.has(lt.id));
 
-        if (hasMissingOnServer) {
+        if (hasMissingOnServer || hasMissingTeamsOnServer) {
           this.pushBulkToServer(currentLocalMatches, currentLocalTeams).catch(() => {});
         }
       }
@@ -854,7 +888,18 @@ class AutoSyncManager {
       }
     } catch {}
 
-    // 2. Try transfer code endpoint (which falls back to match ID and active match)
+    // 2. Try Cloud Firestore directly if configured
+    if (isFirebaseConfigured && !this.firestoreQuotaExceeded) {
+      try {
+        const cloudGame = await fetchMatchFromCloud(cleanId);
+        if (cloudGame) {
+          const validation = validateQRGameData(cloudGame, `FetchById Cloud: ${cleanId}`);
+          if (validation.isValid && validation.game) return validation.game;
+        }
+      } catch {}
+    }
+
+    // 3. Try transfer code endpoint (exact match by code or match ID)
     try {
       const res = await fetch(`/api/sync/get-transfer-code/${encodeURIComponent(cleanId)}`);
       if (res.ok) {
@@ -866,7 +911,7 @@ class AutoSyncManager {
       }
     } catch {}
 
-    // 3. Fallback to local stored library
+    // 4. Fallback to local stored library
     const local = getSavedGamesFromStorage().find(
       g => g.id === cleanId || g.id?.toLowerCase() === cleanId.toLowerCase()
     );

@@ -4,6 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { BRAFA_SENIOR_TEAM, BRAFA_VS_TURO_SENIOR_GAME } from './src/data/brafaTuroSeniorMatch';
 
 interface ServerSyncDatabase {
   matches: Record<string, any>;
@@ -66,6 +67,43 @@ function loadServerSyncDb(): ServerSyncDatabase {
 }
 
 let serverDb = loadServerSyncDb();
+
+function ensureServerSeniorSeed() {
+  let changed = false;
+  const deletedMatches = new Set(serverDb.deletedMatchIds || []);
+  const deletedTeams = new Set(serverDb.deletedTeamIds || []);
+
+  if (serverDb.teams['team-brafa-senior-masc'] && serverDb.teams[BRAFA_SENIOR_TEAM.id]) {
+    delete serverDb.teams['team-brafa-senior-masc'];
+    changed = true;
+  }
+
+  if (!deletedTeams.has(BRAFA_SENIOR_TEAM.id) && !serverDb.teams[BRAFA_SENIOR_TEAM.id]) {
+    serverDb.teams[BRAFA_SENIOR_TEAM.id] = BRAFA_SENIOR_TEAM;
+    changed = true;
+  }
+
+  const existingMatch = serverDb.matches[BRAFA_VS_TURO_SENIOR_GAME.id];
+  const isEmptyStub =
+    existingMatch &&
+    (existingMatch.events?.length || 0) === 0 &&
+    (existingMatch.homeScore || 0) === 0 &&
+    (existingMatch.awayScore || 0) === 0;
+
+  if (!deletedMatches.has(BRAFA_VS_TURO_SENIOR_GAME.id) && (!existingMatch || isEmptyStub)) {
+    serverDb.matches[BRAFA_VS_TURO_SENIOR_GAME.id] = BRAFA_VS_TURO_SENIOR_GAME;
+    if (serverDb.activeMatch?.id === BRAFA_VS_TURO_SENIOR_GAME.id) {
+      serverDb.activeMatch = BRAFA_VS_TURO_SENIOR_GAME;
+    }
+    changed = true;
+  }
+
+  if (changed) {
+    saveServerSyncDb();
+  }
+}
+
+ensureServerSeniorSeed();
 
 function saveServerSyncDb(): void {
   try {
@@ -674,8 +712,7 @@ async function startServer() {
       ) ||
       (serverDb.activeMatch?.id === rawId || serverDb.activeMatch?.id?.toLowerCase() === rawId.toLowerCase()
         ? serverDb.activeMatch
-        : null) ||
-      serverDb.activeMatch;
+        : null);
 
     if (!match) {
       return res.status(404).json({ error: 'Partido no encontrado en el servidor' });
@@ -876,7 +913,7 @@ async function startServer() {
       }
     }
 
-    // 4. Fallback: match by match ID (case-insensitive) or active live match
+    // 4. Fallback: match explicitly by match ID (case-insensitive)
     if (!matchedKey || !serverDb.transferCodes[matchedKey]) {
       const fallbackGame =
         serverDb.matches[originalInput] ||
@@ -885,8 +922,7 @@ async function startServer() {
         Object.values(serverDb.matches).find(
           m => m.id === originalInput || m.id?.toLowerCase() === originalInput.toLowerCase() || m.id?.toLowerCase() === rawCode.toLowerCase()
         ) ||
-        (serverDb.activeMatch?.id === originalInput || serverDb.activeMatch?.id?.toLowerCase() === originalInput.toLowerCase() ? serverDb.activeMatch : null) ||
-        serverDb.activeMatch;
+        (serverDb.activeMatch?.id === originalInput || serverDb.activeMatch?.id?.toLowerCase() === originalInput.toLowerCase() ? serverDb.activeMatch : null);
 
       if (fallbackGame) {
         return res.json({

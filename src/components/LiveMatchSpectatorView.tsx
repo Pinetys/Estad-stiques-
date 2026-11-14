@@ -18,6 +18,7 @@ import {
   Award,
   Shield,
   Activity,
+  LogOut,
 } from 'lucide-react';
 import { syncEngine } from '../lib/syncEngine';
 import {
@@ -35,6 +36,7 @@ interface LiveMatchSpectatorViewProps {
   onRefresh?: () => void;
   onRetry?: () => void;
   onConnectCode?: (code: string) => void;
+  onExitSpectator?: () => void;
 }
 
 export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
@@ -44,6 +46,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
   onRefresh,
   onRetry,
   onConnectCode,
+  onExitSpectator,
 }) => {
   const [selectedTeamTab, setSelectedTeamTab] = useState<'home' | 'away'>('home');
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
@@ -199,6 +202,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
 
   const isGameOver = game.status === 'finished';
   const foulLimit = game.settings?.foulOutLimit || 5;
+  const bonusLimit = game.settings?.bonusFoulsLimit || 5;
 
   // Quarters breakdown list
   const quartersList = useMemo(() => {
@@ -649,8 +653,8 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
 
   if (isConnecting) {
     return (
-      <div className="min-h-screen bg-[#060D1E] text-slate-100 flex flex-col items-center justify-center p-6 text-center font-sans select-none">
-        <div className="p-4 rounded-3xl bg-[#0B1A38] border border-cyan-500/40 shadow-2xl flex flex-col items-center max-w-sm w-full animate-in zoom-in-95">
+      <div className="h-[100dvh] overflow-y-auto bg-[#060D1E] text-slate-100 flex flex-col items-center justify-center p-6 text-center font-sans select-none">
+        <div className="p-4 rounded-3xl bg-[#0B1A38] border border-cyan-500/40 shadow-2xl flex flex-col items-center max-w-sm w-full my-auto animate-in zoom-in-95">
           <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-4 shadow-inner">
             <RefreshCw className="w-8 h-8 animate-spin" />
           </div>
@@ -663,6 +667,16 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           <div className="w-full bg-[#081228] h-1.5 rounded-full overflow-hidden border border-slate-700/50">
             <div className="h-full bg-gradient-to-r from-cyan-500 to-amber-400 rounded-full animate-pulse w-3/4" />
           </div>
+          {onExitSpectator && (
+            <button
+              type="button"
+              onClick={onExitSpectator}
+              className="mt-4 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-mono text-xs flex items-center gap-1.5 transition"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Volver a la App</span>
+            </button>
+          )}
         </div>
       </div>
     );
@@ -670,8 +684,8 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
 
   if (connectionError && (!game || !game.id || (game.events.length === 0 && game.homeScore === 0 && game.awayScore === 0))) {
     return (
-      <div className="min-h-screen bg-[#060D1E] text-slate-100 flex flex-col items-center justify-center p-4 text-center font-sans select-none">
-        <div className="p-6 rounded-3xl bg-[#0B1A38] border border-rose-500/40 shadow-2xl flex flex-col items-center max-w-md w-full animate-in zoom-in-95 space-y-4">
+      <div className="h-[100dvh] overflow-y-auto bg-[#060D1E] text-slate-100 flex flex-col items-center justify-center p-4 text-center font-sans select-none">
+        <div className="p-6 rounded-3xl bg-[#0B1A38] border border-rose-500/40 shadow-2xl flex flex-col items-center max-w-md w-full my-auto animate-in zoom-in-95 space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-center text-rose-400 shadow-inner">
             <Radio className="w-8 h-8" />
           </div>
@@ -712,15 +726,25 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
             </div>
           </div>
 
-          <div className="w-full pt-1">
+          <div className="w-full pt-1 flex flex-col sm:flex-row gap-2">
             {onRetry && (
               <button
                 type="button"
                 onClick={onRetry}
-                className="w-full py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Reintentar Conexión</span>
+              </button>
+            )}
+            {onExitSpectator && (
+              <button
+                type="button"
+                onClick={onExitSpectator}
+                className="py-2.5 px-4 rounded-xl bg-[#081228] hover:bg-slate-800 text-slate-200 border border-slate-700 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Salir</span>
               </button>
             )}
           </div>
@@ -778,6 +802,19 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
             isCompact={true}
             className="p-1.5 rounded-lg bg-[#142347] hover:bg-[#1E3461] border border-[#27457C] text-xs transition shadow-sm"
           />
+
+          {/* Exit Spectator Mode button */}
+          {onExitSpectator && (
+            <button
+              type="button"
+              onClick={onExitSpectator}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700 text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+              title="Salir del modo seguidores y volver a la aplicación"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Salir</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -789,7 +826,7 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
           <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-amber-500/10 blur-3xl pointer-events-none rounded-full" />
 
           {/* Header match status & clock */}
-          <div className="flex items-center justify-between border-b border-[#233F75]/70 pb-3 mb-4">
+          <div className="flex items-center justify-between border-b border-[#233F75]/70 pb-3 mb-4 gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-xl bg-[#172E5C] text-amber-300 font-mono font-black text-xs sm:text-sm uppercase tracking-wider border border-amber-500/30">
                 {formatQuarterShort(game.currentQuarter, matchTotalQuarters)}
@@ -806,10 +843,26 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
               )}
             </div>
 
-            {/* Game Clock Display */}
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-black/60 border border-amber-500/40 text-amber-400 font-scoreboard font-black text-xl sm:text-2xl tracking-widest shadow-inner">
-              <Clock className="w-4 h-4 text-amber-400/80 shrink-0" />
-              <MasterClockNumber secondsRemaining={game.currentSecondsRemaining} isFinished={isGameOver} />
+            <div className="flex items-center gap-2">
+              {/* Possession Shot Clock */}
+              {!isGameOver && typeof game.shotClockSeconds === 'number' && (
+                <div
+                  className={`px-2.5 py-1 rounded-xl border font-scoreboard font-black text-base sm:text-lg leading-none ${
+                    game.shotClockSeconds <= 5
+                      ? 'bg-red-950/80 border-red-500/70 text-red-400'
+                      : 'bg-black/60 border-cyan-500/40 text-cyan-300'
+                  }`}
+                  title="Reloj de posesión (24s)"
+                >
+                  {String(game.shotClockSeconds).padStart(2, '0')}s
+                </div>
+              )}
+
+              {/* Game Clock Display */}
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-black/60 border border-amber-500/40 text-amber-400 font-scoreboard font-black text-xl sm:text-2xl tracking-widest shadow-inner">
+                <Clock className="w-4 h-4 text-amber-400/80 shrink-0" />
+                <MasterClockNumber secondsRemaining={game.currentSecondsRemaining} isFinished={isGameOver} />
+              </div>
             </div>
           </div>
 
@@ -835,9 +888,9 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
               <div className="mt-2 sm:mt-3 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono">
                 <span className="text-slate-400 hidden xs:inline">Faltas:</span>
                 <span className="font-bold text-white px-1.5 py-0.2 rounded bg-[#172E5C]">
-                  {homeFoulsInCurrentQ}/4
+                  {homeFoulsInCurrentQ}/{bonusLimit}
                 </span>
-                {homeFoulsInCurrentQ >= 4 && (
+                {homeFoulsInCurrentQ >= bonusLimit && (
                   <span className="px-1 py-0.2 rounded bg-red-900/80 text-red-300 font-black text-[9px] border border-red-600 animate-pulse">
                     BONUS
                   </span>
@@ -890,14 +943,14 @@ export const LiveMatchSpectatorView: React.FC<LiveMatchSpectatorViewProps> = ({
 
               {/* Away Team Bonus & Fouls info */}
               <div className="mt-2 sm:mt-3 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-mono">
-                {awayFoulsInCurrentQ >= 4 && (
+                {awayFoulsInCurrentQ >= bonusLimit && (
                   <span className="px-1 py-0.2 rounded bg-red-900/80 text-red-300 font-black text-[9px] border border-red-600 animate-pulse">
                     BONUS
                   </span>
                 )}
                 <span className="text-slate-400 hidden xs:inline">Faltas:</span>
                 <span className="font-bold text-white px-1.5 py-0.2 rounded bg-[#172E5C]">
-                  {awayFoulsInCurrentQ}/4
+                  {awayFoulsInCurrentQ}/{bonusLimit}
                 </span>
               </div>
             </div>

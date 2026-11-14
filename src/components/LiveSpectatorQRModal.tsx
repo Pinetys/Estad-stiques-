@@ -123,7 +123,8 @@ export const LiveSpectatorQRModal: React.FC<LiveSpectatorQRModalProps> = ({
     if (!spectatorUrl) return;
     playSound('click', game.settings.soundEnabled);
     triggerHaptic('light', game.settings.vibrationEnabled);
-    window.open(spectatorUrl, '_blank');
+    const separator = spectatorUrl.includes('?') ? '&' : '?';
+    window.open(`${spectatorUrl}${separator}preview=1`, '_blank');
   };
 
   if (!isOpen) return null;

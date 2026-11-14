@@ -4,9 +4,12 @@ import { syncMatchToCloud, deleteMatchFromCloud, fetchAllMatchesFromCloud } from
 import { isMasterAdmin } from './accessControl';
 import { getDeviceRole } from './deviceRole';
 import { saveSnapshotToVault } from './vaultBackups';
+import { areCategoriesCompatible } from './teamIsolation';
+import { BRAFA_VS_TURO_SENIOR_GAME } from '../data/brafaTuroSeniorMatch';
 
 export const LIBRARY_STORAGE_KEY = 'basketstats_games_library_v2';
 export const LIBRARY_INITIALIZED_KEY = 'basketstats_library_initialized_v2';
+const SENIOR_MATCH_SEEDED_KEY = 'basketstats_senior_brafa_turo_seeded_v2';
 
 export const DEMO_GAME_IDS = new Set(['game-sample-01', 'game-sample-02', 'sample-game-1', 'sample-game-2']);
 export const CURATED_INITIAL_GAME_IDS = new Set(['game-brafa-gaudi', 'game-brafa-bam', 'game-brafa-ubsa']);
@@ -953,20 +956,48 @@ export function getSavedGamesFromStorage(): Game[] {
     }
   }
 
+  const ensureSeniorMatchPresent = (list: Game[]): Game[] => {
+    try {
+      const tombstones = new Set(getDeletedTombstones());
+      const alreadySeeded = localStorage.getItem(SENIOR_MATCH_SEEDED_KEY) === 'true';
+      const existing = list.find(g => g.id === BRAFA_VS_TURO_SENIOR_GAME.id);
+      const isEmptyStub =
+        existing &&
+        (existing.events?.length || 0) === 0 &&
+        (existing.homeScore || 0) === 0 &&
+        (existing.awayScore || 0) === 0;
+
+      if (!tombstones.has(BRAFA_VS_TURO_SENIOR_GAME.id) && ((!alreadySeeded && !existing) || isEmptyStub)) {
+        const filtered = list.filter(g => g.id !== BRAFA_VS_TURO_SENIOR_GAME.id);
+        const updated = [BRAFA_VS_TURO_SENIOR_GAME, ...filtered];
+        localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem(SENIOR_MATCH_SEEDED_KEY, 'true');
+        return updated;
+      }
+      if (existing && !isEmptyStub && !alreadySeeded) {
+        localStorage.setItem(SENIOR_MATCH_SEEDED_KEY, 'true');
+      }
+    } catch {}
+    return list;
+  };
+
   // Non-master users / subscribers always start with an empty match list until they play/record matches
   if (!isMasterAdmin()) {
     try {
       const raw = localStorage.getItem(LIBRARY_STORAGE_KEY);
-      if (!raw) return [];
+      if (!raw) {
+        return ensureSeniorMatchPresent([]);
+      }
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         const tombstones = new Set(getDeletedTombstones());
-        return parsed.filter(g => isAllowedOfficialOrUserGame(g) && !tombstones.has(g.id));
+        const clean = parsed.filter(g => isAllowedOfficialOrUserGame(g) && !tombstones.has(g.id));
+        return ensureSeniorMatchPresent(clean);
       }
     } catch {
       return [];
     }
-    return [];
+    return ensureSeniorMatchPresent([]);
   }
 
   try {
@@ -975,12 +1006,12 @@ export function getSavedGamesFromStorage(): Game[] {
       // First time initialization for Master user only if not initialized before
       const isInit = localStorage.getItem(LIBRARY_INITIALIZED_KEY);
       if (!isInit) {
-        const curated = getCuratedBrafaInfantilMatches();
+        const curated = ensureSeniorMatchPresent(getCuratedBrafaInfantilMatches());
         localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(curated));
         localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
         return curated;
       }
-      return [];
+      return ensureSeniorMatchPresent([]);
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -990,9 +1021,9 @@ export function getSavedGamesFromStorage(): Game[] {
       if (cleanGames.length !== parsed.length) {
         localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(cleanGames));
       }
-      return cleanGames;
+      return ensureSeniorMatchPresent(cleanGames);
     }
-    return [];
+    return ensureSeniorMatchPresent([]);
   } catch (e) {
     console.error('Error loading games library from storage:', e);
     return [];
@@ -1040,14 +1071,20 @@ export function saveOrUpdateGameInLibrary(game: Game): Game[] {
   if (!game.category || !game.category.trim()) {
     game.category = getGameCategory(game);
   }
-  // Ensure teamId is attached if missing and matching registered team exists
+  // Ensure teamId is attached if missing and matching registered team exists (preserving category compatibility!)
   if (!game.teamId && game.homeTeamName) {
     try {
       const raw = localStorage.getItem('basketstats_registered_teams_v2') || localStorage.getItem('basketstats_teams_v1');
       if (raw) {
         const teams = JSON.parse(raw);
         if (Array.isArray(teams)) {
-          const matching = teams.find(t => t.name?.toLowerCase().trim() === game.homeTeamName?.toLowerCase().trim());
+          const homeLower = game.homeTeamName.toLowerCase().trim();
+          const candidates = teams.filter(t => t.name?.toLowerCase().trim() === homeLower);
+          const gameCatLower = (game.category || '').toLowerCase().trim();
+          const matching =
+            candidates.find(t => gameCatLower && (t.category || '').toLowerCase().trim() === gameCatLower) ||
+            candidates.find(t => areCategoriesCompatible(t.category, game.category)) ||
+            (candidates.length === 1 ? candidates[0] : undefined);
           if (matching) {
             game.teamId = matching.id;
             if (!game.category && matching.category) {

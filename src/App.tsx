@@ -455,9 +455,31 @@ export default function App() {
   const [isSpectatorConnecting, setIsSpectatorConnecting] = useState(false);
   const [spectatorConnectionError, setSpectatorConnectionError] = useState<string | null>(null);
 
+  const handleExitSpectator = useCallback(() => {
+    syncEngine.setWatchedMatchId(null);
+    deviceRoleRef.current = 'recorder';
+    setDeviceRoleState('recorder');
+    persistDeviceRole('recorder');
+    setSpectatorConnectionError(null);
+    setIsSpectatorConnecting(false);
+    try {
+      const url = new URL(window.location.href);
+      ['mode', 'role', 'pair', 'code', 'match', 'matchId', 'id', 'preview'].forEach(k => {
+        url.searchParams.delete(k);
+      });
+      const nextSearch = url.searchParams.toString();
+      window.history.replaceState({}, '', `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${url.hash}`);
+    } catch {}
+    setActiveTab('teams');
+  }, []);
+
   const handleConnectSpectator = useCallback(async (pairCode?: string | null, matchId?: string | null) => {
     setIsSpectatorConnecting(true);
     setSpectatorConnectionError(null);
+
+    const normalizedPair = pairCode?.trim() || null;
+    const normalizedMatchId = matchId?.trim() || null;
+    const isExplicitTarget = Boolean(normalizedPair || normalizedMatchId);
 
     const applyLoadedGame = (candidate: any, source: string): boolean => {
       if (!candidate) return false;
@@ -489,50 +511,64 @@ export default function App() {
       isRemoteSyncInProgressRef.current = true;
       deviceRoleRef.current = 'spectator';
       setDeviceRoleState('spectator');
-      persistDeviceRole('spectator');
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('preview') !== '1') {
+          persistDeviceRole('spectator');
+        }
+      } catch {
+        persistDeviceRole('spectator');
+      }
       setActiveTab('live');
       setIsSpectatorConnecting(false);
       return true;
     };
 
     // 1. Try by transfer code if present
-    if (pairCode) {
+    if (normalizedPair) {
       try {
-        const loadedGame = await syncEngine.fetchGameByTransferCode(pairCode);
-        if (applyLoadedGame(loadedGame, `PIN Code: ${pairCode}`)) return;
+        const loadedGame = await syncEngine.fetchGameByTransferCode(normalizedPair);
+        if (applyLoadedGame(loadedGame, `PIN Code: ${normalizedPair}`)) return;
       } catch (err: any) {
         console.warn('Auto pair code error:', err);
       }
     }
 
     // 2. Try by matchId from server
-    if (matchId) {
+    if (normalizedMatchId) {
       try {
-        const loadedGame = await syncEngine.fetchGameById(matchId);
-        if (applyLoadedGame(loadedGame, `Server matchId: ${matchId}`)) return;
+        const loadedGame = await syncEngine.fetchGameById(normalizedMatchId);
+        if (applyLoadedGame(loadedGame, `Server matchId: ${normalizedMatchId}`)) return;
       } catch (err) {
         console.warn('Server matchId fetch error:', err);
       }
 
       // 3. Try from Cloud Firestore by matchId (for GitHub Pages & serverless hosting)
       try {
-        const cloudGame = await fetchMatchFromCloud(matchId);
-        if (applyLoadedGame(cloudGame, `Firestore matchId: ${matchId}`)) return;
+        const cloudGame = await fetchMatchFromCloud(normalizedMatchId);
+        if (applyLoadedGame(cloudGame, `Firestore matchId: ${normalizedMatchId}`)) return;
       } catch (err) {
         console.warn('Cloud matchId fetch error:', err);
       }
     }
 
     // 4. Try from local library
-    if (matchId) {
-      const cleanMatchId = matchId.trim().toLowerCase();
+    if (normalizedMatchId) {
+      const cleanMatchId = normalizedMatchId.toLowerCase();
       const local = getSavedGamesFromStorage().find(
         m => m.id?.toLowerCase() === cleanMatchId || (m as any).gameId?.toLowerCase() === cleanMatchId
       );
-      if (local && applyLoadedGame(local, `Local Storage: ${matchId}`)) return;
+      if (local && applyLoadedGame(local, `Local Storage: ${normalizedMatchId}`)) return;
     }
 
-    // 5. Try loading active match from server or Cloud Firestore
+    // If user requested a specific PIN or matchId and none of steps 1-4 matched, fail cleanly
+    if (isExplicitTarget) {
+      setIsSpectatorConnecting(false);
+      setSpectatorConnectionError('No se encontró el partido solicitado. Verifica el PIN o el enlace.');
+      return;
+    }
+
+    // 5. No explicit target: auto-discover active match from server or Cloud Firestore
     try {
       const activeMatch = await syncEngine.fetchActiveMatch();
       if (applyLoadedGame(activeMatch, 'Server Active Match')) return;
@@ -540,12 +576,21 @@ export default function App() {
 
     try {
       const cloudMatches = await fetchAllMatchesFromCloud();
-      const live = cloudMatches.find(m => m.status === 'live') || cloudMatches[0];
+      const live =
+        cloudMatches.find(m => m.status === 'live') ||
+        cloudMatches.find(m => (m.events?.length || 0) > 0 || (m.homeScore || 0) > 0 || (m.awayScore || 0) > 0) ||
+        cloudMatches[0];
       if (applyLoadedGame(live, 'Firestore Live Match')) return;
     } catch {}
 
+    // 6. Local fallback if live/active game exists on this device
+    const localCandidate = getSavedGamesFromStorage().find(
+      m => m.status === 'live' && ((m.events?.length || 0) > 0 || (m.homeScore || 0) > 0 || (m.awayScore || 0) > 0)
+    );
+    if (localCandidate && applyLoadedGame(localCandidate, 'Local Active Match')) return;
+
     setIsSpectatorConnecting(false);
-    setSpectatorConnectionError('No se pudo encontrar el partido en directo. Verifica el código QR o la conexión.');
+    setSpectatorConnectionError('No se pudo encontrar ningún partido en directo. Introduce un código PIN o verifica la conexión.');
   }, []);
 
   // Initialize and run the Unified Sync Engine (SSE streaming + server sync + firestore fallback)
@@ -559,13 +604,26 @@ export default function App() {
       const pairCode = params.get('pair') || params.get('code');
       const matchId = params.get('match') || params.get('matchId') || params.get('id');
       const urlMode = params.get('mode') || params.get('role');
+      const isPreview = params.get('preview') === '1';
+      const storedRole = deviceRoleRef.current || getDeviceRole();
 
       if (urlMode === 'spectator' || urlMode === 'monitor' || urlMode === 'live' || pairCode || matchId) {
+        deviceRoleRef.current = 'spectator';
         setDeviceRoleState('spectator');
-        persistDeviceRole('spectator');
+        if (!isPreview) {
+          persistDeviceRole('spectator');
+        }
       }
 
-      if (pairCode || matchId) {
+      if (
+        urlMode === 'spectator' ||
+        urlMode === 'monitor' ||
+        urlMode === 'live' ||
+        pairCode ||
+        matchId ||
+        storedRole === 'spectator' ||
+        storedRole === 'monitor'
+      ) {
         handleConnectSpectator(pairCode, matchId);
       }
     } catch (e) {
@@ -751,6 +809,11 @@ export default function App() {
         setLibraryGames(sanitized);
 
         setGame(currentGame => {
+          const watchedId = syncEngine.getWatchedMatchId();
+          if (watchedId && currentGame.id === watchedId) {
+            return currentGame;
+          }
+
           const isUntouchedLocal =
             (currentGame.events?.length === 0 || !currentGame.events) &&
             (currentGame.homeScore || 0) === 0 &&
@@ -965,6 +1028,10 @@ export default function App() {
 
       if (isRemoteSyncInProgressRef.current) {
         isRemoteSyncInProgressRef.current = false;
+        if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
+          saveOrUpdateGameInLibrary(game);
+          setLibraryGames(getSavedGamesFromStorage());
+        }
         return;
       }
 
@@ -999,7 +1066,7 @@ export default function App() {
   }, [game]);
 
   // Auto-Sync on Match Finish:
-  // Every time match status changes from 'live' to 'finished', if auto-sync is enabled,
+  // Every time match status changes to 'finished' from 'live' or 'setup', if auto-sync is enabled,
   // trigger an immediate background push of the match state to Firestore and autonomous Server.
   const prevGameStatusRef = useRef<string>(game.status);
   const lastAutoSyncedFinishedGameIdRef = useRef<string | null>(null);
@@ -1008,7 +1075,7 @@ export default function App() {
     const prevStatus = prevGameStatusRef.current;
     prevGameStatusRef.current = game.status;
 
-    if (prevStatus === 'live' && game.status === 'finished') {
+    if ((prevStatus === 'live' || prevStatus === 'setup') && game.status === 'finished') {
       const isAutoSyncEnabled = localStorage.getItem('basketstats_auto_sync_on_finish') !== 'false';
       if (isAutoSyncEnabled) {
         if (lastAutoSyncedFinishedGameIdRef.current === game.id) {
@@ -2143,6 +2210,19 @@ export default function App() {
   const toggleCourtMode = () => {
     playSound('click', game.settings.soundEnabled);
     triggerHaptic('light', game.settings.vibrationEnabled);
+    const isExitingCourtMode = Boolean(game.settings.courtMode);
+    const hasMatchContent =
+      game.status === 'finished' ||
+      game.events.length > 0 ||
+      game.homeScore > 0 ||
+      game.awayScore > 0;
+
+    if (isExitingCourtMode && hasMatchContent) {
+      saveOrUpdateGameInLibrary(game);
+      setLibraryGames(getSavedGamesFromStorage());
+      syncEngine.saveAndSyncMatch(game, { immediate: true });
+    }
+
     setGame(prev => ({
       ...prev,
       settings: {
@@ -2150,6 +2230,10 @@ export default function App() {
         courtMode: !prev.settings.courtMode,
       },
     }));
+
+    if (isExitingCourtMode && (game.status === 'finished' || activeTab === 'teams')) {
+      setActiveTab('live');
+    }
   };
 
   const recentEvent = game.events.length > 0 ? game.events[0] : null;
@@ -2166,6 +2250,7 @@ export default function App() {
         game={game}
         isConnecting={isSpectatorConnecting}
         connectionError={spectatorConnectionError}
+        onExitSpectator={handleExitSpectator}
         onRetry={() => {
           const params = new URLSearchParams(window.location.search);
           const pairCode = params.get('pair') || params.get('code');
@@ -2949,6 +3034,7 @@ export default function App() {
                 teams={teams}
                 activeTeamId={activeTeamId}
                 currentGame={game}
+                libraryGames={libraryGames}
                 activeCloudMatch={activeCloudMatchNotice}
                 onLoadCloudGame={handleLoadCloudGame}
                 cloudSyncStatus={cloudSyncState}
