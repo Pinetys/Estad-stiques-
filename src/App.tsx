@@ -117,10 +117,11 @@ import {
   Download,
   Battery,
   Settings,
+  FileJson,
 } from 'lucide-react';
 import { DeviceRole, getDeviceRole, setDeviceRole as persistDeviceRole } from './utils/deviceRole';
 import { SyncStatusBar } from './components/SyncStatusBar';
-import { SyncPairingModal } from './components/SyncPairingModal';
+import { SyncPairingModal, SyncPairingTab } from './components/SyncPairingModal';
 import { LiveMatchSpectatorView } from './components/LiveMatchSpectatorView';
 import { NotificationBellButton } from './components/NotificationBellButton';
 import { checkAndNotifyMatchAlerts } from './utils/notificationService';
@@ -283,6 +284,11 @@ export default function App() {
     deviceRoleRef.current = deviceRole;
   }, [deviceRole]);
   const [showSyncPairingModal, setShowSyncPairingModal] = useState<boolean>(false);
+  const [syncPairingInitialTab, setSyncPairingInitialTab] = useState<SyncPairingTab>('emit');
+  const openSyncPairingModal = (tab: SyncPairingTab = 'emit') => {
+    setSyncPairingInitialTab(tab);
+    setShowSyncPairingModal(true);
+  };
 
   useEffect(() => {
     const handleOpenPinetyModal = (e: any) => {
@@ -2298,7 +2304,7 @@ export default function App() {
           onOpenShotChartForBasket={handleOpenShotChartForBasket}
           onOpenFoulResolutionModal={setFoulResolutionData}
           onOpenTutorial={() => setShowTutorialModal(true)}
-          onOpenCloudSync={() => setShowSyncPairingModal(true)}
+          onOpenCloudSync={() => openSyncPairingModal('emit')}
           onOpenTacticalBoard={() => setShowTacticalBoardModal(true)}
           onOpenSpectatorQR={() => setShowSpectatorQRModal(true)}
           onOpenNewGameModal={() => setShowNewGameModal(true)}
@@ -2445,14 +2451,14 @@ export default function App() {
               {/* Traffic Light Semáforo de Sincronización */}
               <SyncStatusBar
                 deviceRole={deviceRole}
-                onOpenSyncModal={() => setShowSyncPairingModal(true)}
+                onOpenSyncModal={() => openSyncPairingModal('emit')}
               />
 
               {/* Botón rápido Vincular Tablet / Mesa por PIN o Red */}
               <button
                 type="button"
                 id="header-quick-pair-btn"
-                onClick={() => setShowSyncPairingModal(true)}
+                onClick={() => openSyncPairingModal('emit')}
                 className="hidden sm:flex px-2 py-1.5 rounded-lg bg-[#0E224A] hover:bg-[#16356E] text-cyan-300 border border-cyan-500/50 text-xs font-mono font-bold items-center gap-1 transition active:scale-95 shadow-sm"
                 title="Vincular Tablet con la Mesa de Control u Ordenador mediante Código PIN o Red Local"
               >
@@ -2792,12 +2798,24 @@ export default function App() {
                             id="menu-sync-pairing-btn"
                             onClick={() => {
                               setShowMobileHeaderMenu(false);
-                              setShowSyncPairingModal(true);
+                              openSyncPairingModal('emit');
                             }}
                             className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-cyan-300 text-xs font-bold text-left transition"
                           >
                             <Radio className="w-4 h-4 text-cyan-400 shrink-0" />
                             <span>Vincular Tablet ↔ Mesa (PIN)</span>
+                          </button>
+
+                          <button
+                            id="menu-sync-import-json-btn"
+                            onClick={() => {
+                              setShowMobileHeaderMenu(false);
+                              openSyncPairingModal('import');
+                            }}
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-800 text-emerald-300 text-xs font-bold text-left transition"
+                          >
+                            <FileJson className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>Importar JSON (Partido / Backup)</span>
                           </button>
 
                           <button
@@ -2942,7 +2960,7 @@ export default function App() {
               isEditingFinishedGame={isEditingFinishedGame}
               onToggleEditFinishedGame={() => setIsEditingFinishedGame(prev => !prev)}
               deviceRole={deviceRole}
-              onOpenSyncModal={() => setShowSyncPairingModal(true)}
+              onOpenSyncModal={() => openSyncPairingModal('emit')}
               onOpenNewGameModal={() => setShowNewGameModal(true)}
               onOpenPWAInstall={() => setShowPWAInstallModal(true)}
               onOpenSettings={() => setShowGameSettingsModal(true)}
@@ -3592,13 +3610,18 @@ export default function App() {
         />
       )}
 
-      {/* Sync Pairing Modal (QR Code, 6-digit PIN, Device Role Switcher) */}
+      {/* Sync Pairing Modal (QR Code, 6-digit PIN, Import JSON, Device Role Switcher) */}
       <SyncPairingModal
         isOpen={showSyncPairingModal}
         onClose={() => setShowSyncPairingModal(false)}
         currentGame={game}
         deviceRole={deviceRole}
         onChangeDeviceRole={setDeviceRoleState}
+        initialTab={syncPairingInitialTab}
+        onImportCompleted={(updatedMatches, updatedTeams) => {
+          setLibraryGames(updatedMatches);
+          setTeams(updatedTeams);
+        }}
         onLoadGame={loadedGame => {
           setGame(loadedGame);
           saveGameToLibrary(loadedGame);

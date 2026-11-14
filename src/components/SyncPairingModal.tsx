@@ -1,8 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Game, TeamProfile } from '../types';
 import { DeviceRole, setDeviceRole as persistDeviceRole } from '../utils/deviceRole';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
-import { saveGameToLibrary } from '../utils/libraryUtils';
+import {
+  saveGameToLibrary,
+  getSavedGamesFromStorage,
+  saveAllGamesToStorage,
+  extractAndNormalizeGamesFromImport,
+  mergeAndSaveImportedGames,
+  purgeCuratedInitialGames,
+} from '../utils/libraryUtils';
+import {
+  getRegisteredTeams,
+  saveRegisteredTeams,
+  ensureTeamsForMatches,
+  removeDeletedTeamTombstone,
+} from '../utils/teamStorage';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { buildSpectatorUrl } from '../utils/urlHelper';
 import { formatGameTime } from '../utils/statsCalculator';
@@ -25,7 +38,11 @@ import {
   AlertTriangle,
   Play,
   Eye,
+  Upload,
+  FileJson,
 } from 'lucide-react';
+
+export type SyncPairingTab = 'emit' | 'receive' | 'import' | 'role';
 
 interface SyncPairingModalProps {
   isOpen: boolean;
@@ -34,6 +51,8 @@ interface SyncPairingModalProps {
   deviceRole: DeviceRole;
   onChangeDeviceRole: (role: DeviceRole) => void;
   onLoadGame: (game: Game) => void;
+  initialTab?: SyncPairingTab;
+  onImportCompleted?: (matches: Game[], teams: TeamProfile[]) => void;
 }
 
 export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
@@ -43,8 +62,10 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
   deviceRole,
   onChangeDeviceRole,
   onLoadGame,
+  initialTab = 'emit',
+  onImportCompleted,
 }) => {
-  const [activeTab, setActiveTab] = useState<'emit' | 'receive' | 'role'>('emit');
+  const [activeTab, setActiveTab] = useState<SyncPairingTab>(initialTab);
   const [pinCode, setPinCode] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -55,9 +76,23 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [status, setStatus] = useState<SyncEngineStatus>(syncEngine.currentStatus);
 
+  // JSON Import state
+  const [importJsonText, setImportJsonText] = useState('');
+  const [isImportingJson, setIsImportingJson] = useState(false);
+  const [lastImportedMatch, setLastImportedMatch] = useState<Game | null>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
+
   // Auto-detected live matches on the local network / server (Zero-QR discovery)
   const [discoveredMatch, setDiscoveredMatch] = useState<Game | null>(null);
   const [discoveredPin, setDiscoveredPin] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+      setErrorMsg(null);
+      setSuccessMsg(null);
+    }
+  }, [isOpen, initialTab]);
 
   useEffect(() => {
     const unsub = syncEngine.subscribeStatus(st => setStatus(st));
@@ -204,6 +239,85 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
     }
   };
 
+  const handleImportParsedJson = async (parsed: any) => {
+    setIsImportingJson(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const { matches: incomingMatches, teams: incomingTeams } = extractAndNormalizeGamesFromImport(parsed);
+
+      if (incomingMatches.length === 0 && incomingTeams.length === 0) {
+        throw new Error('El archivo JSON no contiene partidos ni equipos reconocibles.');
+      }
+
+      // Safely merge incoming teams with existing teams (never overwrite existing teams)
+      if (incomingTeams.length > 0) {
+        const existingTeams = getRegisteredTeams();
+        const mergedTeamMap = new Map<string, TeamProfile>();
+        existingTeams.forEach(t => mergedTeamMap.set(t.id, t));
+        incomingTeams.forEach(t => {
+          removeDeletedTeamTombstone(t.id);
+          mergedTeamMap.set(t.id, t);
+        });
+        saveRegisteredTeams(Array.from(mergedTeamMap.values()));
+      }
+
+      const existingMatches = getSavedGamesFromStorage();
+      const mergedMatches = mergeAndSaveImportedGames(incomingMatches, existingMatches);
+      const { updatedMatches, teams: allUpdatedTeams } = ensureTeamsForMatches(mergedMatches);
+
+      purgeCuratedInitialGames();
+      saveAllGamesToStorage(updatedMatches);
+
+      await syncEngine.pushAllLocalDataToServer();
+
+      const firstImported =
+        incomingMatches.length > 0
+          ? updatedMatches.find(m => m.id === incomingMatches[0].id) || incomingMatches[0]
+          : null;
+      setLastImportedMatch(firstImported);
+      setImportJsonText('');
+
+      playSound('score', true);
+      triggerHaptic('heavy', true);
+      setSuccessMsg(
+        `¡Importación completada! ${incomingMatches.length} partido(s) y ${allUpdatedTeams.length} equipo(s) guardados y sincronizados.`
+      );
+      onImportCompleted?.(updatedMatches, allUpdatedTeams);
+    } catch (err: any) {
+      setErrorMsg(`Error al importar JSON: ${err?.message || 'Formato inválido o corrupto'}`);
+    } finally {
+      setIsImportingJson(false);
+    }
+  };
+
+  const handleJsonFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
+        handleImportParsedJson(parsed);
+      } catch {
+        setErrorMsg('El archivo seleccionado no es un JSON válido.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleJsonTextImport = () => {
+    if (!importJsonText.trim()) return;
+    try {
+      const parsed = JSON.parse(importJsonText);
+      handleImportParsedJson(parsed);
+    } catch {
+      setErrorMsg('El texto pegado no es un JSON válido.');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -220,7 +334,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
                 <span>Sincronización Tablet ↔ Ordenador</span>
               </h2>
               <p className="text-xs text-gray-400">
-                Transmisión robusta de datos en tiempo real para pista y mesa
+                Transmisión en tiempo real, importación JSON y respaldo en nube
               </p>
             </div>
           </div>
@@ -235,44 +349,57 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
         </div>
 
         {/* Tab Selector */}
-        <div className="grid grid-cols-3 bg-[#0a0e17] p-1.5 border-b border-gray-800 text-xs font-mono font-bold">
+        <div className="grid grid-cols-4 bg-[#0a0e17] p-1.5 gap-1 border-b border-gray-800 text-[11px] sm:text-xs font-mono font-bold">
           <button
             type="button"
             onClick={() => setActiveTab('emit')}
-            className={`py-2 px-1 rounded-xl transition flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 rounded-xl transition flex items-center justify-center gap-1 ${
               activeTab === 'emit'
                 ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            <Tablet className="w-4 h-4" />
-            <span>Emitir (Tablet)</span>
+            <Tablet className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Emitir</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('receive')}
-            className={`py-2 px-1 rounded-xl transition flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 rounded-xl transition flex items-center justify-center gap-1 ${
               activeTab === 'receive'
                 ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            <Laptop className="w-4 h-4" />
-            <span>Recibir (PC)</span>
+            <Laptop className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Recibir</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('import')}
+            className={`py-2 px-1 rounded-xl transition flex items-center justify-center gap-1 ${
+              activeTab === 'import'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <FileJson className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Importar JSON</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('role')}
-            className={`py-2 px-1 rounded-xl transition flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 rounded-xl transition flex items-center justify-center gap-1 ${
               activeTab === 'role'
                 ? 'bg-neutral-800 text-white border border-gray-600 shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Rol y Salud</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">Rol y Salud</span>
           </button>
         </div>
 
@@ -448,7 +575,88 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: SELECTOR DE ROL Y SALUD DE SINCRONIZACIÓN */}
+          {/* TAB 3: IMPORTAR JSON */}
+          {activeTab === 'import' && (
+            <div className="space-y-4">
+              <div className="bg-[#141A29] border border-emerald-500/40 rounded-2xl p-4 sm:p-5 text-center space-y-3">
+                <input
+                  type="file"
+                  ref={jsonFileInputRef}
+                  onChange={handleJsonFileUpload}
+                  accept=".json,application/json"
+                  className="hidden"
+                />
+                <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center mx-auto">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wide">
+                    Importar Archivo JSON
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Compatible con partidos individuales, actas exportadas o copias de seguridad completas de BasketStats. Se fusiona sin borrar tus datos actuales y se sincroniza con la nube.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={isImportingJson}
+                  onClick={() => jsonFileInputRef.current?.click()}
+                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-mono font-black text-xs uppercase rounded-xl shadow-lg flex items-center justify-center gap-2 mx-auto transition active:scale-95 cursor-pointer"
+                >
+                  {isImportingJson ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileJson className="w-4 h-4" />
+                  )}
+                  <span>{isImportingJson ? 'Importando...' : 'Seleccionar Archivo .json'}</span>
+                </button>
+              </div>
+
+              <div className="bg-[#141A29] border border-gray-800 rounded-2xl p-4 space-y-2.5">
+                <label className="text-[11px] font-mono font-bold uppercase text-gray-300 block">
+                  O pegar contenido JSON directamente:
+                </label>
+                <textarea
+                  rows={5}
+                  value={importJsonText}
+                  onChange={e => setImportJsonText(e.target.value)}
+                  placeholder='Pega aquí el texto JSON del partido o copia de seguridad...'
+                  className="w-full bg-neutral-950 border border-gray-700 focus:border-emerald-500 rounded-xl p-3 text-xs font-mono text-gray-200 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={!importJsonText.trim() || isImportingJson}
+                  onClick={handleJsonTextImport}
+                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-mono font-black text-xs uppercase rounded-xl shadow flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+                >
+                  {isImportingJson ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  <span>{isImportingJson ? 'Importando y Sincronizando...' : 'Importar y Sincronizar JSON'}</span>
+                </button>
+              </div>
+
+              {lastImportedMatch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLoadGame(lastImportedMatch);
+                    onClose();
+                  }}
+                  className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono font-black text-xs uppercase rounded-xl shadow-lg flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>
+                    Abrir "{lastImportedMatch.homeTeamName} vs {lastImportedMatch.awayTeamName}" en Marcador
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: SELECTOR DE ROL Y SALUD DE SINCRONIZACIÓN */}
           {activeTab === 'role' && (
             <div className="space-y-4">
               {/* Role Switcher */}

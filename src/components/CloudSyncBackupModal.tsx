@@ -8,7 +8,12 @@ import {
   extractAndNormalizeGamesFromImport,
   mergeAndSaveImportedGames,
 } from '../utils/libraryUtils';
-import { getRegisteredTeams, saveRegisteredTeams, ensureTeamsForMatches } from '../utils/teamStorage';
+import {
+  getRegisteredTeams,
+  saveRegisteredTeams,
+  ensureTeamsForMatches,
+  removeDeletedTeamTombstone,
+} from '../utils/teamStorage';
 import { playSound, triggerHaptic } from '../utils/soundHaptics';
 import { syncEngine, SyncEngineStatus } from '../lib/syncEngine';
 import {
@@ -293,9 +298,16 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
         throw new Error('El archivo no contiene partidos ni equipos reconocibles.');
       }
 
-      // If teams are provided in backup, save them
+      // If teams are provided in backup, merge them safely with existing teams
       if (incomingTeams.length > 0) {
-        saveRegisteredTeams(incomingTeams);
+        const existingTeams = getRegisteredTeams();
+        const mergedTeamMap = new Map<string, TeamProfile>();
+        existingTeams.forEach(t => mergedTeamMap.set(t.id, t));
+        incomingTeams.forEach(t => {
+          removeDeletedTeamTombstone(t.id);
+          mergedTeamMap.set(t.id, t);
+        });
+        saveRegisteredTeams(Array.from(mergedTeamMap.values()));
       }
 
       // Merge incoming matches with existing matches so no user games are deleted
