@@ -171,6 +171,7 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
   const [aiFocus, setAiFocus] = useState<string>('Plan Integral de Mejora Táctica y Microciclo');
   const [copiedPlan, setCopiedPlan] = useState<boolean>(false);
   const [isCloudRefreshing, setIsCloudRefreshing] = useState<boolean>(false);
+  const [importFeedback, setImportFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const fileImportRef = useRef<HTMLInputElement | null>(null);
 
@@ -354,12 +355,12 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
     const reader = new FileReader();
     reader.onload = async event => {
       try {
-        const text = event.target?.result as string;
+        const text = String(event.target?.result || '').replace(/^\uFEFF/, '').trim();
         const parsed = JSON.parse(text);
         const { matches: incomingMatches, teams: incomingTeams } = extractAndNormalizeGamesFromImport(parsed);
 
         if (incomingMatches.length === 0 && incomingTeams.length === 0) {
-          alert('El archivo JSON no contiene partidos ni equipos con estructura reconocible.');
+          setImportFeedback({ text: 'El archivo JSON no contiene partidos ni equipos con estructura reconocible.', type: 'error' });
           return;
         }
 
@@ -374,9 +375,6 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
         // Ensure every match has a registered team so team cards in Hub and library work properly
         const { updatedMatches, teams: updatedTeams } = ensureTeamsForMatches(mergedMatches);
 
-        // Purge initial dummy sample games so they don't overwrite or pollute the user's real season
-        purgeCuratedInitialGames();
-
         // Save imported matches
         saveGamesToStorage(updatedMatches);
         refreshLibrary(updatedMatches);
@@ -390,10 +388,22 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
         playSound('score', currentGame.settings.soundEnabled);
         triggerHaptic('heavy', currentGame.settings.vibrationEnabled);
 
-        alert(`¡${incomingMatches.length} partidos y ${updatedTeams.length} equipos importados y fusionados con éxito en tu biblioteca y en la nube!`);
+        if (incomingMatches.length === 1 && onLoadGame) {
+          const matchToLoad = updatedMatches.find(m => m.id === incomingMatches[0].id) || incomingMatches[0];
+          onLoadGame(matchToLoad);
+          return;
+        }
+
+        setImportFeedback({
+          text: `¡${incomingMatches.length} partidos y ${updatedTeams.length} equipos importados y fusionados con éxito en tu biblioteca y en la nube!`,
+          type: 'success',
+        });
       } catch (err: any) {
         setIsCloudRefreshing(false);
-        alert('Error al importar el archivo JSON: ' + (err?.message || 'Formato corrupto'));
+        setImportFeedback({
+          text: 'Error al importar el archivo JSON: ' + (err?.message || 'Formato corrupto'),
+          type: 'error',
+        });
       }
     };
     reader.readAsText(file);
@@ -746,12 +756,24 @@ export const MatchLibraryModal: React.FC<MatchLibraryModalProps> = ({
                   <input
                     ref={fileImportRef}
                     type="file"
-                    accept=".json"
+                    accept=".json,application/json,text/plain"
                     className="hidden"
                     onChange={handleImportJSON}
                   />
                 </div>
               </div>
+
+              {importFeedback && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-mono border ${
+                    importFeedback.type === 'success'
+                      ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-200'
+                      : 'bg-rose-950/70 border-rose-500/60 text-rose-200'
+                  }`}
+                >
+                  {importFeedback.text}
+                </div>
+              )}
 
               {/* Infantil Barna Quick Recovery / Highlight Banner */}
               {barnaInfantilMatch && (

@@ -549,16 +549,26 @@ class AutoSyncManager {
         localStorage.setItem('basketstats_matches_backup_safety', JSON.stringify(mergedMatches));
       } catch {}
 
-      // Push missing local matches/teams to server ONLY if forced (e.g. manual sync) to prevent SSE loops
+      // Push missing or richer local matches/teams to server on forced sync so unsynced local plays before a refresh are restored to server
       if (options.force) {
         const currentLocalMatches = getSavedGamesFromStorage();
         const currentLocalTeams = getRegisteredTeams();
-        const serverIds = new Set(serverMatches.map(s => s.id));
+        const serverMatchMap = new Map(serverMatches.map(s => [s.id, s]));
         const serverTeamIds = new Set(serverTeams.map(t => t.id));
-        const hasMissingOnServer = currentLocalMatches.some(lm => !serverIds.has(lm.id));
+        const hasRicherOrMissingOnServer = currentLocalMatches.some(lm => {
+          const sm = serverMatchMap.get(lm.id);
+          if (!sm) return true;
+          const lEvents = lm.events?.length || 0;
+          const sEvents = sm.events?.length || 0;
+          if (lEvents > sEvents) return true;
+          if (lm.status === 'finished' && sm.status !== 'finished') return true;
+          const lScore = (lm.homeScore || 0) + (lm.awayScore || 0);
+          const sScore = (sm.homeScore || 0) + (sm.awayScore || 0);
+          return lEvents === sEvents && lScore > sScore;
+        });
         const hasMissingTeamsOnServer = currentLocalTeams.some(lt => !serverTeamIds.has(lt.id));
 
-        if (hasMissingOnServer || hasMissingTeamsOnServer) {
+        if (hasRicherOrMissingOnServer || hasMissingTeamsOnServer) {
           this.pushBulkToServer(currentLocalMatches, currentLocalTeams).catch(() => {});
         }
       }
@@ -610,25 +620,33 @@ class AutoSyncManager {
   public saveAndSyncMatch(game: Game, options: { immediate?: boolean } = {}): void {
     if (!game || !game.id || isDemoGame(game)) return;
 
-    // 1. Immediately persist locally
+    const stampedGame: Game = {
+      ...game,
+      updatedAt: game.updatedAt || new Date().toISOString(),
+    };
+
+    // 1. Immediately persist locally (primary + safety backup)
     const library = getSavedGamesFromStorage();
-    const idx = library.findIndex(g => g.id === game.id);
+    const idx = library.findIndex(g => g.id === stampedGame.id);
     let updated: Game[];
     if (idx >= 0) {
       updated = [...library];
-      updated[idx] = game;
+      updated[idx] = stampedGame;
     } else {
-      updated = [game, ...library];
+      updated = [stampedGame, ...library];
     }
     saveGamesToStorage(updated);
 
-    // Create rich fingerprint to capture substitutions, fouls, timeouts and score/clock changes
-    const courtSignature = (game.players || []).filter(p => p.onCourt).map(p => p.id).sort().join(',');
-    const latestEv = game.events?.[0]?.id || '';
-    const dataHash = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.status}_${game.isClockRunning}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.homeTimeouts}_${game.awayTimeouts}_${Math.floor(game.currentSecondsRemaining || 0)}_${courtSignature}_${latestEv}`;
+    // Create structural fingerprint vs clock fingerprint
+    const courtSignature = (stampedGame.players || []).filter(p => p.onCourt).map(p => p.id).sort().join(',');
+    const latestEv = stampedGame.events?.[0]?.id || '';
+    const structuralSignature = `${stampedGame.id}_${stampedGame.homeScore}_${stampedGame.awayScore}_${stampedGame.events?.length || 0}_${stampedGame.currentQuarter}_${stampedGame.status}_${stampedGame.isClockRunning}_${stampedGame.homeQuarterFouls}_${stampedGame.awayQuarterFouls}_${stampedGame.homeTimeouts}_${stampedGame.awayTimeouts}_${courtSignature}_${latestEv}`;
+    const dataHash = `${structuralSignature}_${Math.floor(stampedGame.currentSecondsRemaining || 0)}`;
     if (dataHash === this.lastSavedGameHash && !options.immediate) {
       return;
     }
+    const prevStructural = this.lastSavedGameHash.split('_').slice(0, -1).join('_');
+    const isStructuralUpdate = structuralSignature !== prevStructural;
     this.lastSavedGameHash = dataHash;
 
     const executePush = async () => {
@@ -638,7 +656,7 @@ class AutoSyncManager {
       // 1. Post to Cloud Firestore (real-time cross-device sync)
       if (isFirebaseConfigured && !this.firestoreQuotaExceeded) {
         try {
-          cloudOk = await syncMatchToCloud(game);
+          cloudOk = await syncMatchToCloud(stampedGame);
         } catch (err: any) {
           if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
             this.firestoreQuotaExceeded = true;
@@ -651,7 +669,7 @@ class AutoSyncManager {
         const res = await fetch('/api/sync/match', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ match: game }),
+          body: JSON.stringify({ match: stampedGame }),
         });
         if (res.ok) {
           serverOk = true;
@@ -668,7 +686,7 @@ class AutoSyncManager {
         });
       } else {
         // Queue offline for later flush
-        this.queueOfflineMutation('match', game.id, game);
+        this.queueOfflineMutation('match', stampedGame.id, stampedGame);
         this.notifyStatus({
           status: 'offline',
           pendingOfflineCount: getOfflineQueue().length,
@@ -676,12 +694,12 @@ class AutoSyncManager {
       }
     };
 
-    if (options.immediate || game.status === 'finished') {
+    if (options.immediate || stampedGame.status === 'finished' || isStructuralUpdate) {
       if (this.debounceTimer) clearTimeout(this.debounceTimer);
       executePush();
     } else {
       if (this.debounceTimer) clearTimeout(this.debounceTimer);
-      this.debounceTimer = setTimeout(executePush, 400);
+      this.debounceTimer = setTimeout(executePush, 300);
     }
   }
 

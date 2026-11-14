@@ -387,20 +387,48 @@ async function startServer() {
       }
 
       const existing = serverDb.matches[match.id];
-      // Defensive guard: only protect if incoming is an accidental empty object overwriting a populated game
+      // Defensive guard: never allow stale/empty/fewer-events payload to overwrite populated match
       if (existing) {
         const existingEvents = existing.events?.length || 0;
         const incomingEvents = match.events?.length || 0;
 
-        // If incoming is totally empty but existing had real data, prevent accidental reset
-        if (existingEvents > 2 && incomingEvents === 0 && (match.homeScore || 0) === 0 && (match.awayScore || 0) === 0 && match.status === 'setup') {
-          match.events = existing.events;
-          match.homeScore = existing.homeScore;
-          match.awayScore = existing.awayScore;
+        if (existingEvents > 0 && incomingEvents === 0 && (match.homeScore || 0) === 0 && (match.awayScore || 0) === 0) {
+          return res.json({
+            success: true,
+            matchId: match.id,
+            ignored: true,
+            reason: 'protected_from_empty_overwrite',
+            eventsCount: existingEvents,
+          });
+        }
+
+        if (existing.status === 'finished' && match.status !== 'finished' && existingEvents >= incomingEvents) {
+          return res.json({
+            success: true,
+            matchId: match.id,
+            ignored: true,
+            reason: 'protected_finished_state',
+            eventsCount: existingEvents,
+          });
+        }
+
+        if (existingEvents > incomingEvents) {
+          const exUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+          const inUpdated = match.updatedAt ? new Date(match.updatedAt).getTime() : 0;
+          // If incoming has fewer events AND is not strictly newer (e.g. from a stale tab or undo shouldn't be blocked if newer)
+          if (inUpdated <= exUpdated) {
+            return res.json({
+              success: true,
+              matchId: match.id,
+              ignored: true,
+              reason: 'protected_stale_events',
+              eventsCount: existingEvents,
+            });
+          }
         }
       }
 
-      match.updatedAt = new Date().toISOString();
+      match.updatedAt = match.updatedAt || new Date().toISOString();
       serverDb.matches[match.id] = match;
 
       // Update activeMatch pointer if live or has recent events

@@ -130,6 +130,8 @@ import { sendMatchToCoachPinety } from './utils/pinetySync';
 import { CoachPinetyModal } from './components/CoachPinetyModal';
 
 const STORAGE_KEY = 'basketstats_current_game_v3';
+const CURRENT_GAME_BACKUP_KEY = 'basketstats_current_game_backup_v3';
+const ACTIVE_TAB_KEY = 'basketstats_active_tab_v1';
 
 function createInitialGame(targetTeam?: TeamProfile): Game {
   const registeredTeams = getRegisteredTeams();
@@ -186,60 +188,100 @@ function createInitialGame(targetTeam?: TeamProfile): Game {
       home: 0,
       away: 0,
     })),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function hydrateSavedGame(parsed: any): Game | null {
+  if (!parsed || typeof parsed !== 'object' || !parsed.id) return null;
+  if (
+    (parsed.awayTeamName || '').trim().toLowerCase().includes('cb rival') ||
+    (parsed.awayTeamName || '').trim().toLowerCase().includes('cbrival')
+  ) {
+    parsed.awayTeamName = 'Equipo Rival';
+  }
+  const isEscolaMatch = Boolean(
+    parsed.category?.toLowerCase()?.includes('escola') ||
+    parsed.settings?.quarterDurationMinutes === 8
+  );
+  if (isEscolaMatch) {
+    if (!parsed.settings) parsed.settings = { ...DEFAULT_SETTINGS };
+    parsed.settings.quarterDurationMinutes = 8;
+    parsed.settings.totalQuarters = 6;
+    if (Array.isArray(parsed.quarterScores)) {
+      while (parsed.quarterScores.length < 6) {
+        const qNum = parsed.quarterScores.length + 1;
+        parsed.quarterScores.push({
+          quarter: qNum,
+          quarterLabel: formatQuarterShort(qNum, 6),
+          home: 0,
+          away: 0,
+        });
+      }
+    }
+  }
+  if (Array.isArray(parsed.players)) {
+    const seenIds = new Set<string>();
+    parsed.players = parsed.players
+      .filter((p: Player, idx: number) => {
+        const k = p.id || `p-${p.number}-${idx}`;
+        if (seenIds.has(k)) return false;
+        seenIds.add(k);
+        return true;
+      })
+      .map((p: Player) => ({
+        ...p,
+        minutesPlayedSeconds: p.minutesPlayedSeconds || 0,
+        quarterSeconds: p.quarterSeconds || {},
+      }));
+    parsed.players = ensureFivePlayersOnCourt(parsed.players, parsed.settings?.foulOutLimit || 5);
+  }
+  return {
+    ...parsed,
+    updatedAt: parsed.updatedAt || new Date().toISOString(),
   };
 }
 
 export default function App() {
+  const hadPersistedGameOnBootRef = useRef<boolean>(false);
+
   const [game, setGame] = useState<Game>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      const savedRaw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(CURRENT_GAME_BACKUP_KEY);
+      if (savedRaw) {
+        const parsed = hydrateSavedGame(JSON.parse(savedRaw));
         if (parsed) {
-          if (
-            (parsed.awayTeamName || '').trim().toLowerCase().includes('cb rival') ||
-            (parsed.awayTeamName || '').trim().toLowerCase().includes('cbrival')
-          ) {
-            parsed.awayTeamName = 'Equipo Rival';
+          hadPersistedGameOnBootRef.current = true;
+          // Pause running clock cleanly on unexpected page reload so time doesn't jump out of control
+          if (parsed.isClockRunning) {
+            parsed.isClockRunning = false;
+            parsed.isShotClockRunning = false;
           }
-          const isEscolaMatch = Boolean(
-            parsed.category?.toLowerCase()?.includes('escola') ||
-            parsed.settings?.quarterDurationMinutes === 8
-          );
-          if (isEscolaMatch) {
-            if (!parsed.settings) parsed.settings = { ...DEFAULT_SETTINGS };
-            parsed.settings.quarterDurationMinutes = 8;
-            parsed.settings.totalQuarters = 6;
-            if (Array.isArray(parsed.quarterScores)) {
-              while (parsed.quarterScores.length < 6) {
-                const qNum = parsed.quarterScores.length + 1;
-                parsed.quarterScores.push({
-                  quarter: qNum,
-                  quarterLabel: formatQuarterShort(qNum, 6),
-                  home: 0,
-                  away: 0,
-                });
-              }
+          // Cross-check with library: if library has a copy of THIS exact game ID with MORE events, recover it!
+          try {
+            const libMatch = getSavedGamesFromStorage().find(g => g.id === parsed.id);
+            if (libMatch && (libMatch.events?.length || 0) > (parsed.events?.length || 0)) {
+              return {
+                ...libMatch,
+                isClockRunning: false,
+                isShotClockRunning: false,
+                settings: {
+                  ...libMatch.settings,
+                  courtMode: Boolean(parsed.settings?.courtMode || libMatch.settings?.courtMode),
+                },
+              };
             }
-          }
+          } catch {}
+          return parsed;
         }
-        if (parsed && Array.isArray(parsed.players)) {
-          const seenIds = new Set<string>();
-          parsed.players = parsed.players
-            .filter((p: Player, idx: number) => {
-              const k = p.id || `p-${p.number}-${idx}`;
-              if (seenIds.has(k)) return false;
-              seenIds.add(k);
-              return true;
-            })
-            .map((p: Player) => ({
-              ...p,
-              minutesPlayedSeconds: p.minutesPlayedSeconds || 0,
-              quarterSeconds: p.quarterSeconds || {},
-            }));
-          parsed.players = ensureFivePlayersOnCourt(parsed.players, parsed.settings?.foulOutLimit || 5);
-        }
-        return parsed;
+      }
+      // Fallback: if primary storage was empty, recover any in-progress live match from library
+      const liveInLibrary = getSavedGamesFromStorage().find(
+        g => g.status === 'live' && ((g.events?.length || 0) > 0 || (g.homeScore || 0) > 0 || (g.awayScore || 0) > 0)
+      );
+      if (liveInLibrary) {
+        hadPersistedGameOnBootRef.current = true;
+        return { ...liveInLibrary, isClockRunning: false, isShotClockRunning: false };
       }
     } catch {
       // Fallback
@@ -247,7 +289,30 @@ export default function App() {
     return createInitialGame();
   });
 
-  const [activeTab, setActiveTab] = useState<'teams' | 'live' | 'stats' | 'charts' | 'playbyplay' | 'scout'>('teams');
+  const [activeTab, setActiveTabState] = useState<'teams' | 'live' | 'stats' | 'charts' | 'playbyplay' | 'scout'>(() => {
+    try {
+      const storedTab = sessionStorage.getItem(ACTIVE_TAB_KEY) || localStorage.getItem(ACTIVE_TAB_KEY);
+      if (storedTab && ['teams', 'live', 'stats', 'charts', 'playbyplay', 'scout'].includes(storedTab)) {
+        return storedTab as any;
+      }
+      const savedRaw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(CURRENT_GAME_BACKUP_KEY);
+      if (savedRaw) {
+        const p = JSON.parse(savedRaw);
+        if (p && p.status === 'live' && ((p.events?.length || 0) > 0 || (p.homeScore || 0) > 0 || (p.awayScore || 0) > 0)) {
+          return 'live';
+        }
+      }
+    } catch {}
+    return 'teams';
+  });
+
+  const setActiveTab = useCallback((tab: 'teams' | 'live' | 'stats' | 'charts' | 'playbyplay' | 'scout') => {
+    setActiveTabState(tab);
+    try {
+      sessionStorage.setItem(ACTIVE_TAB_KEY, tab);
+      localStorage.setItem(ACTIVE_TAB_KEY, tab);
+    } catch {}
+  }, []);
   const [statsSubMode, setStatsSubMode] = useState<'match' | 'accumulated'>('match');
   const [libraryGames, setLibraryGames] = useState<Game[]>(() => getSavedGamesFromStorage());
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -431,6 +496,7 @@ export default function App() {
             shotClockSeconds: nextShotSecs,
             isShotClockRunning: nextClockRunning ? nextShotRunning : false,
             players: updatedPlayers,
+            updatedAt: new Date().toISOString(),
           };
         });
       }
@@ -676,12 +742,31 @@ export default function App() {
           const hasClockDiff = Math.abs((validRemote.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || validRemote.isClockRunning !== currentGame.isClockRunning;
           const hasFoulsDiff = validRemote.homeQuarterFouls !== currentGame.homeQuarterFouls || validRemote.awayQuarterFouls !== currentGame.awayQuarterFouls;
 
-          // Prevent cloud from downgrading local events on scorer tablet
-          if (currentRole === 'recorder' && localEventsCount > remoteEventsCount) {
-            return currentGame;
+          // On recorder device, local live match state is authoritative:
+          // Never overwrite with stale or equal cloud/server snapshots!
+          if (currentRole === 'recorder') {
+            if (localEventsCount > remoteEventsCount) {
+              return currentGame;
+            }
+            const localScore = (currentGame.homeScore || 0) + (currentGame.awayScore || 0);
+            const remoteScore = (validRemote.homeScore || 0) + (validRemote.awayScore || 0);
+            const shouldAcceptOnRecorder =
+              (remoteEventsCount > localEventsCount && remoteUpdated > localUpdated) ||
+              (localEventsCount === 0 && localScore === 0 && currentGame.status === 'setup' && remoteEventsCount > 0);
+            if (!shouldAcceptOnRecorder) {
+              return currentGame;
+            }
+            isRemoteSyncInProgressRef.current = true;
+            return {
+              ...validRemote,
+              settings: {
+                ...validRemote.settings,
+                courtMode: Boolean(currentGame.settings?.courtMode || validRemote.settings?.courtMode),
+              },
+            };
           }
 
-          // Spectators, monitors and connected devices accept freshest server/recorder state
+          // Spectators, monitors and watched devices accept freshest server/recorder state
           if (
             currentRole === 'spectator' ||
             currentRole === 'monitor' ||
@@ -707,17 +792,18 @@ export default function App() {
     const unsubMatchDetected = syncEngine.onRemoteMatchDetected((remoteGame) => {
       setLibraryGames(getSavedGamesFromStorage());
 
-      // If current local game on mobile/PC is empty/unplayed (0 points, 0 events, setup),
-      // auto-load the active or most recent match recorded from the tablet!
+      // Only auto-load a detected remote match if this device had NO persisted/configured game in progress
       setGame(currentGame => {
-        const isUntouchedLocal =
+        const isBlankPlaceholder =
+          !hadPersistedGameOnBootRef.current &&
           currentGame.events.length === 0 &&
           currentGame.homeScore === 0 &&
           currentGame.awayScore === 0 &&
           !currentGame.isClockRunning &&
-          currentGame.status === 'setup';
+          currentGame.status === 'setup' &&
+          (currentGame.awayTeamName === 'Equipo Rival' || !currentGame.awayTeamName);
 
-        if (isUntouchedLocal && (remoteGame.events?.length > 0 || remoteGame.homeScore > 0 || remoteGame.awayScore > 0)) {
+        if (isBlankPlaceholder && (remoteGame.events?.length > 0 || remoteGame.homeScore > 0 || remoteGame.awayScore > 0)) {
           isRemoteSyncInProgressRef.current = true;
           return remoteGame;
         }
@@ -769,9 +855,26 @@ export default function App() {
             const hasClockDiff = Math.abs((matchInCloud.currentSecondsRemaining ?? 0) - (currentGame.currentSecondsRemaining ?? 0)) > 1 || matchInCloud.isClockRunning !== currentGame.isClockRunning;
             const hasFoulsDiff = matchInCloud.homeQuarterFouls !== currentGame.homeQuarterFouls || matchInCloud.awayQuarterFouls !== currentGame.awayQuarterFouls;
 
-            // Prevent Firestore from downgrading local events on scorer tablet
-            if (currentRole === 'recorder' && localEventsCount > remoteEventsCount) {
-              return currentGame;
+            // On recorder device, NEVER downgrade or revert local active match on clock/tie/stale Firestore snapshots!
+            if (currentRole === 'recorder') {
+              if (localEventsCount > remoteEventsCount) {
+                return currentGame;
+              }
+              const localScore = (currentGame.homeScore || 0) + (currentGame.awayScore || 0);
+              const shouldAcceptOnRecorder =
+                (remoteEventsCount > localEventsCount && remoteUpdated > localUpdated) ||
+                (localEventsCount === 0 && localScore === 0 && currentGame.status === 'setup' && remoteEventsCount > 0);
+              if (!shouldAcceptOnRecorder) {
+                return currentGame;
+              }
+              isRemoteSyncInProgressRef.current = true;
+              return {
+                ...matchInCloud,
+                settings: {
+                  ...matchInCloud.settings,
+                  courtMode: Boolean(currentGame.settings?.courtMode || matchInCloud.settings?.courtMode),
+                },
+              };
             }
 
             if (
@@ -820,13 +923,32 @@ export default function App() {
             return currentGame;
           }
 
-          const isUntouchedLocal =
+          // If this device had an active persisted match in STORAGE_KEY, NEVER swap it to a different match!
+          // Only upgrade THIS SAME match ID if cloud/server has strictly more events for the exact same ID.
+          if (hadPersistedGameOnBootRef.current) {
+            const sameIdUpdate = sanitized.find(m => m.id === currentGame.id);
+            if (sameIdUpdate && (sameIdUpdate.events?.length || 0) > (currentGame.events?.length || 0)) {
+              isRemoteSyncInProgressRef.current = true;
+              return {
+                ...sameIdUpdate,
+                isClockRunning: false,
+                settings: {
+                  ...sameIdUpdate.settings,
+                  courtMode: Boolean(currentGame.settings?.courtMode || sameIdUpdate.settings?.courtMode),
+                },
+              };
+            }
+            return currentGame;
+          }
+
+          const isBlankBoot =
             (currentGame.events?.length === 0 || !currentGame.events) &&
             (currentGame.homeScore || 0) === 0 &&
             (currentGame.awayScore || 0) === 0 &&
-            !currentGame.isClockRunning;
+            !currentGame.isClockRunning &&
+            (currentGame.awayTeamName === 'Equipo Rival' || !currentGame.awayTeamName);
 
-          if (isUntouchedLocal) {
+          if (isBlankBoot) {
             const candidate =
               (res.activeMatch && (res.activeMatch.events?.length > 0 || res.activeMatch.homeScore > 0 || res.activeMatch.awayScore > 0) ? res.activeMatch : null) ||
               sanitized.find(m => m.status === 'live' && (m.events?.length > 0 || m.homeScore > 0)) ||
@@ -901,6 +1023,14 @@ export default function App() {
     }
   };
 
+  const persistGameSnapshotLocally = (target: Game) => {
+    try {
+      const serialized = JSON.stringify(target);
+      localStorage.setItem(STORAGE_KEY, serialized);
+      localStorage.setItem(CURRENT_GAME_BACKUP_KEY, serialized);
+    } catch {}
+  };
+
   const handleLoadCloudGame = async (gameId: string) => {
     playSound('click', game.settings.soundEnabled);
     const allSaved = getSavedGamesFromStorage();
@@ -916,11 +1046,19 @@ export default function App() {
         setActiveTeamId(target.teamId);
         setActiveTeamIdState(target.teamId);
       }
-      saveGameToLibrary(target);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(target));
-      } catch {}
-      setGame(target);
+      const nextTarget: Game = {
+        ...target,
+        players: ensureFivePlayersOnCourt(target.players, target.settings?.foulOutLimit || 5),
+        updatedAt: target.updatedAt || new Date().toISOString(),
+        settings: {
+          ...target.settings,
+          courtMode: game.settings?.courtMode || Boolean(target.settings?.courtMode),
+        },
+      };
+      saveGameToLibrary(nextTarget);
+      persistGameSnapshotLocally(nextTarget);
+      setGame(nextTarget);
+      setSelectedPlayerId(nextTarget.players.find(p => p.onCourt)?.id || nextTarget.players[0]?.id || null);
       setActiveTab('live');
       playSound('score', game.settings.soundEnabled);
       triggerHaptic('heavy', game.settings.vibrationEnabled);
@@ -933,6 +1071,7 @@ export default function App() {
     setLibraryGames(getSavedGamesFromStorage());
     if (deletedId === game.id) {
       const freshGame = createInitialGame();
+      persistGameSnapshotLocally(freshGame);
       setGame(freshGame);
     }
   };
@@ -999,49 +1138,82 @@ export default function App() {
   const lastClockCloudBroadcastRef = useRef<number>(0);
   const lastLocalStatePersistRef = useRef<number>(0);
 
-  // Guarantee instant save when closing tab, minimizing, or switching apps on tablet
+  // Guarantee instant synchronous save + sendBeacon flush when refreshing, closing tab, minimizing, or switching apps
   useEffect(() => {
     const handleEmergencySave = () => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
+        const snapshot = JSON.stringify(game);
+        localStorage.setItem(STORAGE_KEY, snapshot);
+        localStorage.setItem(CURRENT_GAME_BACKUP_KEY, snapshot);
+        const currentRole = deviceRoleRef.current || deviceRole;
+        const hasActivity =
+          game.status === 'live' ||
+          game.status === 'finished' ||
+          game.events.length > 0 ||
+          game.homeScore > 0 ||
+          game.awayScore > 0;
+        if (currentRole === 'recorder' && hasActivity && typeof navigator !== 'undefined' && navigator.sendBeacon) {
+          const blob = new Blob([JSON.stringify({ match: game })], { type: 'application/json' });
+          navigator.sendBeacon('/api/sync/match', blob);
+        }
       } catch {}
     };
+    const handleVisibilitySave = () => {
+      if (document.visibilityState === 'hidden') {
+        handleEmergencySave();
+      } else {
+        try {
+          const snapshot = JSON.stringify(game);
+          localStorage.setItem(STORAGE_KEY, snapshot);
+          localStorage.setItem(CURRENT_GAME_BACKUP_KEY, snapshot);
+        } catch {}
+      }
+    };
     window.addEventListener('beforeunload', handleEmergencySave);
-    document.addEventListener('visibilitychange', handleEmergencySave);
+    window.addEventListener('pagehide', handleEmergencySave);
+    document.addEventListener('visibilitychange', handleVisibilitySave);
     return () => {
       window.removeEventListener('beforeunload', handleEmergencySave);
-      document.removeEventListener('visibilitychange', handleEmergencySave);
+      window.removeEventListener('pagehide', handleEmergencySave);
+      document.removeEventListener('visibilitychange', handleVisibilitySave);
     };
-  }, [game]);
+  }, [game, deviceRole]);
 
   useEffect(() => {
     try {
       const now = Date.now();
 
-      // Structural fingerprint: baskets, fouls, events, quarter changes, timeouts, substitutions, clock stop/start
+      // Structural fingerprint: baskets, fouls, events, quarter changes, timeouts, substitutions, clock stop/start, courtMode, names
       const courtSignature = (game.players || []).filter(p => p.onCourt).map(p => p.id).sort().join(',');
       const lastEventId = game.events?.[0]?.id || '';
-      const currentSignature = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.homeTimeouts}_${game.awayTimeouts}_${game.status}_${game.isClockRunning}_${courtSignature}_${lastEventId}`;
+      const currentSignature = `${game.id}_${game.homeScore}_${game.awayScore}_${game.events?.length || 0}_${game.currentQuarter}_${game.homeQuarterFouls}_${game.awayQuarterFouls}_${game.homeTimeouts}_${game.awayTimeouts}_${game.status}_${game.isClockRunning}_${Boolean(game.settings?.courtMode)}_${game.homeTeamName}_${game.awayTeamName}_${courtSignature}_${lastEventId}`;
       const hasStructuralChange = currentSignature !== lastStructuralSignatureRef.current;
 
-      // 1. Persist active match state locally:
-      // Immediate on any game event, status change, or clock pause. Throttled to 3s during uninterrupted clock tick.
-      const isThrottleTimeElapsed = now - lastLocalStatePersistRef.current > 3000;
-      if (hasStructuralChange || !game.isClockRunning || isThrottleTimeElapsed) {
-        lastLocalStatePersistRef.current = now;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
-      }
+      // 1. ALWAYS persist active match state synchronously to STORAGE_KEY + backup on every update
+      // (~15KB localStorage write takes <0.2ms, guaranteeing zero data loss on abrupt refresh)
+      lastLocalStatePersistRef.current = now;
+      const serialized = JSON.stringify(game);
+      localStorage.setItem(STORAGE_KEY, serialized);
+      localStorage.setItem(CURRENT_GAME_BACKUP_KEY, serialized);
+
+      const hasPersistableMatchData =
+        game.status === 'live' ||
+        game.status === 'finished' ||
+        game.events.length > 0 ||
+        game.homeScore > 0 ||
+        game.awayScore > 0 ||
+        game.awayTeamName !== 'Equipo Rival';
 
       if (isRemoteSyncInProgressRef.current) {
         isRemoteSyncInProgressRef.current = false;
-        if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
+        if (hasPersistableMatchData) {
           saveOrUpdateGameInLibrary(game);
           setLibraryGames(getSavedGamesFromStorage());
         }
         return;
       }
 
-      // Responsive clock sync for spectator/table screens (2.5s instead of 12s)
+      // Responsive clock sync for spectator/table screens (2.5s)
       const isPeriodicClockBroadcastDue = game.isClockRunning && (now - lastClockCloudBroadcastRef.current > 2500);
 
       // Only recorder devices should broadcast live match updates to cloud/server;
@@ -1055,15 +1227,12 @@ export default function App() {
         lastStructuralSignatureRef.current = currentSignature;
         lastClockCloudBroadcastRef.current = now;
 
-        // Persist to library and sync immediately so computer receives actions with zero lag
-        if (game.status === 'live' || game.events.length > 0 || game.homeScore > 0 || game.awayScore > 0 || game.status === 'finished') {
+        if (hasPersistableMatchData) {
           saveGameToLibrary(game);
           setLibraryGames(getSavedGamesFromStorage());
-          syncEngine.saveAndSyncMatch(game, { immediate: true });
         }
       } else if (isPeriodicClockBroadcastDue) {
         lastClockCloudBroadcastRef.current = now;
-        // Throttled clock broadcast for spectator screens
         syncEngine.saveAndSyncMatch(game, { immediate: false });
       }
     } catch {
@@ -1199,9 +1368,16 @@ export default function App() {
     }
   }, [game.players, selectedPlayerId]);
 
-  // Update Game Helper
+  // Update Game Helper (always stamps updatedAt so local edits win over stale cloud snapshots)
   const handleUpdateGame = (updater: (prev: Game) => Game) => {
-    setGame(prev => updater(prev));
+    setGame(prev => {
+      const next = updater(prev);
+      if (next === prev) return prev;
+      return {
+        ...next,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   };
 
   // Log an Action by a Player
@@ -1995,6 +2171,7 @@ export default function App() {
       return {
         ...prev,
         players: ensureFivePlayersOnCourt(updated, prev.settings?.foulOutLimit || 5),
+        updatedAt: new Date().toISOString(),
       };
     });
     if (playerInId) {
@@ -2016,6 +2193,7 @@ export default function App() {
       return {
         ...prev,
         players: ensureFivePlayersOnCourt(updated, prev.settings?.foulOutLimit || 5),
+        updatedAt: new Date().toISOString(),
       };
     });
     const lastInId = subs[subs.length - 1]?.playerInId;
@@ -2057,6 +2235,7 @@ export default function App() {
         homeTimeouts: 3,
         awayTimeouts: 3,
         quarterScores: existingQuarterScores,
+        updatedAt: new Date().toISOString(),
       };
     });
   };
@@ -2102,6 +2281,7 @@ export default function App() {
         homeQuarterFouls: homeFoulsInQ,
         awayQuarterFouls: awayFoulsInQ,
         quarterScores: existingQuarterScores,
+        updatedAt: new Date().toISOString(),
       };
     });
   };
@@ -2205,8 +2385,15 @@ export default function App() {
           };
         }
       ),
+      updatedAt: new Date().toISOString(),
     };
 
+    try {
+      const serialized = JSON.stringify(freshGame);
+      localStorage.setItem(STORAGE_KEY, serialized);
+      localStorage.setItem(CURRENT_GAME_BACKUP_KEY, serialized);
+    } catch {}
+    hadPersistedGameOnBootRef.current = true;
     setGame(freshGame);
     saveGameToLibrary(freshGame);
     setActiveTab('live');
@@ -2229,13 +2416,22 @@ export default function App() {
       syncEngine.saveAndSyncMatch(game, { immediate: true });
     }
 
-    setGame(prev => ({
-      ...prev,
-      settings: {
-        ...prev.settings,
-        courtMode: !prev.settings.courtMode,
-      },
-    }));
+    setGame(prev => {
+      const next: Game = {
+        ...prev,
+        updatedAt: new Date().toISOString(),
+        settings: {
+          ...prev.settings,
+          courtMode: !prev.settings.courtMode,
+        },
+      };
+      try {
+        const serialized = JSON.stringify(next);
+        localStorage.setItem(STORAGE_KEY, serialized);
+        localStorage.setItem(CURRENT_GAME_BACKUP_KEY, serialized);
+      } catch {}
+      return next;
+    });
 
     if (isExitingCourtMode && (game.status === 'finished' || activeTab === 'teams')) {
       setActiveTab('live');
@@ -3067,7 +3263,26 @@ export default function App() {
                 }}
                 onResumeGame={() => setActiveTab('live')}
                 onLoadGame={loadedGame => {
-                  setGame(loadedGame);
+                  if (loadedGame.teamId) {
+                    setActiveTeamId(loadedGame.teamId);
+                    setActiveTeamIdState(loadedGame.teamId);
+                  }
+                  setGame(prev => {
+                    const nextGame: Game = {
+                      ...loadedGame,
+                      players: ensureFivePlayersOnCourt(loadedGame.players, loadedGame.settings?.foulOutLimit || 5),
+                      updatedAt: loadedGame.updatedAt || new Date().toISOString(),
+                      settings: {
+                        ...loadedGame.settings,
+                        courtMode: prev.settings?.courtMode || Boolean(loadedGame.settings?.courtMode),
+                      },
+                    };
+                    persistGameSnapshotLocally(nextGame);
+                    saveGameToLibrary(nextGame);
+                    syncEngine.saveAndSyncMatch(nextGame, { immediate: true });
+                    return nextGame;
+                  });
+                  setSelectedPlayerId(loadedGame.players.find(p => p.onCourt)?.id || loadedGame.players[0]?.id || null);
                   setActiveTab('live');
                 }}
                 onOpenCourtMode={toggleCourtMode}
@@ -3375,6 +3590,7 @@ export default function App() {
             setGame(prev => ({
               ...prev,
               players: ensureFivePlayersOnCourt(newPlayers, prev.settings?.foulOutLimit || 5),
+              updatedAt: new Date().toISOString(),
             }));
           }}
           onUpdateMasterRoster={newMasterRoster => {
@@ -3438,9 +3654,27 @@ export default function App() {
           }}
           onOpenRecoveryModal={() => setShowRecoveryModal(true)}
           onLoadGame={loadedGame => {
-            setGame(loadedGame);
-            setLibraryGames(getSavedGamesFromStorage());
+            if (loadedGame.teamId) {
+              setActiveTeamId(loadedGame.teamId);
+              setActiveTeamIdState(loadedGame.teamId);
+            }
             setTeams(getRegisteredTeams());
+            setGame(prev => {
+              const nextGame: Game = {
+                ...loadedGame,
+                updatedAt: loadedGame.updatedAt || new Date().toISOString(),
+                settings: {
+                  ...loadedGame.settings,
+                  courtMode: prev.settings?.courtMode || Boolean(loadedGame.settings?.courtMode),
+                },
+              };
+              persistGameSnapshotLocally(nextGame);
+              saveGameToLibrary(nextGame);
+              syncEngine.saveAndSyncMatch(nextGame, { immediate: true });
+              return nextGame;
+            });
+            setSelectedPlayerId(loadedGame.players.find(p => p.onCourt)?.id || loadedGame.players[0]?.id || null);
+            setLibraryGames(getSavedGamesFromStorage());
             setShowLibraryModal(false);
             setActiveTab('live');
           }}
@@ -3464,7 +3698,26 @@ export default function App() {
           onDeleteTeam={handleDeleteTeam}
           onDeleteGame={handleDeleteMatchEverywhere}
           onLoadGame={loadedGame => {
-            setGame(loadedGame);
+            if (loadedGame.teamId) {
+              setActiveTeamId(loadedGame.teamId);
+              setActiveTeamIdState(loadedGame.teamId);
+            }
+            setGame(prev => {
+              const nextGame: Game = {
+                ...loadedGame,
+                players: ensureFivePlayersOnCourt(loadedGame.players, loadedGame.settings?.foulOutLimit || 5),
+                updatedAt: loadedGame.updatedAt || new Date().toISOString(),
+                settings: {
+                  ...loadedGame.settings,
+                  courtMode: prev.settings?.courtMode || Boolean(loadedGame.settings?.courtMode),
+                },
+              };
+              persistGameSnapshotLocally(nextGame);
+              saveGameToLibrary(nextGame);
+              syncEngine.saveAndSyncMatch(nextGame, { immediate: true });
+              return nextGame;
+            });
+            setSelectedPlayerId(loadedGame.players.find(p => p.onCourt)?.id || loadedGame.players[0]?.id || null);
             setActiveTab('live');
           }}
           onClose={() => setShowTeamModal(false)}
@@ -3482,8 +3735,26 @@ export default function App() {
             setShowCloudBackupModal(false);
           }}
           onLoadGame={loadedGame => {
-            setGame(loadedGame);
-            saveGameToLibrary(loadedGame);
+            if (loadedGame.teamId) {
+              setActiveTeamId(loadedGame.teamId);
+              setActiveTeamIdState(loadedGame.teamId);
+            }
+            setTeams(getRegisteredTeams());
+            setGame(prev => {
+              const nextGame: Game = {
+                ...loadedGame,
+                updatedAt: loadedGame.updatedAt || new Date().toISOString(),
+                settings: {
+                  ...loadedGame.settings,
+                  courtMode: prev.settings?.courtMode || Boolean(loadedGame.settings?.courtMode),
+                },
+              };
+              persistGameSnapshotLocally(nextGame);
+              saveGameToLibrary(nextGame);
+              syncEngine.saveAndSyncMatch(nextGame, { immediate: true });
+              return nextGame;
+            });
+            setSelectedPlayerId(loadedGame.players.find(p => p.onCourt)?.id || loadedGame.players[0]?.id || null);
             setLibraryGames(getSavedGamesFromStorage());
             setActiveTab('live');
           }}
@@ -3556,8 +3827,14 @@ export default function App() {
           recordedTeams={teams}
           onClose={() => setShowRecoveryModal(false)}
           onRestoreGame={restoredGame => {
-            setGame(restoredGame);
-            saveGameToLibrary(restoredGame);
+            const stamped = {
+              ...restoredGame,
+              updatedAt: restoredGame.updatedAt || new Date().toISOString(),
+            };
+            persistGameSnapshotLocally(stamped);
+            setGame(stamped);
+            saveGameToLibrary(stamped);
+            syncEngine.saveAndSyncMatch(stamped, { immediate: true });
             setLibraryGames(getSavedGamesFromStorage());
             setActiveTab('live');
             setShowRecoveryModal(false);
@@ -3603,8 +3880,13 @@ export default function App() {
           soundEnabled={game.settings.soundEnabled}
           onClose={() => setShowLiveMatchesModal(false)}
           onLoadGame={loadedGame => {
-            setGame(loadedGame);
-            saveGameToLibrary(loadedGame);
+            const stamped = {
+              ...loadedGame,
+              updatedAt: loadedGame.updatedAt || new Date().toISOString(),
+            };
+            persistGameSnapshotLocally(stamped);
+            setGame(stamped);
+            saveGameToLibrary(stamped);
             setActiveTab('live');
           }}
         />
@@ -3623,8 +3905,26 @@ export default function App() {
           setTeams(updatedTeams);
         }}
         onLoadGame={loadedGame => {
-          setGame(loadedGame);
-          saveGameToLibrary(loadedGame);
+          if (loadedGame.teamId) {
+            setActiveTeamId(loadedGame.teamId);
+            setActiveTeamIdState(loadedGame.teamId);
+          }
+          setTeams(getRegisteredTeams());
+          setGame(prev => {
+            const nextGame: Game = {
+              ...loadedGame,
+              updatedAt: loadedGame.updatedAt || new Date().toISOString(),
+              settings: {
+                ...loadedGame.settings,
+                courtMode: prev.settings?.courtMode || Boolean(loadedGame.settings?.courtMode),
+              },
+            };
+            persistGameSnapshotLocally(nextGame);
+            saveGameToLibrary(nextGame);
+            syncEngine.saveAndSyncMatch(nextGame, { immediate: true });
+            return nextGame;
+          });
+          setSelectedPlayerId(loadedGame.players.find(p => p.onCourt)?.id || loadedGame.players[0]?.id || null);
           setLibraryGames(getSavedGamesFromStorage());
           setActiveTab('live');
         }}

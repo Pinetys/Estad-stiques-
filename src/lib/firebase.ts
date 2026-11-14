@@ -171,7 +171,7 @@ export async function syncTeamToCloud(team: TeamProfile): Promise<boolean> {
     return true;
   } catch (err: any) {
     if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
-      isFirestoreQuotaExceeded = true;
+      markFirestoreQuotaExceeded();
     }
     handleFirestoreError(err, OperationType.WRITE, `teams/${team.id}`);
     return false;
@@ -614,7 +614,7 @@ export async function syncTacticalPlayToCloud(play: any): Promise<boolean> {
     return true;
   } catch (err: any) {
     if (err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('Quota exceeded')) {
-      isFirestoreQuotaExceeded = true;
+      markFirestoreQuotaExceeded();
     }
     handleFirestoreError(err, OperationType.WRITE, `tactical_plays/${play.id}`);
     return false;

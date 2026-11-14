@@ -408,6 +408,7 @@ export function createInitialGameForTeam(team: TeamProfile): Game {
       { quarter: 3, quarterLabel: 'Q3', home: 0, away: 0 },
       { quarter: 4, quarterLabel: 'Q4', home: 0, away: 0 },
     ],
+    updatedAt: new Date().toISOString(),
   };
 }
 export { ensureFivePlayersOnCourt } from './statsCalculator';

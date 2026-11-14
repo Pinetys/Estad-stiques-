@@ -107,9 +107,12 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     raw.events ||
     raw.plays ||
     raw.jugadas ||
+    raw.acciones ||
     raw.quarterScores ||
     raw.homeScore !== undefined ||
     raw.awayScore !== undefined ||
+    raw.scoreUs !== undefined ||
+    raw.scoreThem !== undefined ||
     raw.marcador ||
     raw.score ||
     raw.currentQuarter !== undefined
@@ -118,7 +121,7 @@ export function validateAndNormalizeGame(raw: any): Game | null {
 
   const rawId = raw.id || raw.gameId || raw._id || raw.matchId;
   const homeName = String(
-    raw.homeTeamName || raw.homeTeam || raw.equipoLocal || raw.local || raw.teamName || raw.home || 'Equipo Local'
+    raw.homeTeamName || raw.homeTeam || raw.equipoLocal || raw.local || raw.teamName || raw.home || (raw.scoreUs !== undefined ? 'Brafa' : 'Equipo Local')
   ).trim();
   const awayName = String(
     raw.awayTeamName || raw.awayTeam || raw.equipoVisitante || raw.visitante || raw.rival || raw.opponent || raw.away || 'Rival'
@@ -143,27 +146,31 @@ export function validateAndNormalizeGame(raw: any): Game | null {
       ev.isOpponent ||
       ev.opponent ||
       ev.rival ||
-      String(ev.actionType || '').startsWith('OPP_')
+      ev.team === 'away' ||
+      ev.team === 'rival' ||
+      ev.equipo === 'visitante' ||
+      ev.side === 'away' ||
+      String(ev.actionType || ev.type || ev.action || '').toUpperCase().startsWith('OPP_')
     );
 
     let rawActionType = String(ev.actionType || ev.type || ev.action || '2PM').trim().toUpperCase();
-    // Normalize aliases
-    if (rawActionType === '2P' || rawActionType === 'CANASTA_2' || rawActionType === '2P_IN') rawActionType = '2PM';
-    if (rawActionType === 'FALLO_2' || rawActionType === '2P_OUT') rawActionType = '2PA';
-    if (rawActionType === '3P' || rawActionType === 'TRIPLE' || rawActionType === '3P_IN' || rawActionType === 'TRIPLE_ANOTADO') rawActionType = '3PM';
-    if (rawActionType === 'FALLO_3' || rawActionType === '3P_OUT') rawActionType = '3PA';
-    if (rawActionType === '1P' || rawActionType === 'TIRO_LIBRE' || rawActionType === 'TL' || rawActionType === 'TL_IN' || rawActionType === 'FT') rawActionType = 'FTM';
-    if (rawActionType === 'TL_OUT' || rawActionType === 'FALLO_TL') rawActionType = 'FTA';
+    // Normalize aliases (must match statsCalculator StatActionType: OREB/DREB)
+    if (rawActionType === '2P' || rawActionType === '2PT' || rawActionType === '2P_MADE' || rawActionType === 'CANASTA_2' || rawActionType === '2P_IN') rawActionType = '2PM';
+    if (rawActionType === 'FALLO_2' || rawActionType === '2P_OUT' || rawActionType === '2P_MISSED' || rawActionType === '2PMISS') rawActionType = '2PA';
+    if (rawActionType === '3P' || rawActionType === '3PT' || rawActionType === '3P_MADE' || rawActionType === 'TRIPLE' || rawActionType === '3P_IN' || rawActionType === 'TRIPLE_ANOTADO') rawActionType = '3PM';
+    if (rawActionType === 'FALLO_3' || rawActionType === '3P_OUT' || rawActionType === '3P_MISSED' || rawActionType === '3PMISS') rawActionType = '3PA';
+    if (rawActionType === '1P' || rawActionType === 'FT_MADE' || rawActionType === '1P_MADE' || rawActionType === 'TIRO_LIBRE' || rawActionType === 'TL' || rawActionType === 'TL_IN' || rawActionType === 'FT') rawActionType = 'FTM';
+    if (rawActionType === 'TL_OUT' || rawActionType === 'FALLO_TL' || rawActionType === 'FT_MISSED' || rawActionType === '1P_MISSED') rawActionType = 'FTA';
     if (rawActionType === 'FOUL' || rawActionType === 'FALTA' || rawActionType === 'FALTA_PERSONAL') rawActionType = 'PF';
-    if (rawActionType === 'REB' || rawActionType === 'REBOTE' || rawActionType === 'REB_DEF' || rawActionType === 'RD') rawActionType = 'REB_DEF';
-    if (rawActionType === 'REB_OFF' || rawActionType === 'RO' || rawActionType === 'REBOTE_OFENSIVO') rawActionType = 'REB_OFF';
+    if (rawActionType === 'REB' || rawActionType === 'REBOTE' || rawActionType === 'REB_DEF' || rawActionType === 'RD' || rawActionType === 'REBOTE_DEFENSIVO') rawActionType = 'DREB';
+    if (rawActionType === 'REB_OFF' || rawActionType === 'RO' || rawActionType === 'REBOTE_OFENSIVO') rawActionType = 'OREB';
     if (rawActionType === 'AST' || rawActionType === 'ASISTENCIA' || rawActionType === 'ASSIST') rawActionType = 'AST';
     if (rawActionType === 'STL' || rawActionType === 'ROBO' || rawActionType === 'RECUPERACION' || rawActionType === 'STEAL') rawActionType = 'STL';
     if (rawActionType === 'BLK' || rawActionType === 'TAPON' || rawActionType === 'BLOCK') rawActionType = 'BLK';
     if (rawActionType === 'TO' || rawActionType === 'PERDIDA' || rawActionType === 'TURNOVER') rawActionType = 'TO';
-    if (rawActionType === 'OPP_2PM') rawActionType = 'OPP_2P';
-    if (rawActionType === 'OPP_3PM') rawActionType = 'OPP_3P';
-    if (rawActionType === 'OPP_FTM') rawActionType = 'OPP_1P';
+    if (rawActionType === 'OPP_2PM' || (isOpponent && rawActionType === '2PM')) rawActionType = 'OPP_2P';
+    if (rawActionType === 'OPP_3PM' || (isOpponent && rawActionType === '3PM')) rawActionType = 'OPP_3P';
+    if (rawActionType === 'OPP_FTM' || (isOpponent && rawActionType === 'FTM')) rawActionType = 'OPP_1P';
 
     let pointsAdded = Number(ev.pointsAdded ?? ev.points ?? ev.puntos ?? 0);
     if (isNaN(pointsAdded) || pointsAdded === 0) {
@@ -179,10 +186,10 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     // Shot location normalization
     let shotLocation = ev.shotLocation || ev.location || ev.coords || ev.shot;
     if (shotLocation && typeof shotLocation === 'object') {
-      const x = Number(shotLocation.x || 50);
-      const y = Number(shotLocation.y || 20);
+      const x = Number(shotLocation.x ?? 50);
+      const y = Number(shotLocation.y ?? 20);
       const made = Boolean(shotLocation.made ?? (rawActionType === '2PM' || rawActionType === '3PM' || rawActionType === 'OPP_2P' || rawActionType === 'OPP_3P'));
-      const points = Number(shotLocation.points || (rawActionType === '3PM' || rawActionType === 'OPP_3P' ? 3 : 2));
+      const points = Number(shotLocation.points ?? (rawActionType === '3PM' || rawActionType === 'OPP_3P' ? 3 : 2));
       const zone = shotLocation.zone || (x <= 14 ? 'corner3_left' : x >= 86 ? 'corner3_right' : Math.hypot(x - 50, y - 11) >= 43 ? 'top3' : (x >= 34 && x <= 66 && y <= 42) ? 'paint' : 'mid');
       shotLocation = { x, y, zone, made, points };
     } else {
@@ -218,10 +225,11 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     };
   });
 
-  // Safe numerical scores (with fallback calculation from events)
+  // Safe numerical scores (with fallback calculation from events & Pinety scoreUs/scoreThem)
   let homeScore = Number(
     raw.homeScore ??
     raw.scoreHome ??
+    raw.scoreUs ??
     raw.pointsHome ??
     (raw.score && typeof raw.score === 'object' ? raw.score.home : undefined) ??
     (raw.marcador && typeof raw.marcador === 'object' ? raw.marcador.local : undefined)
@@ -229,6 +237,7 @@ export function validateAndNormalizeGame(raw: any): Game | null {
   let awayScore = Number(
     raw.awayScore ??
     raw.scoreAway ??
+    raw.scoreThem ??
     raw.pointsAway ??
     (raw.score && typeof raw.score === 'object' ? raw.score.away : undefined) ??
     (raw.marcador && typeof raw.marcador === 'object' ? raw.marcador.visitante : undefined)
@@ -282,7 +291,14 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     const name = String(p.name || p.playerName || p.nombre || `Jugador #${pNumber}`).trim();
     const position = ['B', 'E', 'A', 'AP', 'P'].includes(p.position) ? p.position : 'B';
     const foulsCount = Math.max(0, Number.isFinite(Number(p.foulsCount ?? p.fouls ?? p.faltas)) ? Number(p.foulsCount ?? p.fouls ?? p.faltas) : 0);
-    const rawMinutes = p.minutesPlayedSeconds ?? p.minutos ?? p.minutes ?? p.playingTime ?? p.secondsPlayed;
+    const rawMinutes =
+      p.minutesPlayedSeconds ??
+      p.secondsPlayed ??
+      (p.minutes !== undefined && typeof p.minutes === 'number'
+        ? p.minutes * 60
+        : p.minutos !== undefined && typeof p.minutos === 'number'
+        ? p.minutos * 60
+        : p.minutos ?? p.minutes ?? p.playingTime);
     const minutesPlayedSeconds = parsePlayerMinutesPlayedSeconds(rawMinutes, p.quarterSeconds);
     const quarterSeconds = parsePlayerQuarterSeconds(p.quarterSeconds, minutesPlayedSeconds);
 
@@ -299,6 +315,136 @@ export function validateAndNormalizeGame(raw: any): Game | null {
       quarterSeconds,
     };
   });
+
+  // If JSON came from summary format (e.g. Coach Pinety export with points/rebounds/fouls per player and no events array),
+  // synthesize accurate PlayEvent items so boxscore, scoreboard and court reflect all numbers.
+  if (events.length === 0 && rawPlayers.length > 0) {
+    let evIdx = 0;
+    const baseTs = Date.now();
+    let synHomeScore = 0;
+    let synAwayScore = 0;
+    rawPlayers.forEach((rp: any, idx: number) => {
+      const targetPlayer = players[idx];
+      if (!targetPlayer) return;
+      const pts = Math.max(0, Number(rp.points ?? rp.puntos ?? 0) || 0);
+      const twos = Math.floor(pts / 2);
+      const ones = pts % 2;
+      const rebs = Math.max(0, Number(rp.rebounds ?? rp.rebotes ?? 0) || 0);
+      const fls = Math.max(0, Number(rp.fouls ?? rp.faltas ?? rp.foulsCount ?? 0) || 0);
+
+      for (let i = 0; i < twos; i++) {
+        synHomeScore += 2;
+        events.push({
+          id: `ev-${id}-syn-${evIdx++}`,
+          gameId: id,
+          timestamp: baseTs + evIdx * 1000,
+          quarter: 1,
+          gameSeconds: 500,
+          gameTimeFormatted: '08:20',
+          playerId: targetPlayer.id,
+          playerNumber: targetPlayer.number,
+          playerName: targetPlayer.name,
+          actionType: '2PM',
+          actionLabel: 'Tiro de 2 Metido',
+          pointsAdded: 2,
+          isOpponentAction: false,
+          scoreSnapshot: { home: synHomeScore, away: synAwayScore },
+        });
+      }
+      if (ones === 1) {
+        synHomeScore += 1;
+        events.push({
+          id: `ev-${id}-syn-${evIdx++}`,
+          gameId: id,
+          timestamp: baseTs + evIdx * 1000,
+          quarter: 1,
+          gameSeconds: 480,
+          gameTimeFormatted: '08:00',
+          playerId: targetPlayer.id,
+          playerNumber: targetPlayer.number,
+          playerName: targetPlayer.name,
+          actionType: 'FTM',
+          actionLabel: 'Tiro Libre Anotado',
+          pointsAdded: 1,
+          isOpponentAction: false,
+          scoreSnapshot: { home: synHomeScore, away: synAwayScore },
+        });
+      }
+      for (let i = 0; i < rebs; i++) {
+        events.push({
+          id: `ev-${id}-syn-${evIdx++}`,
+          gameId: id,
+          timestamp: baseTs + evIdx * 1000,
+          quarter: 1,
+          gameSeconds: 450,
+          gameTimeFormatted: '07:30',
+          playerId: targetPlayer.id,
+          playerNumber: targetPlayer.number,
+          playerName: targetPlayer.name,
+          actionType: 'DREB',
+          actionLabel: 'Rebote Defensivo',
+          pointsAdded: 0,
+          isOpponentAction: false,
+          scoreSnapshot: { home: synHomeScore, away: synAwayScore },
+        });
+      }
+      for (let i = 0; i < fls; i++) {
+        events.push({
+          id: `ev-${id}-syn-${evIdx++}`,
+          gameId: id,
+          timestamp: baseTs + evIdx * 1000,
+          quarter: 1,
+          gameSeconds: 420,
+          gameTimeFormatted: '07:00',
+          playerId: targetPlayer.id,
+          playerNumber: targetPlayer.number,
+          playerName: targetPlayer.name,
+          actionType: 'PF',
+          actionLabel: 'Falta Personal',
+          pointsAdded: 0,
+          isOpponentAction: false,
+          scoreSnapshot: { home: synHomeScore, away: synAwayScore },
+        });
+      }
+    });
+
+    if (awayScore > 0) {
+      const oppTwos = Math.floor(awayScore / 2);
+      const oppOnes = awayScore % 2;
+      for (let i = 0; i < oppTwos; i++) {
+        synAwayScore += 2;
+        events.push({
+          id: `ev-${id}-syn-${evIdx++}`,
+          gameId: id,
+          timestamp: baseTs + evIdx * 1000,
+          quarter: 1,
+          gameSeconds: 400,
+          gameTimeFormatted: '06:40',
+          actionType: 'OPP_2P',
+          actionLabel: '+2 Canasta Rival',
+          pointsAdded: 2,
+          isOpponentAction: true,
+          scoreSnapshot: { home: synHomeScore, away: synAwayScore },
+        });
+      }
+      if (oppOnes === 1) {
+        synAwayScore += 1;
+        events.push({
+          id: `ev-${id}-syn-${evIdx++}`,
+          gameId: id,
+          timestamp: baseTs + evIdx * 1000,
+          quarter: 1,
+          gameSeconds: 390,
+          gameTimeFormatted: '06:30',
+          actionType: 'OPP_1P',
+          actionLabel: '+1 Tiro Libre Rival',
+          pointsAdded: 1,
+          isOpponentAction: true,
+          scoreSnapshot: { home: synHomeScore, away: synAwayScore },
+        });
+      }
+    }
+  }
 
   // If players list was empty, extract players from recorded events or generate default 5
   if (players.length === 0) {
@@ -350,6 +496,40 @@ export function validateAndNormalizeGame(raw: any): Game | null {
         });
       }
     }
+  }
+
+  // Ensure events without playerId (or mismatched ID) resolve to matching player by dorsal or name
+  if (players.length > 0 && events.length > 0) {
+    const playerById = new Map(players.map(p => [p.id, p]));
+    const playerByNum = new Map(players.map(p => [p.number, p]));
+    const playerByName = new Map(players.map(p => [p.name.trim().toLowerCase(), p]));
+
+    events.forEach(ev => {
+      if (ev.isOpponentAction) return;
+      if (!ev.playerId || !playerById.has(ev.playerId)) {
+        const matched =
+          (ev.playerNumber !== undefined ? playerByNum.get(ev.playerNumber) : undefined) ||
+          (ev.playerName ? playerByName.get(ev.playerName.trim().toLowerCase()) : undefined);
+        if (matched) {
+          ev.playerId = matched.id;
+          if (ev.playerNumber === undefined) ev.playerNumber = matched.number;
+          if (!ev.playerName) ev.playerName = matched.name;
+        }
+      }
+    });
+
+    // Sync foulsCount from PF events if player.foulsCount was omitted/0 in the JSON
+    players = players.map(p => {
+      const pfCount = events.filter(e => !e.isOpponentAction && e.playerId === p.id && e.actionType === 'PF').length;
+      if (pfCount > p.foulsCount) {
+        return {
+          ...p,
+          foulsCount: pfCount,
+          isFouledOut: p.isFouledOut || pfCount >= foulOutLimit,
+        };
+      }
+      return p;
+    });
   }
 
   // Ensure exactly 5 players are on court
@@ -425,16 +605,17 @@ export function validateAndNormalizeGame(raw: any): Game | null {
     currentQuarter,
     currentSecondsRemaining,
     isClockRunning,
-    homeTimeouts: Number(raw.homeTimeouts || 0),
-    awayTimeouts: Number(raw.awayTimeouts || 0),
-    homeQuarterFouls: Number(raw.homeQuarterFouls || 0),
-    awayQuarterFouls: Number(raw.awayQuarterFouls || 0),
+    homeTimeouts: Number(raw.homeTimeouts ?? 3),
+    awayTimeouts: Number(raw.awayTimeouts ?? 3),
+    homeQuarterFouls: Number(raw.homeQuarterFouls ?? 0),
+    awayQuarterFouls: Number(raw.awayQuarterFouls ?? 0),
     status,
     settings,
     players,
+    awayPlayers: Array.isArray(raw.awayPlayers) ? raw.awayPlayers : undefined,
     events,
     quarterScores,
-    shotClockSeconds: Number(raw.shotClockSeconds || 24),
+    shotClockSeconds: Number(raw.shotClockSeconds ?? 24),
     isShotClockRunning: Boolean(raw.isShotClockRunning),
     updatedAt: raw.updatedAt || new Date().toISOString(),
   };
@@ -492,14 +673,20 @@ export function extractAndNormalizeGamesFromImport(parsed: any): {
       obj.equipoVisitante ||
       obj.local ||
       obj.rival ||
+      obj.opponent ||
       obj.events ||
       obj.plays ||
       obj.jugadas ||
+      obj.acciones ||
       obj.quarterScores ||
+      obj.awayPlayers ||
       obj.homeScore !== undefined ||
       obj.awayScore !== undefined ||
+      obj.scoreUs !== undefined ||
+      obj.scoreThem !== undefined ||
+      obj.currentQuarter !== undefined ||
       obj.marcador ||
-      (obj.title && typeof obj.title === 'string' && (obj.title.includes('vs') || obj.title.includes(' - ')))
+      (obj.title && typeof obj.title === 'string' && (obj.title.includes('vs') || obj.title.includes('VS') || obj.title.includes(' - ') || obj.title.includes('Jornada') || obj.title.includes('Partido')))
     );
 
     // If it looks like a team (has roster or plantilla, name or nombre, but NOT a game):
@@ -535,22 +722,30 @@ export function extractAndNormalizeGamesFromImport(parsed: any): {
     inspectObject(parsed);
   }
 
-  // Deduplicate rawMatches by reference or id
-  const seenIds = new Set<string>();
-  const validMatches: Game[] = [];
+  // Deduplicate rawMatches by id, preferring the richest/newest copy if duplicated (e.g. matches[] + currentGame)
+  const validMatchMap = new Map<string, Game>();
 
   rawMatches.forEach(rm => {
     if (!rm || typeof rm !== 'object') return;
     const normalized = validateAndNormalizeGame(rm);
-    if (normalized && !isDemoGame(normalized)) {
-      if (!seenIds.has(normalized.id)) {
-        seenIds.add(normalized.id);
-        // Remove tombstone so imported game is never hidden
-        removeDeletedTombstone(normalized.id);
-        validMatches.push(normalized);
+    if (normalized && !DEMO_GAME_IDS.has(normalized.id)) {
+      removeDeletedTombstone(normalized.id);
+      const existing = validMatchMap.get(normalized.id);
+      if (!existing) {
+        validMatchMap.set(normalized.id, normalized);
+      } else {
+        const existingScore = (existing.events?.length || 0) * 1000 + (existing.homeScore || 0) + (existing.awayScore || 0);
+        const incomingScore = (normalized.events?.length || 0) * 1000 + (normalized.homeScore || 0) + (normalized.awayScore || 0);
+        const existingTs = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+        const incomingTs = normalized.updatedAt ? new Date(normalized.updatedAt).getTime() : 0;
+        if (incomingScore > existingScore || (incomingScore === existingScore && incomingTs >= existingTs)) {
+          validMatchMap.set(normalized.id, normalized);
+        }
       }
     }
   });
+
+  const validMatches: Game[] = Array.from(validMatchMap.values());
 
   const validTeams: TeamProfile[] = [];
   const seenTeamIds = new Set<string>();
@@ -651,16 +846,19 @@ export function isDemoGame(game: Partial<Game>): boolean {
   if (!game) return true;
   if (game.id && DEMO_GAME_IDS.has(game.id)) return true;
   if (game.id && game.id.startsWith('game-sample-')) return true;
-  // Eliminate legacy demo teams & mock rival fixtures
+
+  // Only filter legacy demo fixtures if they have NO real recorded stats/events
+  const hasRealActivity =
+    (Array.isArray(game.events) && game.events.length > 0) ||
+    (game.homeScore || 0) > 0 ||
+    (game.awayScore || 0) > 0;
+  if (hasRealActivity) return false;
+
   const away = (game.awayTeamName || '').trim().toLowerCase();
   const home = (game.homeTeamName || '').trim().toLowerCase();
   if (
-    away.includes('cb rival') ||
-    away.includes('cbrival') ||
     away.includes('cb leones') ||
     away.includes('basket titanes') ||
-    home.includes('cb rival') ||
-    home.includes('cbrival') ||
     home.includes('cb leones') ||
     home.includes('basket titanes')
   ) {
@@ -1053,7 +1251,9 @@ export function purgeAllGamesFromLibrary(): Game[] {
 export function saveGamesToStorage(games: Game[]): void {
   try {
     const cleanGames = games.filter(g => !isDemoGame(g));
-    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(cleanGames));
+    const serialized = JSON.stringify(cleanGames);
+    localStorage.setItem(LIBRARY_STORAGE_KEY, serialized);
+    localStorage.setItem('basketstats_matches_backup_safety', serialized);
     localStorage.setItem(LIBRARY_INITIALIZED_KEY, 'true');
   } catch (e) {
     console.error('Error saving games library to storage:', e);
@@ -1067,28 +1267,32 @@ export function saveOrUpdateGameInLibrary(game: Game): Game[] {
   if (isDemoGame(game)) {
     return getSavedGamesFromStorage();
   }
+  const gameToSave: Game = {
+    ...game,
+    updatedAt: game.updatedAt || new Date().toISOString(),
+  };
   // Ensure category is explicitly populated
-  if (!game.category || !game.category.trim()) {
-    game.category = getGameCategory(game);
+  if (!gameToSave.category || !gameToSave.category.trim()) {
+    gameToSave.category = getGameCategory(gameToSave);
   }
   // Ensure teamId is attached if missing and matching registered team exists (preserving category compatibility!)
-  if (!game.teamId && game.homeTeamName) {
+  if (!gameToSave.teamId && gameToSave.homeTeamName) {
     try {
       const raw = localStorage.getItem('basketstats_registered_teams_v2') || localStorage.getItem('basketstats_teams_v1');
       if (raw) {
         const teams = JSON.parse(raw);
         if (Array.isArray(teams)) {
-          const homeLower = game.homeTeamName.toLowerCase().trim();
+          const homeLower = gameToSave.homeTeamName.toLowerCase().trim();
           const candidates = teams.filter(t => t.name?.toLowerCase().trim() === homeLower);
-          const gameCatLower = (game.category || '').toLowerCase().trim();
+          const gameCatLower = (gameToSave.category || '').toLowerCase().trim();
           const matching =
             candidates.find(t => gameCatLower && (t.category || '').toLowerCase().trim() === gameCatLower) ||
-            candidates.find(t => areCategoriesCompatible(t.category, game.category)) ||
+            candidates.find(t => areCategoriesCompatible(t.category, gameToSave.category)) ||
             (candidates.length === 1 ? candidates[0] : undefined);
           if (matching) {
-            game.teamId = matching.id;
-            if (!game.category && matching.category) {
-              game.category = matching.category;
+            gameToSave.teamId = matching.id;
+            if (!gameToSave.category && matching.category) {
+              gameToSave.category = matching.category;
             }
           }
         }
@@ -1096,40 +1300,34 @@ export function saveOrUpdateGameInLibrary(game: Game): Game[] {
     } catch {}
   }
   const library = getSavedGamesFromStorage();
-  const index = library.findIndex(g => g.id === game.id);
+  const index = library.findIndex(g => g.id === gameToSave.id);
   let updated: Game[];
   if (index >= 0) {
     updated = [...library];
-    updated[index] = game;
+    updated[index] = gameToSave;
   } else {
-    updated = [game, ...library];
+    updated = [gameToSave, ...library];
   }
   saveGamesToStorage(updated);
-  saveSnapshotToVault(game);
-  syncMatchToCloud(game);
-
-  // Dual redundancy: also broadcast to Autonomous Server Sync engine so match is stored permanently
-  try {
-    fetch('/api/sync/match', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ match: game }),
-    }).catch(() => {});
-  } catch {}
+  saveSnapshotToVault(gameToSave);
 
   if (typeof window !== 'undefined') {
     import('../lib/syncEngine')
       .then(({ syncEngine }) => {
-        syncEngine.saveAndSyncMatch(game, { immediate: true });
+        syncEngine.saveAndSyncMatch(gameToSave, { immediate: true });
       })
-      .catch(() => {});
+      .catch(() => {
+        syncMatchToCloud(gameToSave);
+      });
+  } else {
+    syncMatchToCloud(gameToSave);
   }
 
   // Automatically sync match & stats with Coach Pinety when match is finished
-  if (game.status === 'finished') {
+  if (gameToSave.status === 'finished') {
     import('./pinetySync')
       .then(({ sendMatchToCoachPinety }) => {
-        sendMatchToCoachPinety(game, { isAutomatic: true }).catch(() => {});
+        sendMatchToCoachPinety(gameToSave, { isAutomatic: true }).catch(() => {});
       })
       .catch(() => {});
   }
@@ -1326,19 +1524,24 @@ export function mergeCloudMatches(cloudMatches: Game[]): Game[] {
         } else if (m.status === 'finished' && existing.status !== 'finished') {
           mergedMap.set(m.id, m);
         } else {
-          // Equal status: pick one with higher score or later timestamp
+          // Equal status: pick one with higher score, more minutes played, or strictly newer timestamp
           const localScore = (existing.homeScore || 0) + (existing.awayScore || 0);
           const cloudScore = (m.homeScore || 0) + (m.awayScore || 0);
+          const localMins = (existing.players || []).reduce((acc, p) => acc + (p.minutesPlayedSeconds || 0), 0);
+          const cloudMins = (m.players || []).reduce((acc, p) => acc + (p.minutesPlayedSeconds || 0), 0);
           if (cloudScore > localScore) {
             mergedMap.set(m.id, m);
           } else if (localScore > cloudScore) {
             mergedMap.set(m.id, existing);
+          } else if (localMins > cloudMins) {
+            mergedMap.set(m.id, existing);
+          } else if (cloudMins > localMins) {
+            mergedMap.set(m.id, m);
+          } else if (cloudUpdated > localUpdated && localUpdated > 0) {
+            mergedMap.set(m.id, m);
           } else {
-            if (cloudUpdated >= localUpdated) {
-              mergedMap.set(m.id, m);
-            } else {
-              mergedMap.set(m.id, existing);
-            }
+            // Preserve local recorder copy by default on ties so un-synced local edits never regress
+            mergedMap.set(m.id, existing);
           }
         }
       }

@@ -266,24 +266,66 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
       const mergedMatches = mergeAndSaveImportedGames(incomingMatches, existingMatches);
       const { updatedMatches, teams: allUpdatedTeams } = ensureTeamsForMatches(mergedMatches);
 
-      purgeCuratedInitialGames();
       saveAllGamesToStorage(updatedMatches);
 
       await syncEngine.pushAllLocalDataToServer();
 
-      const firstImported =
-        incomingMatches.length > 0
-          ? updatedMatches.find(m => m.id === incomingMatches[0].id) || incomingMatches[0]
-          : null;
-      setLastImportedMatch(firstImported);
+      // Determine the exact primary match to load onto the court / scoreboard:
+      // 1) Explicit wrapper (game / match / partido / currentGame with data)
+      // 2) Single match imported
+      // 3) Most recently updated / played match from the imported bundle
+      const explicitCandidateRaw =
+        parsed?.game ||
+        parsed?.partido ||
+        parsed?.match ||
+        parsed?.currentGame ||
+        parsed?.data?.game ||
+        parsed?.data?.match ||
+        parsed?.data?.currentGame;
+      const explicitId = explicitCandidateRaw?.id || explicitCandidateRaw?.gameId;
+
+      const resolvedImported = incomingMatches.map(
+        im => updatedMatches.find(m => m.id === im.id) || im
+      );
+
+      let matchToLoad: Game | null = null;
+      if (explicitId) {
+        matchToLoad = resolvedImported.find(m => m.id === explicitId) || null;
+      }
+      if (!matchToLoad && resolvedImported.length === 1) {
+        matchToLoad = resolvedImported[0];
+      }
+      if (!matchToLoad && resolvedImported.length > 1) {
+        matchToLoad =
+          [...resolvedImported].sort((a, b) => {
+            const evDiff = (b.events?.length || 0) - (a.events?.length || 0);
+            if (evDiff !== 0) return evDiff;
+            const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            return timeB - timeA;
+          })[0] || resolvedImported[0];
+      }
+
+      setLastImportedMatch(matchToLoad);
       setImportJsonText('');
 
       playSound('score', true);
       triggerHaptic('heavy', true);
-      setSuccessMsg(
-        `¡Importación completada! ${incomingMatches.length} partido(s) y ${allUpdatedTeams.length} equipo(s) guardados y sincronizados.`
-      );
       onImportCompleted?.(updatedMatches, allUpdatedTeams);
+
+      if (matchToLoad) {
+        setSuccessMsg(
+          `¡Importación completada! Cargando "${matchToLoad.homeTeamName} vs ${matchToLoad.awayTeamName}" (${matchToLoad.homeScore}-${matchToLoad.awayScore}) en pista...`
+        );
+        onLoadGame(matchToLoad);
+        setTimeout(() => {
+          onClose();
+        }, 650);
+      } else {
+        setSuccessMsg(
+          `¡Importación completada! ${allUpdatedTeams.length} equipo(s) guardados y sincronizados.`
+        );
+      }
     } catch (err: any) {
       setErrorMsg(`Error al importar JSON: ${err?.message || 'Formato inválido o corrupto'}`);
     } finally {
@@ -297,8 +339,8 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
     const reader = new FileReader();
     reader.onload = event => {
       try {
-        const text = event.target?.result as string;
-        const parsed = JSON.parse(text);
+        const rawText = String(event.target?.result || '').replace(/^\uFEFF/, '').trim();
+        const parsed = JSON.parse(rawText);
         handleImportParsedJson(parsed);
       } catch {
         setErrorMsg('El archivo seleccionado no es un JSON válido.');
@@ -311,7 +353,8 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
   const handleJsonTextImport = () => {
     if (!importJsonText.trim()) return;
     try {
-      const parsed = JSON.parse(importJsonText);
+      const cleanText = importJsonText.replace(/^\uFEFF/, '').trim();
+      const parsed = JSON.parse(cleanText);
       handleImportParsedJson(parsed);
     } catch {
       setErrorMsg('El texto pegado no es un JSON válido.');
@@ -583,7 +626,7 @@ export const SyncPairingModal: React.FC<SyncPairingModalProps> = ({
                   type="file"
                   ref={jsonFileInputRef}
                   onChange={handleJsonFileUpload}
-                  accept=".json,application/json"
+                  accept=".json,application/json,text/plain"
                   className="hidden"
                 />
                 <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center mx-auto">

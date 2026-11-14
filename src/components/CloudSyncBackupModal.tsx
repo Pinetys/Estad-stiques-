@@ -316,14 +316,22 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
       // Ensure every match has a corresponding team profile in registered teams
       const { updatedMatches, teams: allUpdatedTeams } = ensureTeamsForMatches(mergedMatches);
 
-      // Clean out initial sample games so they don't pollute or overwrite real matches
-      purgeCuratedInitialGames();
-
       // Save imported matches to storage
       saveAllGamesToStorage(updatedMatches);
 
       // CRITICAL: Push everything directly to both Server and Cloud Firestore!
       await syncEngine.pushAllLocalDataToServer();
+
+      const explicitCandidateRaw =
+        parsed?.game || parsed?.partido || parsed?.match || parsed?.currentGame;
+      const explicitId = explicitCandidateRaw?.id || explicitCandidateRaw?.gameId;
+      const resolvedImported = incomingMatches.map(
+        im => updatedMatches.find(m => m.id === im.id) || im
+      );
+      const matchToLoad =
+        (explicitId ? resolvedImported.find(m => m.id === explicitId) : null) ||
+        resolvedImported[0] ||
+        null;
 
       playSound('score', true);
       triggerHaptic('heavy', true);
@@ -333,9 +341,13 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
         type: 'success',
       });
 
+      if (matchToLoad && onLoadGame) {
+        onLoadGame(matchToLoad);
+      }
+
       setTimeout(() => {
         onRestoreCompleted();
-      }, 1500);
+      }, 900);
     } catch (err: any) {
       setStatusMessage({
         text: `Error al restaurar: ${err.message || 'Datos corruptos'}`,
@@ -351,7 +363,7 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
     const reader = new FileReader();
     reader.onload = event => {
       try {
-        const text = event.target?.result as string;
+        const text = String(event.target?.result || '').replace(/^\uFEFF/, '').trim();
         const parsed = JSON.parse(text);
         handleRestoreFromParsed(parsed);
       } catch {
@@ -362,12 +374,14 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleTextRestore = () => {
     if (!importJsonText.trim()) return;
     try {
-      const parsed = JSON.parse(importJsonText);
+      const clean = importJsonText.replace(/^\uFEFF/, '').trim();
+      const parsed = JSON.parse(clean);
       handleRestoreFromParsed(parsed);
     } catch {
       setStatusMessage({
@@ -795,7 +809,7 @@ export const CloudSyncBackupModal: React.FC<CloudSyncBackupModalProps> = ({
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  accept=".json"
+                  accept=".json,application/json,text/plain"
                   className="hidden"
                 />
                 <div className="w-10 h-10 rounded-full bg-cyan-600/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center mx-auto">
